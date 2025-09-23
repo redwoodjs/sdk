@@ -119,6 +119,15 @@ export const ssrBridgePlugin = ({
         }
       } else {
         // In build mode, the behavior depends on the build pass
+        if (id.startsWith(VIRTUAL_SSR_PREFIX)) {
+          if (this.environment.name === "worker") {
+            log(
+              "Virtual SSR module case (build-worker pass): resolving to external",
+            );
+            return { id, external: true };
+          }
+        }
+
         if (id === "rwsdk/__ssr_bridge" && this.environment.name === "worker") {
           if (process.env.RWSDK_BUILD_PASS === "worker") {
             // First pass: resolve to a temporary, external path

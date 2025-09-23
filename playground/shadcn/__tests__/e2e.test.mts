@@ -44,6 +44,11 @@ testDevAndDeploy(
   "all shadcn/ui components render without console errors",
   async ({ page, url }) => {
     const consoleErrors: string[] = [];
+    const failedRequests: string[] = [];
+
+    page.on("requestfailed", (request) => {
+      failedRequests.push(`${request.url()} | ${request.failure()?.errorText}`);
+    });
 
     // Capture console errors
     page.on("console", (msg) => {
@@ -60,14 +65,17 @@ testDevAndDeploy(
     });
 
     // Wait a bit more for any async rendering to complete
-    await page.waitForLoadState("networkidle");
+    await page.waitForNetworkIdle();
 
     const content = await page.content();
     expect(content).toContain("Basic UI Components");
     expect(content).toContain("Form Components");
 
     // Check that no console errors occurred
-    expect(consoleErrors).toEqual([]);
+    expect({ consoleErrors, failedRequests }).toEqual({
+      consoleErrors: [],
+      failedRequests: [],
+    });
   },
 );
 
@@ -82,30 +90,30 @@ testDevAndDeploy(
     });
 
     // Test button interactions
-    const buttons = page.locator("button");
-    const buttonCount = await buttons.count();
+    const buttons = await page.$$("button");
+    const buttonCount = buttons.length;
     expect(buttonCount).toBeGreaterThan(0);
 
     // Test that buttons are clickable (no errors thrown)
     if (buttonCount > 0) {
-      await buttons.first().click();
+      await buttons[0].click();
     }
 
     // Test form inputs
-    const inputs = page.locator('input[type="email"]');
-    const inputCount = await inputs.count();
+    const inputs = await page.$$('input[type="email"]');
+    const inputCount = inputs.length;
     if (inputCount > 0) {
-      await inputs.first().fill("test@example.com");
-      const value = await inputs.first().inputValue();
+      await inputs[0].type("test@example.com");
+      const value = await page.evaluate((el) => el.value, inputs[0]);
       expect(value).toBe("test@example.com");
     }
 
     // Test checkboxes
-    const checkboxes = page.locator('input[type="checkbox"]');
-    const checkboxCount = await checkboxes.count();
+    const checkboxes = await page.$$('input[type="checkbox"]');
+    const checkboxCount = checkboxes.length;
     if (checkboxCount > 0) {
-      await checkboxes.first().check();
-      const isChecked = await checkboxes.first().isChecked();
+      await checkboxes[0].click();
+      const isChecked = await page.evaluate((el) => el.checked, checkboxes[0]);
       expect(isChecked).toBe(true);
     }
   },

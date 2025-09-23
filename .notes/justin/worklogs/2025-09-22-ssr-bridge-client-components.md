@@ -204,27 +204,27 @@ With the implementation now stable, the final step is to create the architecture
 
 ### Problem
 
-In our hybrid RSC/SSR rendering model, modules marked with `"use client"` presented a challenge for non-component exports.
+Previously, in our hybrid RSC/SSR rendering model, modules marked with `"use client"` presented a challenge for non-component exports.
 
 The `worker` environment, responsible for both RSC and SSR, would transform a `"use client"` module into a set of client reference proxies. This is correct for the RSC pass, but it created a problem for any other server-side code. If any logic in the `worker` needed to import a non-component export (e.g., a utility function, a constant, or a library-specific object) from that same client module, it couldn't. The actual implementation was completely replaced by the proxy, making the export inaccessible to any server-side logic.
 
-This limited the utility of client modules, forcing a strict separation where server-side code could not consume any utilities or objects defined alongside client components.
+This limited the utility of client modules and was a significant blocker for complex component libraries like Chakra UI, which co-locate components and utility objects in the same client modules.
 
 ### Solution
 
-This change introduces a mechanism to bridge this gap, allowing non-component exports from `"use client"` modules to be correctly resolved and used within the `worker` environment.
+This change introduces a mechanism to bridge this gap, allowing non-component exports from `"use client"` modules to be correctly resolved and used within the `worker` environment during the SSR pass.
 
 The solution has two main parts:
 
-1.  **Build-Time Transformation:** The `transformClientComponents` plugin now injects a virtual import for the `ssr`-processed version of the client module (e.g., `import * as SSRModule from "virtual:rwsdk:ssr:/path/to/component"`). This makes the module's *actual* implementation available to the `worker` runtime via the SSR Bridge.
+1.  **Build-Time Transformation:** The `transformClientComponents` plugin has been updated. It no longer generates different code for dev and production. It now consistently generates code that imports the `ssrLoadModule` helper from the `rwsdk/__ssr_bridge` entry point and uses it to asynchronously load the SSR-processed version of the client module.
 
 2.  **Runtime Conditional Logic:** The `registerClientReference` function in the worker runtime has been updated. It now accepts the imported `SSRModule` and inspects each export.
     *   If an export is identified as a **React component** (using `react-is`), it returns a standard, serializable client reference placeholder, which is what the RSC renderer expects.
     *   If an export is a **non-component**, it returns the *actual export* from the `SSRModule` directly.
 
-This allows any server-side code to import `MyUtil` from a client module and use it on the server, while still treating `<MyComponent>` from that same module as a client reference for the RSC phase.
+This allows any server-side code to import `MyUtil` from a client module and use it on the server, while still treating `<MyComponent>` from that same module as a client reference for the RSC phase. This unified approach respects the single-entry-point architecture of our production builds while still leveraging the existing `virtual:use-client-lookup.js` map for lazy execution.
 
-A new architecture document, `docs/architecture/directiveTransforms.md`, has been added to explain this transformation process for both `"use client"` and `"use server"` modules in detail. Unit tests for the transformation have also been verified.
+The solution was validated with a new `import-from-use-client` playground that tests app-to-app, app-to-package, and package-to-package imports. It was also confirmed to resolve the integration issues with Chakra UI after diagnosing a series of complex build errors that were ultimately caused by stale `pnpm` dependencies.
 
 ---
 
@@ -441,3 +441,81 @@ This process ensured that the playground's `node_modules` contained a fresh, non
 
 **Outcome:**
 With the stale dependency issue resolved, the end-to-end tests now pass. All three import scenarios are working correctly. Both the application button and the package button are interactive, and messages from both client utility objects are rendered on the server as expected. This validates that the SSR Bridge and the updated `registerClientReference` function correctly handle non-component exports from `"use client"` modules, both in application code and in package dependencies.
+
+---
+
+### Validation with Chakra UI
+
+**Resolution of TDZ and Other Errors:**
+The set of errors encountered while testing with the Chakra UI playground, including the Temporal Dead Zone (TDZ) issue with the vendor barrel file, were ultimately traced back to the same root cause as the previous playground: stale SDK dependencies.
+
+The `pnpm` symlinking mechanism was causing the Chakra playground to use a cached, outdated version of the `rwsdk`, which did not include the latest fixes. The complex build errors were red herrings stemming from this environmental issue.
+
+**Solution:**
+The solution was identical to the one used for the `import-from-use-client` playground. Creating a fresh tarball of the SDK (`npm pack`) and installing it directly into the Chakra UI playground's `node_modules` resolved all remaining issues.
+
+**Conclusion:**
+With a clean SDK installation, the Chakra UI playground now works correctly. This confirms that the new SSR bridging mechanism is robust and correctly handles complex, real-world component libraries. The feature is now considered validated for the dev server environment.
+
+---
+
+### Architectural Pivot for Production Builds
+
+**The Problem: A Conflict with the Production Build Process**
+The current solution for dev builds, which transforms client components to use `import * as SSRModule from "virtual:rwsdk:ssr:/path/to/component.mjs"`, is incompatible with the production build architecture.
+
+As detailed in `docs/architecture/productionBuildProcess.md`, the production build is designed to produce a single entry point for the worker. The `ssr` bundle is treated as a self-contained library, and all communication happens through the `rwsdk/__ssr_bridge` module. The dev server's approach, if used in production, would effectively create hundreds of new, external entry points (`virtual:rwsdk:ssr:...`), breaking the single-entry-point model and causing the linker build pass to fail.
+
+**The Solution: A Unified Approach Using the SSR Bridge**
+The plan is to unify the dev and production logic by leveraging the SSR bridge for all cases. This avoids virtual imports in the worker code and respects the production architecture.
+
+1.  **Unified Transformation:** The `transformClientComponents.mts` plugin will be updated. In both dev and production, instead of generating a direct `import`, it will generate code that calls the existing `ssrLoadModule` function, which is imported from `rwsdk/__ssr_bridge`.
+
+2.  **Leverage Existing Lookups:** The `ssrLoadModule` function already uses the `virtual:use-client-lookup.js` map internally. This lookup map is already "barrel-aware" for dev dependencies, so the existing `optimizeDeps` strategy will continue to work without changes.
+
+3.  **Asynchronous Loading:** The transform will generate a top-level `await` to get the module, which is necessary because `ssrLoadModule` is async.
+
+**Example Production Transform:**
+```typescript
+// 1. Import the helper from the bridge
+import { ssrLoadModule } from "rwsdk/__ssr_bridge";
+import { registerClientReference } from "rwsdk/worker";
+
+// 2. Use top-level await to get the SSR module
+const SSRModule = await ssrLoadModule("/path/to/component.mjs");
+
+// 3. The rest of the logic remains the same
+export const MyComponent = registerClientReference(SSRModule, "/path/to/component.mjs", "MyComponent");
+```
+
+This approach simplifies the transformation logic, preserves the single-entry-point architecture for production, and maintains the benefit of deferred execution for client component code within the SSR bundle.
+
+---
+
+## PR Description
+
+**Title:** `feat(ssr): Support non-component imports from "use client" modules`
+
+### Problem
+
+Previously, in our hybrid RSC/SSR rendering model, modules marked with `"use client"` presented a challenge for non-component exports.
+
+The `worker` environment, responsible for both RSC and SSR, would transform a `"use client"` module into a set of client reference proxies. This is correct for the RSC pass, but it created a problem for any other server-side code. If any logic in the `worker` needed to import a non-component export (e.g., a utility function, a constant, or a library-specific object) from that same client module, it couldn't. The actual implementation was completely replaced by the proxy, making the export inaccessible to any server-side logic.
+
+This limited the utility of client modules and was a significant blocker for complex component libraries like Chakra UI, which co-locate components and utility objects in the same client modules.
+
+### Solution
+
+This change introduces a mechanism to bridge this gap, allowing non-component exports from `"use client"` modules to be correctly resolved and used within the `worker` environment during the SSR pass.
+
+The solution has two main parts:
+
+1.  **Build-Time Transformation:** The `transformClientComponents` plugin has been updated. It no longer generates different code for dev and production. It now consistently generates code that imports the `ssrLoadModule` helper from the `rwsdk/__ssr_bridge` entry point and uses it to asynchronously load the SSR-processed version of the client module.
+
+2.  **Runtime Conditional Logic:** The `registerClientReference` function in the worker runtime has been updated. It now accepts the imported `SSRModule` and inspects each export.
+    *   If an export is identified as a **React component** (using `react-is`), it returns a standard, serializable client reference placeholder, which is what the RSC renderer expects.
+    *   If an export is a **non-component**, it returns the *actual export* from the `SSRModule` directly.
+
+This allows any server-side code to import `MyUtil` from a client module and use it on the server, while still treating `<MyComponent>` from that same module as a client reference for the RSC phase. This unified approach respects the single-entry-point architecture of our production builds while still leveraging the existing `virtual:use-client-lookup.js` map for lazy execution.
+
+The solution was validated with a new `import-from-use-client` playground that tests app-to-app, app-to-package, and package-to-package imports. It was also confirmed to resolve the integration issues with Chakra UI after diagnosing a series of complex build errors that were ultimately caused by stale `pnpm` dependencies.
