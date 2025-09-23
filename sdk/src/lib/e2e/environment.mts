@@ -259,10 +259,14 @@ async function installDependencies(
         // Workaround for esbuild installation issue with yarn classic on macOS
         // See: https://github.com/evanw/esbuild/issues/1656
         log(`Pre-installing esbuild with npm to avoid codesigning issue...`);
-        await $("npm", ["install", "esbuild"], {
-          cwd: targetDir,
-          stdio: "pipe",
-        });
+        await $(
+          "npm",
+          ["install", "esbuild", "--no-save", "--no-package-lock"],
+          {
+            cwd: targetDir,
+            stdio: "pipe",
+          },
+        );
       }
     }
     const installCommand = {
