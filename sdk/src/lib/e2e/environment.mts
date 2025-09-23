@@ -265,7 +265,6 @@ async function installDependencies(
         });
       }
     }
-
     const installCommand = {
       pnpm: ["pnpm", "install"],
       npm: ["npm", "install"],
