@@ -407,4 +407,20 @@ After fixing the dependencies, a new, more specific error has appeared:
 TypeError: __vite_ssr_import_2__.packageClientUtil.format is not a function
 ```
 
-This error occurs when the `PackageServerComponent` attempts to call `packageClientUtil.format`. It indicates that while the `ui-lib/client.mjs` module is being imported across the SSR Bridge, its exports are not being correctly resolved. The `packageClientUtil` object is either not being found on the imported module (`__vite_ssr_import_2__`) or the module itself is not what's expected, pointing to a potential issue in how the `ssr` environment processes and returns the module's contents to the `worker`u`V
+This error occurs when the `PackageServerComponent` attempts to call `packageClientUtil.format`. It indicates that while the `ui-lib/client.mjs` module is being imported across the SSR Bridge, its exports are not being correctly resolved. The `packageClientUtil` object is either not being found on the imported module (`__vite_ssr_import_2__`) or the module itself is not what's expected, pointing to a potential issue in how the `ssr` environment processes and returns the module's contents to the `worker`.
+
+---
+
+### Uneven Transformation of Client Modules
+
+**Finding:**
+Through detailed logging, a key discrepancy was discovered:
+
+1.  **Application Client Module (`/src/app/lib/client-utils.mjs`):** The `transformClientComponents` plugin runs as expected. It injects calls to `registerClientReference`, and the runtime logs confirm that `registerClientReference` is executed for each export. The `isValidElementType` check correctly separates the component (`AppButton`) from the non-component (`appClientUtil`), and the utility object is returned correctly.
+
+2.  **Package Client Module (`ui-lib/client.mjs`):** The `transformClientComponents` plugin does **not** seem to run on this module. There are no logs from `registerClientReference` for its exports (`PackageButton`, `packageClientUtil`).
+
+Despite this, the `packageClientUtil` object is still being transformed into a client reference, but by a different, older mechanism. This is evident because the logged object has a `__rwsdk_clientReferenceId` property, which is a remnant of a previous implementation.
+
+**Conclusion:**
+There are two separate transformation pipelines for client components: one for application source files and another for `node_modules` dependencies. The pipeline for dependencies is outdated and does not include the new SSR Bridge logic. The next step is to locate and update this second pipeline.

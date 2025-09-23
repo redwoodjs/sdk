@@ -26,6 +26,7 @@ export function registerClientReference<Target extends Record<string, unknown>>(
   exportName: string,
 ) {
   const target = ssrModule[exportName] ?? {};
+  console.log("### in registerClientReference", id, exportName, target);
 
   if (isValidElementType(target)) {
     // This is the original logic from 'main'.
@@ -53,6 +54,12 @@ export function registerClientReference<Target extends Record<string, unknown>>(
     return Object.defineProperties(() => null, finalDescriptors);
   }
 
+  console.log(
+    "####### registerClientReference non-component",
+    id,
+    exportName,
+    target,
+  );
   // For non-components, return the target object directly for use in SSR.
   return target;
 }

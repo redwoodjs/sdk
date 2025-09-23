@@ -3,7 +3,8 @@ import { PackageButton, packageClientUtil } from "ui-lib/client";
 import { PackageServerComponent } from "ui-lib/server";
 
 export const Home = () => {
-  console.log("####");
+  console.log("#### appClientUtil", appClientUtil);
+  console.log("#### packageClientUtil", packageClientUtil);
   const messageFromAppClientUtil = appClientUtil.format("Home Page");
   const messageFromPackageClientUtil = packageClientUtil.format("Home Page");
 
