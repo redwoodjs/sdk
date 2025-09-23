@@ -206,11 +206,6 @@ export async function copyProjectToTempDir(
     // Install dependencies in the target directory
     await installDependencies(targetDir, packageManager);
 
-    await fs.promises.appendFile(
-      path.join(projectDir, ".npmrc"),
-      "frozen-lockfile=false",
-    );
-
     // Return the environment details
     return { tempDir, targetDir, workerName };
   } finally {
