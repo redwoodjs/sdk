@@ -19,8 +19,9 @@ export const Component = () => {
 }
 `)) ?? "",
     ).toEqual(
-      `import { registerClientReference } from "rwsdk/worker";
-const Component = registerClientReference("/test/file.tsx", "Component");
+      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+import { registerClientReference } from "rwsdk/worker";
+const Component = registerClientReference(SSRModule, "/test/file.tsx", "Component");
 export { Component };
 `,
     );
@@ -35,8 +36,9 @@ export const Component = async () => {
 }
   `)) ?? "",
     ).toEqual(
-      `import { registerClientReference } from "rwsdk/worker";
-const Component = registerClientReference("/test/file.tsx", "Component");
+      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+import { registerClientReference } from "rwsdk/worker";
+const Component = registerClientReference(SSRModule, "/test/file.tsx", "Component");
 export { Component };
 `,
     );
@@ -50,8 +52,9 @@ export function Component() {
   return jsx('div', { children: 'Hello' });
 }`)) ?? "",
     ).toEqual(
-      `import { registerClientReference } from "rwsdk/worker";
-const Component = registerClientReference("/test/file.tsx", "Component");
+      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+import { registerClientReference } from "rwsdk/worker";
+const Component = registerClientReference(SSRModule, "/test/file.tsx", "Component");
 export { Component };
 `,
     );
@@ -65,8 +68,9 @@ export default () => {
   return jsx('div', { children: 'Hello' });
 }`)) ?? "",
     ).toEqual(
-      `import { registerClientReference } from "rwsdk/worker";
-export default registerClientReference("/test/file.tsx", "default");
+      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+import { registerClientReference } from "rwsdk/worker";
+export default registerClientReference(SSRModule, "/test/file.tsx", "default");
 `,
     );
   });
@@ -79,8 +83,9 @@ export default function Component({ prop1, prop2 }) {
   return jsx('div', { children: 'Hello' });
 }`)) ?? "",
     ).toEqual(
-      `import { registerClientReference } from "rwsdk/worker";
-export default registerClientReference("/test/file.tsx", "default");
+      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+import { registerClientReference } from "rwsdk/worker";
+export default registerClientReference(SSRModule, "/test/file.tsx", "default");
 `,
     );
   });
@@ -112,13 +117,14 @@ export default function Main() {
 export { Second, Third }
 export { Fourth as AnotherName }`)) ?? "",
     ).toEqual(
-      `import { registerClientReference } from "rwsdk/worker";
-const First = registerClientReference("/test/file.tsx", "First");
-const Second = registerClientReference("/test/file.tsx", "Second");
-const Third = registerClientReference("/test/file.tsx", "Third");
-const Fourth_AnotherName = registerClientReference("/test/file.tsx", "AnotherName");
+      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+import { registerClientReference } from "rwsdk/worker";
+const First = registerClientReference(SSRModule, "/test/file.tsx", "First");
+const Second = registerClientReference(SSRModule, "/test/file.tsx", "Second");
+const Third = registerClientReference(SSRModule, "/test/file.tsx", "Third");
+const Fourth_AnotherName = registerClientReference(SSRModule, "/test/file.tsx", "AnotherName");
 export { First, Second, Third, Fourth_AnotherName as AnotherName };
-export default registerClientReference("/test/file.tsx", "default");
+export default registerClientReference(SSRModule, "/test/file.tsx", "default");
 `,
     );
   });
@@ -134,8 +140,9 @@ function Component({ prop1, prop2 }) {
 
 export default Component;`)) ?? "",
     ).toEqual(
-      `import { registerClientReference } from "rwsdk/worker";
-export default registerClientReference("/test/file.tsx", "default");
+      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+import { registerClientReference } from "rwsdk/worker";
+export default registerClientReference(SSRModule, "/test/file.tsx", "default");
 `,
     );
   });
@@ -224,8 +231,9 @@ export function Chat() {
 }
 `)) ?? "",
     ).toEqual(
-      `import { registerClientReference } from "rwsdk/worker";
-const Chat = registerClientReference("/test/file.tsx", "Chat");
+      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+import { registerClientReference } from "rwsdk/worker";
+const Chat = registerClientReference(SSRModule, "/test/file.tsx", "Chat");
 export { Chat };
 `,
     );
@@ -245,8 +253,9 @@ const MyComponent = () => {
 
 export { MyComponent as CustomName }`)) ?? "",
     ).toEqual(
-      `import { registerClientReference } from "rwsdk/worker";
-const MyComponent_CustomName = registerClientReference("/test/file.tsx", "CustomName");
+      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+import { registerClientReference } from "rwsdk/worker";
+const MyComponent_CustomName = registerClientReference(SSRModule, "/test/file.tsx", "CustomName");
 export { MyComponent_CustomName as CustomName };
 `,
     );
@@ -262,10 +271,11 @@ const Third = () => jsx('div', { children: 'Third' });
 
 export { First, Second, Third }`)) ?? "",
     ).toEqual(
-      `import { registerClientReference } from "rwsdk/worker";
-const First = registerClientReference("/test/file.tsx", "First");
-const Second = registerClientReference("/test/file.tsx", "Second");
-const Third = registerClientReference("/test/file.tsx", "Third");
+      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+import { registerClientReference } from "rwsdk/worker";
+const First = registerClientReference(SSRModule, "/test/file.tsx", "First");
+const Second = registerClientReference(SSRModule, "/test/file.tsx", "Second");
+const Third = registerClientReference(SSRModule, "/test/file.tsx", "Third");
 export { First, Second, Third };
 `,
     );
@@ -281,10 +291,11 @@ const helper = () => console.log('helper');
 
 export { Component, data, helper }`)) ?? "",
     ).toEqual(
-      `import { registerClientReference } from "rwsdk/worker";
-const Component = registerClientReference("/test/file.tsx", "Component");
-const data = registerClientReference("/test/file.tsx", "data");
-const helper = registerClientReference("/test/file.tsx", "helper");
+      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+import { registerClientReference } from "rwsdk/worker";
+const Component = registerClientReference(SSRModule, "/test/file.tsx", "Component");
+const data = registerClientReference(SSRModule, "/test/file.tsx", "data");
+const helper = registerClientReference(SSRModule, "/test/file.tsx", "helper");
 export { Component, data, helper };
 `,
     );
@@ -301,9 +312,10 @@ export const Slot = () => {
 export { Slot, Slot as Root }
 `)) ?? "",
     ).toEqual(
-      `import { registerClientReference } from "rwsdk/worker";
-const Slot = registerClientReference("/test/file.tsx", "Slot");
-const Slot_Root = registerClientReference("/test/file.tsx", "Root");
+      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+import { registerClientReference } from "rwsdk/worker";
+const Slot = registerClientReference(SSRModule, "/test/file.tsx", "Slot");
+const Slot_Root = registerClientReference(SSRModule, "/test/file.tsx", "Root");
 export { Slot, Slot_Root as Root };
 `,
     );
@@ -340,31 +352,32 @@ function SidebarMenuSubButton() { return jsx("div", {}); }
 export { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInput, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, useSidebar, };`;
 
     expect((await transform(code)) ?? "").toEqual(
-      `import { registerClientReference } from "rwsdk/worker";
-const Sidebar = registerClientReference("/test/file.tsx", "Sidebar");
-const SidebarContent = registerClientReference("/test/file.tsx", "SidebarContent");
-const SidebarFooter = registerClientReference("/test/file.tsx", "SidebarFooter");
-const SidebarGroup = registerClientReference("/test/file.tsx", "SidebarGroup");
-const SidebarGroupAction = registerClientReference("/test/file.tsx", "SidebarGroupAction");
-const SidebarGroupContent = registerClientReference("/test/file.tsx", "SidebarGroupContent");
-const SidebarGroupLabel = registerClientReference("/test/file.tsx", "SidebarGroupLabel");
-const SidebarHeader = registerClientReference("/test/file.tsx", "SidebarHeader");
-const SidebarInput = registerClientReference("/test/file.tsx", "SidebarInput");
-const SidebarInset = registerClientReference("/test/file.tsx", "SidebarInset");
-const SidebarMenu = registerClientReference("/test/file.tsx", "SidebarMenu");
-const SidebarMenuAction = registerClientReference("/test/file.tsx", "SidebarMenuAction");
-const SidebarMenuBadge = registerClientReference("/test/file.tsx", "SidebarMenuBadge");
-const SidebarMenuButton = registerClientReference("/test/file.tsx", "SidebarMenuButton");
-const SidebarMenuItem = registerClientReference("/test/file.tsx", "SidebarMenuItem");
-const SidebarMenuSkeleton = registerClientReference("/test/file.tsx", "SidebarMenuSkeleton");
-const SidebarMenuSub = registerClientReference("/test/file.tsx", "SidebarMenuSub");
-const SidebarMenuSubButton = registerClientReference("/test/file.tsx", "SidebarMenuSubButton");
-const SidebarMenuSubItem = registerClientReference("/test/file.tsx", "SidebarMenuSubItem");
-const SidebarProvider = registerClientReference("/test/file.tsx", "SidebarProvider");
-const SidebarRail = registerClientReference("/test/file.tsx", "SidebarRail");
-const SidebarSeparator = registerClientReference("/test/file.tsx", "SidebarSeparator");
-const SidebarTrigger = registerClientReference("/test/file.tsx", "SidebarTrigger");
-const useSidebar = registerClientReference("/test/file.tsx", "useSidebar");
+      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+import { registerClientReference } from "rwsdk/worker";
+const Sidebar = registerClientReference(SSRModule, "/test/file.tsx", "Sidebar");
+const SidebarContent = registerClientReference(SSRModule, "/test/file.tsx", "SidebarContent");
+const SidebarFooter = registerClientReference(SSRModule, "/test/file.tsx", "SidebarFooter");
+const SidebarGroup = registerClientReference(SSRModule, "/test/file.tsx", "SidebarGroup");
+const SidebarGroupAction = registerClientReference(SSRModule, "/test/file.tsx", "SidebarGroupAction");
+const SidebarGroupContent = registerClientReference(SSRModule, "/test/file.tsx", "SidebarGroupContent");
+const SidebarGroupLabel = registerClientReference(SSRModule, "/test/file.tsx", "SidebarGroupLabel");
+const SidebarHeader = registerClientReference(SSRModule, "/test/file.tsx", "SidebarHeader");
+const SidebarInput = registerClientReference(SSRModule, "/test/file.tsx", "SidebarInput");
+const SidebarInset = registerClientReference(SSRModule, "/test/file.tsx", "SidebarInset");
+const SidebarMenu = registerClientReference(SSRModule, "/test/file.tsx", "SidebarMenu");
+const SidebarMenuAction = registerClientReference(SSRModule, "/test/file.tsx", "SidebarMenuAction");
+const SidebarMenuBadge = registerClientReference(SSRModule, "/test/file.tsx", "SidebarMenuBadge");
+const SidebarMenuButton = registerClientReference(SSRModule, "/test/file.tsx", "SidebarMenuButton");
+const SidebarMenuItem = registerClientReference(SSRModule, "/test/file.tsx", "SidebarMenuItem");
+const SidebarMenuSkeleton = registerClientReference(SSRModule, "/test/file.tsx", "SidebarMenuSkeleton");
+const SidebarMenuSub = registerClientReference(SSRModule, "/test/file.tsx", "SidebarMenuSub");
+const SidebarMenuSubButton = registerClientReference(SSRModule, "/test/file.tsx", "SidebarMenuSubButton");
+const SidebarMenuSubItem = registerClientReference(SSRModule, "/test/file.tsx", "SidebarMenuSubItem");
+const SidebarProvider = registerClientReference(SSRModule, "/test/file.tsx", "SidebarProvider");
+const SidebarRail = registerClientReference(SSRModule, "/test/file.tsx", "SidebarRail");
+const SidebarSeparator = registerClientReference(SSRModule, "/test/file.tsx", "SidebarSeparator");
+const SidebarTrigger = registerClientReference(SSRModule, "/test/file.tsx", "SidebarTrigger");
+const useSidebar = registerClientReference(SSRModule, "/test/file.tsx", "useSidebar");
 export { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInput, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, useSidebar };
 `,
     );
@@ -386,5 +399,45 @@ describe("transformClientComponents logic branches (from transformClientComponen
       environmentName: "ssr",
     });
     expect(result?.code).toEqual("export const foo = 1;");
+  });
+});
+
+describe("transformClientComponents (dev server node_modules)", () => {
+  async function transformDev(code: string, id: string) {
+    process.env.VITE_IS_DEV_SERVER = "1";
+    const result = await transformClientComponents(code, id, {
+      environmentName: "worker",
+    });
+    delete (process.env as any).VITE_IS_DEV_SERVER;
+    return result?.code;
+  }
+
+  it("uses barrel file import for node_modules files in dev", async () => {
+    const id = "/test/node_modules/my-lib/component.js";
+    const code = `"use client";
+export const MyComponent = () => {};`;
+
+    expect((await transformDev(code, id)) ?? "").toEqual(
+      `import VENDOR_BARREL from "rwsdk/__vendor_client_barrel";
+const SSRModule = VENDOR_BARREL["/test/node_modules/my-lib/component.js"];
+import { registerClientReference } from "rwsdk/worker";
+const MyComponent = registerClientReference(SSRModule, "/test/node_modules/my-lib/component.js", "MyComponent");
+export { MyComponent };
+`,
+    );
+  });
+
+  it("uses virtual module import for app source files in dev", async () => {
+    const id = "/test/app/component.tsx";
+    const code = `"use client";
+export const MyComponent = () => {};`;
+
+    expect((await transformDev(code, id)) ?? "").toEqual(
+      `import * as SSRModule from "virtual:rwsdk:ssr:/test/app/component.tsx";
+import { registerClientReference } from "rwsdk/worker";
+const MyComponent = registerClientReference(SSRModule, "/test/app/component.tsx", "MyComponent");
+export { MyComponent };
+`,
+    );
   });
 });

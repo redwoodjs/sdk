@@ -8,7 +8,7 @@
     "check-starters:dev": "for starter in starters/*; do ./scripts/check-app.sh dev $starter; done",
     "check-starters:preview": "for starter in starters/*; do ./scripts/check-app.sh preview $starter; done",
     "format": "prettier --write ./sdk/src starters/*/src",
-    "test:e2e": "cd playground && pnpm test:e2e",
+    "test:e2e": "(cd sdk && pnpm build) && cd playground && pnpm test:e2e",
     "setup:e2e": "pnpm setup:wrangler",
     "setup:wrangler": "./scripts/setup-wrangler-auth.sh"
   },

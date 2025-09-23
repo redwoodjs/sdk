@@ -253,6 +253,49 @@ importers:
         specifier: 4.35.0
         version: 4.35.0(@cloudflare/workers-types@4.20250913.0)
 
+  playground/ssr-client-component-from-pkg:
+    dependencies:
+      react:
+        specifier: 19.2.0-canary-3fb190f7-20250908
+        version: 19.2.0-canary-3fb190f7-20250908
+      react-dom:
+        specifier: 19.2.0-canary-3fb190f7-20250908
+        version: 19.2.0-canary-3fb190f7-20250908(react@19.2.0-canary-3fb190f7-20250908)
+      react-server-dom-webpack:
+        specifier: 19.2.0-canary-3fb190f7-20250908
+        version: 19.2.0-canary-3fb190f7-20250908(react-dom@19.2.0-canary-3fb190f7-20250908(react@19.2.0-canary-3fb190f7-20250908))(react@19.2.0-canary-3fb190f7-20250908)(webpack@5.97.1)
+      rwsdk:
+        specifier: workspace:*
+        version: link:../../sdk
+      ui-lib:
+        specifier: file:./packages/ui-lib
+        version: file:playground/ssr-client-component-from-pkg/packages/ui-lib
+    devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: 1.12.4
+        version: 1.12.4(vite@7.1.5(@types/node@22.14.0)(jiti@2.4.2)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250906.0)(wrangler@4.35.0(@cloudflare/workers-types@4.20250913.0))
+      '@cloudflare/workers-types':
+        specifier: 4.20250913.0
+        version: 4.20250913.0
+      '@types/node':
+        specifier: 22.14.0
+        version: 22.14.0
+      '@types/react':
+        specifier: 19.1.2
+        version: 19.1.2
+      '@types/react-dom':
+        specifier: 19.1.2
+        version: 19.1.2(@types/react@19.1.2)
+      typescript:
+        specifier: 5.8.3
+        version: 5.8.3
+      vite:
+        specifier: 7.1.5
+        version: 7.1.5(@types/node@22.14.0)(jiti@2.4.2)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0)
+      wrangler:
+        specifier: 4.35.0
+        version: 4.35.0(@cloudflare/workers-types@4.20250913.0)
+
   playground/useid-test:
     dependencies:
       react:
@@ -5876,6 +5919,9 @@ packages:
 
   uhyphen@0.2.0:
     resolution: {integrity: sha512-qz3o9CHXmJJPGBdqzab7qAYuW8kQGKNEuoHFYrBwV6hWIMcpAmxDLXojcHfFr9US1Pe6zUswEIJIbLI610fuqA==}
+
+  ui-lib@file:playground/ssr-client-component-from-pkg/packages/ui-lib:
+    resolution: {directory: playground/ssr-client-component-from-pkg/packages/ui-lib, type: directory}
 
   uint8arrays@3.0.0:
     resolution: {integrity: sha512-HRCx0q6O9Bfbp+HHSfQQKD7wU70+lydKVt4EghkdOvlK/NlrF90z+eXV34mUd48rNvVJXwkrMSPpCATkct8fJA==}
@@ -12915,6 +12961,8 @@ snapshots:
   ufo@1.6.1: {}
 
   uhyphen@0.2.0: {}
+
+  ui-lib@file:playground/ssr-client-component-from-pkg/packages/ui-lib: {}
 
   uint8arrays@3.0.0:
     dependencies:
