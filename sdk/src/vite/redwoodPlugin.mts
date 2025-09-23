@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { InlineConfig } from "vite";
+import { InlineConfig, Plugin } from "vite";
 import { unstable_readConfig } from "wrangler";
 import { cloudflare } from "@cloudflare/vite-plugin";
 
@@ -117,6 +117,7 @@ export const redwoodPlugin = async (
       clientFiles,
       serverFiles,
       projectRootDir,
+      workerEntryPathname,
     }),
     configPlugin({
       silent: options.silent ?? false,
@@ -134,10 +135,10 @@ export const redwoodPlugin = async (
     reactConditionsResolverPlugin({ projectRootDir }),
     tsconfigPaths({ root: projectRootDir }),
     shouldIncludeCloudflarePlugin
-      ? cloudflare({
+      ? (cloudflare({
           viteEnvironment: { name: "worker" },
           configPath: workerConfigPath,
-        })
+        }) as Plugin[])
       : [],
     miniflareHMRPlugin({
       clientFiles,
