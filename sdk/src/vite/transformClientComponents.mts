@@ -23,7 +23,10 @@ export async function transformClientComponents(
   normalizedId: string,
   ctx: TransformContext,
 ): Promise<TransformResult | undefined> {
-  if (!hasDirective(code, "use client")) {
+  if (
+    !ctx.clientFiles?.has(normalizedId) &&
+    !hasDirective(code, "use client")
+  ) {
     return;
   }
 
@@ -131,7 +134,7 @@ export async function transformClientComponents(
 
   if (isDev && isNodeModule) {
     s.append(
-      `import VENDOR_BARREL from "virtual:rwsdk:ssr:${VENDOR_CLIENT_BARREL_EXPORT_PATH}";\n`,
+      `import VENDOR_BARREL from "${VENDOR_CLIENT_BARREL_EXPORT_PATH}";\n`,
     );
     s.append(`const SSRModule = VENDOR_BARREL["${normalizedId}"];\n`);
   } else {

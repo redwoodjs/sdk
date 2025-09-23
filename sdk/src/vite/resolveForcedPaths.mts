@@ -1,4 +1,5 @@
 import { glob } from "glob";
+import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 
 export async function resolveForcedPaths({
   patterns,
@@ -7,8 +8,10 @@ export async function resolveForcedPaths({
   patterns: string[];
   projectRootDir: string;
 }) {
-  return await glob(patterns, {
-    cwd: projectRootDir,
-    absolute: true,
-  });
+  return (
+    await glob(patterns, {
+      cwd: projectRootDir,
+      absolute: true,
+    })
+  ).map((filepath: string) => normalizeModulePath(filepath, projectRootDir));
 }

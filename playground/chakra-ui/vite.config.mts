@@ -9,8 +9,8 @@ export default defineConfig({
     }),
     redwood({
       forceClientPaths: [
-        "node_modules/@chakra-ui/react/src/components/code-block/code-block-context.ts",
-        "node_modules/@chakra-ui/react/src/components/code-block/code-block-adapter-context.ts",
+        "node_modules/@chakra-ui/react/dist/esm/components/code-block/code-block-context.js",
+        "node_modules/@chakra-ui/react/dist/esm/components/code-block/code-block-adapter-context.js",
       ],
     }),
   ],
