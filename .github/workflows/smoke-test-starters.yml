@@ -8,6 +8,7 @@ on:
       - "docs/**"
       - ".notes/**"
       - "*.md"
+      - "src/**/*.test.*"
   pull_request:
     branches:
       - main
@@ -15,6 +16,7 @@ on:
       - "docs/**"
       - ".notes/**"
       - "*.md"
+      - "src/**/*.test.*"
   workflow_dispatch:
     inputs:
       starter:

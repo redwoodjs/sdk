@@ -19,8 +19,9 @@ export const Component = () => {
 }
 `)) ?? "",
     ).toEqual(
-      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+      `import { ssrLoadModule } from "rwsdk/__ssr_bridge";
 import { registerClientReference } from "rwsdk/worker";
+const SSRModule = await ssrLoadModule("/test/file.tsx");
 const Component = registerClientReference(SSRModule, "/test/file.tsx", "Component");
 export { Component };
 `,
@@ -36,8 +37,9 @@ export const Component = async () => {
 }
   `)) ?? "",
     ).toEqual(
-      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+      `import { ssrLoadModule } from "rwsdk/__ssr_bridge";
 import { registerClientReference } from "rwsdk/worker";
+const SSRModule = await ssrLoadModule("/test/file.tsx");
 const Component = registerClientReference(SSRModule, "/test/file.tsx", "Component");
 export { Component };
 `,
@@ -52,8 +54,9 @@ export function Component() {
   return jsx('div', { children: 'Hello' });
 }`)) ?? "",
     ).toEqual(
-      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+      `import { ssrLoadModule } from "rwsdk/__ssr_bridge";
 import { registerClientReference } from "rwsdk/worker";
+const SSRModule = await ssrLoadModule("/test/file.tsx");
 const Component = registerClientReference(SSRModule, "/test/file.tsx", "Component");
 export { Component };
 `,
@@ -68,8 +71,9 @@ export default () => {
   return jsx('div', { children: 'Hello' });
 }`)) ?? "",
     ).toEqual(
-      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+      `import { ssrLoadModule } from "rwsdk/__ssr_bridge";
 import { registerClientReference } from "rwsdk/worker";
+const SSRModule = await ssrLoadModule("/test/file.tsx");
 export default registerClientReference(SSRModule, "/test/file.tsx", "default");
 `,
     );
@@ -83,8 +87,9 @@ export default function Component({ prop1, prop2 }) {
   return jsx('div', { children: 'Hello' });
 }`)) ?? "",
     ).toEqual(
-      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+      `import { ssrLoadModule } from "rwsdk/__ssr_bridge";
 import { registerClientReference } from "rwsdk/worker";
+const SSRModule = await ssrLoadModule("/test/file.tsx");
 export default registerClientReference(SSRModule, "/test/file.tsx", "default");
 `,
     );
@@ -117,8 +122,9 @@ export default function Main() {
 export { Second, Third }
 export { Fourth as AnotherName }`)) ?? "",
     ).toEqual(
-      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+      `import { ssrLoadModule } from "rwsdk/__ssr_bridge";
 import { registerClientReference } from "rwsdk/worker";
+const SSRModule = await ssrLoadModule("/test/file.tsx");
 const First = registerClientReference(SSRModule, "/test/file.tsx", "First");
 const Second = registerClientReference(SSRModule, "/test/file.tsx", "Second");
 const Third = registerClientReference(SSRModule, "/test/file.tsx", "Third");
@@ -140,8 +146,9 @@ function Component({ prop1, prop2 }) {
 
 export default Component;`)) ?? "",
     ).toEqual(
-      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+      `import { ssrLoadModule } from "rwsdk/__ssr_bridge";
 import { registerClientReference } from "rwsdk/worker";
+const SSRModule = await ssrLoadModule("/test/file.tsx");
 export default registerClientReference(SSRModule, "/test/file.tsx", "default");
 `,
     );
@@ -231,8 +238,9 @@ export function Chat() {
 }
 `)) ?? "",
     ).toEqual(
-      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+      `import { ssrLoadModule } from "rwsdk/__ssr_bridge";
 import { registerClientReference } from "rwsdk/worker";
+const SSRModule = await ssrLoadModule("/test/file.tsx");
 const Chat = registerClientReference(SSRModule, "/test/file.tsx", "Chat");
 export { Chat };
 `,
@@ -253,8 +261,9 @@ const MyComponent = () => {
 
 export { MyComponent as CustomName }`)) ?? "",
     ).toEqual(
-      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+      `import { ssrLoadModule } from "rwsdk/__ssr_bridge";
 import { registerClientReference } from "rwsdk/worker";
+const SSRModule = await ssrLoadModule("/test/file.tsx");
 const MyComponent_CustomName = registerClientReference(SSRModule, "/test/file.tsx", "CustomName");
 export { MyComponent_CustomName as CustomName };
 `,
@@ -271,8 +280,9 @@ const Third = () => jsx('div', { children: 'Third' });
 
 export { First, Second, Third }`)) ?? "",
     ).toEqual(
-      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+      `import { ssrLoadModule } from "rwsdk/__ssr_bridge";
 import { registerClientReference } from "rwsdk/worker";
+const SSRModule = await ssrLoadModule("/test/file.tsx");
 const First = registerClientReference(SSRModule, "/test/file.tsx", "First");
 const Second = registerClientReference(SSRModule, "/test/file.tsx", "Second");
 const Third = registerClientReference(SSRModule, "/test/file.tsx", "Third");
@@ -291,8 +301,9 @@ const helper = () => console.log('helper');
 
 export { Component, data, helper }`)) ?? "",
     ).toEqual(
-      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+      `import { ssrLoadModule } from "rwsdk/__ssr_bridge";
 import { registerClientReference } from "rwsdk/worker";
+const SSRModule = await ssrLoadModule("/test/file.tsx");
 const Component = registerClientReference(SSRModule, "/test/file.tsx", "Component");
 const data = registerClientReference(SSRModule, "/test/file.tsx", "data");
 const helper = registerClientReference(SSRModule, "/test/file.tsx", "helper");
@@ -312,8 +323,9 @@ export const Slot = () => {
 export { Slot, Slot as Root }
 `)) ?? "",
     ).toEqual(
-      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+      `import { ssrLoadModule } from "rwsdk/__ssr_bridge";
 import { registerClientReference } from "rwsdk/worker";
+const SSRModule = await ssrLoadModule("/test/file.tsx");
 const Slot = registerClientReference(SSRModule, "/test/file.tsx", "Slot");
 const Slot_Root = registerClientReference(SSRModule, "/test/file.tsx", "Root");
 export { Slot, Slot_Root as Root };
@@ -352,8 +364,9 @@ function SidebarMenuSubButton() { return jsx("div", {}); }
 export { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInput, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, useSidebar, };`;
 
     expect((await transform(code)) ?? "").toEqual(
-      `import * as SSRModule from "virtual:rwsdk:ssr:/test/file.tsx";
+      `import { ssrLoadModule } from "rwsdk/__ssr_bridge";
 import { registerClientReference } from "rwsdk/worker";
+const SSRModule = await ssrLoadModule("/test/file.tsx");
 const Sidebar = registerClientReference(SSRModule, "/test/file.tsx", "Sidebar");
 const SidebarContent = registerClientReference(SSRModule, "/test/file.tsx", "SidebarContent");
 const SidebarFooter = registerClientReference(SSRModule, "/test/file.tsx", "SidebarFooter");
@@ -418,9 +431,9 @@ describe("transformClientComponents (dev server node_modules)", () => {
 export const MyComponent = () => {};`;
 
     expect((await transformDev(code, id)) ?? "").toEqual(
-      `import VENDOR_BARREL from "virtual:rwsdk:ssr:rwsdk/__vendor_client_barrel";
-const SSRModule = VENDOR_BARREL["/test/node_modules/my-lib/component.js"];
+      `import { ssrLoadModule } from "rwsdk/__ssr_bridge";
 import { registerClientReference } from "rwsdk/worker";
+const SSRModule = await ssrLoadModule("/test/node_modules/my-lib/component.js");
 const MyComponent = registerClientReference(SSRModule, "/test/node_modules/my-lib/component.js", "MyComponent");
 export { MyComponent };
 `,
@@ -433,8 +446,9 @@ export { MyComponent };
 export const MyComponent = () => {};`;
 
     expect((await transformDev(code, id)) ?? "").toEqual(
-      `import * as SSRModule from "virtual:rwsdk:ssr:/test/app/component.tsx";
+      `import { ssrLoadModule } from "rwsdk/__ssr_bridge";
 import { registerClientReference } from "rwsdk/worker";
+const SSRModule = await ssrLoadModule("/test/app/component.tsx");
 const MyComponent = registerClientReference(SSRModule, "/test/app/component.tsx", "MyComponent");
 export { MyComponent };
 `,
