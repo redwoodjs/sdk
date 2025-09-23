@@ -18,8 +18,8 @@ import {
 } from "./release.mjs";
 import { launchBrowser } from "./browser.mjs";
 import type { Browser, Page } from "puppeteer-core";
-import { dirname, resolve } from "path";
-import { $ } from "execa";
+
+const SETUP_PLAYGROUND_ENV_TIMEOUT = 10 * 60 * 1000;
 
 interface PlaygroundEnvironment {
   projectDir: string;
@@ -175,7 +175,7 @@ export function setupPlaygroundEnvironment(sourceProjectDir?: string): void {
       projectDir: tarballEnv.targetDir,
       cleanup: tarballEnv.cleanup,
     };
-  });
+  }, SETUP_PLAYGROUND_ENV_TIMEOUT);
 }
 
 /**
@@ -201,7 +201,9 @@ export async function createDevServer(): Promise<DevServerInstance> {
   }
 
   const env = getPlaygroundEnvironment();
-  const devResult = await runDevServer("pnpm", env.projectDir);
+  const packageManager =
+    (process.env.PACKAGE_MANAGER as "pnpm" | "npm" | "yarn") || "pnpm";
+  const devResult = await runDevServer(packageManager, env.projectDir);
 
   const serverId = `devServer-${Date.now()}-${Math.random()
     .toString(36)

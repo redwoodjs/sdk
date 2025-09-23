@@ -193,22 +193,22 @@ export async function copyProjectToTempDir(
     const npmrcPath = join(targetDir, ".npmrc");
     await fs.promises.writeFile(npmrcPath, "frozen-lockfile=false\n");
 
-    // For yarn, create .yarnrc.yml to disable PnP and use node_modules
-    if (packageManager === "yarn" || packageManager === "yarn-classic") {
+    // For yarn, create .yarnrc.yml to disable PnP and allow lockfile changes
+    if (packageManager === "yarn") {
       const yarnrcPath = join(targetDir, ".yarnrc.yml");
-      await fs.promises.writeFile(yarnrcPath, "nodeLinker: node-modules\n");
-      log("Created .yarnrc.yml to disable PnP for yarn");
+      const yarnConfig = [
+        // todo(justinvdm, 23-09-23): Support yarn pnpm
+        "nodeLinker: node-modules",
+        "enableImmutableInstalls: false",
+      ].join("\n");
+      await fs.promises.writeFile(yarnrcPath, yarnConfig);
+      log("Created .yarnrc.yml to allow lockfile changes for yarn");
     }
 
     await setTarballDependency(targetDir, tarballPath);
 
     // Install dependencies in the target directory
     await installDependencies(targetDir, packageManager);
-
-    await fs.promises.appendFile(
-      path.join(projectDir, ".npmrc"),
-      "frozen-lockfile=false",
-    );
 
     // Return the environment details
     return { tempDir, targetDir, workerName };
@@ -239,6 +239,24 @@ async function installDependencies(
     ]);
     log("Cleanup complete.");
 
+    if (packageManager.startsWith("yarn")) {
+      log(`Enabling corepack...`);
+      await $("corepack", ["enable"], { cwd: targetDir, stdio: "pipe" });
+
+      if (packageManager === "yarn") {
+        log(`Preparing yarn@stable with corepack...`);
+        await $("corepack", ["prepare", "yarn@stable", "--activate"], {
+          cwd: targetDir,
+          stdio: "pipe",
+        });
+      } else if (packageManager === "yarn-classic") {
+        log(`Preparing yarn@1.22.19 with corepack...`);
+        await $("corepack", ["prepare", "yarn@1.22.19", "--activate"], {
+          cwd: targetDir,
+          stdio: "pipe",
+        });
+      }
+    }
     const installCommand = {
       pnpm: ["pnpm", "install"],
       npm: ["npm", "install"],
