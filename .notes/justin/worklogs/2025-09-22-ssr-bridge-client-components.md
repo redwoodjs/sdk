@@ -225,3 +225,29 @@ The solution has two main parts:
 This allows any server-side code to import `MyUtil` from a client module and use it on the server, while still treating `<MyComponent>` from that same module as a client reference for the RSC phase.
 
 A new architecture document, `docs/architecture/directiveTransforms.md`, has been added to explain this transformation process for both `"use client"` and `"use server"` modules in detail. Unit tests for the transformation have also been verified.
+
+---
+
+## Dev Server `optimizeDeps` Failure for Vendor Modules
+
+### Problem
+
+When using a component library (like Chakra UI) with numerous `"use client"` modules within `node_modules`, the Vite dev server fails during the `optimizeDeps` phase. The build errors indicate a failure to resolve the `virtual:rwsdk:ssr:...` imports for these vendor files.
+
+This occurs because `transformClientComponents` unconditionally creates these virtual imports. While our `ssrBridgePlugin` can resolve them for application source code, Vite's `optimizeDeps` process, which runs `esbuild` under the hood, lacks the necessary context to resolve them for modules inside `node_modules`.
+
+### The Solution: Use Vendor Barrel Files in Development
+
+The correct approach for `node_modules` dependencies in development is to use the existing "vendor barrel file" strategy, which is designed to provide `optimizeDeps` with a single, consolidated entry point for all third-party dependencies.
+
+The plan is to update `transformClientComponents.mts` with conditional logic:
+
+1.  **Detect Dev + Vendor Context:** The transform will check if it's running in the dev server (`process.env.VITE_IS_DEV_SERVER === "1"`) and if the module being processed is inside `node_modules`.
+
+2.  **Use Barrel Import:** If both are true, instead of a `virtual:rwsdk:ssr:` import, it will:
+    -   Generate a static import to the client vendor barrel file (e.g., `import VENDOR_BARREL from 'virtual:rwsdk:vendor-client-barrel.js'`).
+    -   Extract the specific module namespace from the barrel's default export using the module's absolute path as the key (e.g., `const SSRModule = VENDOR_BARREL["/path/to/node_modules/lib/index.js"]`).
+
+3.  **Keep Existing Logic:** For production builds or for files within the application's own source code, the existing `virtual:rwsdk:ssr:` import logic will remain unchanged.
+
+This change aligns the client component transformation with the dev server's dependency optimization strategy, ensuring that SSR versions of vendor modules are resolved correctly via the pre-built barrel file.

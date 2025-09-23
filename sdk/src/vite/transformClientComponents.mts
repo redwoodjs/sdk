@@ -2,6 +2,7 @@ import MagicString from "magic-string";
 import debug from "debug";
 import { hasDirective } from "./hasDirective.mjs";
 import { findExports, type ExportInfo } from "./findSpecifiers.mjs";
+import { VENDOR_CLIENT_BARREL_EXPORT_PATH } from "../lib/constants.mjs";
 
 interface TransformContext {
   environmentName: string;
@@ -125,7 +126,19 @@ export async function transformClientComponents(
   // Generate completely new code for worker/client environments
   const s = new MagicString("");
 
-  s.append(`import * as SSRModule from "virtual:rwsdk:ssr:${normalizedId}";\n`);
+  const isDev = process.env.VITE_IS_DEV_SERVER === "1";
+  const isNodeModule = normalizedId.includes("node_modules");
+
+  if (isDev && isNodeModule) {
+    s.append(
+      `import VENDOR_BARREL from "${VENDOR_CLIENT_BARREL_EXPORT_PATH}";\n`,
+    );
+    s.append(`const SSRModule = VENDOR_BARREL["${normalizedId}"];\n`);
+  } else {
+    s.append(
+      `import * as SSRModule from "virtual:rwsdk:ssr:${normalizedId}";\n`,
+    );
+  }
 
   // Add import declaration
   s.append('import { registerClientReference } from "rwsdk/worker";\n');
