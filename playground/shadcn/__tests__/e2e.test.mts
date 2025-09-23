@@ -44,6 +44,11 @@ testDevAndDeploy(
   "all shadcn/ui components render without console errors",
   async ({ page, url }) => {
     const consoleErrors: string[] = [];
+    const failedRequests: string[] = [];
+
+    page.on("requestfailed", (request) => {
+      failedRequests.push(`${request.url()} | ${request.failure()?.errorText}`);
+    });
 
     // Capture console errors
     page.on("console", (msg) => {
@@ -67,7 +72,10 @@ testDevAndDeploy(
     expect(content).toContain("Form Components");
 
     // Check that no console errors occurred
-    expect(consoleErrors).toEqual([]);
+    expect({ consoleErrors, failedRequests }).toEqual({
+      consoleErrors: [],
+      failedRequests: [],
+    });
   },
 );
 

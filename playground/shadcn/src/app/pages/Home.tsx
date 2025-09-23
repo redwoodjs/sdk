@@ -127,13 +127,7 @@ export function Home({ ctx }: RequestInfo) {
             <CardContent className="space-y-2">
               <div className="flex gap-2 items-center">
                 <Avatar>
-                  <AvatarImage
-                    src="https://github.com/shadcn.png"
-                    alt="@shadcn"
-                  />
-                  <AvatarFallback>CN</AvatarFallback>
-                </Avatar>
-                <Avatar>
+                  <AvatarImage alt="John Doe" src="/shadcn.png" />
                   <AvatarFallback>JD</AvatarFallback>
                 </Avatar>
               </div>
