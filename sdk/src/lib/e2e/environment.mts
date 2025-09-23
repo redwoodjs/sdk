@@ -193,11 +193,12 @@ export async function copyProjectToTempDir(
     const npmrcPath = join(targetDir, ".npmrc");
     await fs.promises.writeFile(npmrcPath, "frozen-lockfile=false\n");
 
-    // For yarn, create .yarnrc.yml to disable PnP and use node_modules
-    if (packageManager === "yarn" || packageManager === "yarn-classic") {
+    // For yarn, create .yarnrc.yml to disable PnP and allow lockfile changes
+    if (packageManager === "yarn") {
       const yarnrcPath = join(targetDir, ".yarnrc.yml");
-      await fs.promises.writeFile(yarnrcPath, "nodeLinker: node-modules\n");
-      log("Created .yarnrc.yml to disable PnP for yarn");
+      const yarnConfig = ["enableImmutableInstalls: false"].join("\n");
+      await fs.promises.writeFile(yarnrcPath, yarnConfig);
+      log("Created .yarnrc.yml to allow lockfile changes for yarn");
     }
 
     await setTarballDependency(targetDir, tarballPath);
