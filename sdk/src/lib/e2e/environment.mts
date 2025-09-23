@@ -196,7 +196,11 @@ export async function copyProjectToTempDir(
     // For yarn, create .yarnrc.yml to disable PnP and allow lockfile changes
     if (packageManager === "yarn") {
       const yarnrcPath = join(targetDir, ".yarnrc.yml");
-      const yarnConfig = ["enableImmutableInstalls: false"].join("\n");
+      const yarnConfig = [
+        // todo(justinvdm, 23-09-23): Support yarn pnpm
+        "nodeLinker: node-modules",
+        "enableImmutableInstalls: false",
+      ].join("\n");
       await fs.promises.writeFile(yarnrcPath, yarnConfig);
       log("Created .yarnrc.yml to allow lockfile changes for yarn");
     }
