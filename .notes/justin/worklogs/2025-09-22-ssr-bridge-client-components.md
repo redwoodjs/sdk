@@ -294,3 +294,26 @@ The e2e test must validate three distinct import patterns between server and cli
 4.  **Update E2E Test:**
     -   Write assertions to confirm that the server-rendered HTML contains the correct output from all three utility functions.
     -   Add assertions to ensure all client components are interactive.
+
+---
+
+## Add Conditional Exports to `ui-lib`
+
+**Rationale:**
+To make the e2e test for our local `ui-lib` package more robust and realistic, it should behave like a production-ready component library. This means it must correctly use `package.json` conditional exports to prevent its modules from being used in the wrong environment.
+
+-   **Client modules** (like `ui-lib/client`) should throw an error if an attempt is made to import them in a `react-server` context.
+-   **Server modules** (like `ui-lib/server`) should throw an error if an attempt is made to import them in a context *without* the `react-server` condition.
+
+**Plan:**
+
+1.  **Create Error-Throwing Modules:**
+    -   Create `packages/ui-lib/react-server-only.ts` which will contain code that immediately throws an error, indicating it should only be used in a `react-server` environment.
+    -   Create `packages/ui-lib/no-react-server.ts` which will throw an error indicating it cannot be used in a `react-server` environment.
+
+2.  **Update `ui-lib`'s `package.json`:**
+    -   Modify the `exports` map to include `react-server` and `default` conditions.
+    -   For the `./client` export, the `react-server` condition will point to `no-react-server.ts`, and the `default` condition will point to the actual `client.tsx` module.
+    -   For the `./server` export, the `react-server` condition will point to the actual `server.tsx` module, and the `default` condition will point to `react-server-only.ts`.
+
+This will ensure that any incorrect bundling or module resolution in our build system will cause an immediate and clear failure during the e2e test, making the test a much stronger validation of our system's correctness.

@@ -4,7 +4,13 @@
   "main": "index.js",
   "types": "index.d.ts",
   "exports": {
-    "./client": "./client.tsx",
-    "./server": "./server.tsx"
+    "./client": {
+      "react-server": "./no-react-server.ts",
+      "default": "./client.tsx"
+    },
+    "./server": {
+      "react-server": "./server.tsx",
+      "default": "./react-server-only.ts"
+    }
   }
 }
