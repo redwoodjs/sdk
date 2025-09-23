@@ -81,3 +81,24 @@ This pointed to a double-transformation problem in the Vite build pipeline. A "u
 
 **Solution:**
 The fix was to add a guard at the top of the `transformClientComponents` function. This guard checks if the module ID starts with the `virtual:rwsdk:ssr:` prefix. If it does, the transformation is skipped, preventing the double-processing and resolving the `$$id` redefinition error.
+
+### Using a Proxy for Transparent Interception (The $$id Problem, Take 2)
+
+**Problem:**
+After fixing the double-transformation, a new conceptual issue arose. The `registerClientReference` function was attempting to use `Object.defineProperties` to add a getter for `$$id` directly onto the `target` component/object imported from the SSR module. This is problematic because `target` is a real module export, and we should avoid mutating it directly. More importantly, if `target` is a React component, it may already have framework-specific properties (like `$$id` from React's internals) that we should not overwrite.
+
+**Solution using a Proxy:**
+The new approach is to use a `Proxy` to create a transparent wrapper around the `target` object. This avoids mutation and allows for precise interception.
+
+1.  **Create a Proxy:** Instead of defining properties on the `target`, `registerClientReference` will return a `new Proxy(target, handler)`.
+
+2.  **Implement a `get` Trap:** The handler will contain a `get` trap to intercept property access.
+    -   If `prop` is `$$id`:
+        -   Perform the side effect: add the module `id` to `requestInfo.rw.scriptsToBeLoaded`.
+        -   Return the *original* `$$id` value by reflecting the access to the `target` (`Reflect.get(target, prop)`).
+    -   If `prop` is `$$async` or `$$isClientReference`:
+        -   Return `true`. These properties signal to the renderer what kind of object it's dealing with, and they can be handled by the proxy itself without being on the target.
+    -   For any other `prop`:
+        -   Simply forward the access to the original `target` using `Reflect.get`.
+
+This strategy is much cleaner. It preserves the integrity of the original component/object from the SSR module while still allowing us to spy on the `$$id` access for script discovery. The proxy is completely transparent for all other property accesses.

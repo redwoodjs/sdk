@@ -25,28 +25,26 @@ export function registerClientReference<Target extends Record<string, unknown>>(
   exportName: string,
 ) {
   const target = ssrModule[exportName] ?? {};
-  const reference = baseRegisterClientReference(target, id, exportName);
-  (reference as any).__rwsdk_clientReferenceId = `${id}#${exportName}`;
 
-  const finalDescriptors = Object.getOwnPropertyDescriptors(reference);
-  const idDescriptor = finalDescriptors.$$id;
-
-  if (idDescriptor && idDescriptor.hasOwnProperty("value")) {
-    const originalValue = idDescriptor.value;
-    finalDescriptors.$$id = {
-      configurable: idDescriptor.configurable,
-      enumerable: idDescriptor.enumerable,
-      get() {
+  // Create a proxy to intercept property access without mutating the original object.
+  return new Proxy(target, {
+    get(target, prop, receiver) {
+      // Intercept access to $$id to track script loading.
+      if (prop === "$$id") {
         requestInfo.rw.scriptsToBeLoaded.add(id);
-        return originalValue;
-      },
-    };
-  }
+        // Return the original $$id value from the target.
+        return Reflect.get(target, prop, receiver);
+      }
 
-  finalDescriptors.$$async = { value: true };
-  finalDescriptors.$$isClientReference = { value: true };
+      // Handle properties that signal this is a client reference.
+      if (prop === "$$async" || prop === "$$isClientReference") {
+        return true;
+      }
 
-  return Object.defineProperties(target, finalDescriptors);
+      // Forward all other property access to the original target.
+      return Reflect.get(target, prop, receiver);
+    },
+  });
 }
 
 export async function __smokeTestActionHandler(
