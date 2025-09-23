@@ -586,76 +586,59 @@ export function isRelatedToTest(
  * Delete the worker using wrangler
  */
 export async function deleteWorker(
-  workerName: string,
-  projectDir: string,
+  name: string,
+  cwd: string,
   resourceUniqueKey: string,
-) {
-  console.log(`Cleaning up: Deleting worker ${workerName}...`);
+): Promise<void> {
+  console.log(`Cleaning up: Deleting worker ${name}...`);
 
-  // We are extra careful here to not delete workers that are not related to
-  // the current test run. We check if the worker name contains the resource
-  // unique key, and if the project directory also contains the resource unique
-  // key.
-  if (!isRelatedToTest(workerName, resourceUniqueKey)) {
-    console.warn(
-      `⚠️ Worker name "${workerName}" does not contain resource unique key "${resourceUniqueKey}". Skipping delete.`,
+  // Safety check: if we have a resourceUniqueKey, verify this worker name contains it
+  if (resourceUniqueKey && !isRelatedToTest(name, resourceUniqueKey)) {
+    log(
+      `Worker ${name} does not contain unique key ${resourceUniqueKey}, not deleting for safety`,
+    );
+    console.log(
+      `⚠️ Worker ${name} does not seem to be created by this test, skipping deletion for safety`,
     );
     return;
   }
-  if (!isRelatedToTest(projectDir, resourceUniqueKey)) {
-    console.warn(
-      `⚠️ Project dir "${projectDir}" does not contain resource unique key "${resourceUniqueKey}". Skipping delete.`,
-    );
-    return;
-  }
-
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
-
-  if (!accountId || !apiToken) {
-    console.error(
-      "❌ CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN env vars must be set to delete worker",
-    );
-    return;
-  }
-
-  const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/workers/scripts/${workerName}`;
-  console.log(`Running API call: DELETE ${url}`);
 
   try {
-    const response = await fetch(url, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        "Content-Type": "application/json",
+    // Use our $expect utility to handle any confirmation prompts
+    log("Running wrangler delete command with interactive prompts");
+    await $expect(
+      `npx wrangler delete ${name}`,
+      [
+        {
+          expect: "Are you sure you want to delete",
+          send: "y\r",
+        },
+      ],
+      {
+        cwd,
       },
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `Cloudflare API request failed with status ${response.status}: ${errorText}`,
-      );
-    }
-
-    const responseData = (await response.json()) as {
-      success: boolean;
-      errors: unknown[];
-    };
-
-    if (!responseData.success) {
-      throw new Error(
-        `Cloudflare API returned an error: ${JSON.stringify(responseData.errors)}`,
-      );
-    }
-
-    console.log(`✅ Successfully deleted worker "${workerName}"`);
+    );
+    console.log(`✅ Worker ${name} deleted successfully`);
   } catch (error) {
-    console.error(`❌ Failed to delete worker "${workerName}"`);
-    if (error instanceof Error) {
-      console.error(`Error message: ${error.message}`);
-    } else {
-      console.error("An unknown error occurred:", error);
+    console.error(`Failed to delete worker ${name}: ${error}`);
+    // Retry with force flag if the first attempt failed
+    try {
+      console.log("Retrying with force flag...");
+      await $expect(
+        `npx wrangler delete ${name} --yes --force`,
+        [
+          {
+            expect: "Are you sure you want to delete",
+            send: "y\r",
+          },
+        ],
+        {
+          cwd,
+        },
+      );
+      console.log(`✅ Worker ${name} force deleted successfully`);
+    } catch (retryError) {
+      console.error(`Failed to force delete worker ${name}: ${retryError}`);
     }
   }
 }
@@ -708,22 +691,6 @@ export async function deleteD1Database(
   cwd: string,
   resourceUniqueKey: string,
 ): Promise<void> {
-  // Check wrangler.jsonc to see if a database is configured
-  const wranglerConfigPath = resolve(cwd, "wrangler.jsonc");
-  try {
-    const configContent = await fs.readFile(wranglerConfigPath, "utf-8");
-    const config = parseJsonc(configContent);
-    if (!config.d1_databases || config.d1_databases.length === 0) {
-      log("No D1 databases configured in wrangler.jsonc, skipping deletion.");
-      return;
-    }
-  } catch (error) {
-    log(
-      `Could not read or parse wrangler.jsonc at ${wranglerConfigPath}, proceeding with deletion attempt anyway.`,
-      error,
-    );
-  }
-
   console.log(`Cleaning up: Deleting D1 database ${name}...`);
   try {
     // First check if the database exists

@@ -340,14 +340,8 @@ export function prefix<T extends RequestInfo = RequestInfo>(
 ): Route<T>[] {
   return routes.map((r) => {
     if (typeof r === "function") {
-      const middleware: RouteMiddleware<T> = (requestInfo) => {
-        const url = new URL(requestInfo.request.url);
-        if (url.pathname.startsWith(prefixPath)) {
-          return r(requestInfo);
-        }
-        return;
-      };
-      return middleware;
+      // Pass through middleware as-is
+      return r;
     }
     if (Array.isArray(r)) {
       // Recursively process nested route arrays
