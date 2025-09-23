@@ -1,7 +1,7 @@
 {
-  "name": "@redwoodjs/starter-minimal",
+  "name": "rsc-kitchen-sink",
   "version": "1.0.0",
-  "description": "A bare-bones RedwoodSDK starter",
+  "description": "An example of RedwoodSDK's RSC capabilities",
   "main": "index.js",
   "type": "module",
   "keywords": [],
@@ -22,10 +22,10 @@
     "types": "tsc"
   },
   "dependencies": {
+    "rwsdk": "workspace:*",
     "react": "19.2.0-canary-d415fd3e-20250919",
     "react-dom": "19.2.0-canary-d415fd3e-20250919",
-    "react-server-dom-webpack": "19.2.0-canary-d415fd3e-20250919",
-    "rwsdk": "1.0.0-alpha.9"
+    "react-server-dom-webpack": "19.2.0-canary-d415fd3e-20250919"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.13.3",
