@@ -1,8 +1,9 @@
-import { AppButton, appClientUtil } from "../lib/client-utils.mjs";
+import { AppButton, appClientUtil } from "../lib/client-utils.js";
 import { PackageButton, packageClientUtil } from "ui-lib/client";
 import { PackageServerComponent } from "ui-lib/server";
 
 export const Home = () => {
+  console.log("####");
   const messageFromAppClientUtil = appClientUtil.format("Home Page");
   const messageFromPackageClientUtil = packageClientUtil.format("Home Page");
 

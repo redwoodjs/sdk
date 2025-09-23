@@ -5,7 +5,13 @@
   "main": "index.js",
   "types": "index.d.ts",
   "exports": {
-    "./client": "./client.mjs",
-    "./server": "./server.mjs"
+    "./client": {
+      "types": "./client.d.ts",
+      "default": "./client.mjs"
+    },
+    "./server": {
+      "types": "./server.d.ts",
+      "default": "./server.mjs"
+    }
   }
 }
