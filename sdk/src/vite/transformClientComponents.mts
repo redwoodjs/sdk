@@ -129,12 +129,17 @@ export async function transformClientComponents(
   const isDev = process.env.VITE_IS_DEV_SERVER === "1";
   const isNodeModule = normalizedId.includes("node_modules");
 
-  if (isDev && isNodeModule) {
+  // During the dev server's optimizeDeps phase, esbuild is running, and it
+  // cannot resolve our virtual modules. In that specific context, we must
+  // import from the pre-built vendor barrel file.
+  if (isDev && isNodeModule && ctx.isEsbuild) {
     s.append(
       `import VENDOR_BARREL from "${VENDOR_CLIENT_BARREL_EXPORT_PATH}";\n`,
     );
     s.append(`const SSRModule = VENDOR_BARREL["${normalizedId}"];\n`);
   } else {
+    // In all other cases (prod build, or a regular dev server request),
+    // we use the virtual module and let Vite's plugin ecosystem handle it.
     s.append(
       `import * as SSRModule from "virtual:rwsdk:ssr:${normalizedId}";\n`,
     );

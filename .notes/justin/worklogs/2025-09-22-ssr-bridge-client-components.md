@@ -234,20 +234,18 @@ A new architecture document, `docs/architecture/directiveTransforms.md`, has bee
 
 When using a component library (like Chakra UI) with numerous `"use client"` modules within `node_modules`, the Vite dev server fails during the `optimizeDeps` phase. The build errors indicate a failure to resolve the `virtual:rwsdk:ssr:...` imports for these vendor files.
 
-This occurs because `transformClientComponents` unconditionally creates these virtual imports. While our `ssrBridgePlugin` can resolve them for application source code, Vite's `optimizeDeps` process, which runs `esbuild` under the hood, lacks the necessary context to resolve them for modules inside `node_modules`.
+This occurs because `transformClientComponents` unconditionally creates these virtual imports. While our `ssrBridgePlugin` can resolve them during a regular dev request, Vite's `optimizeDeps` process, which runs `esbuild` under the hood, lacks the necessary plugin context to do so.
 
-### The Solution: Use Vendor Barrel Files in Development
+### The Solution: Context-Aware Transformation
 
-The correct approach for `node_modules` dependencies in development is to use the existing "vendor barrel file" strategy, which is designed to provide `optimizeDeps` with a single, consolidated entry point for all third-party dependencies.
+The correct approach is to transform vendor modules differently depending on whether the transformation is for the initial `optimizeDeps` scan or for a subsequent dev server request.
 
-The plan is to update `transformClientComponents.mts` with conditional logic:
+The `transformClientComponents` function receives a context object that includes an `isEsbuild` flag. This flag is true only when the transform is being run as part of our initial dependency scan for `optimizeDeps`. This allows for a more nuanced transformation.
 
-1.  **Detect Dev + Vendor Context:** The transform will check if it's running in the dev server (`process.env.VITE_IS_DEV_SERVER === "1"`) and if the module being processed is inside `node_modules`.
+1.  **Detect the `optimizeDeps` Context:** The transform will check for the specific context: `isDev && isNodeModule && ctx.isEsbuild`.
 
-2.  **Use Barrel Import:** If both are true, instead of a `virtual:rwsdk:ssr:` import, it will:
-    -   Generate a static import to the client vendor barrel file (e.g., `import VENDOR_BARREL from 'virtual:rwsdk:vendor-client-barrel.js'`).
-    -   Extract the specific module namespace from the barrel's default export using the module's absolute path as the key (e.g., `const SSRModule = VENDOR_BARREL["/path/to/node_modules/lib/index.js"]`).
+2.  **Conditional Import Logic:**
+    -   If the context matches (i.e., a vendor module being processed for `optimizeDeps`), the transform will generate an import from the **vendor barrel file**. This provides `esbuild` with a single, resolvable entry point.
+    -   In all other cases (app code, or vendor modules being processed by a regular dev server request), the transform will generate the standard `virtual:rwsdk:ssr:` import. The Vite dev server can resolve this correctly and more efficiently via the `ssrBridgePlugin`.
 
-3.  **Keep Existing Logic:** For production builds or for files within the application's own source code, the existing `virtual:rwsdk:ssr:` import logic will remain unchanged.
-
-This change aligns the client component transformation with the dev server's dependency optimization strategy, ensuring that SSR versions of vendor modules are resolved correctly via the pre-built barrel file.
+This change aligns the client component transformation with the dev server's dependency optimization strategy, ensuring that SSR versions of vendor modules are resolved correctly without impacting the efficiency of the main dev server.
