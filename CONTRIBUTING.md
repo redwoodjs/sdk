@@ -117,6 +117,20 @@ To run all playground E2E tests, use the `test:e2e` script from the monorepo roo
 pnpm test:e2e
 ```
 
+To run a specific test file, pass its path to the `test:e2e` script. The path can be absolute or relative to the `playground/` directory. Note the `--` before the path, which is necessary to pass the argument to the underlying test runner (`vitest`).
+
+```sh
+# Run tests for a single playground project from the monorepo root
+pnpm test:e2e -- hello-world/__tests__/e2e.test.mts
+```
+
+You can also specify a package manager or enable debug logging using environment variables:
+
+```sh
+# Run tests for hello-world with Yarn and enable debug logging for the e2e environment
+PACKAGE_MANAGER="yarn" DEBUG='rwsdk:e2e:environment' pnpm test:e2e -- hello-world/__tests__/e2e.test.mts
+```
+
 #### Skipping Tests
 
 You can skip dev server or deployment tests using environment variables. This is useful for focusing on a specific part of the test suite.

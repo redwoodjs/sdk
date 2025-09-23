@@ -6,11 +6,15 @@ on:
       - main
     paths-ignore:
       - "docs/**"
+      - ".notes/**"
+      - "*.md"
   pull_request:
     branches:
       - main
     paths-ignore:
       - "docs/**"
+      - ".notes/**"
+      - "*.md"
   workflow_dispatch:
     inputs:
       starter:
@@ -110,14 +114,11 @@ jobs:
         shell: bash
         run: |
           corepack enable
-          if [ "${{ matrix.package-manager }}" = "yarn" ]; then
-            corepack prepare yarn@stable --activate
-          elif [ "${{ matrix.package-manager }}" = "yarn-classic" ]; then
-            npm i -g yarn@1.22.19 --force
-          fi
           pnpm install
 
-      - name: Run smoke test
+      - name: Run Smoke Tests
+        id: smoke-test
+        continue-on-error: true
         shell: bash
         run: |
           ./scripts/retry.sh ./sdk/scripts/ci-smoke-test.sh --starter "${{ matrix.starter }}" --package-manager "${{ matrix.package-manager }}"

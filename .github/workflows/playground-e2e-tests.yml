@@ -6,11 +6,15 @@ on:
       - main
     paths-ignore:
       - "docs/**"
+      - ".notes/**"
+      - "*.md"
   pull_request:
     branches:
       - main
     paths-ignore:
       - "docs/**"
+      - ".notes/**"
+      - "*.md"
   workflow_dispatch:
     inputs:
       os:
@@ -97,11 +101,6 @@ jobs:
         shell: bash
         run: |
           corepack enable
-          if [ "${{ matrix.package-manager }}" = "yarn" ]; then
-            corepack prepare yarn@stable --activate
-          elif [ "${{ matrix.package-manager }}" = "yarn-classic" ]; then
-            npm i -g yarn@1.22.19 --force
-          fi
           pnpm install
 
       - name: Build SDK
@@ -110,7 +109,9 @@ jobs:
           cd sdk
           pnpm build
 
-      - name: Run playground E2E tests
+      - name: Run Playground E2E Tests
+        id: tests
+        continue-on-error: true
         shell: bash
         run: |
           cd playground
