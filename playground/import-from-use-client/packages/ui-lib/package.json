@@ -1,6 +1,11 @@
 {
   "name": "ui-lib",
   "version": "1.0.0",
-  "main": "index.tsx",
-  "types": "index.tsx"
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    "./client": "./client.mjs",
+    "./server": "./server.mjs"
+  }
 }

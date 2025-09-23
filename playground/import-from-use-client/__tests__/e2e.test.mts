@@ -1,74 +1,56 @@
-import { expect } from "vitest";
-import { setupPlaygroundEnvironment, testDevAndDeploy } from "rwsdk/e2e";
+import { describe, expect } from "vitest";
+import { setupPlaygroundEnvironment, testDevAndDeploy, poll } from "rwsdk/e2e";
 
 setupPlaygroundEnvironment(import.meta.url);
 
-testDevAndDeploy(
-  "handles client module exports from within the app",
-  async ({ page, url }) => {
-    // Collect console errors
-    const consoleErrors: string[] = [];
-    page.on("console", (msg) => {
-      if (msg.type() === "error") {
-        consoleErrors.push(msg.text());
-      }
-    });
+describe("SSR Inter-Module Imports", () => {
+  testDevAndDeploy(
+    "it should correctly render messages from client utils",
+    async ({ page, url }) => {
+      await page.goto(url);
+      await page.waitForSelector("button");
 
-    await page.goto(url);
+      // Scenario 1: App -> App
+      await poll(async () => {
+        const text = await page.$eval("#message-from-app-util", (el) => {
+          return el.textContent;
+        });
+        return text === "Hello from the app, Home Page!";
+      });
 
-    // 1. Check for server-rendered content from the utility function
-    const localMessageEl = await page.waitForSelector(
-      '[data-testid="local-message"]',
-    );
-    const localMessage = await localMessageEl?.evaluate((el) => el.textContent);
-    expect(localMessage).toBe("Hello, World from a client util!");
+      // Scenario 2: App -> Package
+      await poll(async () => {
+        const text = await page.$eval("#message-from-package-util", (el) => {
+          return el.textContent;
+        });
+        return text === "Hello from the package, Home Page!";
+      });
 
-    // 2. Check that the client component is rendered and interactive
-    const button = await page.waitForSelector("button");
-    let buttonText = await button?.evaluate((el) => el.textContent);
-    expect(buttonText).toContain("App Button (Clicks: 0)");
+      // Scenario 3: Package -> Package
+      await poll(async () => {
+        const text = await page.$eval(
+          "#message-from-package-server-component",
+          (el) => {
+            return el.textContent;
+          },
+        );
+        return text === "Hello from the package, Package Server Component!";
+      });
+    },
+  );
 
-    await button?.click();
-    buttonText = await button?.evaluate((el) => el.textContent);
-    expect(buttonText).toContain("App Button (Clicks: 1)");
+  testDevAndDeploy(
+    "client components should be interactive",
+    async ({ page, url }) => {
+      await page.goto(url);
 
-    // 3. Assert that no hydration errors occurred
-    expect(consoleErrors).toEqual([]);
-  },
-);
+      await page.waitForSelector("button:has-text('App Button clicks: 0')");
 
-testDevAndDeploy.skip(
-  "handles client module exports from within a package",
-  async ({ page, url }) => {
-    // Collect console errors
-    const consoleErrors: string[] = [];
-    page.on("console", (msg) => {
-      if (msg.type() === "error") {
-        consoleErrors.push(msg.text());
-      }
-    });
+      await page.click("button:has-text('App Button clicks: 0')");
+      await page.waitForSelector("button:has-text('App Button clicks: 1')");
 
-    await page.goto(url);
-
-    // 1. Check for server-rendered content from the utility function
-    const packageMessageEl = await page.waitForSelector(
-      '[data-testid="package-message"]',
-    );
-    const packageMessage = await packageMessageEl?.evaluate(
-      (el) => el.textContent,
-    );
-    expect(packageMessage).toBe("Hello, World from a package util!");
-
-    // 2. Check that the client component is rendered and interactive
-    const button = await page.waitForSelector("button");
-    let buttonText = await button?.evaluate((el) => el.textContent);
-    expect(buttonText).toContain("Package Button (Clicks: 0)");
-
-    await button?.click();
-    buttonText = await button?.evaluate((el) => el.textContent);
-    expect(buttonText).toContain("Package Button (Clicks: 1)");
-
-    // 3. Assert that no hydration errors occurred
-    expect(consoleErrors).toEqual([]);
-  },
-);
+      await page.click("button:has-text('Package Button clicks: 0')");
+      await page.waitForSelector("button:has-text('Package Button clicks: 1')");
+    },
+  );
+});

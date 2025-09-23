@@ -1,25 +1,28 @@
-import { RequestInfo } from "rwsdk/worker";
-import { ClientButton, clientObject } from "../lib/client-utils";
-//import { PackageButton, packageObject } from "ui-lib";
+import { AppButton, appClientUtil } from "../lib/client-utils.mjs";
+import { PackageButton, packageClientUtil } from "ui-lib/client";
+import { PackageServerComponent } from "ui-lib/server";
 
-export function Home({ ctx }: RequestInfo) {
-  const localMessage = clientObject.format("World");
-  //const packageMessage = packageObject.format("World");
+export const Home = () => {
+  const messageFromAppClientUtil = appClientUtil.format("Home Page");
+  const messageFromPackageClientUtil = packageClientUtil.format("Home Page");
 
   return (
     <div>
-      <h1>SSR Client Exports</h1>
-      <h2>From App Module:</h2>
-      <p data-testid="local-message">{localMessage}</p>
-      <ClientButton />
+      <h1>Home</h1>
+      <h2>Message from App Client Util (Scenario 1)</h2>
+      <p id="message-from-app-util">{messageFromAppClientUtil}</p>
+      <AppButton />
 
       <hr />
 
-      {/*
-      <h2>From Package Module:</h2>
-      <p data-testid="package-message">{packageMessage}</p>
+      <h2>Message from Package Client Util (Scenario 2)</h2>
+      <p id="message-from-package-util">{messageFromPackageClientUtil}</p>
       <PackageButton />
-      */}
+
+      <hr />
+
+      <h2>Rendered Package Server Component (Scenario 3)</h2>
+      <PackageServerComponent />
     </div>
   );
-}
+};
