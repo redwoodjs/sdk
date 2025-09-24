@@ -21,9 +21,14 @@ import { launchBrowser } from "./browser.mjs";
 import type { Browser, Page } from "puppeteer-core";
 
 const SETUP_PLAYGROUND_ENV_TIMEOUT = 300_000;
+
 const PUPPETEER_TIMEOUT = process.env.RWSDK_PUPPETEER_TIMEOUT
   ? parseInt(process.env.RWSDK_PUPPETEER_TIMEOUT, 10)
-  : 60 * 1000; // 60 seconds
+  : 60 * 1000 * 2;
+
+const DEV_SERVER_TIMEOUT = process.env.RWSDK_DEV_SERVER_TIMEOUT
+  ? parseInt(process.env.RWSDK_DEV_SERVER_TIMEOUT, 10)
+  : 60 * 1000 * 2;
 
 const HYDRATION_TIMEOUT = process.env.RWSDK_HYDRATION_TIMEOUT
   ? parseInt(process.env.RWSDK_HYDRATION_TIMEOUT, 10)
@@ -288,7 +293,7 @@ export async function createDeployment(): Promise<DeploymentInstance> {
         return false;
       }
     },
-    60000, // 60-second timeout for warm-up
+    DEV_SERVER_TIMEOUT, // 60-second timeout for warm-up
   );
 
   const deploymentId = `deployment-${Date.now()}-${Math.random()
