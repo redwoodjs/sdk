@@ -289,9 +289,9 @@ Given that the primary goal was to have a stable playground example, the most pr
 
 ## PR Description
 
-**Title:** `feat(framework, playground): Add manual client module overrides and Chakra UI showcase`
+**Title:** `feat(framework, playground): Add manual client module overrides + Chakra UI playground`
 
-### Goal
+### Context
 
 The primary goal was to create a playground to test and demonstrate the integration of the Chakra UI component library with our React Server Components framework, including comprehensive end-to-end tests.
 
@@ -301,11 +301,11 @@ Several issues were encountered during the implementation.
 
 **1. `"use strict"` Directive Interference**
 
-Our directive scanner initially failed to detect `"use client"` in modules where it was preceded by `"use strict"`. This caused many Chakra UI components to be incorrectly treated as Server Components. This was fixed in a previous PR and merged into `main`.
+Solved in #762 (see PR description for context)
 
 **2. Non-Component Exports from Client Modules**
 
-A subsequent error (`fieldAnatomy.extendWith is not a function`) revealed that our framework was incorrectly handling non-component exports (like utility functions or objects) from `"use client"` modules. The entire module was being replaced with a client reference proxy, making these exports inaccessible on the server. This was a significant architectural issue that was resolved with the "SSR Bridge" implementation in a separate PR, which is now merged into `main`.
+Solved in #774 (see PR description for context)
 
 **3. Server-Side Execution of Client APIs in Chakra UI**
 
@@ -315,4 +315,6 @@ The files are:
 -   [`code-block-context.ts`](https://github.com/chakra-ui/chakra-ui/blob/79971c0d1ccac7921e5e5c65faa93e3fe8456bca/packages/react/src/components/code-block/code-block-adapter-context.ts)
 -   [`code-block-adapter-context.ts`](https://github.com/chakra-ui/chakra-ui/blob/79971c0d1ccac7921e5e5c65faa93e3fe8456bca/packages/react/src/components/code-block/code-block-adapter-provider.tsx)
 
-To address this and provide a general-purpose solution for similar cases in other libraries, this PR introduces a `forceClientPaths` option to the RedwoodSDK Vite plugin. This allows developers to manually designate modules as client-side. The new Chakra UI playground uses this option to correctly handle the files, which unblocks the integration and serves as a working example.
+Looking at modules performing the same function for other Chakra UI components, they use "use client" directives. That, combined with the `createContext` call, leads me to believe this was unintentional and should in fact include a `"use client"` directive (I will ask Chakra to get clarity here).
+
+For now, to address this and provide a general-purpose solution for similar cases in other libraries, this PR introduces a `forceClientPaths` option to the RedwoodSDK Vite plugin. This allows developers to manually designate modules as client-side.
