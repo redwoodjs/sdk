@@ -9,7 +9,6 @@ import {
 } from "rwsdk/e2e";
 import fs from "fs-extra";
 import path from "node:path";
-import type { Page } from "puppeteer-core";
 
 setupPlaygroundEnvironment(import.meta.url);
 
