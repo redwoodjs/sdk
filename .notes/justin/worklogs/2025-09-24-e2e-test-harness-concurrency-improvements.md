@@ -38,3 +38,17 @@ The test harness will be refactored to perform the expensive setup operations (d
 
 4.  **Centralized Cleanup**:
     - The global `afterAll` hook, which already handles environment cleanup, will be updated to also tear down the suite-level dev server and deployment resources.
+
+## Addendum: Further Optimization with Shared Browser Instance
+
+### Problem
+
+While the initial concurrency refactor improves setup time, each individual test still incurs the overhead of launching and closing a new browser instance, which is slow.
+
+### Plan
+
+The test harness will be further optimized to use a single, shared browser instance per test suite.
+
+1.  **Shared Browser Instance**: The `setupPlaygroundEnvironment` function's `beforeAll` hook will be updated to also create a single browser instance, which will be stored in a new global variable. The creation of the browser, dev server, and deployment will all happen concurrently.
+2.  **Test Isolation via Pages**: The core test runners will be modified to use the shared browser instance. Instead of creating a new browser for each test, they will create a new, isolated `page`.
+3.  **Updated Cleanup**: The per-test cleanup logic will now only be responsible for closing the `page`. The shared browser instance will be closed once in the `afterAll` hook, along with the other suite-level resources.
