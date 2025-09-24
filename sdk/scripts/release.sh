@@ -221,12 +221,12 @@ fi
 
 echo "  - Created temp project dir for testing: $PROJECT_DIR"
 
-echo "  - Copying minimal starter to project dir..."
+echo "  - Copying starter to project dir..."
 # Get the absolute path of the script's directory
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 # The monorepo root is two levels up from the script's directory
 MONOREPO_ROOT="$SCRIPT_DIR/../.."
-cp -a "$MONOREPO_ROOT/starters/minimal/." "$PROJECT_DIR/"
+cp -a "$MONOREPO_ROOT/starter/." "$PROJECT_DIR/"
 
 echo "  - Configuring temp project to not use frozen lockfile..."
 echo "frozen-lockfile=false" > "$PROJECT_DIR/.npmrc"
@@ -262,7 +262,7 @@ fi
 
 echo "  - Running smoke tests..."
 # The CWD is the package root (sdk/sdk), so we can run pnpm smoke-test directly.
-# We pass the path to the temp project directory where the minimal starter was installed.
+# We pass the path to the temp project directory where the starter was installed.
 # We also specify an artifact directory *within* the temp directory.
 # todo(justinvdm, 11 Aug 2025): Fix style test flakiness
 if ! pnpm smoke-test --path="$PROJECT_DIR" --no-sync --artifact-dir="$TEMP_DIR/artifacts" --skip-style-tests; then

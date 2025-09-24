@@ -19,15 +19,6 @@ on:
       - "src/**/*.test.*"
   workflow_dispatch:
     inputs:
-      starter:
-        description: "Starter to test (e.g., minimal, standard)"
-        required: true
-        type: choice
-        default: "minimal"
-        options:
-          - minimal
-          - standard
-          - all
       os:
         description: "OS to run on (e.g., ubuntu-latest, macos-latest)"
         required: true
@@ -66,13 +57,12 @@ jobs:
       - id: set-matrix
         run: |
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo 'matrix={"include":[{"starter":"minimal","os":"ubuntu-latest","package-manager":"pnpm"}]}' >> $GITHUB_OUTPUT
+            echo 'matrix={"include":[{"starter":"starter","os":"ubuntu-latest","package-manager":"pnpm"}]}' >> $GITHUB_OUTPUT
           elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            STARTER_INPUT=${{ github.event.inputs.starter }}
             OS_INPUT=${{ github.event.inputs.os }}
             PM_INPUT=${{ github.event.inputs.package-manager }}
 
-            [ "$STARTER_INPUT" == "all" ] && STARTER_LIST='minimal standard' || STARTER_LIST=$STARTER_INPUT
+            STARTER_LIST='starter'
             [ "$OS_INPUT" == "all" ] && OS_LIST='ubuntu-latest macos-latest' || OS_LIST=$OS_INPUT
             [ "$PM_INPUT" == "all" ] && PM_LIST='pnpm npm yarn yarn-classic' || PM_LIST=$PM_INPUT
 
@@ -86,7 +76,7 @@ jobs:
             done
             echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
           else
-            echo 'matrix={"include":[{"starter":"minimal","os":"ubuntu-latest","package-manager":"pnpm"},{"starter":"minimal","os":"ubuntu-latest","package-manager":"npm"},{"starter":"minimal","os":"ubuntu-latest","package-manager":"yarn"},{"starter":"minimal","os":"ubuntu-latest","package-manager":"yarn-classic"},{"starter":"minimal","os":"macos-latest","package-manager":"pnpm"},{"starter":"minimal","os":"macos-latest","package-manager":"npm"},{"starter":"minimal","os":"macos-latest","package-manager":"yarn"},{"starter":"minimal","os":"macos-latest","package-manager":"yarn-classic"},{"starter":"standard","os":"ubuntu-latest","package-manager":"pnpm"},{"starter":"standard","os":"ubuntu-latest","package-manager":"npm"},{"starter":"standard","os":"ubuntu-latest","package-manager":"yarn"},{"starter":"standard","os":"ubuntu-latest","package-manager":"yarn-classic"},{"starter":"standard","os":"macos-latest","package-manager":"pnpm"},{"starter":"standard","os":"macos-latest","package-manager":"npm"},{"starter":"standard","os":"macos-latest","package-manager":"yarn"},{"starter":"standard","os":"macos-latest","package-manager":"yarn-classic"}]}' >> $GITHUB_OUTPUT
+            echo 'matrix={"include":[{"starter":"starter","os":"ubuntu-latest","package-manager":"pnpm"},{"starter":"starter","os":"ubuntu-latest","package-manager":"npm"},{"starter":"starter","os":"ubuntu-latest","package-manager":"yarn"},{"starter":"starter","os":"ubuntu-latest","package-manager":"yarn-classic"},{"starter":"starter","os":"macos-latest","package-manager":"pnpm"},{"starter":"starter","os":"macos-latest","package-manager":"npm"},{"starter":"starter","os":"macos-latest","package-manager":"yarn"},{"starter":"starter","os":"macos-latest","package-manager":"yarn-classic"}]}' >> $GITHUB_OUTPUT
           fi
 
   smoke-test:
@@ -122,7 +112,7 @@ jobs:
         id: smoke-test
         shell: bash
         run: |
-          ./scripts/retry.sh ./sdk/scripts/ci-smoke-test.sh --starter "${{ matrix.starter }}" --package-manager "${{ matrix.package-manager }}"
+          ./scripts/retry.sh ./sdk/scripts/ci-smoke-test.sh --package-manager "${{ matrix.package-manager }}"
         env:
           CHROME_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
 

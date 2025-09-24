@@ -98,3 +98,39 @@ The following files in the `docs` directory contain references to the "standard"
 - `docs/architecture/earlyHydrationStrategy.md`
 - `docs/architecture/directiveTransforms.md`
 - `docs/architecture/clientStylesheets.md`
+
+### 8. Status Update
+
+Here is a summary of the progress so far, cross-referenced with the tasks in this work log and my internal to-do list.
+
+#### Completed Tasks
+
+- **1. Restructure Starters**:
+  - [x] Delete the `standard` starter.
+  - [x] Relocate and rename `minimal` starter to `starter`.
+- **2. Update Codebase References**:
+  - [x] Search for and remove references to the `standard` starter (in scripts and markdown files).
+  - [x] Update CI workflows to remove the `standard` option.
+  - [x] Update all paths referencing `starters/minimal` to point to `/starter`.
+- **3. Update Documentation**:
+  - [x] Delete the tutorial.
+  - [x] Identify and list all references to the "standard" starter in the docs.
+
+#### Pending Tasks
+
+- **4. Update `create-rwsdk` Tool**:
+  - [ ] Simplify template logic in `index.js`.
+  - [ ] Remove the `--template` option and the `list` command.
+  - [ ] Update the download logic.
+  - [ ] Update `README.md`, `CHANGELOG.md`, and `TODO.md`.
+- **5. Integrate Passkey Authentication into SDK**:
+  - [ ] Overhaul the authentication documentation.
+  - [ ] Create new SDK entry points for passkey authentication.
+  - [ ] Port `passkey-addon` code into `sdk/src/passkey`.
+  - [ ] Refactor ported passkey code to use `requestInfo.response.headers`.
+  - [ ] Create the `usePasskey` hook.
+  - [ ] Add passkey authentication example to `playground/hello-world`.
+- **6. Rename "minimal" to "starter"**:
+  - [ ] Rename all remaining occurrences of "minimal" to "starter".
+- **7. Documentation Cleanup**:
+  - [ ] The files have been identified, but the content has not yet been updated.
