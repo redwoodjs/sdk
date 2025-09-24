@@ -92,12 +92,6 @@ The following files in the `docs` directory contain references to the "standard"
 - `docs/src/content/docs/core/storage.mdx`
 - `docs/src/content/docs/core/security.mdx`
 - `docs/src/content/docs/core/routing.mdx`
-- `docs/architecture/ssrBridge.md`
-- `docs/architecture/requestHandling.md`
-- `docs/architecture/endToEndTesting.md`
-- `docs/architecture/earlyHydrationStrategy.md`
-- `docs/architecture/directiveTransforms.md`
-- `docs/architecture/clientStylesheets.md`
 
 ### 8. Status Update
 

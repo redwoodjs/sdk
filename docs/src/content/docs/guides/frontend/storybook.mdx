@@ -64,9 +64,9 @@ Because the RedwoodSDK is based on React and Vite, we can work through the <a ta
 
 ## Adding a Component to Storybook
 
-In writing this guide, we've started by following the [quick start instructions](../../getting-started/quick-start) and set up the standard starter.
+In writing this guide, we've started by following the [quick start instructions](../../getting-started/quick-start) and set up the starter project.
 
-The standard starter comes with a very basic `Home` component:
+The starter project comes with a very basic `Home` component:
 
 ```tsx title="src/app/pages/Home.tsx"
 import { RequestInfo } from "rwsdk/worker";
@@ -250,7 +250,7 @@ In the previous section, we mocked the `ctx` prop. But what if we want to mock a
 database via Prisma.
 
 <Steps>
-1. Starting with the standard starter, the only thing in our database schema is a list of users. What's the most obvious thing to do? List out all the users! Add this to our `Home` component:
+1. The starter project doesn't ship with a database, so let's imagine we've added one with a `User` table. What's the most obvious thing to do? List out all the users! Let's add this to our `Home` component:
     ```tsx title="src/app/pages/Home.tsx" ins={2, 13-17} useDiffSyntax={true} ins="async"
     import { RequestInfo } from "rwsdk/worker";
     import { db } from "@/db";

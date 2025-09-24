@@ -64,50 +64,6 @@ export default defineConfig({
           ],
         },
         {
-          label: "Tutorial",
-          items: [
-            {
-              label: "Full Stack Applications",
-              collapsed: true,
-              items: [
-                {
-                  label: "Project Setup",
-                  slug: "tutorial/full-stack-app/setup",
-                },
-                {
-                  label: "Creating the Application",
-                  slug: "tutorial/full-stack-app/create-app",
-                },
-                {
-                  label: "Database Setup",
-                  slug: "tutorial/full-stack-app/database-setup",
-                },
-                {
-                  label: "Authentication",
-                  slug: "tutorial/full-stack-app/auth",
-                },
-                {
-                  label: "Jobs List",
-                  slug: "tutorial/full-stack-app/jobs-list",
-                },
-                {
-                  label: "Jobs Form",
-                  slug: "tutorial/full-stack-app/jobs-form",
-                },
-                { label: "Contacts", slug: "tutorial/full-stack-app/contacts" },
-                {
-                  label: "Jobs Details",
-                  slug: "tutorial/full-stack-app/jobs-details",
-                },
-                {
-                  label: "Deploying",
-                  slug: "tutorial/full-stack-app/deploying",
-                },
-              ],
-            },
-          ],
-        },
-        {
           label: "Guides",
           items: [
             {
