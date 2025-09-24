@@ -14,7 +14,7 @@ const log = debug("rwsdk:e2e:dev");
 export async function runDevServer(
   packageManager: PackageManager = "pnpm",
   cwd?: string,
-): Promis<
+): Promise<{
   url: string;
   stopDev: () => Promise<void>;
 }> {
