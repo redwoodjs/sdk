@@ -318,3 +318,46 @@ After making these changes, run your package manager's install command (e.g., `p
 * @renovate[bot] made their first contribution in https://github.com/redwoodjs/sdk/pull/746
 
 **Full Changelog**: https://github.com/redwoodjs/sdk/compare/v1.0.0-alpha.8...v1.0.0-alpha.9
+
+## Release Strategy and Next Steps
+
+### Release Strategy Discussion and Rationale
+
+A significant portion of this work involved not just the technical implementation, but also devising a release strategy that could safely introduce these breaking changes without disrupting existing users or creating an unmanageable support burden, especially with the weekend coming up.
+
+My thought process evolved through several stages:
+
+1.  **Initial Problem**: The core challenge is coordinating releases for `rwsdk`, `create-rwsdk`, and the documentation. The primary goal is to get the new, improved `1.x` pre-release into the hands of new users without forcing an upgrade on stable `0.x` users.
+
+2.  **Initial Idea - "Implicit Pre-release"**: A first thought was to modify `create-rwsdk` to fetch the latest pre-release from GitHub by default. This would give new users the best version automatically.
+
+3.  **Refinement for Existing Users**: However, that approach neglected the migration path for existing users, especially those on the `standard` starter.
+
+4.  **Crucial Correction - The Database Issue**: The initial migration plan mistakenly suggested that users should remove their old Prisma-based database setup. This is a critical flaw, as users cannot be expected to delete their data. This insight was pivotal.
+
+5.  **The Adapter Pattern Solution**: A better approach is an adapter pattern. We can refactor the new passkey system to accept a data adapter, allowing users to keep their existing Prisma/D1 database and simply write a thin translation layer to connect it to the new authentication logic.
+
+6.  **Addressing Time Constraints and "Big Bang" Releases**: Given my limited availability over the upcoming weekend, a "big bang" release on Monday felt risky. I wanted to merge the code now for peace of mind but delay the public-facing "launch" until I was fully available.
+
+7.  **Final Strategy - "Code-First, Docs-Later"**: After considering various ways to handle the documentation (a `docs-next` folder, separate branches), the best path forward seems to be a hybrid "Isolate and Stage" approach. This provides the best of both worlds:
+    *   **Code Merge First**: All functional code changes will be merged into `main` first, but in a "dark" state. `create-rwsdk` will default to the `--legacy` behavior, so no users are affected.
+    *   **Isolate Docs**: The documentation changes will be temporarily removed from the main PR and staged for a separate, atomic merge.
+    *   **Controlled Launch**: The launch on Monday will consist of two small, low-risk actions: updating the default behavior of `create-rwsdk` and merging the prepared documentation PR.
+
+This final, agreed-upon strategy allows me to merge the code now, protects my time, and ensures a smooth, controlled, and well-supported launch for users when the time is right.
+
+### Next Steps for This Branch
+
+Based on this, here is the plan for moving forward:
+
+1.  **Review and Validation**: I will now review all the code and documentation changes that have been made in this branch to validate them.
+
+2.  **E2E Test for Passkey**: I need to address the challenge with the passkey end-to-end test.
+    *   **The Challenge**: The test currently simulates the full registration and login flow. However, the WebAuthn API triggers a native browser/OS authenticator prompt (like a fingerprint scan or hardware key), which Puppeteer cannot interact with.
+    *   **The Concern**: This will likely cause the E2E test to hang and fail in CI.
+    *   **Potential Solution**: As I considered, I may need to scope this test down. Instead of verifying the full end-to-end flow, the test could be modified to confirm that the correct UI elements (e.g., "Register with Passkey" button) render on the page. The full flow would then be marked for manual testing for the time being.
+
+3.  **Finalizing This PR**: Once my review is complete and I've decided on the E2E test strategy, the next step is to prepare this branch for the "Code-First" merge. The agreed-upon technical steps are:
+    *   Copy the current `docs/` directory to a temporary location (e.g., `/tmp/docs-next`).
+    *   Revert the `docs/` directory in this branch back to its state on `main` using `git checkout main -- docs/`.
+    *   This will leave the PR with only code changes, ready for me to merge. The new documentation will be safely stored, ready to be moved into a new branch for the final release.
