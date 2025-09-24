@@ -5,6 +5,7 @@ import {
   testDev,
   poll,
   getPlaygroundEnvironment,
+  waitForHydration,
 } from "rwsdk/e2e";
 import fs from "fs-extra";
 import path from "node:path";
@@ -12,47 +13,71 @@ import type { Page } from "puppeteer-core";
 
 setupPlaygroundEnvironment(import.meta.url);
 
-const getBackgroundColor = (page: Page, selector: string) => {
-  return page.$eval(selector, (el) => {
-    return window.getComputedStyle(el).backgroundColor;
-  });
-};
-
 describe("CSS Handling", () => {
   describe("Rendering", () => {
     testDevAndDeploy(
       "should apply styles from Document.tsx link",
       async ({ page, url }) => {
+        const getBackgroundColor = (selector: string) => {
+          return page.$eval(selector, (el) => {
+            return window.getComputedStyle(el).backgroundColor;
+          });
+        };
+
         await page.goto(url);
-        const backgroundColor = await getBackgroundColor(
-          page,
-          '[data-testid="main-content"]',
-        );
-        expect(backgroundColor).toBe("rgb(255, 0, 0)");
+        await waitForHydration(page);
+
+        await poll(async () => {
+          const backgroundColor = await getBackgroundColor(
+            '[data-testid="main-content"]',
+          );
+          expect(backgroundColor).toBe("rgb(255, 0, 0)");
+          return true;
+        });
       },
     );
 
     testDevAndDeploy(
       "should apply styles from CSS Modules",
       async ({ page, url }) => {
+        const getBackgroundColor = (selector: string) => {
+          return page.$eval(selector, (el) => {
+            return window.getComputedStyle(el).backgroundColor;
+          });
+        };
+
         await page.goto(`${url}/css-modules`);
-        const backgroundColor = await getBackgroundColor(
-          page,
-          '[data-testid="css-module-content"]',
-        );
-        expect(backgroundColor).toBe("rgb(0, 0, 255)");
+        await waitForHydration(page);
+
+        await poll(async () => {
+          const backgroundColor = await getBackgroundColor(
+            '[data-testid="css-module-content"]',
+          );
+          expect(backgroundColor).toBe("rgb(0, 0, 255)");
+          return true;
+        });
       },
     );
 
     testDevAndDeploy(
       "should apply styles from side-effect CSS import",
       async ({ page, url }) => {
+        const getBackgroundColor = (selector: string) => {
+          return page.$eval(selector, (el) => {
+            return window.getComputedStyle(el).backgroundColor;
+          });
+        };
+
         await page.goto(`${url}/side-effect-css`);
-        const backgroundColor = await getBackgroundColor(
-          page,
-          '[data-testid="side-effect-content"]',
-        );
-        expect(backgroundColor).toBe("rgb(0, 128, 0)");
+        await waitForHydration(page);
+
+        await poll(async () => {
+          const backgroundColor = await getBackgroundColor(
+            '[data-testid="side-effect-content"]',
+          );
+          expect(backgroundColor).toBe("rgb(0, 128, 0)");
+          return true;
+        });
       },
     );
   });
@@ -61,13 +86,25 @@ describe("CSS Handling", () => {
     testDev(
       "should update styles from Document.tsx link on change",
       async ({ page, url }) => {
+        const getBackgroundColor = (selector: string) => {
+          return page.$eval(selector, (el) => {
+            return window.getComputedStyle(el).backgroundColor;
+          });
+        };
+
         const { projectDir } = getPlaygroundEnvironment();
         const cssPath = path.join(projectDir, "src", "app", "globals.css");
 
         await page.goto(url);
-        expect(
-          await getBackgroundColor(page, '[data-testid="main-content"]'),
-        ).toBe("rgb(255, 0, 0)");
+        await waitForHydration(page);
+
+        await poll(async () => {
+          const backgroundColor = await getBackgroundColor(
+            '[data-testid="main-content"]',
+          );
+          expect(backgroundColor).toBe("rgb(255, 0, 0)");
+          return true;
+        });
 
         const cssContent = await fs.readFile(cssPath, "utf-8");
         await fs.writeFile(
@@ -77,7 +114,6 @@ describe("CSS Handling", () => {
 
         await poll(async () => {
           const backgroundColor = await getBackgroundColor(
-            page,
             '[data-testid="main-content"]',
           );
           return backgroundColor === "rgb(255, 165, 0)";
@@ -88,6 +124,12 @@ describe("CSS Handling", () => {
     testDev(
       "should update styles from CSS Modules on change",
       async ({ page, url }) => {
+        const getBackgroundColor = (selector: string) => {
+          return page.$eval(selector, (el) => {
+            return window.getComputedStyle(el).backgroundColor;
+          });
+        };
+
         const { projectDir } = getPlaygroundEnvironment();
         const cssPath = path.join(
           projectDir,
@@ -98,9 +140,15 @@ describe("CSS Handling", () => {
         );
 
         await page.goto(`${url}/css-modules`);
-        expect(
-          await getBackgroundColor(page, '[data-testid="css-module-content"]'),
-        ).toBe("rgb(0, 0, 255)");
+        await waitForHydration(page);
+
+        await poll(async () => {
+          const backgroundColor = await getBackgroundColor(
+            '[data-testid="css-module-content"]',
+          );
+          expect(backgroundColor).toBe("rgb(0, 0, 255)");
+          return true;
+        });
 
         const cssContent = await fs.readFile(cssPath, "utf-8");
         await fs.writeFile(
@@ -110,7 +158,6 @@ describe("CSS Handling", () => {
 
         await poll(async () => {
           const backgroundColor = await getBackgroundColor(
-            page,
             '[data-testid="css-module-content"]',
           );
           return backgroundColor === "rgb(75, 0, 130)";
@@ -121,6 +168,12 @@ describe("CSS Handling", () => {
     testDev(
       "should update styles from side-effect CSS on change",
       async ({ page, url }) => {
+        const getBackgroundColor = (selector: string) => {
+          return page.$eval(selector, (el) => {
+            return window.getComputedStyle(el).backgroundColor;
+          });
+        };
+
         const { projectDir } = getPlaygroundEnvironment();
         const cssPath = path.join(
           projectDir,
@@ -131,9 +184,15 @@ describe("CSS Handling", () => {
         );
 
         await page.goto(`${url}/side-effect-css`);
-        expect(
-          await getBackgroundColor(page, '[data-testid="side-effect-content"]'),
-        ).toBe("rgb(0, 128, 0)");
+        await waitForHydration(page);
+
+        await poll(async () => {
+          const backgroundColor = await getBackgroundColor(
+            '[data-testid="side-effect-content"]',
+          );
+          expect(backgroundColor).toBe("rgb(0, 128, 0)");
+          return true;
+        });
 
         const cssContent = await fs.readFile(cssPath, "utf-8");
         await fs.writeFile(
@@ -143,7 +202,6 @@ describe("CSS Handling", () => {
 
         await poll(async () => {
           const backgroundColor = await getBackgroundColor(
-            page,
             '[data-testid="side-effect-content"]',
           );
           return backgroundColor === "rgb(255, 255, 0)";
