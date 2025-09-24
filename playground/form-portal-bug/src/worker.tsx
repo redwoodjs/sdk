@@ -14,8 +14,9 @@ export default defineApp([
     // setup ctx here
     ctx;
   },
-  render(Document, [
-    route("/", Home),
-    route("/direct-react-portal", DirectReactPortal),
-  ]),
+  render(
+    Document,
+    [route("/", Home), route("/direct-react-portal", DirectReactPortal)],
+    { ssr: false },
+  ),
 ]);
