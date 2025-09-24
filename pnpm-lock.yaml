@@ -201,9 +201,6 @@ importers:
       rwsdk:
         specifier: workspace:*
         version: link:../../../../sdk
-      ui-lib:
-        specifier: 1.0.0
-        version: 1.0.0
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.13.3
@@ -7563,9 +7560,6 @@ packages:
   uhyphen@0.2.0:
     resolution: {integrity: sha512-qz3o9CHXmJJPGBdqzab7qAYuW8kQGKNEuoHFYrBwV6hWIMcpAmxDLXojcHfFr9US1Pe6zUswEIJIbLI610fuqA==}
 
-  ui-lib@1.0.0:
-    resolution: {integrity: sha512-dQdshukICcQhBy9lkkaBjwX5RdjmbNdRVyO6uhH5RHx6/wDGWwd1r1iXOaJK5oQeEbBge+4/g5GEq+N1STQE1A==}
-
   uint8arrays@3.0.0:
     resolution: {integrity: sha512-HRCx0q6O9Bfbp+HHSfQQKD7wU70+lydKVt4EghkdOvlK/NlrF90z+eXV34mUd48rNvVJXwkrMSPpCATkct8fJA==}
 
@@ -10887,7 +10881,7 @@ snapshots:
   '@types/fs-extra@11.0.4':
     dependencies:
       '@types/jsonfile': 6.1.4
-      '@types/node': 22.14.0
+      '@types/node': 24.3.1
 
   '@types/hast@3.0.4':
     dependencies:
@@ -10903,7 +10897,7 @@ snapshots:
 
   '@types/jsonfile@6.1.4':
     dependencies:
-      '@types/node': 22.14.0
+      '@types/node': 24.3.1
 
   '@types/lodash@4.17.16': {}
 
@@ -10944,7 +10938,6 @@ snapshots:
   '@types/node@24.3.1':
     dependencies:
       undici-types: 7.10.0
-    optional: true
 
   '@types/normalize-package-data@2.4.4': {}
 
@@ -10980,7 +10973,7 @@ snapshots:
 
   '@types/yauzl@2.10.3':
     dependencies:
-      '@types/node': 22.14.0
+      '@types/node': 24.3.1
     optional: true
 
   '@typescript-eslint/eslint-plugin@8.44.0(@typescript-eslint/parser@8.44.0(eslint@9.36.0(jiti@2.5.1))(typescript@5.8.3))(eslint@9.36.0(jiti@2.5.1))(typescript@5.8.3)':
@@ -16022,8 +16015,6 @@ snapshots:
 
   uhyphen@0.2.0: {}
 
-  ui-lib@1.0.0: {}
-
   uint8arrays@3.0.0:
     dependencies:
       multiformats: 9.9.0
@@ -16041,8 +16032,7 @@ snapshots:
 
   undici-types@6.21.0: {}
 
-  undici-types@7.10.0:
-    optional: true
+  undici-types@7.10.0: {}
 
   undici@5.28.5:
     dependencies:

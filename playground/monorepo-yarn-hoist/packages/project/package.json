@@ -19,11 +19,11 @@
     "release": "rw-scripts ensure-deploy-env && npm run clean && npm run build && RWSDK_DEPLOY=1 wrangler deploy",
     "generate": "rw-scripts ensure-env && wrangler types",
     "check": "npm run generate && npm run types",
-    "types": "tsc"
+    "types": "tsc",
+    "postinstall": "rm -rf node_modules/ui-lib"
   },
   "dependencies": {
     "rwsdk": "workspace:*",
-    "ui-lib": "1.0.0",
     "react": "19.2.0-canary-d415fd3e-20250919",
     "react-dom": "19.2.0-canary-d415fd3e-20250919",
     "react-server-dom-webpack": "19.2.0-canary-d415fd3e-20250919"

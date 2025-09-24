@@ -2,4 +2,4 @@
 
 import React from "react";
 
-export const Button = () => <button>Hello from UI Lib</button>;
+export const Button = () => React.createElement("button", null, "Hello from UI Lib");
