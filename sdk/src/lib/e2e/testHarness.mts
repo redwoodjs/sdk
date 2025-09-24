@@ -25,6 +25,10 @@ const DEPLOYMENT_TIMEOUT = process.env.RWSDK_DEPLOYMENT_TIMEOUT
   ? parseInt(process.env.RWSDK_DEPLOYMENT_TIMEOUT, 10)
   : 5 * 60 * 1000;
 
+const DEPLOYMENT_MIN_TRIES = process.env.RWSDK_DEPLOYMENT_MIN_TRIES
+  ? parseInt(process.env.RWSDK_DEPLOYMENT_MIN_TRIES, 10)
+  : 5;
+
 const PUPPETEER_TIMEOUT = process.env.RWSDK_PUPPETEER_TIMEOUT
   ? parseInt(process.env.RWSDK_PUPPETEER_TIMEOUT, 10)
   : 60 * 1000 * 2;
@@ -333,16 +337,22 @@ export async function createDeployment(
   );
 
   // Poll the URL to ensure it's live before proceeding
-  await poll(async () => {
-    try {
-      const response = await fetch(deployResult.url);
-      // We consider any response (even 4xx or 5xx) as success,
-      // as it means the worker is routable.
-      return response.status > 0;
-    } catch (e) {
-      return false;
-    }
-  }, DEPLOYMENT_TIMEOUT);
+  await poll(
+    async () => {
+      try {
+        const response = await fetch(deployResult.url);
+        // We consider any response (even 4xx or 5xx) as success,
+        // as it means the worker is routable.
+        return response.status > 0;
+      } catch (e) {
+        return false;
+      }
+    },
+    {
+      timeout: DEPLOYMENT_TIMEOUT,
+      minTries: DEPLOYMENT_MIN_TRIES,
+    },
+  );
 
   const cleanup = async () => {
     // Run deployment cleanup in background without blocking

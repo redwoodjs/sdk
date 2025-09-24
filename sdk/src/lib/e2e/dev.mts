@@ -8,6 +8,10 @@ const DEV_SERVER_TIMEOUT = process.env.RWSDK_DEV_SERVER_TIMEOUT
   ? parseInt(process.env.RWSDK_DEV_SERVER_TIMEOUT, 10)
   : 5 * 60 * 1000;
 
+const DEV_SERVER_MIN_TRIES = process.env.RWSDK_DEV_SERVER_MIN_TRIES
+  ? parseInt(process.env.RWSDK_DEV_SERVER_MIN_TRIES, 10)
+  : 5;
+
 const log = debug("rwsdk:e2e:dev");
 
 /**
@@ -318,18 +322,24 @@ export async function runDevServer(
     console.log(`✅ Development server started at ${serverUrl}`);
 
     // Poll the URL to ensure it's live before proceeding
-    await poll(async () => {
-      try {
-        const response = await fetch(serverUrl, {
-          signal: AbortSignal.timeout(1000),
-        });
-        // We consider any response (even 4xx or 5xx) as success,
-        // as it means the worker is routable.
-        return response.status > 0;
-      } catch (e) {
-        return false;
-      }
-    }, DEV_SERVER_TIMEOUT);
+    await poll(
+      async () => {
+        try {
+          const response = await fetch(serverUrl, {
+            signal: AbortSignal.timeout(1000),
+          });
+          // We consider any response (even 4xx or 5xx) as success,
+          // as it means the worker is routable.
+          return response.status > 0;
+        } catch (e) {
+          return false;
+        }
+      },
+      {
+        timeout: DEV_SERVER_TIMEOUT,
+        minTries: DEV_SERVER_MIN_TRIES,
+      },
+    );
 
     return { url: serverUrl, stopDev };
   } catch (error) {

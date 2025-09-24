@@ -4,14 +4,23 @@ const POLL_TIMEOUT = process.env.RWSDK_POLL_TIMEOUT
   ? parseInt(process.env.RWSDK_POLL_TIMEOUT, 10)
   : 2 * 60 * 1000;
 
+export interface PollOptions {
+  timeout: number;
+  interval: number;
+  minTries: number;
+}
+
 export async function poll(
   fn: () => Promise<boolean>,
-  timeout: number = POLL_TIMEOUT,
-  interval = 100,
+  options: Partial<PollOptions> = {},
 ): Promise<void> {
-  const startTime = Date.now();
+  const { timeout = POLL_TIMEOUT, interval = 100, minTries = 3 } = options;
 
-  while (Date.now() - startTime < timeout) {
+  const startTime = Date.now();
+  let tries = 0;
+
+  while (Date.now() - startTime < timeout || tries < minTries) {
+    tries++;
     try {
       if (await fn()) {
         return;
@@ -23,5 +32,7 @@ export async function poll(
     await setTimeout(interval);
   }
 
-  throw new Error(`Polling timed out after ${timeout}ms`);
+  throw new Error(
+    `Polling timed out after ${Date.now() - startTime}ms and ${tries} attempts`,
+  );
 }
