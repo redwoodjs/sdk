@@ -16,14 +16,17 @@ import os from "os";
 import path from "path";
 import { poll } from "./poll.mjs";
 
-const SETUP_PLAYGROUND_ENV_TIMEOUT = 300_000;
+const SETUP_PLAYGROUND_ENV_TIMEOUT = process.env
+  .RWSDK_SETUP_PLAYGROUND_ENV_TIMEOUT
+  ? parseInt(process.env.RWSDK_SETUP_PLAYGROUND_ENV_TIMEOUT, 10)
+  : 5 * 60 * 1000;
+
+const DEPLOYMENT_TIMEOUT = process.env.RWSDK_DEPLOYMENT_TIMEOUT
+  ? parseInt(process.env.RWSDK_DEPLOYMENT_TIMEOUT, 10)
+  : 5 * 60 * 1000;
 
 const PUPPETEER_TIMEOUT = process.env.RWSDK_PUPPETEER_TIMEOUT
   ? parseInt(process.env.RWSDK_PUPPETEER_TIMEOUT, 10)
-  : 60 * 1000 * 2;
-
-const DEV_SERVER_TIMEOUT = process.env.RWSDK_DEV_SERVER_TIMEOUT
-  ? parseInt(process.env.RWSDK_DEV_SERVER_TIMEOUT, 10)
   : 60 * 1000 * 2;
 
 const HYDRATION_TIMEOUT = process.env.RWSDK_HYDRATION_TIMEOUT
@@ -330,19 +333,16 @@ export async function createDeployment(
   );
 
   // Poll the URL to ensure it's live before proceeding
-  await poll(
-    async () => {
-      try {
-        const response = await fetch(deployResult.url);
-        // We consider any response (even 4xx or 5xx) as success,
-        // as it means the worker is routable.
-        return response.status > 0;
-      } catch (e) {
-        return false;
-      }
-    },
-    DEV_SERVER_TIMEOUT, // 60-second timeout for warm-up
-  );
+  await poll(async () => {
+    try {
+      const response = await fetch(deployResult.url);
+      // We consider any response (even 4xx or 5xx) as success,
+      // as it means the worker is routable.
+      return response.status > 0;
+    } catch (e) {
+      return false;
+    }
+  }, DEPLOYMENT_TIMEOUT);
 
   const cleanup = async () => {
     // Run deployment cleanup in background without blocking
