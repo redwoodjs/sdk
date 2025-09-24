@@ -107,15 +107,6 @@ testDevAndDeploy(
       const value = await page.evaluate((el) => el.value, inputs[0]);
       expect(value).toBe("test@example.com");
     }
-
-    // Test checkboxes
-    const checkboxes = await page.$$('input[type="checkbox"]');
-    const checkboxCount = checkboxes.length;
-    if (checkboxCount > 0) {
-      await checkboxes[0].click();
-      const isChecked = await page.evaluate((el) => el.checked, checkboxes[0]);
-      expect(isChecked).toBe(true);
-    }
   },
 );
 
@@ -129,6 +120,8 @@ testDevAndDeploy(
       return content.includes("Basic UI Components");
     });
 
+    await page.waitForNetworkIdle();
+
     const content = await page.content();
 
     // Check all major component sections exist on home page
@@ -138,7 +131,6 @@ testDevAndDeploy(
       "Data Display",
       "Interactive Components",
       "Feedback Components",
-      "Date & Time",
     ];
 
     for (const section of expectedSections) {

@@ -10,7 +10,6 @@ import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { INTERMEDIATES_OUTPUT_DIR } from "../lib/constants.mjs";
 import { externalModules } from "./constants.mjs";
 import { createViteAwareResolver } from "./createViteAwareResolver.mjs";
-import resolve from "enhanced-resolve";
 
 const log = debug("rwsdk:vite:run-directives-scan");
 
