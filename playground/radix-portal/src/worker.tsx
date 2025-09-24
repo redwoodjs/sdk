@@ -4,9 +4,7 @@ import { render, route } from "rwsdk/router";
 import { Document } from "@/app/Document";
 import { Home } from "@/app/pages/Home";
 import { setCommonHeaders } from "@/app/headers";
-import { DirectReactPortal } from "./app/pages/DirectReactPortal.js";
-//import { RadixPortal } from "./app/pages/RadixPortal.js";
-//import { Dropdown } from "./app/pages/Dropdown.js";
+import { DirectReactPortal } from "./app/components/DirectReactPortal.js";
 
 export type AppContext = {};
 
@@ -19,7 +17,5 @@ export default defineApp([
   render(Document, [
     route("/", Home),
     route("/direct-react-portal", DirectReactPortal),
-    //route("/radix-portal", RadixPortal),
-    //route("/dropdown", Dropdown),
   ]),
 ]);
