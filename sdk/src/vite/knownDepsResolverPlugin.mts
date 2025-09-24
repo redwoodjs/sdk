@@ -5,11 +5,16 @@ import { ROOT_DIR } from "../lib/constants.mjs";
 import enhancedResolve from "enhanced-resolve";
 import { ensureAliasArray } from "./ensureAliasArray.mjs";
 
-const log = debug("rwsdk:vite:react-conditions-resolver-plugin");
+const log = debug("rwsdk:vite:known-deps-resolver-plugin");
 
-const REACT_PREFIXES = ["react", "react-dom", "react-server-dom-webpack"];
+const KNOWN_PREFIXES = [
+  "react",
+  "react-dom",
+  "react-server-dom-webpack",
+  "rwsdk",
+];
 
-export const ENV_REACT_IMPORTS = {
+export const ENV_PREDEFINED_IMPORTS = {
   worker: [
     "react",
     "react-dom",
@@ -51,17 +56,17 @@ export const ENV_RESOLVERS = {
   }),
 };
 
-function resolveReactImport(
+function resolveKnownImport(
   id: string,
   envName: keyof typeof ENV_RESOLVERS,
   projectRootDir: string,
-  isReactImportKnown = false,
+  isPrefixedImport = false,
 ): string | undefined {
-  if (!isReactImportKnown) {
-    const isReactImport = REACT_PREFIXES.some(
+  if (!isPrefixedImport) {
+    const isKnownImport = KNOWN_PREFIXES.some(
       (prefix) => id === prefix || id.startsWith(`${prefix}/`),
     );
-    if (!isReactImport) {
+    if (!isKnownImport) {
       return undefined;
     }
   }
@@ -102,7 +107,7 @@ function resolveReactImport(
   return resolved;
 }
 
-function resolveEnvImportMappings(
+function resolvePredefinedEnvImportMappings(
   env: keyof typeof ENV_RESOLVERS,
   projectRootDir: string,
 ) {
@@ -110,10 +115,10 @@ function resolveEnvImportMappings(
     log("Resolving environment import mappings for env=%s", env);
 
   const mappings = new Map<string, string>();
-  const reactImports = ENV_REACT_IMPORTS[env];
+  const predefinedImports = ENV_PREDEFINED_IMPORTS[env];
 
-  for (const importRequest of reactImports) {
-    const resolved = resolveReactImport(
+  for (const importRequest of predefinedImports) {
+    const resolved = resolveKnownImport(
       importRequest,
       env,
       projectRootDir,
@@ -140,18 +145,18 @@ function resolveEnvImportMappings(
   return mappings;
 }
 
-export const reactConditionsResolverPlugin = ({
+export const knownDepsResolverPlugin = ({
   projectRootDir,
 }: {
   projectRootDir: string;
 }): Plugin[] => {
-  log("Initializing react conditions resolver plugin");
+  log("Initializing known dependencies resolver plugin");
   let isBuild = false;
 
   const ENV_IMPORT_MAPPINGS = Object.fromEntries(
     Object.keys(ENV_RESOLVERS).map((env) => [
       env,
-      resolveEnvImportMappings(
+      resolvePredefinedEnvImportMappings(
         env as keyof typeof ENV_RESOLVERS,
         projectRootDir,
       ),
@@ -164,7 +169,7 @@ export const reactConditionsResolverPlugin = ({
     0,
   );
   log(
-    "React conditions resolver configured with %d total mappings across %d environments",
+    "Known dependencies resolver configured with %d total mappings across %d environments",
     totalMappings,
     Object.keys(ENV_IMPORT_MAPPINGS).length,
   );
@@ -178,13 +183,13 @@ export const reactConditionsResolverPlugin = ({
     }
 
     return {
-      name: `rwsdk:react-conditions-resolver-esbuild-${envName}`,
+      name: `rwsdk:known-dependencies-resolver-esbuild-${envName}`,
       setup(build: any) {
         build.onResolve({ filter: /.*/ }, (args: any) => {
           let resolved: string | undefined = mappings.get(args.path);
 
           if (!resolved) {
-            resolved = resolveReactImport(
+            resolved = resolveKnownImport(
               args.path,
               envName as keyof typeof ENV_RESOLVERS,
               projectRootDir,
@@ -206,7 +211,7 @@ export const reactConditionsResolverPlugin = ({
 
   return [
     {
-      name: "rwsdk:react-conditions-resolver:config",
+      name: "rwsdk:known-dependencies-resolver:config",
       enforce: "post",
 
       config(config, { command }) {
@@ -219,8 +224,10 @@ export const reactConditionsResolverPlugin = ({
 
         // Set up aliases and optimizeDeps for each environment
         for (const [envName, mappings] of Object.entries(ENV_IMPORT_MAPPINGS)) {
-          const reactImports =
-            ENV_REACT_IMPORTS[envName as keyof typeof ENV_REACT_IMPORTS];
+          const predefinedImports =
+            ENV_PREDEFINED_IMPORTS[
+              envName as keyof typeof ENV_PREDEFINED_IMPORTS
+            ];
 
           // Ensure environment config exists
           if (!(config as any).environments) {
@@ -248,7 +255,7 @@ export const reactConditionsResolverPlugin = ({
             envConfig.optimizeDeps.esbuildOptions.plugins.push(esbuildPlugin);
 
             envConfig.optimizeDeps.include ??= [];
-            envConfig.optimizeDeps.include.push(...reactImports);
+            envConfig.optimizeDeps.include.push(...predefinedImports);
 
             log(
               "Added esbuild plugin and optimizeDeps includes for environment: %s",
@@ -276,13 +283,13 @@ export const reactConditionsResolverPlugin = ({
             "Environment %s configured with %d aliases and %d optimizeDeps includes",
             envName,
             (mappings as Map<string, string>).size,
-            reactImports.length,
+            predefinedImports.length,
           );
         }
       },
     },
     {
-      name: "rwsdk:react-conditions-resolver:resolveId",
+      name: "rwsdk:known-dependencies-resolver:resolveId",
       enforce: "pre",
       async resolveId(
         id: string,
@@ -317,7 +324,7 @@ export const reactConditionsResolverPlugin = ({
         ).get(id);
 
         if (!resolved) {
-          resolved = resolveReactImport(
+          resolved = resolveKnownImport(
             id,
             envName as keyof typeof ENV_RESOLVERS,
             projectRootDir,

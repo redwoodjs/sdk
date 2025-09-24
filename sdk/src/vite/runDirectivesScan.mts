@@ -298,22 +298,19 @@ export const runDirectivesScan = async ({
                 inheritedEnv,
               });
 
-              // Store the definitive environment for this module
-              moduleEnvironments.set(args.path, moduleEnv);
-              log("Set environment for", args.path, "to", moduleEnv);
+              // Store the definitive environment for this module, so it can be used when it becomes an importer.
+              const realPath = await fsp.realpath(args.path);
+              moduleEnvironments.set(realPath, moduleEnv);
+              log("Set environment for", realPath, "to", moduleEnv);
 
               // Populate the output sets if the file has a directive
               if (isClient) {
-                log("Discovered 'use client' in:", args.gpath);
-                clientFiles.add(
-                  normalizeModulePath(args.path, rootConfig.root),
-                );
+                log("Discovered 'use client' in:", realPath);
+                clientFiles.add(normalizeModulePath(realPath, rootConfig.root));
               }
               if (isServer) {
-                log("Discovered 'use server' in:", args.path);
-                serverFiles.add(
-                  normalizeModulePath(args.path, rootConfig.root),
-                );
+                log("Discovered 'use server' in:", realPath);
+                serverFiles.add(normalizeModulePath(realPath, rootConfig.root));
               }
 
               let code: string;
@@ -380,5 +377,11 @@ export const runDirectivesScan = async ({
     // Always clear the scanning flag when done
     delete process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE;
     console.log("✅ Scan complete.");
+    process.env.VERBOSE &&
+      log(
+        "Client/server files after scanning: client=%O, server=%O",
+        Array.from(clientFiles),
+        Array.from(serverFiles),
+      );
   }
 };

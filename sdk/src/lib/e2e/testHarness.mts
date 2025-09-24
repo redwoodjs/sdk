@@ -7,7 +7,8 @@ import {
   expect,
   vi,
 } from "vitest";
-import { basename } from "path";
+import { basename, join as pathJoin, dirname } from "path";
+import fs from "node:fs";
 import { setupTarballEnvironment } from "./tarball.mjs";
 import { runDevServer } from "./dev.mjs";
 import {
@@ -20,6 +21,9 @@ import { launchBrowser } from "./browser.mjs";
 import type { Browser, Page } from "puppeteer-core";
 
 const SETUP_PLAYGROUND_ENV_TIMEOUT = 10 * 60 * 1000;
+const PUPPETEER_TIMEOUT = process.env.RWSDK_PUPPETEER_TIMEOUT
+  ? parseInt(process.env.RWSDK_PUPPETEER_TIMEOUT, 10)
+  : 60 * 1000; // 60 seconds
 
 interface PlaygroundEnvironment {
   projectDir: string;
@@ -118,26 +122,25 @@ function getProjectDirectory(): string {
 }
 
 /**
- * Derive the playground directory from import.meta.url
+ * Derive the playground directory from import.meta.url by finding the nearest package.json
  */
 function getPlaygroundDirFromImportMeta(importMetaUrl: string): string {
   const url = new URL(importMetaUrl);
   const testFilePath = url.pathname;
 
-  // Extract playground name from path like: /path/to/playground/PLAYGROUND_NAME/__tests__/e2e.test.mts
-  const playgroundMatch = testFilePath.match(
-    /\/playground\/([^\/]+)\/__tests__\//,
-  );
-
-  if (playgroundMatch) {
-    const playgroundName = playgroundMatch[1];
-    // Return the absolute path to the playground directory
-    const playgroundPath = testFilePath.replace(/\/__tests__\/.*$/, "");
-    return playgroundPath;
+  let currentDir = dirname(testFilePath);
+  // Walk up the tree from the test file's directory
+  while (currentDir !== "/") {
+    // Check if a package.json exists in the current directory
+    if (fs.existsSync(pathJoin(currentDir, "package.json"))) {
+      return currentDir;
+    }
+    currentDir = dirname(currentDir);
   }
 
   throw new Error(
-    `Could not determine playground directory from import.meta.url: ${importMetaUrl}`,
+    `Could not determine playground directory from import.meta.url: ${importMetaUrl}. ` +
+      `Failed to find a package.json in any parent directory.`,
   );
 }
 
@@ -315,6 +318,9 @@ export async function createDeployment(): Promise<DeploymentInstance> {
 export async function cleanupDeployment(
   deployment: DeploymentInstance,
 ): Promise<void> {
+  console.log(
+    `🧹 Cleaning up deployment: ${deployment.workerName} (${deployment.resourceUniqueKey})`,
+  );
   const env = getPlaygroundEnvironment();
 
   if (isRelatedToTest(deployment.workerName, deployment.resourceUniqueKey)) {
@@ -471,6 +477,7 @@ export function testDev(
       const devServer = await createDevServer();
       const browser = await createBrowser();
       const page = await browser.newPage();
+      page.setDefaultTimeout(PUPPETEER_TIMEOUT);
 
       const cleanup = async () => {
         await browser.close();
@@ -521,6 +528,7 @@ testDev.only = (
       const devServer = await createDevServer();
       const browser = await createBrowser();
       const page = await browser.newPage();
+      page.setDefaultTimeout(PUPPETEER_TIMEOUT);
 
       const cleanup = async () => {
         await browser.close();
@@ -568,6 +576,7 @@ export function testDeploy(
       const deployment = await createDeployment();
       const browser = await createBrowser();
       const page = await browser.newPage();
+      page.setDefaultTimeout(PUPPETEER_TIMEOUT);
 
       const cleanup = async () => {
         // We don't await this because we want to let it run in the background
@@ -617,6 +626,7 @@ testDeploy.only = (
       const deployment = await createDeployment();
       const browser = await createBrowser();
       const page = await browser.newPage();
+      page.setDefaultTimeout(PUPPETEER_TIMEOUT);
 
       const cleanup = async () => {
         // We don't await this because we want to let it run in the background

@@ -8,6 +8,7 @@ on:
       - "docs/**"
       - ".notes/**"
       - "*.md"
+      - "src/**/*.test.*"
   pull_request:
     branches:
       - main
@@ -15,6 +16,7 @@ on:
       - "docs/**"
       - ".notes/**"
       - "*.md"
+      - "src/**/*.test.*"
   workflow_dispatch:
     inputs:
       starter:
@@ -118,7 +120,6 @@ jobs:
 
       - name: Run Smoke Tests
         id: smoke-test
-        continue-on-error: true
         shell: bash
         run: |
           ./scripts/retry.sh ./sdk/scripts/ci-smoke-test.sh --starter "${{ matrix.starter }}" --package-manager "${{ matrix.package-manager }}"
