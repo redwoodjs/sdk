@@ -96,15 +96,6 @@ export const redwoodPlugin = async (
     }
   }
 
-  // START --- vvv
-  // HACK: Force the code-block-adapter-context to be a client component
-  // to work around a bug in Chakra UI where it's missing the "use client"
-  // directive. This file uses `createContext`, which is a client-only API.
-  clientFiles.add(
-    "**/@chakra-ui/react/**/code-block/code-block-adapter-context.js",
-  );
-  // END --- ^^^
-
   const workerConfigPath =
     options.configPath ??
     (process.env.RWSDK_WRANGLER_CONFIG
