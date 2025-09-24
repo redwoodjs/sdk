@@ -22,13 +22,13 @@
     "types": "tsc"
   },
   "dependencies": {
-    "rwsdk": "workspace:*",
+    "@radix-ui/react-portal": "1.1.9",
+    "@radix-ui/react-primitive": "2.1.3",
+    "@radix-ui/react-tooltip": "1.2.8",
     "react": "19.2.0-canary-d415fd3e-20250919",
     "react-dom": "19.2.0-canary-d415fd3e-20250919",
     "react-server-dom-webpack": "19.2.0-canary-d415fd3e-20250919",
-    "@radix-ui/react-portal": "1.1.1",
-    "@radix-ui/react-tooltip": "1.1.2",
-    "@radix-ui/react-primitive": "1.1.1"
+    "rwsdk": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.13.3",
