@@ -33,9 +33,6 @@ import { linkerPlugin } from "./linkerPlugin.mjs";
 import { directiveModulesDevPlugin } from "./directiveModulesDevPlugin.mjs";
 import { directivesFilteringPlugin } from "./directivesFilteringPlugin.mjs";
 import { resolveForcedPaths } from "./resolveForcedPaths.mjs";
-import { runPatch } from "./runPatch.mjs";
-import { runPrerender } from "./runPrerender.mjs";
-import { serverFunctions } from "./serverFunctions.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
