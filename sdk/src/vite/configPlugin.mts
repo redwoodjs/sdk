@@ -50,7 +50,15 @@ export const configPlugin = ({
       },
       optimizeDeps: {
         noDiscovery: false,
-        include: ["rwsdk/worker"],
+        include: [
+          "rwsdk/worker",
+          "rwsdk/router",
+          "rwsdk/auth",
+          "rwsdk/db",
+          "rwsdk/__ssr_bridge",
+          "rwsdk/realtime/worker",
+          "rwsdk/realtime/durableObject",
+        ],
         exclude: [],
         entries: [workerEntryPathname],
         esbuildOptions: {
@@ -98,7 +106,7 @@ export const configPlugin = ({
           },
           optimizeDeps: {
             noDiscovery: false,
-            include: ["rwsdk/client"],
+            include: ["rwsdk/client", "rwsdk/realtime/client"],
             entries: [],
             esbuildOptions: {
               jsx: "automatic",
@@ -125,7 +133,7 @@ export const configPlugin = ({
             noDiscovery: false,
             entries: [workerEntryPathname],
             exclude: externalModules,
-            include: ["rwsdk/__ssr", "rwsdk/__ssr_bridge"],
+            include: ["rwsdk/__ssr", "rwsdk/__ssr_bridge", "rwsdk/client"],
             esbuildOptions: {
               jsx: "automatic",
               jsxImportSource: "react",

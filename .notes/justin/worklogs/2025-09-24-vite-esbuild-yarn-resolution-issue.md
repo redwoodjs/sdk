@@ -102,3 +102,11 @@ This was addressed with a two-part, framework-level fix that requires no user co
 2.  **Canonical Path Resolution:** The `runDirectivesScan` plugin was updated to use `fs.realpath` on all discovered module paths. This ensures that the framework's internal maps are keyed by the canonical file path, matching Vite's behavior and preventing lookup failures during SSR.
 
 A new playground, `monorepo-yarn-hoist`, was created to reliably reproduce this specific hoisting scenario and validate the fix.
+
+## Update: Unexpected Re-optimization
+
+After fixing the symlink resolution, the e2e test revealed a new issue: Vite's dependency optimizer is re-running for `rwsdk` modules (e.g., `rwsdk/router`) after the initial scan. This causes a full-page reload and leads to a runtime error: `TypeError: Cannot read properties of undefined (reading 'scriptsToBeLoaded')`.
+
+This re-optimization is problematic because it can lead to duplicate instances of the framework's modules being loaded, which breaks internal state management that relies on singletons (like `AsyncLocalStorage` for request context).
+
+The root cause of this re-optimization needs to be investigated. It should not be happening if all dependencies are correctly discovered during the initial scan. As an immediate mitigation to unblock testing, all known `rwsdk` entry points will be explicitly added to `optimizeDeps.include`.
