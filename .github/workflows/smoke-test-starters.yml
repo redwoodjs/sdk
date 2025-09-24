@@ -122,7 +122,7 @@ jobs:
         id: smoke-test
         shell: bash
         run: |
-          ./scripts/retry.sh ./sdk/scripts/ci-smoke-test.sh --starter "${{ matrix.starter }}" --package-manager "${{ matrix.package-manager }}"
+          ./sdk/scripts/ci-smoke-test.sh --starter "${{ matrix.starter }}" --package-manager "${{ matrix.package-manager }}"
         env:
           CHROME_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
 

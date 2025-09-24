@@ -116,7 +116,7 @@ jobs:
         shell: bash
         run: |
           pnpm install
-          ./scripts/retry.sh pnpm test:e2e
+          pnpm test:e2e
         env:
           CI: 1
           PACKAGE_MANAGER: ${{ matrix.package-manager }}
