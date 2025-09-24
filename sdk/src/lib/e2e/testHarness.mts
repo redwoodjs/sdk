@@ -20,7 +20,7 @@ import {
 import { launchBrowser } from "./browser.mjs";
 import type { Browser, Page } from "puppeteer-core";
 
-const SETUP_PLAYGROUND_ENV_TIMEOUT = 10 * 60 * 1000;
+const SETUP_PLAYGROUND_ENV_TIMEOUT = 300_000;
 const PUPPETEER_TIMEOUT = process.env.RWSDK_PUPPETEER_TIMEOUT
   ? parseInt(process.env.RWSDK_PUPPETEER_TIMEOUT, 10)
   : 60 * 1000; // 60 seconds
@@ -144,13 +144,31 @@ function getPlaygroundDirFromImportMeta(importMetaUrl: string): string {
   );
 }
 
+export interface SetupPlaygroundEnvironmentOptions {
+  /**
+   * The directory of the playground project to set up.
+   * Can be an absolute path, or a `import.meta.url` `file://` string.
+   * If not provided, it will be inferred from the test file's path.
+   */
+  sourceProjectDir?: string;
+  /**
+   * The root directory of the monorepo, if the project is part of one.
+   * This is used to correctly set up the test environment for monorepo projects.
+   */
+  monorepoRoot?: string;
+}
+
 /**
- * Sets up a playground environment for the entire test suite.
- * Automatically registers beforeAll and afterAll hooks.
- *
- * @param sourceProjectDir - Explicit path to playground directory, or import.meta.url to auto-detect
+ * A Vitest hook that sets up a playground environment for a test file.
+ * It creates a temporary directory, copies the playground project into it,
+ * and installs dependencies using a tarball of the SDK.
+ * This ensures that tests run in a clean, isolated environment.
  */
-export function setupPlaygroundEnvironment(sourceProjectDir?: string): void {
+export function setupPlaygroundEnvironment(
+  options: string | SetupPlaygroundEnvironmentOptions = {},
+): void {
+  const { sourceProjectDir, monorepoRoot } =
+    typeof options === "string" ? { sourceProjectDir: options } : options;
   ensureHooksRegistered();
 
   beforeAll(async () => {
@@ -170,6 +188,7 @@ export function setupPlaygroundEnvironment(sourceProjectDir?: string): void {
 
     const tarballEnv = await setupTarballEnvironment({
       projectDir,
+      monorepoRoot,
       packageManager:
         (process.env.PACKAGE_MANAGER as "pnpm" | "npm" | "yarn") || "pnpm",
     });

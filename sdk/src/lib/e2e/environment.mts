@@ -126,6 +126,7 @@ export async function copyProjectToTempDir(
   projectDir: string,
   resourceUniqueKey: string,
   packageManager?: PackageManager,
+  monorepoRoot?: string,
 ): Promise<{
   tempDir: tmp.DirectoryResult;
   targetDir: string;
@@ -137,16 +138,24 @@ export async function copyProjectToTempDir(
     // Create a temporary directory
     const tempDir = await tmp.dir({ unsafeCleanup: true });
 
-    // Create unique project directory name
-    const originalDirName = basename(projectDir);
-    const workerName = `${originalDirName}-test-${resourceUniqueKey}`;
-    const targetDir = resolve(tempDir.path, workerName);
+    // Determine the source directory to copy from
+    const sourceDir = monorepoRoot || projectDir;
 
-    console.log(`Copying project from ${projectDir} to ${targetDir}`);
+    // Create unique project directory name
+    const originalDirName = basename(sourceDir);
+    const workerName = `${originalDirName}-test-${resourceUniqueKey}`;
+    const tempCopyRoot = resolve(tempDir.path, workerName);
+
+    // If it's a monorepo, the targetDir for commands is a subdirectory
+    const targetDir = monorepoRoot
+      ? resolve(tempCopyRoot, relative(monorepoRoot, projectDir))
+      : tempCopyRoot;
+
+    console.log(`Copying project from ${sourceDir} to ${tempCopyRoot}`);
 
     // Read project's .gitignore if it exists
     let ig = ignore();
-    const gitignorePath = join(projectDir, ".gitignore");
+    const gitignorePath = join(sourceDir, ".gitignore");
 
     if (await pathExists(gitignorePath)) {
       log("Found .gitignore file at %s", gitignorePath);
@@ -175,10 +184,10 @@ export async function copyProjectToTempDir(
 
     // Copy the project directory, respecting .gitignore
     log("Starting copy process with ignored patterns");
-    await copy(projectDir, targetDir, {
+    await copy(sourceDir, tempCopyRoot, {
       filter: (src) => {
         // Get path relative to project directory
-        const relativePath = relative(projectDir, src);
+        const relativePath = relative(sourceDir, src);
         if (!relativePath) return true; // Include the root directory
 
         // Check against ignore patterns
