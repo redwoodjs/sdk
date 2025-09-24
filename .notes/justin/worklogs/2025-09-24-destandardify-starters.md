@@ -173,4 +173,148 @@ The final plan combines the "implicit pre-release" path for new users with a cle
         *   Reassure users that their existing, generated authentication code is theirs and will continue to work.
         *   Provide a guide for users who *want* to adopt the new, officially supported passkey pattern. This guide will walk them through refactoring their existing code to use the `setupPasskeyAuth` middleware and the `usePasskey` client-side hook, referencing the main authentication documentation.
 
-This refined strategy provides a smooth onboarding path for new users, a clear and non-disruptive upgrade path for existing users, and the necessary flexibility for developers to manage different versions.
+This refined strategy provides a smooth onboarding path for new users, a clear and non-disruptive upgrade path for existing users, and the necessary flexibility for developers to manage different versions.## What's Changed
+* fix: Unify request handling for pages and RSC actions by @justinvdm in https://github.com/redwoodjs/sdk/pull/715
+
+
+**Full Changelog**: https://github.com/redwoodjs/sdk/compare/v0.3.8...v1.0.0-alpha.0
+
+### BREAKING CHANGE
+
+React Server Component (RSC) actions now run through the global middleware pipeline. Previously, action requests bypassed all middleware.
+
+This change allows logic for authentication, session handling, and security headers to apply consistently to all incoming requests. However, if you have existing middleware, it will now execute for RSC actions, which may introduce unintended side effects.
+
+#### Migration Guide
+
+You must review your existing global middleware to ensure it is compatible with RSC action requests. A new `isAction` boolean flag is now available on the `requestInfo` object passed to middleware, making it easy to conditionally apply logic.
+
+If you have middleware that should only run for page requests, you need to add a condition to bypass its logic for action requests.
+
+**Example:**
+
+Let's say you have a middleware that logs all incoming page requests. You would modify it to exclude actions like so:
+
+```typescript
+// src/worker.tsx
+
+const loggingMiddleware = ({ isAction, request }) => {
+  // Check if the request is for an RSC action.
+  if (isAction) {
+    // It's an action, so we skip the logging logic.
+    return;
+  }
+
+  // Otherwise, it's a page request, so we log it.
+  const url = new URL(request.url);
+  console.log('Page requested:', url.pathname);
+};
+
+export default defineApp([
+  loggingMiddleware,
+  // ... your other middleware and routes
+]);
+```
+## What's Changed
+* feat(deps): Switch to peer dependency model for React by @justinvdm in https://github.com/redwoodjs/sdk/pull/708
+
+
+**Full Changelog**: https://github.com/redwoodjs/sdk/compare/v1.0.0-alpha.0...v1.0.0-alpha.1
+
+## BREAKING CHANGES & MIGRATION GUIDE
+
+**1. Add Core Dependencies**
+
+Your project's `package.json` must now include explicit dependencies for React and the Cloudflare toolchain. Add the following to your `dependencies` and `devDependencies`:
+
+```json
+// package.json
+
+"dependencies": {
+  // ... your other dependencies
+  "react": "19.2.0-canary-3fb190f7-20250908",
+  "react-dom": "19.2.0-canary-3fb190f7-20250908",
+  "react-server-dom-webpack": "19.2.0-canary-3fb190f7-20250908"
+},
+"devDependencies": {
+  // ... your other devDependencies
+  "@cloudflare/vite-plugin": "1.12.4",
+  "wrangler": "4.35.0"
+}
+```
+
+**2. Update Wrangler Configuration**
+
+To ensure the Cloudflare Workers runtime supports the features required by modern React, update your `wrangler.jsonc` (or `wrangler.toml`):
+
+-   Set the `compatibility_date` to `2025-08-21` or later.
+
+```json
+// wrangler.jsonc
+
+{
+  // ...
+  "compatibility_date": "2025-08-21",
+  // ...
+}
+```
+
+After making these changes, run your package manager's install command (e.g., `pnpm install`) to apply the updates.
+## What's Changed
+* feat: Upgrade to Vite v7 by @justinvdm in https://github.com/redwoodjs/sdk/pull/720
+
+
+**Full Changelog**: https://github.com/redwoodjs/sdk/compare/v1.0.0-alpha.1...v1.0.0-alpha.2
+**Full Changelog**: https://github.com/redwoodjs/sdk/compare/v1.0.0-alpha.2...v1.0.0-alpha.3
+## What's Changed
+* 📝 Updates to the Jobs Form page (tutorial) by @ahaywood in https://github.com/redwoodjs/sdk/pull/724
+* 📝 Updated the Contacts section of the tutorial by @ahaywood in https://github.com/redwoodjs/sdk/pull/727
+* fix: Update starter worker types by @justinvdm in https://github.com/redwoodjs/sdk/pull/729
+* ✨ Added a favicon to the minimal and standard starter by @ahaywood in https://github.com/redwoodjs/sdk/pull/728
+* tests: Add more unit tests by @justinvdm in https://github.com/redwoodjs/sdk/pull/721
+* chore: Use npm pack tarball of sdk for smoke tests by @justinvdm in https://github.com/redwoodjs/sdk/pull/722
+* Finished making updates to the Jobs Details page of the tutorial by @ahaywood in https://github.com/redwoodjs/sdk/pull/731
+* fix: Avoid duplicate identifiers in build during linking by @justinvdm in https://github.com/redwoodjs/sdk/pull/732
+
+
+**Full Changelog**: https://github.com/redwoodjs/sdk/compare/v1.0.0-alpha.3...v1.0.0-alpha.4
+## What's Changed
+* fix: Correct vendor module paths in dev directive barrel file by @justinvdm in https://github.com/redwoodjs/sdk/pull/734
+
+
+**Full Changelog**: https://github.com/redwoodjs/sdk/compare/v1.0.0-alpha.4...v1.0.0-alpha.5
+## What's Changed
+* fix: Restore short-circuiting behavior for routes by @justinvdm in https://github.com/redwoodjs/sdk/pull/738
+
+
+**Full Changelog**: https://github.com/redwoodjs/sdk/compare/v1.0.0-alpha.5...v1.0.0-alpha.6
+## What's Changed
+* fix: Use permissive range for React peer dependencies by @justinvdm in https://github.com/redwoodjs/sdk/pull/745
+* chore: Greenkeeping configuration by @justinvdm in https://github.com/redwoodjs/sdk/pull/748
+* infra: Playground + E2E test infrastructure by @justinvdm in https://github.com/redwoodjs/sdk/pull/753
+* infra: CI improvements by @justinvdm in https://github.com/redwoodjs/sdk/pull/755
+* fix: useId() mismatch between SSR and client side by @justinvdm in https://github.com/redwoodjs/sdk/pull/752
+
+
+**Full Changelog**: https://github.com/redwoodjs/sdk/compare/v1.0.0-alpha.6...v1.0.0-alpha.7
+## What's Changed
+* fix: Scope middleware to prefixes by @justinvdm in https://github.com/redwoodjs/sdk/pull/759
+
+
+**Full Changelog**: https://github.com/redwoodjs/sdk/compare/v1.0.0-alpha.7...v1.0.0-alpha.8
+## What's Changed
+* fix(e2e): ensure test workers are deleted after tests by @justinvdm in https://github.com/redwoodjs/sdk/pull/760
+* fix(e2e): Disable inspector port in tests to prevent collisions by @justinvdm in https://github.com/redwoodjs/sdk/pull/761
+* chore: CI Worker cleanup by @justinvdm in https://github.com/redwoodjs/sdk/pull/764
+* chore: Fix E2E flake by @justinvdm in https://github.com/redwoodjs/sdk/pull/765
+* infra: Better CI structure by @justinvdm in https://github.com/redwoodjs/sdk/pull/766
+* fix: Account for `use strict` when finding client/server directives by @justinvdm in https://github.com/redwoodjs/sdk/pull/762
+* infra: Add retry mechanism for Chrome installation. by @justinvdm in https://github.com/redwoodjs/sdk/pull/767
+* fix(deps): update starter-peer-deps by @renovate[bot] in https://github.com/redwoodjs/sdk/pull/746
+* infra: Clean up node_modules and lockfiles before installing dependencies. by @justinvdm in https://github.com/redwoodjs/sdk/pull/770
+* infra: Fix CI runs for yarn by @justinvdm in https://github.com/redwoodjs/sdk/pull/772
+
+## New Contributors
+* @renovate[bot] made their first contribution in https://github.com/redwoodjs/sdk/pull/746
+
+**Full Changelog**: https://github.com/redwoodjs/sdk/compare/v1.0.0-alpha.8...v1.0.0-alpha.9

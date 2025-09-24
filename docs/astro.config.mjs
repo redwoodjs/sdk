@@ -43,6 +43,7 @@ export default defineConfig({
           label: "Get Started",
           items: [
             { label: "Quick Start", slug: "getting-started/quick-start" },
+            { label: "Migrating to 1.x", slug: "migrating" },
           ],
         },
         {

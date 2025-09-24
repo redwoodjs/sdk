@@ -1,0 +1,114 @@
+---
+title: Migrating from 0.x to 1.x
+description: A guide for upgrading your RedwoodSDK project.
+---
+
+This guide is for users who have an existing RedwoodSDK project and wish to upgrade from a `0.x` version to `1.x`.
+
+The `1.x` release line includes significant improvements, including a simplified starter template, integrated passkey authentication, and numerous bug fixes and performance enhancements.
+
+## Required Migration Steps
+
+To upgrade your project, you must first take the following steps to avoid breaking changes.
+
+### 1. Update `package.json` Dependencies
+
+In version `1.x`, several core packages like `react` and `wrangler` have been moved to `peerDependencies`. You must now explicitly add them to your project's `package.json`.
+
+Update your `dependencies` and `devDependencies` to include the following:
+
+```jsonc title="package.json"
+{
+  "dependencies": {
+    "react": "19.2.0-canary-3fb190f7-20250908",
+    "react-dom": "19.2.0-canary-3fb190f7-20250908",
+    "react-server-dom-webpack": "19.2.0-canary-3fb190f7-20250908",
+    // ... your other dependencies
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.12.4",
+    "wrangler": "4.35.0",
+    // ... your other devDependencies
+  }
+}
+```
+
+After updating, run your package manager's install command (e.g., `pnpm install`) to apply the updates.
+
+### 2. Update `wrangler.jsonc`
+
+The Cloudflare Workers runtime now requires a newer compatibility date to support the features used by modern React.
+
+-   Set the `compatibility_date` in your `wrangler.jsonc` to `2025-08-21` or later.
+
+```jsonc title="wrangler.jsonc"
+{
+  // ...
+  "compatibility_date": "2025-08-21"
+  // ...
+}
+```
+
+### 3. Review Middleware for RSC Action Compatibility
+
+React Server Component (RSC) actions now run through the global middleware pipeline. Previously, action requests bypassed all middleware.
+
+This change allows logic for authentication and session handling to apply consistently. However, if you have existing middleware, it will now execute for RSC actions, which may introduce unintended side effects.
+
+You must review your existing global middleware to ensure it is compatible. A new `isAction` boolean flag is now available on the `requestInfo` object passed to middleware, making it easy to conditionally apply logic.
+
+**Example:**
+
+If you have middleware that should only run for page requests (e.g., logging), you must add a condition to bypass it for action requests:
+
+```typescript title="src/worker.tsx"
+const loggingMiddleware = ({ isAction, request }) => {
+  // Check if the request is for an RSC action.
+  if (isAction) {
+    // It's an action, so we skip the logging logic.
+    return;
+  }
+
+  // Otherwise, it's a page request, so we log it.
+  const url = new URL(request.url);
+  console.log('Page requested:', url.pathname);
+};
+
+export default defineApp([
+  loggingMiddleware,
+  // ... your other middleware and routes
+]);
+```
+
+## Optional Refactoring Guide: Adopting the New Passkey Auth
+
+The most significant change in `1.x` is the removal of the `standard` starter in favor of a single, unified `starter` project with passkey authentication features baked directly into the SDK.
+
+**Your existing authentication code, which was generated from the old `standard` starter, is now your own code and will continue to work.** You are not required to change it.
+
+However, if you wish to adopt the new, officially supported passkey utilities for better maintenance and future updates, this guide will walk you through the process.
+
+### What's Changed?
+
+-   The `standard` starter and its associated tutorial have been removed.
+-   Passkey (WebAuthn) functionality, previously part of the `standard` starter, is now available directly from the `rwsdk` package via the `rwsdk/passkey/worker` and `rwsdk/passkey/client` entry points.
+-   The new implementation uses a lightweight, SQLite-based Durable Object for session and user storage, removing the need for Prisma in the starter.
+
+### Refactoring Steps
+
+To refactor your existing project to use the new passkey implementation, you will essentially be replacing your current auth-related files with the new SDK primitives.
+
+1.  **Remove Old Auth Files**: Delete the user-related pages, functions, and database files that were part of the old `standard` starter. This may include:
+    *   `src/app/pages/user/`
+    *   `src/app/db/` (if you were only using it for authentication)
+    *   The user-related routes from your `worker.tsx`.
+
+2.  **Follow the New Authentication Guide**: The new, comprehensive guide provides step-by-step instructions for setting up the integrated passkey authentication.
+
+    Please follow the new [**Authentication Guide**](./authentication) to:
+    *   Configure your `wrangler.jsonc` with the required D1 database and Durable Objects.
+    *   Set up the `PasskeyDurableObject`.
+    *   Integrate the `setupPasskeyAuth` middleware into your `worker.tsx`.
+    *   Build a new login/registration UI using the `usePasskey` hook.
+
+By following the new guide, you will be able to fully transition your project to the new, streamlined authentication system.
