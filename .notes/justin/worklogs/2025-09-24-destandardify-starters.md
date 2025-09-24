@@ -76,3 +76,25 @@ The authentication functionality previously in the `standard` starter will be mo
 ### 6. Rename "minimal" to "starter"
 
 - Throughout the codebase, documentation, and any other relevant files, all remaining occurrences of the name "minimal" will be replaced with "starter" to reflect its new role as the one and only starter template.
+
+### 7. Documentation Cleanup
+
+The following files in the `docs` directory contain references to the "standard" starter and will need to be updated:
+
+- `docs/src/content/docs/core/database.mdx`
+- `docs/src/content/docs/core/authentication.mdx`
+- `docs/astro.config.mjs`
+- `docs/src/content/docs/reference/create-rwsdk.mdx`
+- `docs/src/content/docs/index.mdx`
+- `docs/src/content/docs/guides/frontend/storybook.mdx`
+- `docs/src/content/docs/guides/frontend/og-images.mdx`
+- `docs/src/content/docs/guides/frontend/documents.mdx`
+- `docs/src/content/docs/core/storage.mdx`
+- `docs/src/content/docs/core/security.mdx`
+- `docs/src/content/docs/core/routing.mdx`
+- `docs/architecture/ssrBridge.md`
+- `docs/architecture/requestHandling.md`
+- `docs/architecture/endToEndTesting.md`
+- `docs/architecture/earlyHydrationStrategy.md`
+- `docs/architecture/directiveTransforms.md`
+- `docs/architecture/clientStylesheets.md`
