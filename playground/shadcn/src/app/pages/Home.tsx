@@ -125,11 +125,22 @@ export function Home({ ctx }: RequestInfo) {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-              <div className="flex gap-2 items-center">
-                <Avatar>
-                  <AvatarImage alt="John Doe" src="/shadcn.png" />
+              <div className="flex items-center gap-4">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage
+                    alt="John Doe"
+                    src={`data:image/svg+xml,${encodeURIComponent(
+                      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">⚫️</text></svg>`,
+                    )}`}
+                  />
                   <AvatarFallback>JD</AvatarFallback>
                 </Avatar>
+                <div>
+                  <div className="font-semibold">John Doe</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                    john.doe@example.com
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
