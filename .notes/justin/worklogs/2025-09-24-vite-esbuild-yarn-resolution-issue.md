@@ -35,3 +35,23 @@ This approach involves teaching Vite's optimizer how to resolve the framework's 
 -   **How it works:** We would create a small, dedicated `esbuild` plugin. This plugin's sole purpose is to intercept imports beginning with `rwsdk/`. When it finds one, it uses Node's `require.resolve` API to find the module, but critically, it initiates the resolution from the user's project root directory. This plugin would then be injected into Vite's `optimizeDeps.esbuildOptions` from our main framework plugin.
 -   **Pros:** Centralizes all optimizer-related resolution logic into a single, clean module. It is a more robust and scalable solution that keeps the generated code clean with standard import specifiers.
 -   **Cons:** Slightly more abstract, as it involves hooking into a specific, internal part of Vite's build process.
+
+## Test Plan: Simulating the Monorepo Environment
+
+To validate the chosen solution (Approach B), a new playground example, `monorepo-yarn-hoist`, will be created to reliably reproduce the resolution error in an isolated environment.
+
+1.  **Simulate Monorepo Structure:** The playground will contain a nested directory structure that mimics a monorepo:
+    -   `packages/project/`: A copy of the `hello-world` application.
+    -   `vendor/ui-lib/`: A local, fake UI library that acts as the "hoisted" dependency.
+    -   A root `package.json` and `pnpm-workspace.yaml` will define this structure as a pnpm workspace.
+
+2.  **Recreate Hoisting Scenario:**
+    -   The root `package.json` will depend on `ui-lib` via the `file:` protocol, causing pnpm to link it to the root `node_modules`.
+    -   The `packages/project/package.json` will depend on `rwsdk` (via `workspace:*`) and `ui-lib`. `rwsdk` will be installed in the project's local `node_modules`, while `ui-lib` will be resolved from the root.
+
+3.  **Trigger the Resolution Failure:**
+    -   The `ui-lib` will contain a simple component with a `"use client"` directive.
+    -   The `Home.tsx` page in the `project` will import and use this component.
+    -   This setup forces Vite's optimizer to scan a file (`ui-lib`) from a root context that then requires a module (`rwsdk`) located in a nested context, triggering the resolution failure.
+
+4.  **Validation:** An end-to-end test will be created to run the dev server for the playground. This test will initially fail, confirming the bug reproduction. It will then be used to verify that the implemented fix (the esbuild resolver plugin) solves the issue.
