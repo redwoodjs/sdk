@@ -22,7 +22,7 @@ pnpm install
 This repository is a monorepo containing several key parts:
 
 -   `sdk/`: This is the heart of the project. It contains the source code for the `rwsdk` npm package. When you're working on the core SDK functionality, this is where you'll spend most of your time. **All commands for building, testing, or formatting the SDK should be run from within this directory.**
--   `starters/`: This directory holds the template projects, like `minimal` and `standard`, that users can create with `create-rwsdk`. These are used for testing and demonstrating features.
+-   `starter/`: This directory holds the template project that users can create with `create-rwsdk`. It is used for testing and demonstrating features.
 -   `docs/`: Contains the user-facing documentation for the SDK, which is published as a website.
 -   `docs/architecture/`: A special section within the docs that contains in-depth architecture documents. These explain the "why" behind key design decisions and provide context on how the system works under the hood. If you're making a significant change, you should read these. If you're changing the system in a significant way, check whether these docs need revising to account for the update.
 
@@ -68,7 +68,7 @@ This project employs a multi-layered testing strategy to ensure code quality and
 #### Overview of Testing Layers
 
 1.  **Unit Tests**: These are the foundation of our testing pyramid. They verify the correctness of individual functions, modules, and components in isolation. They are fast, focused, and should cover as much of the core logic as possible.
-2.  **Smoke Tests**: These tests verify the critical user paths and core functionalities of our starter applications (`minimal` and `standard`). A smoke test ensures that a user can successfully install the SDK, start the dev server, build a production version, and see the application render correctly. They are designed to catch major regressions in the end-to-end user experience.
+2.  **Smoke Tests**: These tests verify the critical user paths and core functionalities of our starter application. A smoke test ensures that a user can successfully install the SDK, start the dev server, build a production version, and see the application render correctly. They are designed to catch major regressions in the end-to-end user experience.
 3.  **End-to-End (E2E) Tests**: Running in the `playground`, these tests cover more nuanced, real-world user scenarios. They validate compatibility with other libraries (like UI frameworks), test specific features in a realistic application context, and confirm compatibility across different environments.
 
 #### CI/CD Testing Pipeline
@@ -89,8 +89,8 @@ Smoke tests check that the critical paths of the SDK work for a new project. The
 To run smoke tests for a starter project, you can use the `ci-smoke-test.sh` script. This is the same script that runs in our CI environment.
 
 ```sh
-# Run smoke test for the 'minimal' starter with pnpm
-./sdk/scripts/ci-smoke-test.sh --starter "minimal" --package-manager "pnpm"
+# Run smoke test for the starter with pnpm
+./sdk/scripts/ci-smoke-test.sh --package-manager "pnpm"
 ```
 
 The script will create a temporary directory, copy the starter, install dependencies using the specified package manager, and run a series of automated checks using Puppeteer. If the test fails, artifacts (including screenshots and logs) will be saved to a `smoke-test-artifacts` directory in the monorepo root.
@@ -520,7 +520,7 @@ The release workflow and underlying script (`sdk/sdk/scripts/release.sh`) follow
 2.  **Build**: The `rwsdk` package is built with `NODE_ENV=production`.
 3.  **Pack**: The package is bundled into a `.tgz` tarball using `npm pack`.
 4.  **Smoke Test & Verify**: A comprehensive smoke test is run against the packed tarball:
-    *   A temporary project is created using the `starters/minimal` template.
+    *   A temporary project is created using the `starter` template.
     *   The `.tgz` tarball is installed as a dependency.
     *   **Verification**: The script verifies that the contents of the `dist` directory in the installed package are *identical* to the local `dist` directory from the build step by comparing checksums.
     *  Smoke tests are then run for this same test project, validating that the installed tarball is working correctly

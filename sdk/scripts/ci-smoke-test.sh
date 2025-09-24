@@ -11,16 +11,11 @@ set -euo pipefail
 # --package-manager: The package manager to use (e.g., "pnpm", "npm", "yarn", "yarn-classic").
 
 # --- Argument parsing ---
-STARTER=""
+STARTER="starter"
 PACKAGE_MANAGER=""
 
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --starter)
-      STARTER="$2"
-      shift
-      shift
-      ;;
     --package-manager)
       PACKAGE_MANAGER="$2"
       shift
@@ -33,8 +28,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$STARTER" || -z "$PACKAGE_MANAGER" ]]; then
-  echo "❌ Missing required arguments: --starter and --package-manager"
+if [[ -z "$PACKAGE_MANAGER" ]]; then
+  echo "❌ Missing required arguments: --package-manager"
   exit 1
 fi
 

@@ -72,3 +72,7 @@ The authentication functionality previously in the `standard` starter will be mo
     - In the `playground/hello-world` project, add a new login page and component.
     - This example will use the new `rwsdk/passkey/client` and `rwsdk/passkey/worker` modules to implement a fully functional passkey login flow.
     - This will serve as a practical test case and a reference implementation for users.
+
+### 6. Rename "minimal" to "starter"
+
+- Throughout the codebase, documentation, and any other relevant files, all remaining occurrences of the name "minimal" will be replaced with "starter" to reflect its new role as the one and only starter template.
