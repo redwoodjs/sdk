@@ -135,6 +135,11 @@ testDevAndDeploy("renders MDX and client component", async ({ page, url }) => {
     return true;
   });
 
+  // Before interacting with the page, wait for it to be fully loaded and
+  // interactive by calling `waitForHydration`. This ensures client-side
+  // hydration is complete and event listeners are attached.
+  await waitForHydration(page);
+
   // Re-fetch the element before interacting with it. The DOM may have been
   // updated by a client-side render, and holding onto a stale element
   // reference can cause flaky tests.

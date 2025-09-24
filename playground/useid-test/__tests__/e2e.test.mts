@@ -1,26 +1,12 @@
 import { describe, expect } from "vitest";
-import { setupPlaygroundEnvironment, testDevAndDeploy, poll } from "rwsdk/e2e";
+import {
+  setupPlaygroundEnvironment,
+  testDevAndDeploy,
+  poll,
+  waitForHydration,
+} from "rwsdk/e2e";
 
 setupPlaygroundEnvironment(import.meta.url);
-
-// Helper function to wait for hydration to complete
-async function waitForHydration(page: any) {
-  await new Promise((resolve) => setTimeout(resolve, 1000)); // Initial wait for scripts to load
-
-  // Wait for DOMContentLoaded and any hydration indicators
-  await page.evaluate(() => {
-    return new Promise((resolve) => {
-      if (document.readyState === "complete") {
-        // Additional wait for React hydration
-        setTimeout(resolve, 500);
-      } else {
-        window.addEventListener("load", () => {
-          setTimeout(resolve, 500);
-        });
-      }
-    });
-  });
-}
 
 // Helper function to extract useId values from elements
 async function extractUseIdValues(page: any, testIds: string[]) {

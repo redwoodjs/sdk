@@ -1,5 +1,10 @@
 import { expect } from "vitest";
-import { setupPlaygroundEnvironment, testDevAndDeploy, poll } from "rwsdk/e2e";
+import {
+  setupPlaygroundEnvironment,
+  testDevAndDeploy,
+  poll,
+  waitForHydration,
+} from "rwsdk/e2e";
 
 setupPlaygroundEnvironment(import.meta.url);
 
@@ -20,7 +25,7 @@ testDevAndDeploy("renders MDX and client component", async ({ page, url }) => {
     return true;
   });
 
-  await page.waitForNetworkIdle();
+  await waitForHydration(page);
   (await getButton())?.click();
 
   await poll(async () => {
