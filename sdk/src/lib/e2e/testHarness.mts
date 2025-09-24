@@ -25,6 +25,10 @@ const PUPPETEER_TIMEOUT = process.env.RWSDK_PUPPETEER_TIMEOUT
   ? parseInt(process.env.RWSDK_PUPPETEER_TIMEOUT, 10)
   : 60 * 1000; // 60 seconds
 
+const HYDRATION_TIMEOUT = process.env.RWSDK_HYDRATION_TIMEOUT
+  ? parseInt(process.env.RWSDK_HYDRATION_TIMEOUT, 10)
+  : 5000;
+
 interface PlaygroundEnvironment {
   projectDir: string;
   cleanup: () => Promise<void>;
@@ -724,5 +728,5 @@ export async function waitForHydration(page: Page) {
   await page.waitForFunction('document.readyState === "complete"');
   // 2. Wait a short, fixed amount of time for client-side hydration to finish.
   // This is a pragmatic approach to ensure React has mounted.
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  await new Promise((resolve) => setTimeout(resolve, HYDRATION_TIMEOUT));
 }
