@@ -1,0 +1,17 @@
+body {
+  margin: 0;
+  font-family: sans-serif;
+}
+
+#root,
+html,
+body {
+  height: 100%;
+  width: 100%;
+}
+
+.main-content {
+  background-color: rgb(255, 0, 0);
+  color: white;
+  padding: 1rem;
+}
