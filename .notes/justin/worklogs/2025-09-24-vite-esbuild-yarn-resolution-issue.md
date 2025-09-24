@@ -36,6 +36,18 @@ This approach involves teaching Vite's optimizer how to resolve the framework's 
 -   **Pros:** Centralizes all optimizer-related resolution logic into a single, clean module. It is a more robust and scalable solution that keeps the generated code clean with standard import specifiers.
 -   **Cons:** Slightly more abstract, as it involves hooking into a specific, internal part of Vite's build process.
 
+## Final Plan
+
+After discussion, Approach B was selected. It provides a more robust and maintainable solution by centralizing the resolution logic within the framework, rather than requiring users to configure workarounds or scattering resolution logic across multiple transform files.
+
+The implementation will involve generalizing the existing `reactConditionsResolverPlugin`. This plugin already uses `enhanced-resolve` and hooks into Vite's `optimizeDeps` process, providing the exact mechanism needed. The plan is to:
+
+1.  **Rename and Generalize:** Rename the plugin to `knownDependenciesResolverPlugin` and update its internal variables to use generic names (e.g., `KNOWN_PREFIXES` instead of `REACT_PREFIXES`).
+2.  **Extend to `rwsdk`:** Add `'rwsdk'` to the list of `KNOWN_PREFIXES`.
+3.  **Leverage Existing Logic:** The plugin's core logic, which resolves imports from the user's project root using environment-specific conditions, will now automatically apply to `rwsdk` imports, fixing the resolution issue for Vite's optimizer.
+
+This approach solves the problem elegantly by reusing and extending a battle-tested part of the framework's build process.
+
 ## Test Plan: Simulating the Monorepo Environment
 
 To validate the chosen solution (Approach B), a new playground example, `monorepo-yarn-hoist`, will be created to reliably reproduce the resolution error in an isolated environment.
