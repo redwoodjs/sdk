@@ -7,15 +7,26 @@
     "link-sdk": "(cd sdk && pnpm build) && for starter in starters/*; do (cd $starter && npm pkg set dependencies.rwsdk='workspace:*'); done && pnpm install --ignore-scripts --no-frozen-lockfile",
     "check-starters:dev": "for starter in starters/*; do ./scripts/check-app.sh dev $starter; done",
     "check-starters:preview": "for starter in starters/*; do ./scripts/check-app.sh preview $starter; done",
-    "format": "prettier --write ./sdk/src starters/*/src"
+    "format": "prettier --write ./sdk/src starters/*/src",
+    "test:e2e": "(cd sdk && pnpm build) && cd playground && vitest run",
+    "setup:e2e": "pnpm setup:wrangler",
+    "setup:wrangler": "./scripts/setup-wrangler-auth.sh"
   },
   "engines": {
     "node": ">=18.0.0",
     "pnpm": ">=8.0.0"
   },
-  "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab",
+  "packageManager": "pnpm@9.4.0",
   "devDependencies": {
-    "knip": "^5.50.5",
-    "prettier": "^3.5.3"
+    "@antfu/eslint-config": "^2.21.1",
+    "@manypkg/cli": "^0.21.4",
+    "@types/node": "^20.14.2",
+    "eslint": "^9.5.0",
+    "pnpm": "^9.4.0",
+    "prettier": "^3.3.2",
+    "tsx": "^4.15.7",
+    "typescript": "^5.4.5",
+    "wrangler": "^4.35.0",
+    "vitest": "^3.1.1"
   }
 }

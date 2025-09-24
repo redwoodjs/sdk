@@ -1,4 +1,4 @@
-import { Plugin, EnvironmentModuleNode, Connect } from "vite";
+import { Plugin, EnvironmentModuleNode, Connect, HotUpdateOptions } from "vite";
 import { resolve } from "node:path";
 import colors from "picocolors";
 import { readFile } from "node:fs/promises";
@@ -110,7 +110,7 @@ export const miniflareHMRPlugin = (givenOptions: {
         });
       };
     },
-    async hotUpdate(ctx) {
+    async hotUpdate(ctx: HotUpdateOptions) {
       if (ctx.file.includes(".wrangler")) {
         return;
       }

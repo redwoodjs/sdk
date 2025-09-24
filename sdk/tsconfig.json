@@ -36,6 +36,7 @@
     "declaration": true,
 
     "outDir": "./dist",
+    "rootDir": "./src",
 
     "paths": {
       "rwsdk/__ssr_bridge": ["./src/runtime/ssrBridge.ts"]
@@ -48,5 +49,7 @@
       "./types/vite.d.ts",
       "@cloudflare/workers-types"
     ]
-  }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
 }

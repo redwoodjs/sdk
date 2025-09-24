@@ -1,0 +1,295 @@
+import { join } from "path";
+import debug from "debug";
+import { pathExists, copy, existsSync } from "fs-extra";
+import * as fs from "node:fs";
+import tmp from "tmp-promise";
+import ignore from "ignore";
+import { relative, basename, resolve } from "path";
+import {
+  uniqueNamesGenerator,
+  adjectives,
+  animals,
+} from "unique-names-generator";
+import { SmokeTestOptions, TestResources, PackageManager } from "./types.mjs";
+import { createHash } from "crypto";
+import { $ } from "../../lib/$.mjs";
+import { ROOT_DIR } from "../constants.mjs";
+import path from "node:path";
+import { cpSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+
+const log = debug("rwsdk:e2e:environment");
+
+const createSdkTarball = async (): Promise<{
+  tarballPath: string;
+  cleanupTarball: () => Promise<void>;
+}> => {
+  const packResult = await $({ cwd: ROOT_DIR, stdio: "pipe" })`npm pack`;
+  const tarballName = packResult.stdout?.trim()!;
+  const tarballPath = path.join(ROOT_DIR, tarballName);
+
+  log(`📦 Created tarball: ${tarballPath}`);
+
+  const cleanupTarball = async () => {
+    if (fs.existsSync(tarballPath)) {
+      log(`🧹 Cleaning up tarball: ${tarballPath}`);
+      await fs.promises.rm(tarballPath, { force: true });
+    }
+  };
+
+  return { tarballPath, cleanupTarball };
+};
+
+const setTarballDependency = async (
+  targetDir: string,
+  tarballPath: string,
+): Promise<void> => {
+  const filePath = join(targetDir, "package.json");
+  const packageJson = await fs.promises.readFile(filePath, "utf-8");
+  const packageJsonContent = JSON.parse(packageJson);
+  packageJsonContent.dependencies.rwsdk = `file:${tarballPath}`;
+  await fs.promises.writeFile(
+    filePath,
+    JSON.stringify(packageJsonContent, null, 2),
+  );
+};
+
+/**
+ * Sets up the test environment, preparing any resources needed for testing
+ */
+export async function setupTestEnvironment(
+  options: SmokeTestOptions = {},
+): Promise<TestResources> {
+  log("Setting up test environment with options: %O", options);
+
+  // Generate a resource unique key for this test run right at the start
+  const uniqueNameSuffix = uniqueNamesGenerator({
+    dictionaries: [adjectives, animals],
+    separator: "-",
+    length: 2,
+    style: "lowerCase",
+  });
+
+  // Create a short unique hash based on the timestamp
+  const hash = createHash("md5")
+    .update(Date.now().toString())
+    .digest("hex")
+    .substring(0, 8);
+
+  // Create a resource unique key even if we're not copying a project
+  const resourceUniqueKey = `${uniqueNameSuffix}-${hash}`;
+
+  const resources: TestResources = {
+    tempDirCleanup: undefined,
+    workerName: undefined,
+    originalCwd: process.cwd(),
+    targetDir: undefined,
+    workerCreatedDuringTest: false,
+    stopDev: undefined,
+    resourceUniqueKey, // Set at initialization
+  };
+
+  log("Current working directory: %s", resources.originalCwd);
+
+  try {
+    // If a project dir is specified, copy it to a temp dir with a unique name
+    if (options.projectDir) {
+      log("Project directory specified: %s", options.projectDir);
+      const { tempDir, targetDir, workerName } = await copyProjectToTempDir(
+        options.projectDir,
+        resourceUniqueKey, // Pass in the existing resourceUniqueKey
+        options.packageManager,
+      );
+
+      // Store cleanup function
+      resources.tempDirCleanup = tempDir.cleanup;
+      resources.workerName = workerName;
+      resources.targetDir = targetDir;
+
+      log("Target directory: %s", targetDir);
+    } else {
+      log("No project directory specified, using current directory");
+      // When no project dir is specified, we'll use the current directory
+      resources.targetDir = resources.originalCwd;
+    }
+
+    return resources;
+  } catch (error) {
+    log("Error during test environment setup: %O", error);
+    throw error;
+  }
+}
+
+/**
+ * Copy project to a temporary directory with a unique name
+ */
+export async function copyProjectToTempDir(
+  projectDir: string,
+  resourceUniqueKey: string,
+  packageManager?: PackageManager,
+): Promise<{
+  tempDir: tmp.DirectoryResult;
+  targetDir: string;
+  workerName: string;
+}> {
+  const { tarballPath, cleanupTarball } = await createSdkTarball();
+  try {
+    log("Creating temporary directory for project");
+    // Create a temporary directory
+    const tempDir = await tmp.dir({ unsafeCleanup: true });
+
+    // Create unique project directory name
+    const originalDirName = basename(projectDir);
+    const workerName = `${originalDirName}-test-${resourceUniqueKey}`;
+    const targetDir = resolve(tempDir.path, workerName);
+
+    console.log(`Copying project from ${projectDir} to ${targetDir}`);
+
+    // Read project's .gitignore if it exists
+    let ig = ignore();
+    const gitignorePath = join(projectDir, ".gitignore");
+
+    if (await pathExists(gitignorePath)) {
+      log("Found .gitignore file at %s", gitignorePath);
+      const gitignoreContent = await fs.promises.readFile(
+        gitignorePath,
+        "utf-8",
+      );
+      ig = ig.add(gitignoreContent);
+    } else {
+      log("No .gitignore found, using default ignore patterns");
+      // Add default ignores if no .gitignore exists
+      ig = ig.add(
+        [
+          "node_modules",
+          ".git",
+          "dist",
+          "build",
+          ".DS_Store",
+          "coverage",
+          ".cache",
+          ".wrangler",
+          ".env",
+        ].join("\n"),
+      );
+    }
+
+    // Copy the project directory, respecting .gitignore
+    log("Starting copy process with ignored patterns");
+    await copy(projectDir, targetDir, {
+      filter: (src) => {
+        // Get path relative to project directory
+        const relativePath = relative(projectDir, src);
+        if (!relativePath) return true; // Include the root directory
+
+        // Check against ignore patterns
+        const result = !ig.ignores(relativePath);
+        return result;
+      },
+    });
+    log("Project copy completed successfully");
+
+    // Configure temp project to not use frozen lockfile
+    log("⚙️  Configuring temp project to not use frozen lockfile...");
+    const npmrcPath = join(targetDir, ".npmrc");
+    await fs.promises.writeFile(npmrcPath, "frozen-lockfile=false\n");
+
+    // For yarn, create .yarnrc.yml to disable PnP and allow lockfile changes
+    if (packageManager === "yarn") {
+      const yarnrcPath = join(targetDir, ".yarnrc.yml");
+      const yarnConfig = [
+        // todo(justinvdm, 23-09-23): Support yarn pnpm
+        "nodeLinker: node-modules",
+        "enableImmutableInstalls: false",
+      ].join("\n");
+      await fs.promises.writeFile(yarnrcPath, yarnConfig);
+      log("Created .yarnrc.yml to allow lockfile changes for yarn");
+    }
+
+    await setTarballDependency(targetDir, tarballPath);
+
+    // Install dependencies in the target directory
+    await installDependencies(targetDir, packageManager);
+
+    // Return the environment details
+    return { tempDir, targetDir, workerName };
+  } finally {
+    await cleanupTarball();
+  }
+}
+
+async function installDependencies(
+  targetDir: string,
+  packageManager: PackageManager = "pnpm",
+): Promise<void> {
+  console.log(
+    `📦 Installing project dependencies in ${targetDir} using ${packageManager}...`,
+  );
+
+  try {
+    // Clean up any pre-existing node_modules and lockfiles
+    log("Cleaning up pre-existing node_modules and lockfiles...");
+    await Promise.all([
+      fs.promises.rm(join(targetDir, "node_modules"), {
+        recursive: true,
+        force: true,
+      }),
+      fs.promises.rm(join(targetDir, "pnpm-lock.yaml"), { force: true }),
+      fs.promises.rm(join(targetDir, "yarn.lock"), { force: true }),
+      fs.promises.rm(join(targetDir, "package-lock.json"), { force: true }),
+    ]);
+    log("Cleanup complete.");
+
+    if (packageManager.startsWith("yarn")) {
+      log(`Enabling corepack...`);
+      await $("corepack", ["enable"], { cwd: targetDir, stdio: "pipe" });
+
+      if (packageManager === "yarn") {
+        log(`Preparing yarn@stable with corepack...`);
+        await $("corepack", ["prepare", "yarn@stable", "--activate"], {
+          cwd: targetDir,
+          stdio: "pipe",
+        });
+      } else if (packageManager === "yarn-classic") {
+        log(`Preparing yarn@1.22.19 with corepack...`);
+        await $("corepack", ["prepare", "yarn@1.22.19", "--activate"], {
+          cwd: targetDir,
+          stdio: "pipe",
+        });
+      }
+    }
+    const installCommand = {
+      pnpm: ["pnpm", "install"],
+      npm: ["npm", "install"],
+      yarn: ["yarn", "install"],
+      "yarn-classic": ["yarn"],
+    }[packageManager];
+
+    // Run install command in the target directory
+    log(`Running ${installCommand.join(" ")}`);
+    const [command, ...args] = installCommand;
+    const result = await $(command, args, {
+      cwd: targetDir,
+      stdio: "pipe", // Capture output
+      env: {
+        YARN_ENABLE_HARDENED_MODE: "0",
+      },
+    });
+
+    console.log("✅ Dependencies installed successfully");
+
+    // Log installation details at debug level
+    if (result.stdout) {
+      log(`${packageManager} install output: %s`, result.stdout);
+    }
+  } catch (error) {
+    log("ERROR: Failed to install dependencies: %O", error);
+    console.error(
+      `❌ Failed to install dependencies: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+    throw new Error(
+      `Failed to install project dependencies. Please ensure the project can be installed with ${packageManager}.`,
+    );
+  }
+}

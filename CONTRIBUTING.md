@@ -61,6 +61,161 @@ pnpm test -- -u src/vite/transformJsxScriptTagsPlugin.test.mts
 
 Note the extra `--` before the `-u` flag. This is necessary to pass the flag to the underlying test runner (`vitest`) instead of `pnpm`.
 
+### Testing Strategy
+
+This project employs a multi-layered testing strategy to ensure code quality and stability. Tests are divided into three main categories, and our CI/CD pipeline runs different test suites depending on the context to balance development velocity with release confidence.
+
+#### Overview of Testing Layers
+
+1.  **Unit Tests**: These are the foundation of our testing pyramid. They verify the correctness of individual functions, modules, and components in isolation. They are fast, focused, and should cover as much of the core logic as possible.
+2.  **Smoke Tests**: These tests verify the critical user paths and core functionalities of our starter applications (`minimal` and `standard`). A smoke test ensures that a user can successfully install the SDK, start the dev server, build a production version, and see the application render correctly. They are designed to catch major regressions in the end-to-end user experience.
+3.  **End-to-End (E2E) Tests**: Running in the `playground`, these tests cover more nuanced, real-world user scenarios. They validate compatibility with other libraries (like UI frameworks), test specific features in a realistic application context, and confirm compatibility across different environments.
+
+#### CI/CD Testing Pipeline
+
+Our GitHub Actions workflows are configured to provide two different levels of testing:
+
+*   **On Pull Requests**: To provide fast feedback, we run a lightweight but representative subset of our test suite. This includes all **unit tests**, plus a minimal configuration of our **smoke tests** and **E2E tests** (running on Ubuntu with pnpm). This quick sanity check is designed to catch most common regressions without the long wait times of the full test matrix.
+*   **On Pushes to `main`**: Before any code is considered for a release, it must pass the full, comprehensive test suite. This includes all **unit tests**, and the complete matrix for **smoke tests** and **E2E tests**, covering all supported operating systems (Ubuntu, macOS) and package managers (pnpm, npm, yarn, yarn-classic). A failure in any part of this matrix will block a release, ensuring that the `main` branch is always stable.
+
+All tests can also be run manually on any branch using the `workflow_dispatch` trigger in GitHub Actions, giving contributors the power to run the full suite on their changes when needed.
+
+### Smoke Testing
+
+Smoke tests check that the critical paths of the SDK work for a new project. They perform a full lifecycle test: installing dependencies, running the dev server, and creating a production build. For both dev and production environments, they verify that server and client components render correctly and that actions work as expected.
+
+#### Running Smoke Tests Locally
+
+To run smoke tests for a starter project, you can use the `ci-smoke-test.sh` script. This is the same script that runs in our CI environment.
+
+```sh
+# Run smoke test for the 'minimal' starter with pnpm
+./sdk/scripts/ci-smoke-test.sh --starter "minimal" --package-manager "pnpm"
+```
+
+The script will create a temporary directory, copy the starter, install dependencies using the specified package manager, and run a series of automated checks using Puppeteer. If the test fails, artifacts (including screenshots and logs) will be saved to a `smoke-test-artifacts` directory in the monorepo root.
+
+### End-to-End Tests (Playground)
+
+The monorepo includes a `playground` directory for end-to-end (E2E) tests. These tests run against a real, packed tarball of the SDK in an isolated environment to simulate a user's project accurately.
+
+#### Getting Started
+
+Before running deployment tests, you need to authenticate with Cloudflare. You only need to do this once for the entire monorepo.
+
+1.  **Set up Wrangler authentication**:
+    ```sh
+    pnpm setup:e2e
+    ```
+    This script will log you in to Cloudflare and ensure the authentication cache is properly set up for all playground tests to reuse.
+
+#### Running Tests
+
+To run all playground E2E tests, use the `test:e2e` script from the monorepo root:
+
+```sh
+pnpm test:e2e
+```
+
+To run a specific test file, pass its path to the `test:e2e` script. The path can be absolute or relative to the `playground/` directory. Note the `--` before the path, which is necessary to pass the argument to the underlying test runner (`vitest`).
+
+```sh
+# Run tests for a single playground project from the monorepo root
+pnpm test:e2e hello-world/__tests__/e2e.test.mts
+```
+
+You can also specify a package manager or enable debug logging using environment variables:
+
+```sh
+# Run tests for hello-world with Yarn and enable debug logging for the e2e environment
+PACKAGE_MANAGER="yarn" DEBUG='rwsdk:e2e:environment' pnpm test:e2e hello-world/__tests__/e2e.test.mts
+```
+
+#### Skipping Tests
+
+You can skip dev server or deployment tests using environment variables. This is useful for focusing on a specific part of the test suite.
+
+-   **Skip Dev Server Tests**:
+    ```sh
+    RWSDK_SKIP_DEV=1 pnpm test:e2e
+    ```
+-   **Skip Deployment Tests**:
+    ```sh
+    RWSDK_SKIP_DEPLOY=1 pnpm test:e2e
+    ```
+
+#### Test API
+
+The E2E test harness provides a set of high-level and low-level APIs to make writing tests simple and efficient.
+
+##### High-Level APIs
+
+These are the most common APIs you'll use. They automatically handle setting up and tearing down resources like dev servers, deployments, and browsers.
+
+-   `testDevServer(name, testFn)`: Runs a test against a local dev server.
+-   `testDeployment(name, testFn)`: Runs a test against a temporary Cloudflare deployment.
+
+Both functions also have a `.skip` method for skipping individual tests (e.g., `testDevServer.skip(...)`).
+
+**Example:**
+
+```typescript
+// playground/hello-world/__tests__/e2e.test.mts
+import { expect } from "vitest";
+import {
+  setupPlaygroundEnvironment,
+  testDevAndDeploy,
+  testDev,
+  testDeploy,
+  poll,
+} from "rwsdk/e2e";
+
+// Sets up the test environment for the suite (automatic cleanup)
+setupPlaygroundEnvironment(import.meta.url);
+
+// Test against both dev server and deployment
+testDevAndDeploy("renders Hello World", async ({ page, url }) => {
+  await page.goto(url);
+
+  await poll(async () => {
+    const content = await page.content();
+    return content.includes("Hello World");
+  });
+
+  const content = await page.content();
+  expect(content).toContain("Hello World");
+});
+
+// Skip both dev and deployment tests
+testDevAndDeploy.skip("skipped test", async ({ page, url }) => {
+  // This test will be skipped for both environments
+});
+
+// Run only this test (both dev and deployment)
+testDevAndDeploy.only("focused test", async ({ page, url }) => {
+  // Only this test will run
+});
+
+// You can still use individual test functions if needed
+testDev("dev-only test", async ({ page, url }) => {
+  // This only runs against dev server
+});
+
+testDeploy("deployment-only test", async ({ page, url }) => {
+  // This only runs against deployment
+});
+```
+
+##### Lower-Level APIs
+
+For more complex scenarios that require finer control, you can use these lower-level utilities. Note that with these, cleanup is still handled automatically after each test.
+
+-   `setupPlaygroundEnvironment()`: Sets up the isolated, tarball-based test environment for the entire test suite (file).
+-   `createDevServer()`: Starts a dev server.
+-   `createDeployment()`: Creates a new Cloudflare deployment.
+-   `createBrowser()`: Launches a Puppeteer browser instance.
+-   `poll(fn, options)`: A utility to retry an async function until it returns `true` or times out.
+
 ## Contribution Guidelines
 
 ### Dependency Injection over Mocking
@@ -170,10 +325,6 @@ function processData(input: string, retries: number = 3, logger?: Logger) {
 
 This convention is not a strict rule. For simple functions where the arguments are self-explanatory (e.g., `add(a, b)`), positional arguments are perfectly acceptable. Use your best judgment.
 
-## Smoke Testing
-
-For details on how to run smoke tests, please see the [smoke testing documentation](./SMOKE-TESTING.md).
-
 ## Formatting
 
 This project uses Prettier for code formatting. To format the code, run:
@@ -196,9 +347,9 @@ This section outlines the strategy for managing dependencies to maintain stabili
 
 #### 1. Peer Dependencies (`starter-peer-deps`)
 
--   **What**: The most critical dependencies (`wrangler`, `react`, `vite`, etc.) that are defined as `peerDependencies` in the SDK and tested in the `starters/*` projects.
+-   **What**: The most critical dependencies (`wrangler`, `react`, `vite`, etc.) that are defined as `peerDependencies` in the SDK and tested in both the `starters/*` projects and `playground/*` projects.
 -   **When**: As Soon As Possible (ASAP). Renovate creates a PR immediately when a new version is available.
--   **Why**: To provide an immediate early-warning signal if a new peer dependency version introduces a regression that could affect users.
+-   **Why**: To provide an immediate early-warning signal if a new peer dependency version introduces a regression that could affect users. The playground E2E tests provide an additional validation layer beyond the starter smoke tests.
 
 ##### A Note on React Canary Versions
 The starters intentionally use `canary` versions of React. This is the official channel recommended by the React team for frameworks that implement React Server Components. Using canaries gives us access to the latest features and ensures our implementation remains compatible with the direction of React.
@@ -219,7 +370,7 @@ To manage these potentially unstable versions, Renovate is specifically configur
 
 #### 4. Repository, Docs, and Infrastructure Dependencies (`docs-and-infra-deps`)
 
--   **What**: A consolidated group for all remaining repository maintenance dependencies. This includes dependencies from the root `package.json`, the `docs/package.json`, GitHub Actions, Docker images, and the `.node-version` file.
+-   **What**: A consolidated group for all remaining repository maintenance dependencies. This includes dependencies from the root `package.json`, the `docs/package.json`, non-peer dependencies from `playground/*` projects (such as `vitest`), GitHub Actions, Docker images, and the `.node-version` file.
 -   **When**: Weekly, in a single grouped pull request.
 -   **Why**: To bundle all miscellaneous tooling, documentation, and infrastructure updates into one convenient PR to reduce noise.
 
@@ -240,7 +391,7 @@ To do this, find the update group you wish to run in the "Awaiting Schedule" sec
 
 ### Failure Protocol for Peer Dependencies
 
-When the smoke tests fail on a peer dependency update, it is a signal that requires manual intervention.
+When the smoke tests or playground E2E tests fail on a peer dependency update, it is a signal that requires manual intervention.
 
 1.  **Maintainer Investigation**: The first step is always for a maintainer to investigate **why** the test is failing. The failure can have one of two root causes:
     *   **An Issue in Our SDK**: The dependency may have introduced a breaking change that we need to adapt to.
@@ -249,7 +400,7 @@ When the smoke tests fail on a peer dependency update, it is a signal that requi
 2.  **Manual Corrective Action**:
     *   If the issue is in our SDK, a fix should be implemented and pushed directly to the failing Renovate PR branch.
     *   If the failure is a regression in the dependency itself, a maintainer must perform the following steps **on the Renovate PR branch**:
-        1.  **Revert Dependency in Starters**: In the `starters/*/package.json` files, revert the version of the failing dependency back to the last known good version.
+        1.  **Revert Dependency in Starters and Playground**: In the `starters/*/package.json` and `playground/*/package.json` files, revert the version of the failing dependency back to the last known good version.
         2.  **Constrain Peer Dependency**: In `sdk/package.json`, update the `peerDependencies` entry for the package to add an upper bound that excludes the broken version (e.g., change `^1.2.3` to `>=1.2.3 <1.2.4`).
         3.  **Commit and Push**: Commit these changes with a message explaining the reason for the constraint and push to the branch.
 

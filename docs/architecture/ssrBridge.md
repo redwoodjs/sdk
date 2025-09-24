@@ -26,6 +26,12 @@ To connect them, we introduced the concept of the **SSR Bridge**. The bridge is 
 
 A custom Vite plugin, `rwsdk:ssr-bridge`, orchestrates the process. It creates a virtual "subgraph" of SSR modules within the main `worker` environment. This allows the `worker` to effectively borrow the `ssr` environment's configuration for a specific set of modules, solving the dependency conflict without requiring separate deployments.
 
+### The End Goal: A Hydratable HTML Stream
+
+It is important to understand that the SSR Bridge is a build-time mechanism that enables a specific runtime outcome. The ultimate goal of this entire process is to feed the RSC payload into a traditional React server renderer (`renderToReadableStream`) to produce a complete, hydratable HTML document.
+
+By allowing the `worker` environment to access a correctly configured `ssr` version of the renderer via the bridge, the framework can successfully perform the final rendering phase. This includes generating the necessary `resumableState` required for client-side hydration to work correctly, solving issues like `useId` mismatches. For a detailed explanation of this final rendering step, see the [RSC to HTML Rendering](./rscSsrProcess.md) document.
+
 ### How It Works: Dev vs. Production
 
 The implementation differs slightly between development and production builds.

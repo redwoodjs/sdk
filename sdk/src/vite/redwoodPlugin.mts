@@ -1,7 +1,8 @@
 import { resolve } from "node:path";
-import { InlineConfig } from "vite";
+import { InlineConfig, Plugin } from "vite";
 import { unstable_readConfig } from "wrangler";
 import { cloudflare } from "@cloudflare/vite-plugin";
+import { glob } from "glob";
 
 import { devServerConstantPlugin } from "./devServerConstant.mjs";
 import { hasOwnCloudflareVitePlugin } from "./hasOwnCloudflareVitePlugin.mjs";
@@ -18,7 +19,7 @@ import { miniflareHMRPlugin } from "./miniflareHMRPlugin.mjs";
 import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
 import { configPlugin } from "./configPlugin.mjs";
 import { $ } from "../lib/$.mjs";
-import { reactConditionsResolverPlugin } from "./reactConditionsResolverPlugin.mjs";
+import { knownDepsResolverPlugin } from "./knownDepsResolverPlugin.mjs";
 import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
 import { pathExists } from "fs-extra";
 import { injectVitePreamble } from "./injectVitePreamblePlugin.mjs";
@@ -31,6 +32,7 @@ import { manifestPlugin } from "./manifestPlugin.mjs";
 import { linkerPlugin } from "./linkerPlugin.mjs";
 import { directiveModulesDevPlugin } from "./directiveModulesDevPlugin.mjs";
 import { directivesFilteringPlugin } from "./directivesFilteringPlugin.mjs";
+import { resolveForcedPaths } from "./resolveForcedPaths.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -38,6 +40,8 @@ export type RedwoodPluginOptions = {
   includeCloudflarePlugin?: boolean;
   includeReactPlugin?: boolean;
   configPath?: string;
+  forceClientPaths?: string[];
+  forceServerPaths?: string[];
   entry?: {
     worker?: string;
   };
@@ -71,6 +75,26 @@ export const redwoodPlugin = async (
   options: RedwoodPluginOptions = {},
 ): Promise<InlineConfig["plugins"]> => {
   const projectRootDir = process.cwd();
+
+  if (options.forceClientPaths) {
+    const clientPaths = await resolveForcedPaths({
+      patterns: options.forceClientPaths,
+      projectRootDir,
+    });
+    for (const p of clientPaths) {
+      clientFiles.add(p);
+    }
+  }
+
+  if (options.forceServerPaths) {
+    const serverPaths = await resolveForcedPaths({
+      patterns: options.forceServerPaths,
+      projectRootDir,
+    });
+    for (const p of serverPaths) {
+      serverFiles.add(p);
+    }
+  }
 
   const workerConfigPath =
     options.configPath ??
@@ -117,6 +141,7 @@ export const redwoodPlugin = async (
       clientFiles,
       serverFiles,
       projectRootDir,
+      workerEntryPathname,
     }),
     configPlugin({
       silent: options.silent ?? false,
@@ -131,13 +156,13 @@ export const redwoodPlugin = async (
       serverFiles,
       projectRootDir,
     }),
-    reactConditionsResolverPlugin({ projectRootDir }),
+    knownDepsResolverPlugin({ projectRootDir }),
     tsconfigPaths({ root: projectRootDir }),
     shouldIncludeCloudflarePlugin
-      ? cloudflare({
+      ? (cloudflare({
           viteEnvironment: { name: "worker" },
           configPath: workerConfigPath,
-        })
+        }) as Plugin[])
       : [],
     miniflareHMRPlugin({
       clientFiles,

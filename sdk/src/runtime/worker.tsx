@@ -1,5 +1,6 @@
 import React from "react";
-import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
+import { renderDocumentHtmlStream } from "./render/renderDocumentHtmlStream";
+import { normalizeActionResult } from "./render/normalizeActionResult";
 import { renderToRscStream } from "./render/renderToRscStream";
 
 import { rscActionHandler } from "./register/worker";
@@ -15,6 +16,8 @@ import { RequestInfo, DefaultAppContext } from "./requestInfo/types";
 import { Route, type RwContext, defineRoutes } from "./lib/router";
 import { generateNonce } from "./lib/utils";
 import { ssrWebpackRequire } from "./imports/worker";
+
+export * from "./requestInfo/types";
 
 declare global {
   type Env = {
@@ -119,16 +122,19 @@ export const defineApp = <
             });
           }
 
-          const actionResult = requestInfo.rw.actionResult;
+          const actionResult = normalizeActionResult(
+            requestInfo.rw.actionResult,
+          );
 
           const pageElement = createPageElement(requestInfo, Page);
 
           const { rscPayload: shouldInjectRSCPayload } = rw;
 
           let rscPayloadStream = renderToRscStream({
-            node: pageElement,
-            actionResult:
-              actionResult instanceof Response ? null : actionResult,
+            input: {
+              node: pageElement,
+              actionResult,
+            },
             onError,
           });
 
@@ -159,11 +165,12 @@ export const defineApp = <
             });
           }
 
-          let html: ReadableStream<any> = await transformRscToHtmlStream({
-            stream: rscPayloadStream,
+          let html: ReadableStream<any> = await renderDocumentHtmlStream({
+            rscPayloadStream: rscPayloadStream,
             Document: rw.Document,
             requestInfo: requestInfo,
             onError,
+            shouldSSR: rw.ssr,
           });
 
           if (injectRSCPayloadStream) {
