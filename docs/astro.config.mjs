@@ -43,8 +43,6 @@ export default defineConfig({
           label: "Get Started",
           items: [
             { label: "Quick Start", slug: "getting-started/quick-start" },
-            { label: "API Stability", slug: "stability" },
-            { label: "Compatibility", slug: "compatibility" },
           ],
         },
         {

@@ -192,3 +192,7 @@ import { Aside } from "@astrojs/starlight/components";
 ```
 
 **Result**: Compatibility page now loads successfully without runtime errors.
+
+## PR Description
+
+To prepare for a 1.0 beta release, we need to communicate which parts of the SDK are stable and which are experimental. This update establishes a system for marking experimental APIs directly within the documentation. We've implemented a convention where experimental pages or specific functions are marked with an 'Experimental' badge. This is handled by adding an `experimental: true` flag to the frontmatter of relevant documentation pages, which then conditionally renders the badge in the page title. This provides clear, inline guidance to users about the stability of different features.
