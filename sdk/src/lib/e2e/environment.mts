@@ -197,6 +197,36 @@ export async function copyProjectToTempDir(
     });
     log("Project copy completed successfully");
 
+    if (monorepoRoot) {
+      log("⚙️  Configuring monorepo workspace...");
+      const rwsdkWsPath = join(tempCopyRoot, "rwsdk-workspace.json");
+      if (await pathExists(rwsdkWsPath)) {
+        const rwsdkWs = JSON.parse(
+          await fs.promises.readFile(rwsdkWsPath, "utf-8"),
+        );
+        const workspaces = rwsdkWs.workspaces;
+
+        if (packageManager === "pnpm") {
+          const pnpmWsPath = join(tempCopyRoot, "pnpm-workspace.yaml");
+          const pnpmWsConfig = `packages:\n${workspaces.map((w: string) => `  - '${w}'`).join("\n")}\n`;
+          await fs.promises.writeFile(pnpmWsPath, pnpmWsConfig);
+          log("Created pnpm-workspace.yaml");
+        } else {
+          // For npm and yarn, add a workspaces property to package.json
+          const pkgJsonPath = join(tempCopyRoot, "package.json");
+          const pkgJson = JSON.parse(
+            await fs.promises.readFile(pkgJsonPath, "utf-8"),
+          );
+          pkgJson.workspaces = workspaces;
+          await fs.promises.writeFile(
+            pkgJsonPath,
+            JSON.stringify(pkgJson, null, 2),
+          );
+          log("Added workspaces to package.json");
+        }
+      }
+    }
+
     // Configure temp project to not use frozen lockfile
     log("⚙️  Configuring temp project to not use frozen lockfile...");
     const npmrcPath = join(targetDir, ".npmrc");
@@ -217,7 +247,8 @@ export async function copyProjectToTempDir(
     await setTarballDependency(targetDir, tarballPath);
 
     // Install dependencies in the target directory
-    await installDependencies(targetDir, packageManager);
+    const installDir = monorepoRoot ? tempCopyRoot : targetDir;
+    await installDependencies(installDir, packageManager);
 
     // Return the environment details
     return { tempDir, targetDir, workerName };
