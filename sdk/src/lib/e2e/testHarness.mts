@@ -57,6 +57,8 @@ const SKIP_DEPLOYMENT_TESTS = process.env.RWSDK_SKIP_DEPLOY === "1";
 
 // Global test environment state
 let globalPlaygroundEnv: PlaygroundEnvironment | null = null;
+let globalDevInstance: DevServerInstance | null = null;
+let globalDeploymentInstance: DeploymentInstance | null = null;
 
 // Global cleanup registry
 interface CleanupTask {
@@ -165,6 +167,16 @@ export interface SetupPlaygroundEnvironmentOptions {
    * This is used to correctly set up the test environment for monorepo projects.
    */
   monorepoRoot?: string;
+  /**
+   * Whether to provision a dev server for the test suite.
+   * @default true
+   */
+  dev?: boolean;
+  /**
+   * Whether to provision a deployment for the test suite.
+   * @default true
+   */
+  deploy?: boolean;
 }
 
 /**
@@ -176,8 +188,12 @@ export interface SetupPlaygroundEnvironmentOptions {
 export function setupPlaygroundEnvironment(
   options: string | SetupPlaygroundEnvironmentOptions = {},
 ): void {
-  const { sourceProjectDir, monorepoRoot } =
-    typeof options === "string" ? { sourceProjectDir: options } : options;
+  const {
+    sourceProjectDir,
+    monorepoRoot,
+    dev = true,
+    deploy = true,
+  } = typeof options === "string" ? { sourceProjectDir: options } : options;
   ensureHooksRegistered();
 
   beforeAll(async () => {
@@ -195,17 +211,48 @@ export function setupPlaygroundEnvironment(
 
     console.log(`Setting up playground environment from ${projectDir}...`);
 
-    const tarballEnv = await setupTarballEnvironment({
-      projectDir,
-      monorepoRoot,
-      packageManager:
-        (process.env.PACKAGE_MANAGER as "pnpm" | "npm" | "yarn") || "pnpm",
-    });
+    let devEnv: { targetDir: string; cleanup: () => Promise<void> } | undefined;
+    if (dev) {
+      devEnv = await setupTarballEnvironment({
+        projectDir,
+        monorepoRoot,
+        packageManager:
+          (process.env.PACKAGE_MANAGER as "pnpm" | "npm" | "yarn") || "pnpm",
+      });
+      globalPlaygroundEnv = {
+        projectDir: devEnv.targetDir,
+        cleanup: devEnv.cleanup,
+      };
+    }
 
-    globalPlaygroundEnv = {
-      projectDir: tarballEnv.targetDir,
-      cleanup: tarballEnv.cleanup,
-    };
+    let deployEnv:
+      | { targetDir: string; cleanup: () => Promise<void> }
+      | undefined;
+    if (deploy) {
+      deployEnv = await setupTarballEnvironment({
+        projectDir,
+        monorepoRoot,
+        packageManager:
+          (process.env.PACKAGE_MANAGER as "pnpm" | "npm" | "yarn") || "pnpm",
+      });
+      // If there's no dev env, we still need to set the global env for cleanup
+      if (!devEnv) {
+        globalPlaygroundEnv = {
+          projectDir: deployEnv.targetDir,
+          cleanup: deployEnv.cleanup,
+        };
+      }
+    }
+
+    const [devInstance, deployInstance] = await Promise.all([
+      dev && devEnv ? createDevServer(devEnv.targetDir) : Promise.resolve(null),
+      deploy && deployEnv
+        ? createDeployment(deployEnv.targetDir)
+        : Promise.resolve(null),
+    ]);
+
+    globalDevInstance = devInstance;
+    globalDeploymentInstance = deployInstance;
   }, SETUP_PLAYGROUND_ENV_TIMEOUT);
 }
 
@@ -226,15 +273,16 @@ export function getPlaygroundEnvironment(): PlaygroundEnvironment {
  * Creates a dev server instance using the shared playground environment.
  * Automatically registers cleanup to run after the test.
  */
-export async function createDevServer(): Promise<DevServerInstance> {
+export async function createDevServer(
+  projectDir: string,
+): Promise<DevServerInstance> {
   if (SKIP_DEV_SERVER_TESTS) {
     throw new Error("Dev server tests are skipped via RWSDK_SKIP_DEV=1");
   }
 
-  const env = getPlaygroundEnvironment();
   const packageManager =
     (process.env.PACKAGE_MANAGER as "pnpm" | "npm" | "yarn") || "pnpm";
-  const devResult = await runDevServer(packageManager, env.projectDir);
+  const devResult = await runDevServer(packageManager, projectDir);
 
   const serverId = `devServer-${Date.now()}-${Math.random()
     .toString(36)
@@ -260,24 +308,24 @@ export async function createDevServer(): Promise<DevServerInstance> {
  * Creates a deployment instance using the shared playground environment.
  * Automatically registers cleanup to run after the test.
  */
-export async function createDeployment(): Promise<DeploymentInstance> {
+export async function createDeployment(
+  projectDir: string,
+): Promise<DeploymentInstance> {
   if (SKIP_DEPLOYMENT_TESTS) {
     throw new Error("Deployment tests are skipped via RWSDK_SKIP_DEPLOY=1");
   }
 
-  const env = getPlaygroundEnvironment();
-
   // Extract the unique key from the project directory name instead of generating a new one
   // The directory name format is: {projectName}-e2e-test-{randomId}
-  const dirName = basename(env.projectDir);
+  const dirName = basename(projectDir);
   const match = dirName.match(/-e2e-test-([a-f0-9]+)$/);
   const resourceUniqueKey = match
     ? match[1]
     : Math.random().toString(36).substring(2, 15);
 
   const deployResult = await runRelease(
-    env.projectDir,
-    env.projectDir,
+    projectDir,
+    projectDir,
     resourceUniqueKey,
   );
 
@@ -310,13 +358,13 @@ export async function createDeployment(): Promise<DeploymentInstance> {
         if (isRelatedToTest(deployResult.workerName, resourceUniqueKey)) {
           await deleteWorker(
             deployResult.workerName,
-            env.projectDir,
+            projectDir,
             resourceUniqueKey,
           );
         }
         await deleteD1Database(
           resourceUniqueKey,
-          env.projectDir,
+          projectDir,
           resourceUniqueKey,
         );
       };
@@ -335,7 +383,7 @@ export async function createDeployment(): Promise<DeploymentInstance> {
     url: deployResult.url,
     workerName: deployResult.workerName,
     resourceUniqueKey,
-    projectDir: env.projectDir,
+    projectDir: projectDir,
   };
 }
 
@@ -553,22 +601,25 @@ testDev.only = (
 
   test.only(name, async () => {
     await runTestWithRetries(name, async () => {
-      const devServer = await createDevServer();
+      if (!globalDevInstance) {
+        throw new Error(
+          "No dev server instance found. Make sure to enable it in setupPlaygroundEnvironment.",
+        );
+      }
       const browser = await createBrowser();
       const page = await browser.newPage();
       page.setDefaultTimeout(PUPPETEER_TIMEOUT);
 
       const cleanup = async () => {
         await browser.close();
-        await devServer.stopDev();
       };
 
       try {
         await testFn({
-          devServer,
+          devServer: globalDevInstance,
           browser,
           page,
-          url: devServer.url,
+          url: globalDevInstance.url,
         });
 
         return { cleanup };
@@ -599,9 +650,13 @@ export function testDeploy(
     return;
   }
 
-  test(name, async () => {
+  test.concurrent(name, async () => {
     await runTestWithRetries(name, async () => {
-      const deployment = await createDeployment();
+      if (!globalDeploymentInstance) {
+        throw new Error(
+          "No deployment instance found. Make sure to enable it in setupPlaygroundEnvironment.",
+        );
+      }
       const browser = await createBrowser();
       const page = await browser.newPage();
       page.setDefaultTimeout(PUPPETEER_TIMEOUT);
@@ -609,16 +664,15 @@ export function testDeploy(
       const cleanup = async () => {
         // We don't await this because we want to let it run in the background
         // The afterEach hook for deployments already does this.
-        await cleanupDeployment(deployment);
         await browser.close();
       };
 
       try {
         await testFn({
-          deployment,
+          deployment: globalDeploymentInstance,
           browser,
           page,
-          url: deployment.url,
+          url: globalDeploymentInstance.url,
         });
         return { cleanup };
       } catch (error) {
@@ -651,7 +705,11 @@ testDeploy.only = (
 
   test.only(name, async () => {
     await runTestWithRetries(name, async () => {
-      const deployment = await createDeployment();
+      if (!globalDeploymentInstance) {
+        throw new Error(
+          "No deployment instance found. Make sure to enable it in setupPlaygroundEnvironment.",
+        );
+      }
       const browser = await createBrowser();
       const page = await browser.newPage();
       page.setDefaultTimeout(PUPPETEER_TIMEOUT);
@@ -659,16 +717,15 @@ testDeploy.only = (
       const cleanup = async () => {
         // We don't await this because we want to let it run in the background
         // The afterEach hook for deployments already does this.
-        await cleanupDeployment(deployment);
         await browser.close();
       };
 
       try {
         await testFn({
-          deployment,
+          deployment: globalDeploymentInstance,
           browser,
           page,
-          url: deployment.url,
+          url: globalDeploymentInstance.url,
         });
         return { cleanup };
       } catch (error) {

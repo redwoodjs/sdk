@@ -8,69 +8,50 @@ import {
 
 setupPlaygroundEnvironment(import.meta.url);
 
-testDevAndDeploy(
-  "renders Chakra UI playground without errors",
-  async ({ page, url }) => {
-    // Set up console error tracking
-    const consoleErrors: string[] = [];
-    page.on("console", (msg) => {
-      if (msg.type() === "error") {
-        consoleErrors.push(msg.text());
-      }
-    });
+testDevAndDeploy("Chakra UI playground", async ({ page, url }) => {
+  // Set up console error tracking
+  const consoleErrors: string[] = [];
+  page.on("console", (msg) => {
+    if (msg.type() === "error") {
+      consoleErrors.push(msg.text());
+    }
+  });
 
-    await page.goto(url, { waitUntil: "networkidle0" });
+  await page.goto(url, { waitUntil: "networkidle0" });
 
-    const getElementText = (selector: string) =>
-      page.$eval(selector, (el) => el.textContent);
+  const getElementText = (selector: string) =>
+    page.$eval(selector, (el) => el.textContent);
 
-    await poll(async () => {
-      // Verify main title and subtitle
-      const mainTitle = await getElementText('[data-testid="main-title"]');
-      expect(mainTitle).toContain("Chakra UI Playground");
+  await poll(async () => {
+    // Verify main title and subtitle
+    const mainTitle = await getElementText('[data-testid="main-title"]');
+    expect(mainTitle).toContain("Chakra UI Playground");
 
-      const subtitle = await getElementText('[data-testid="subtitle"]');
-      expect(subtitle).toContain("Basic component showcase for RedwoodSDK");
+    const subtitle = await getElementText('[data-testid="subtitle"]');
+    expect(subtitle).toContain("Basic component showcase for RedwoodSDK");
 
-      // Verify only the simple components section is present
-      const headings = await page.$$eval("h2", (nodes) =>
-        nodes.map((n) => n.textContent),
-      );
-      expect(headings).toContain("Simple Components");
-      expect(headings.length).toBe(2); // Title and the one section
+    // Verify only the simple components section is present
+    const headings = await page.$$eval("h2", (nodes) =>
+      nodes.map((n) => n.textContent),
+    );
+    expect(headings).toContain("Simple Components");
+    expect(headings.length).toBe(2); // Title and the one section
 
-      // Test a key component
-      await page.waitForSelector('[data-testid="button-solid"]');
-      return true;
-    });
+    // Test a key component
+    await page.waitForSelector('[data-testid="button-solid"]');
+    return true;
+  });
 
-    // Verify no console errors occurred
-    expect(consoleErrors).toEqual([]);
-  },
-);
+  // Verify no console errors occurred on render
+  expect(consoleErrors).toEqual([]);
 
-testDevAndDeploy(
-  "interactive components work correctly",
-  async ({ page, url }) => {
-    const consoleErrors: string[] = [];
-    page.on("console", (msg) => {
-      if (msg.type() === "error") {
-        consoleErrors.push(msg.text());
-      }
-    });
+  await waitForHydration(page);
 
-    await page.goto(url, { waitUntil: "networkidle0" });
-    await page.waitForSelector('[data-testid="main-title"]');
+  const getButton = () => page.waitForSelector('[data-testid="button-solid"]');
 
-    await waitForHydration(page);
+  // Test button is clickable
+  (await getButton())?.click();
 
-    const getButton = () =>
-      page.waitForSelector('[data-testid="button-solid"]');
-
-    // Test button is clickable
-    (await getButton())?.click();
-
-    // Verify no console errors occurred during interactions
-    expect(consoleErrors).toEqual([]);
-  },
-);
+  // Verify no console errors occurred during interactions
+  expect(consoleErrors).toEqual([]);
+});
