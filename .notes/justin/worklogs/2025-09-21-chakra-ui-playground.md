@@ -220,7 +220,7 @@ Rather than relying on a brittle patch or waiting for an upstream fix, the plan 
 1.  **Introduce a Plugin Option:** Add a new configuration option to the RedwoodSDK Vite plugin, tentatively named `forceClientPaths`.
 2.  **Support Globs:** This option will accept an array of glob patterns. Any module whose path matches one of these globs will be treated as a Client Component, regardless of whether it has a `"use client"` directive.
 3.  **Update Directive Logic:** The core directive scanning logic will be updated. After checking a file's content for a directive, it will check the file's path against the `forceClientPaths` globs. If there's a match, it will be handled as a client module.
-4.  **Implement in Playground:** We will use this new option in the `chakra-ui` playground's `vite.config.mts` to correctly mark the problematic `code-block` context files as client components, unblocking our progress.
+4.  **Implement in Playground:** We will use this new option in the `chakra-ui` playground's `vite.config.mts` to correctly mark the problematic `code-block` files as client modules, unblocking our progress.
 
 This approach provides a robust and flexible escape hatch for handling non-compliant third-party libraries.
 
@@ -307,20 +307,12 @@ Our directive scanner initially failed to detect `"use client"` in modules where
 
 A subsequent error (`fieldAnatomy.extendWith is not a function`) revealed that our framework was incorrectly handling non-component exports (like utility functions or objects) from `"use client"` modules. The entire module was being replaced with a client reference proxy, making these exports inaccessible on the server. This was a significant architectural issue that was resolved with the "SSR Bridge" implementation in a separate PR, which is now merged into `main`.
 
-**3. Missing `"use client"` Directives in Chakra UI**
+**3. Server-Side Execution of Client APIs in Chakra UI**
 
-After resolving the framework-level issues, a final blocker emerged. Certain Chakra UI files call `createContext`, a client-only React API, but are missing the required `"use client"` directive. This appears to be an oversight in the library, as other similar modules correctly include the directive. Importing any component that depends on these files (like `<Code>`) causes a server error because the code is incorrectly executed in the RSC environment.
+After resolving the framework-level issues, a final blocker emerged. Certain files associated with Chakra UI's `<Code>` component use `createContext`, a React API that is not available in the server environment. These files do not include a `"use client"` directive, which leads to a runtime error.
 
-The problematic files are:
+The files are:
 -   [`code-block-context.ts`](https://github.com/chakra-ui/chakra-ui/blob/79971c0d1ccac7921e5e5c65faa93e3fe8456bca/packages/react/src/components/code-block/code-block-adapter-context.ts)
 -   [`code-block-adapter-context.ts`](https://github.com/chakra-ui/chakra-ui/blob/79971c0d1ccac7921e5e5c65faa93e3fe8456bca/packages/react/src/components/code-block/code-block-adapter-provider.tsx)
 
-### Solution
-
-This change introduces a framework-level feature to handle non-compliant third-party libraries and uses it to fix the Chakra UI playground.
-
-1.  **Manual Client Module Overrides:** The RedwoodSDK Vite plugin now accepts a `forceClientPaths` option. This option takes an array of paths or glob patterns, and any matching module will be treated as a client component, regardless of whether it has a `"use client"` directive. This provides a robust escape hatch for library integration issues.
-
-2.  **Chakra UI Playground:** The `chakra-ui` playground now uses the `forceClientPaths` option in its `vite.config.mts` to correctly mark the problematic `code-block` files as client modules. This resolves the final blocker and allows the playground to run.
-
-3.  **Simplified Showcase:** To ensure stability, the playground has been simplified to a basic showcase of core components, with the problematic `<Code>` component removed for now. The e2e tests have been updated accordingly.
+To address this and provide a general-purpose solution for similar cases in other libraries, this PR introduces a `forceClientPaths` option to the RedwoodSDK Vite plugin. This allows developers to manually designate modules as client-side. The new Chakra UI playground uses this option to correctly handle the files, which unblocks the integration and serves as a working example.
