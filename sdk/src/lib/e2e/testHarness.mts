@@ -14,6 +14,7 @@ export type { Browser, Page } from "puppeteer-core";
 import fs from "fs-extra";
 import os from "os";
 import path from "path";
+import { poll } from "./poll.mjs";
 
 const SETUP_PLAYGROUND_ENV_TIMEOUT = 300_000;
 
@@ -629,32 +630,6 @@ testDevAndDeploy.only = (
   testDev.only(`${name} (dev)`, testFn);
   testDeploy.only(`${name} (deployment)`, testFn);
 };
-
-/**
- * Utility function for polling/retrying assertions
- */
-export async function poll(
-  fn: () => Promise<boolean>,
-  timeout: number = 2 * 60 * 1000, // 2 minutes
-  interval: number = 100,
-): Promise<void> {
-  const startTime = Date.now();
-
-  while (Date.now() - startTime < timeout) {
-    try {
-      const result = await fn();
-      if (result) {
-        return;
-      }
-    } catch (error) {
-      // Continue polling on errors
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, interval));
-  }
-
-  throw new Error(`Polling timed out after ${timeout}ms`);
-}
 
 /**
  * Waits for the page to be fully loaded and hydrated.

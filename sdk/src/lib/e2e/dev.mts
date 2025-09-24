@@ -1,7 +1,10 @@
 import { setTimeout } from "node:timers/promises";
 import debug from "debug";
 import { $ } from "../../lib/$.mjs";
+import { poll } from "./poll.mjs";
 import { PackageManager } from "./types.mjs";
+
+const DEV_SERVER_TIMEOUT = 60000; // 60 seconds
 
 const log = debug("rwsdk:e2e:dev");
 
@@ -11,7 +14,7 @@ const log = debug("rwsdk:e2e:dev");
 export async function runDevServer(
   packageManager: PackageManager = "pnpm",
   cwd?: string,
-): Promise<{
+): Promis<
   url: string;
   stopDev: () => Promise<void>;
 }> {
@@ -311,6 +314,24 @@ export async function runDevServer(
     // Wait for the URL
     const serverUrl = await waitForUrl();
     console.log(`✅ Development server started at ${serverUrl}`);
+
+    // Poll the URL to ensure it's live before proceeding
+    await poll(
+      async () => {
+        try {
+          const response = await fetch(serverUrl, {
+            signal: AbortSignal.timeout(1000),
+          });
+          // We consider any response (even 4xx or 5xx) as success,
+          // as it means the worker is routable.
+          return response.status > 0;
+        } catch (e) {
+          return false;
+        }
+      },
+      DEV_SERVER_TIMEOUT, // 60-second timeout for warm-up
+    );
+
     return { url: serverUrl, stopDev };
   } catch (error) {
     // Make sure to try to stop the server on error
