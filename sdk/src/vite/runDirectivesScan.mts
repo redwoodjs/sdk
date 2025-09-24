@@ -7,12 +7,9 @@ import path from "node:path";
 import debug from "debug";
 import { getViteEsbuild } from "./getViteEsbuild.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
+import { INTERMEDIATES_OUTPUT_DIR } from "../lib/constants.mjs";
 import { externalModules } from "./constants.mjs";
-import {
-  createViteAwareResolver,
-  mapViteResolveToEnhancedResolveOptions,
-} from "./createViteAwareResolver.mjs";
-import resolve from "enhanced-resolve";
+import { createViteAwareResolver } from "./createViteAwareResolver.mjs";
 
 const log = debug("rwsdk:vite:run-directives-scan");
 
@@ -92,11 +89,13 @@ export const runDirectivesScan = async ({
   environments,
   clientFiles,
   serverFiles,
+  entries: initialEntries,
 }: {
   rootConfig: ResolvedConfig;
   environments: Record<string, Environment>;
   clientFiles: Set<string>;
   serverFiles: Set<string>;
+  entries: string[];
 }) => {
   console.log("\n🔍 Scanning for 'use client' and 'use server' directives...");
 
@@ -105,7 +104,8 @@ export const runDirectivesScan = async ({
 
   try {
     const esbuild = await getViteEsbuild(rootConfig.root);
-    const input = environments.worker.config.build.rollupOptions?.input;
+    const input =
+      initialEntries ?? environments.worker.config.build.rollupOptions?.input;
     let entries: string[];
 
     if (Array.isArray(input)) {
@@ -125,7 +125,10 @@ export const runDirectivesScan = async ({
       return;
     }
 
-    const absoluteEntries = entries.map((entry) =>
+    // Filter out virtual modules since they can't be scanned by esbuild
+    const realEntries = entries.filter((entry) => !entry.includes("virtual:"));
+
+    const absoluteEntries = realEntries.map((entry) =>
       path.resolve(rootConfig.root, entry),
     );
 
@@ -291,21 +294,18 @@ export const runDirectivesScan = async ({
               });
 
               // Store the definitive environment for this module, so it can be used when it becomes an importer.
-              moduleEnvironments.set(args.path, moduleEnv);
-              log("Set environment for", args.path, "to", moduleEnv);
+              const realPath = await fsp.realpath(args.path);
+              moduleEnvironments.set(realPath, moduleEnv);
+              log("Set environment for", realPath, "to", moduleEnv);
 
               // Finally, populate the output sets if the file has a directive.
               if (isClient) {
-                log("Discovered 'use client' in:", args.path);
-                clientFiles.add(
-                  normalizeModulePath(args.path, rootConfig.root),
-                );
+                log("Discovered 'use client' in:", realPath);
+                clientFiles.add(normalizeModulePath(realPath, rootConfig.root));
               }
               if (isServer) {
-                log("Discovered 'use server' in:", args.path);
-                serverFiles.add(
-                  normalizeModulePath(args.path, rootConfig.root),
-                );
+                log("Discovered 'use server' in:", realPath);
+                serverFiles.add(normalizeModulePath(realPath, rootConfig.root));
               }
 
               return { contents, loader: "default" };
@@ -322,6 +322,7 @@ export const runDirectivesScan = async ({
       entryPoints: absoluteEntries,
       bundle: true,
       write: false,
+      outdir: path.join(INTERMEDIATES_OUTPUT_DIR, "directive-scan"),
       platform: "node",
       format: "esm",
       logLevel: "silent",
@@ -333,5 +334,11 @@ export const runDirectivesScan = async ({
     // Always clear the scanning flag when done
     delete process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE;
     console.log("✅ Scan complete.");
+    process.env.VERBOSE &&
+      log(
+        "Client/server files after scanning: client=%O, server=%O",
+        Array.from(clientFiles),
+        Array.from(serverFiles),
+      );
   }
 };

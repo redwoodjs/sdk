@@ -1,68 +1,87 @@
 /**
  * Efficiently checks if a React directive (e.g., "use server", "use client")
- * is present in the code. Optimized for performance with a two-step approach:
- * 1. Quick string search to see if directive exists anywhere
- * 2. Line-by-line check only if the directive might be present
+ * is present in the code.
+ *
+ * This function is optimized for performance by only checking the first few
+ * lines of the code, as directives must appear at the very top of a file.
+ * It handles comments, whitespace, and any valid directive prologue
+ * (e.g., "use strict").
  */
 export function hasDirective(code: string, directive: string): boolean {
-  // Quick performance check: if directive doesn't exist anywhere, skip line checking
-  const singleQuoteDirective = `'${directive}'`;
-  const doubleQuoteDirective = `"${directive}"`;
-
-  if (
-    !code.includes(singleQuoteDirective) &&
-    !code.includes(doubleQuoteDirective)
-  ) {
-    return false;
-  }
-
-  // Split into lines and check each one
-  const lines = code.split("\n");
+  const lines = code.slice(0, 512).split("\n"); // Check first ~512 chars
   let inMultiLineComment = false;
+  let foundUseClient = false;
+  let foundTargetDirective = false;
+
+  const doubleQuoteDirective = `"${directive}"`;
+  const singleQuoteDirective = `'${directive}'`;
+  const doubleQuoteUseClient = `"use client"`;
+  const singleQuoteUseClient = `'use client'`;
 
   for (const line of lines) {
     const trimmedLine = line.trim();
 
-    // Skip empty lines
     if (trimmedLine.length === 0) {
       continue;
     }
 
-    // Handle multi-line comments
-    if (trimmedLine.startsWith("/*")) {
-      inMultiLineComment = true;
-      // Check if the comment ends on the same line
-      if (trimmedLine.includes("*/")) {
-        inMultiLineComment = false;
-      }
-      continue;
-    }
-
     if (inMultiLineComment) {
-      // Check if this line ends the multi-line comment
       if (trimmedLine.includes("*/")) {
         inMultiLineComment = false;
       }
       continue;
     }
 
-    // Skip single-line comments
+    if (trimmedLine.startsWith("/*")) {
+      if (!trimmedLine.includes("*/")) {
+        inMultiLineComment = true;
+      }
+      continue;
+    }
+
     if (trimmedLine.startsWith("//")) {
       continue;
     }
 
-    // Check if this line starts with the directive
+    const cleanedLine = trimmedLine.endsWith(";")
+      ? trimmedLine.slice(0, -1)
+      : trimmedLine;
+
+    if (
+      trimmedLine.startsWith(doubleQuoteUseClient) ||
+      trimmedLine.startsWith(singleQuoteUseClient)
+    ) {
+      foundUseClient = true;
+      if (directive === "use client") {
+        return true;
+      }
+    }
+
     if (
       trimmedLine.startsWith(doubleQuoteDirective) ||
       trimmedLine.startsWith(singleQuoteDirective)
     ) {
-      return true;
+      foundTargetDirective = true;
+      if (directive !== "use server") {
+        return true;
+      }
     }
 
-    // If we hit a non-empty, non-comment line that's not a directive, we can stop
-    // (directives must be at the top of the file/scope, after comments)
+    // Any other string literal is part of a valid directive prologue.
+    // We can continue searching.
+    if (trimmedLine.startsWith('"') || trimmedLine.startsWith("'")) {
+      continue;
+    }
+
+    // If we encounter any other non-directive, non-comment, non-string-literal
+    // line of code, the directive prologue is over. Stop.
     break;
   }
 
-  return false;
+  // If looking for 'use server' and 'use client' was found, return false (client takes priority)
+  if (directive === "use server" && foundUseClient) {
+    return false;
+  }
+
+  return foundTargetDirective;
 }

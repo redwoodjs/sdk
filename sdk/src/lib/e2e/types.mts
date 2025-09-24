@@ -17,6 +17,7 @@ export interface SmokeTestOptions {
   realtime?: boolean;
   skipHmr?: boolean;
   skipStyleTests?: boolean;
+  tarballPath?: string;
 }
 
 /**

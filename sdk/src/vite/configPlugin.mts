@@ -1,14 +1,11 @@
 import { Plugin } from "vite";
 import path, { resolve } from "node:path";
-import { InlineConfig } from "vite";
+import { InlineConfig, ViteBuilder } from "vite";
 import enhancedResolve from "enhanced-resolve";
-import debug from "debug";
 
 import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import { buildApp } from "./buildApp.mjs";
 import { externalModules } from "./constants.mjs";
-
-const log = debug("rwsdk:vite:config");
 
 export const configPlugin = ({
   silent,
@@ -26,7 +23,7 @@ export const configPlugin = ({
   clientEntryPoints: Set<string>;
 }): Plugin => ({
   name: "rwsdk:config",
-  config: async (_) => {
+  config: async (_, { command }) => {
     const mode = process.env.NODE_ENV;
 
     const workerConfig: InlineConfig = {
@@ -53,7 +50,15 @@ export const configPlugin = ({
       },
       optimizeDeps: {
         noDiscovery: false,
-        include: ["rwsdk/worker"],
+        include: [
+          "rwsdk/worker",
+          "rwsdk/router",
+          "rwsdk/auth",
+          "rwsdk/db",
+          "rwsdk/__ssr_bridge",
+          "rwsdk/realtime/worker",
+          "rwsdk/realtime/durableObject",
+        ],
         exclude: [],
         entries: [workerEntryPathname],
         esbuildOptions: {
@@ -69,14 +74,6 @@ export const configPlugin = ({
         emitAssets: true,
         emptyOutDir: false,
         ssr: true,
-        rollupOptions: {
-          output: {
-            inlineDynamicImports: true,
-          },
-          input: {
-            worker: workerEntryPathname,
-          },
-        },
       },
     };
 
@@ -109,7 +106,7 @@ export const configPlugin = ({
           },
           optimizeDeps: {
             noDiscovery: false,
-            include: ["rwsdk/client"],
+            include: ["rwsdk/client", "rwsdk/realtime/client"],
             entries: [],
             esbuildOptions: {
               jsx: "automatic",
@@ -136,7 +133,7 @@ export const configPlugin = ({
             noDiscovery: false,
             entries: [workerEntryPathname],
             exclude: externalModules,
-            include: ["rwsdk/__ssr", "rwsdk/__ssr_bridge"],
+            include: ["rwsdk/__ssr", "rwsdk/__ssr_bridge", "rwsdk/client"],
             esbuildOptions: {
               jsx: "automatic",
               jsxImportSource: "react",
@@ -173,8 +170,8 @@ export const configPlugin = ({
                 // original `export` statement from the bundle to prevent syntax
                 // errors.
                 inlineDynamicImports: true,
-                banner: `export const { renderHtmlStream, ssrWebpackRequire, ssrGetModuleExport, createThenableFromReadableStream } = (function() {`,
-                footer: `return { renderHtmlStream, ssrWebpackRequire, ssrGetModuleExport, createThenableFromReadableStream };\n})();`,
+                banner: `export const { renderHtmlStream, ssrLoadModule, ssrWebpackRequire, ssrGetModuleExport, createThenableFromReadableStream } = (function() {`,
+                footer: `return { renderHtmlStream, ssrLoadModule, ssrWebpackRequire, ssrGetModuleExport, createThenableFromReadableStream };\n})();`,
               },
               plugins: [
                 {
@@ -194,13 +191,14 @@ export const configPlugin = ({
         hmr: true,
       },
       builder: {
-        async buildApp(builder) {
+        async buildApp(builder: ViteBuilder) {
           await buildApp({
             builder,
             projectRootDir,
             clientEntryPoints,
             clientFiles,
             serverFiles,
+            workerEntryPathname,
           });
         },
       },

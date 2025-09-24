@@ -4,7 +4,7 @@ import { setupPlaygroundEnvironment, testDevAndDeploy, poll } from "rwsdk/e2e";
 setupPlaygroundEnvironment(import.meta.url);
 
 // Helper function to wait for hydration to complete
-async function waitForHydration(page: any, timeout = 5000) {
+async function waitForHydration(page: any) {
   await new Promise((resolve) => setTimeout(resolve, 1000)); // Initial wait for scripts to load
 
   // Wait for DOMContentLoaded and any hydration indicators
@@ -177,7 +177,9 @@ describe("useId Playground", () => {
             page.evaluate((element: Element) => element.textContent, el),
           ),
         );
-        return statuses.every((status: string) => status.includes("Hydrated"));
+        return statuses.every(
+          (status: string | null) => status?.includes("Hydrated") ?? false,
+        );
       });
 
       // Get IDs after hydration
