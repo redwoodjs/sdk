@@ -93,92 +93,84 @@ The following files in the `docs` directory contain references to the "standard"
 - `docs/src/content/docs/core/security.mdx`
 - `docs/src/content/docs/core/routing.mdx`
 
-### 8. Status Update
+## Status Update
 
-Here is a summary of the progress so far, cross-referenced with the tasks in this work log and my internal to-do list.
-
-#### Completed Tasks
+### Completed Tasks
 
 - **1. Restructure Starters**:
-  - [x] Delete the `standard` starter.
-  - [x] Relocate and rename `minimal` starter to `starter`.
+  - [x] Deleted the `standard` starter directory from `/starters`.
+  - [x] Moved `starters/minimal` to the monorepo root and renamed it to `starter`.
+  - [x] Deleted the now-empty `starters` directory.
 - **2. Update Codebase References**:
-  - [x] Search for and remove references to the `standard` starter (in scripts and markdown files).
-  - [x] Update CI workflows to remove the `standard` option.
-  - [x] Update all paths referencing `starters/minimal` to point to `/starter`.
-- **3. Update Documentation**:
-  - [x] Delete the tutorial.
-  - [x] Identify and list all references to the "standard" starter in the docs.
+  - [x] Updated `scripts/cleanup-test-workers.sh` to replace `minimal` and `standard` test patterns with `starter`.
+  - [x] Updated `sdk/scripts/ci-smoke-test.sh` to remove the `--starter` argument and hardcode the path to the new `starter` directory.
+  - [x] Updated `CONTRIBUTING.md` to refer to the single `starter` and reflect the simplified smoke test command.
+  - [x] Updated `sdk/SMOKE-TESTING.md` to remove an example that referenced the `standard` starter.
+  - [x] Updated `.github/workflows/smoke-test-starters.yml` to remove the multi-starter matrix and simplify the CI job to only test the `starter`.
+  - [x] Updated `sdk/scripts/release.sh` to copy from the new `starter` directory during the release smoke test.
+  - [x] Updated `scripts/setup-wrangler-auth.sh` to use the `wrangler.jsonc` from the new `starter` directory.
+- **3. Update `create-rwsdk` Tool**:
+  - [x] Simplified `index.js` by removing all logic for multiple templates, including the `list` command and `--template` option.
+  - [x] Updated `README.md` to reflect the simplified, single-starter functionality.
+  - [x] Updated `CHANGELOG.md` with a new major version, documenting the breaking changes.
+  - [x] Deleted the outdated `TODO.md`.
+- **4. Integrate Passkey Authentication into SDK**:
+  - [x] Added `rwsdk/passkey/worker` and `rwsdk/passkey/client` entry points to `sdk/package.json`.
+  - [x] Ported the necessary logic (database, Durable Object, functions, setup) from the `passkey-addon` into a new `sdk/src/passkey` directory.
+  - [x] Refactored the ported code in `setup.ts` and `functions.ts` to use `requestInfo.response.headers`.
+  - [x] Created the `usePasskey` hook in `sdk/src/passkey/client.ts` to provide a simple client-side API.
+  - [x] Added a new `passkey` playground example by copying `hello-world` and implementing the full authentication flow, including UI, worker middleware, Durable Object configuration, and E2E tests.
+- **5. Rename "minimal" to "starter"**:
+  - [x] Updated all remaining occurrences of "minimal" to "starter" across all project files, including READMEs, documentation, and the starter's own `package.json`.
+- **6. Documentation Cleanup**:
+  - [x] Overhauled `docs/src/content/docs/core/authentication.mdx` with a new, comprehensive guide for the integrated passkey feature.
+  - [x] Deleted the tutorial directory (`docs/src/content/docs/tutorial`) and removed it from the `docs/astro.config.mjs` sidebar.
+  - [x] Updated `docs/src/content/docs/core/database.mdx`, `guides/frontend/storybook.mdx`, `guides/frontend/documents.mdx`, and `core/security.mdx` to remove references to the "standard" starter and provide generic, starter-agnostic examples.
+  - [x] Reviewed all other identified documentation files and confirmed no changes were needed.
 
-#### Pending Tasks
+## Release and Migration Strategy
 
-- **4. Update `create-rwsdk` Tool**:
-  - [ ] Simplify template logic in `index.js`.
-  - [ ] Remove the `--template` option and the `list` command.
-  - [ ] Update the download logic.
-  - [ ] Update `README.md`, `CHANGELOG.md`, and `TODO.md`.
-- **5. Integrate Passkey Authentication into SDK**:
-  - [ ] Overhaul the authentication documentation.
-  - [ ] Create new SDK entry points for passkey authentication.
-  - [ ] Port `passkey-addon` code into `sdk/src/passkey`.
-  - [ ] Refactor ported passkey code to use `requestInfo.response.headers`.
-  - [ ] Create the `usePasskey` hook.
-  - [ ] Add `passkey` authentication example to `playground/`
-    - copy-paste `hello-world` example as starting point
-    - use conventions below + other examples as a reference for how to e2e test
-- **6. Rename "minimal" to "starter"**:
-  - [ ] Rename all remaining occurrences of "minimal" to "starter".
-- **7. Documentation Cleanup**:
-  - [ ] The files have been identified, but the content has not yet been updated.
+With the core refactoring complete, the next challenge is to devise a release strategy that safely rolls out these significant changes to both new and existing users without causing disruption.
 
-## E2E conventions
+### The Problem: Coordinating a Multi-Part Release
 
-We use puppeteer. Here are the conventions:
-```ts
-import { expect } from "vitest";
-import { setupPlaygroundEnvironment, testDevAndDeploy, poll } from "rwsdk/e2e";
+The changes in this branch affect multiple parts of the ecosystem that need to be released in a coordinated manner:
+1.  **`rwsdk`**: The core package is moving towards a `1.0.0` pre-release (e.g., `1.0.0-alpha.x`) with breaking changes.
+2.  **`create-rwsdk`**: The CLI tool needs to be updated to provide the new single `starter` template.
+3.  **The Starter Template**: The artifact downloaded by `create-rwsdk` is now built from the `1.0.0` pre-release branch and will have dependencies pinned accordingly.
+4.  **Documentation**: The docs have been overhauled to match the `1.0.0` changes.
 
-// This sets up the test environment for the entire file.
-// It ensures the playground is isolated and cleaned up automatically.
-setupPlaygroundEnvironment(import.meta.url);
+A simple "big bang" release—updating the `latest` tag on npm for both `rwsdk` and `create-rwsdk` simultaneously—is risky. It could break existing users' projects unexpectedly and doesn't align with the goal of a gradual rollout for pre-release software. The central question is: how do we get the new, better version to new users without disrupting existing ones?
 
-// In most cases, you should be checking the behaviour being tested both in dev and deployments
-// Use `testDevAndDeploy` to run the same test logic against both the
-// local dev server and a temporary Cloudflare deployment.
-testDevAndDeploy("renders MDX and client component", async ({ page, url }) => {
-  await page.goto(url);
+### Proposed Solution: An "Implicit Pre-release" Path
 
-  // Use helper functions to improve legibility and reduce repetition.
-  const getButton = async () => page.waitForSelector("button");
-  const getButtonText = async () =>
-    await page.evaluate((el) => el?.textContent, await getButton());
-  const getPageContent = async () => await page.content();
+The initial proposal was to leverage `create-rwsdk` as the main entry point for new users, guiding them onto the pre-release track by default.
 
-  // Use `poll` to wait for an element or content to appear.
-  // This should be used whenever possible over arbitrary waits (e.g. `setTimeout`).
-  // Place your assertion directly inside the poll to avoid redundant checks.
-  await poll(async () => {
-    const content = await getPageContent();
-    expect(content).toContain("Hello world");
-    expect(await getButtonText()).toBe("Clicks: 0");
-    return true;
-  });
+1.  **`create-rwsdk` Logic Change**: Modify the CLI to fetch the most recent release from GitHub, **including pre-releases**. It would then download the `starter` tarball asset from that specific pre-release.
+2.  **User Experience**: New users would run the simple `npx create-rwsdk my-app` command and automatically receive the latest `1.0.0-alpha.x` starter. The CLI would mention that it's installing a pre-release for transparency.
+3.  **Isolating Existing Users**: The `latest` tag on npm for `rwsdk` would remain on the stable `0.x` version. This prevents existing projects from accidentally upgrading to a breaking version when they run `pnpm install`.
 
-  // Before interacting with the page, wait for it to be fully loaded and
-  // interactive by calling `waitForHydration`. This ensures client-side
-  // hydration is complete and event listeners are attached.
-  await waitForHydration(page);
+### Refinement: Addressing the Needs of Existing Users
 
-  // Re-fetch the element before interacting with it. The DOM may have been
-  // updated by a client-side render, and holding onto a stale element
-  // reference can cause flaky tests.
-  (await getButton())?.click();
+While the above strategy works well for new users, a critical consideration was raised: what is the experience for existing users, particularly those who built their projects on the old `standard` starter?
 
-  // Poll again to wait for the result of the interaction.
-  await poll(async () => {
-    const buttonText = await getButtonText();
-    expect(buttonText).toBe("Clicks: 1");
-    return true;
-  });
-});
-```
+The key insight is that the code generated by the old starter is now **the user's own code**. It is not a deprecated API that we are removing. Therefore, forcing them through a "migration" is the wrong mental model. Their existing authentication implementation, based on Prisma, will continue to work. They are not required to change anything.
+
+This led to a refined, more user-centric strategy that respects their existing codebase while still informing them of the project's new direction.
+
+### Final Agreed-Upon Strategy
+
+The final plan combines the "implicit pre-release" path for new users with a clear, supportive path for existing users, centered around a new migration guide and an escape-hatch flag in the CLI.
+
+1.  **Implement the `--legacy` flag in `create-rwsdk`**:
+    *   The default command (`npx create-rwsdk my-app`) will fetch the latest pre-release from GitHub.
+    *   A new flag, `npx create-rwsdk my-app --legacy`, will be added. This will force the CLI to use the old logic, fetching only the latest *stable* release. This provides a supported path for anyone (including the internal team) who explicitly needs the older `0.x` version.
+
+2.  **Create a Two-Part Migration Guide in the Docs**: A new page, "Migrating from 0.x to 1.x", will be created with two distinct sections:
+    *   **Part 1: Required Migration Steps**: This section will be short and cover the true, unavoidable breaking changes. For example, it will instruct users on how to update their `package.json` to explicitly include peer dependencies like `react`, which is now required. This is the "must-do" list to prevent errors after updating the `rwsdk` package version.
+    *   **Part 2: Optional Refactoring Guide**: This section will be informational and will:
+        *   Explain that the `standard` starter and its tutorial have been removed in favor of a single `starter` with integrated passkey authentication.
+        *   Reassure users that their existing, generated authentication code is theirs and will continue to work.
+        *   Provide a guide for users who *want* to adopt the new, officially supported passkey pattern. This guide will walk them through refactoring their existing code to use the `setupPasskeyAuth` middleware and the `usePasskey` client-side hook, referencing the main authentication documentation.
+
+This refined strategy provides a smooth onboarding path for new users, a clear and non-disruptive upgrade path for existing users, and the necessary flexibility for developers to manage different versions.
