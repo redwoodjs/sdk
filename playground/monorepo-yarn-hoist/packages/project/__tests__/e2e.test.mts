@@ -8,9 +8,7 @@ testDevAndDeploy("renders Hello World", async ({ page, url }) => {
 
   await poll(async () => {
     const content = await page.content();
-    return content.includes("Hello from UI Lib");
+    expect(content).toContain("Hello from UI Lib");
+    return true;
   });
-
-  const content = await page.content();
-  expect(content).toContain("Hello from UI Lib");
 });
