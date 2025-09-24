@@ -1,16 +1,17 @@
 import { RequestInfo } from "rwsdk/worker";
 import { ChakraProvider } from "@/app/ChakraProvider";
-import { Box, Container, Divider, Heading, VStack } from "@chakra-ui/react";
-
-import { DataDisplayComponents } from "@/app/components/DataDisplayComponents";
-import { FeedbackComponents } from "@/app/components/FeedbackComponents";
-import { FormComponents } from "@/app/components/FormComponents";
-import { LayoutComponents } from "@/app/components/LayoutComponents";
-import { MediaComponents } from "@/app/components/MediaComponents";
-import { NavigationComponents } from "@/app/components/NavigationComponents";
-import { OverlayComponents } from "@/app/components/OverlayComponents";
-import { SimpleComponents } from "@/app/components/SimpleComponents";
-import { TypographyComponents } from "@/app/components/TypographyComponents";
+import {
+  Box,
+  Container,
+  Separator,
+  Heading,
+  VStack,
+  HStack,
+  Button,
+  Badge,
+  Code,
+  Kbd,
+} from "@chakra-ui/react";
 
 export function Home({ ctx }: RequestInfo) {
   return (
@@ -22,89 +23,44 @@ export function Home({ ctx }: RequestInfo) {
               Chakra UI Playground
             </Heading>
             <Heading as="h2" size="lg" color="gray.600" data-testid="subtitle">
-              Comprehensive component showcase for RedwoodSDK
+              Basic component showcase for RedwoodSDK
             </Heading>
           </Box>
 
-          <Divider />
+          <Separator />
 
           <Box>
             <Heading as="h2" size="xl" mb={6}>
               Simple Components
             </Heading>
-            <SimpleComponents />
-          </Box>
-
-          <Divider />
-
-          <Box>
-            <Heading as="h2" size="xl" mb={6}>
-              Layout Components
-            </Heading>
-            <LayoutComponents />
-          </Box>
-
-          <Divider />
-
-          <Box>
-            <Heading as="h2" size="xl" mb={6}>
-              Form Components
-            </Heading>
-            <FormComponents />
-          </Box>
-
-          <Divider />
-
-          <Box>
-            <Heading as="h2" size="xl" mb={6}>
-              Data Display Components
-            </Heading>
-            <DataDisplayComponents />
-          </Box>
-
-          <Divider />
-
-          <Box>
-            <Heading as="h2" size="xl" mb={6}>
-              Feedback Components
-            </Heading>
-            <FeedbackComponents />
-          </Box>
-
-          <Divider />
-
-          <Box>
-            <Heading as="h2" size="xl" mb={6}>
-              Typography Components
-            </Heading>
-            <TypographyComponents />
-          </Box>
-
-          <Divider />
-
-          <Box>
-            <Heading as="h2" size="xl" mb={6}>
-              Overlay Components
-            </Heading>
-            <OverlayComponents />
-          </Box>
-
-          <Divider />
-
-          <Box>
-            <Heading as="h2" size="xl" mb={6}>
-              Media Components
-            </Heading>
-            <MediaComponents />
-          </Box>
-
-          <Divider />
-
-          <Box>
-            <Heading as="h2" size="xl" mb={6}>
-              Navigation Components
-            </Heading>
-            <NavigationComponents />
+            <VStack gap={4} alignItems="flex-start">
+              <HStack gap={4}>
+                <Button colorScheme="blue" data-testid="button-solid">
+                  Solid Button
+                </Button>
+                <Button variant="outline" colorScheme="teal">
+                  Outline Button
+                </Button>
+                <Button variant="ghost" colorScheme="pink">
+                  Ghost Button
+                </Button>
+              </HStack>
+              <HStack gap={4}>
+                <Badge colorScheme="green" data-testid="badge-default">
+                  Default Badge
+                </Badge>
+                <Badge colorScheme="red" variant="solid">
+                  Solid Badge
+                </Badge>
+                <Badge colorScheme="purple" variant="outline">
+                  Outline Badge
+                </Badge>
+              </HStack>
+              <HStack gap={4}>
+                <Code>console.log("Hello, World!")</Code>
+                <Kbd>Ctrl</Kbd>+<Kbd>C</Kbd>
+              </HStack>
+            </VStack>
           </Box>
         </VStack>
       </Container>

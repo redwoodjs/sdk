@@ -33,6 +33,9 @@ import { linkerPlugin } from "./linkerPlugin.mjs";
 import { directiveModulesDevPlugin } from "./directiveModulesDevPlugin.mjs";
 import { directivesFilteringPlugin } from "./directivesFilteringPlugin.mjs";
 import { resolveForcedPaths } from "./resolveForcedPaths.mjs";
+import { runPatch } from "./runPatch.mjs";
+import { runPrerender } from "./runPrerender.mjs";
+import { serverFunctions } from "./serverFunctions.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -95,6 +98,15 @@ export const redwoodPlugin = async (
       serverFiles.add(p);
     }
   }
+
+  // START --- vvv
+  // HACK: Force the code-block-adapter-context to be a client component
+  // to work around a bug in Chakra UI where it's missing the "use client"
+  // directive. This file uses `createContext`, which is a client-only API.
+  clientFiles.add(
+    "**/@chakra-ui/react/**/code-block/code-block-adapter-context.js",
+  );
+  // END --- ^^^
 
   const workerConfigPath =
     options.configPath ??
