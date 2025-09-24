@@ -81,8 +81,8 @@ describe("useId Playground", () => {
       expect(initialIds["server-id-2"]).toBe(afterIds["server-id-2"]);
 
       // Verify the IDs follow the expected server pattern (_S_)
-      expect(initialIds["server-id-1"]).toMatch(/^_S_\\w+_$/);
-      expect(initialIds["server-id-2"]).toMatch(/^_S_\\w+_$/);
+      expect(initialIds["server-id-1"]).toMatch(/^_S_\w+_$/);
+      expect(initialIds["server-id-2"]).toMatch(/^_S_\w+_$/);
     },
   );
 
@@ -129,8 +129,8 @@ describe("useId Playground", () => {
       expect(initialIds["client-id-2"]).toBe(afterIds["client-id-2"]);
 
       // Verify the IDs follow the expected hydration pattern (_R_)
-      expect(initialIds["client-id-1"]).toMatch(/^_R_\\w+_$/);
-      expect(initialIds["client-id-2"]).toMatch(/^_R_\\w+_$/);
+      expect(initialIds["client-id-1"]).toMatch(/^_R_\w+_$/);
+      expect(initialIds["client-id-2"]).toMatch(/^_R_\w+_$/);
     },
   );
 
@@ -218,16 +218,12 @@ describe("useId Playground", () => {
       );
 
       // Verify all IDs follow the expected pattern
-      expect(initialServerIds["mixed-server-id-1"]).toMatch(/^_S_\\w+_$/);
-      expect(initialServerIds["mixed-server-id-2"]).toMatch(/^_S_\\w+_$/);
-      expect(initialClientIds["mixed-first-client-id-1"]).toMatch(/^_R_\\w+_$/);
-      expect(initialClientIds["mixed-first-client-id-2"]).toMatch(/^_R_\\w+_$/);
-      expect(initialClientIds["mixed-second-client-id-1"]).toMatch(
-        /^_R_\\w+_$/,
-      );
-      expect(initialClientIds["mixed-second-client-id-2"]).toMatch(
-        /^_R_\\w+_$/,
-      );
+      expect(initialServerIds["mixed-server-id-1"]).toMatch(/^_S_\w+_$/);
+      expect(initialServerIds["mixed-server-id-2"]).toMatch(/^_S_\w+_$/);
+      expect(initialClientIds["mixed-first-client-id-1"]).toMatch(/^_R_\w+_$/);
+      expect(initialClientIds["mixed-first-client-id-2"]).toMatch(/^_R_\w+_$/);
+      expect(initialClientIds["mixed-second-client-id-1"]).toMatch(/^_R_\w+_$/);
+      expect(initialClientIds["mixed-second-client-id-2"]).toMatch(/^_R_\w+_$/);
     },
   );
 });
