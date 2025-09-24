@@ -118,19 +118,19 @@ Here is a summary of the progress so far, cross-referenced with the tasks in thi
 
 #### Pending Tasks
 
-- **4. Rename "minimal" to "starter"**:
-  - [ ] Rename all remaining occurrences of "minimal" to "starter".
-- **5. Update `create-rwsdk` Tool**:
+- **4. Update `create-rwsdk` Tool**:
   - [ ] Simplify template logic in `index.js`.
   - [ ] Remove the `--template` option and the `list` command.
   - [ ] Update the download logic.
   - [ ] Update `README.md`, `CHANGELOG.md`, and `TODO.md`.
-- **6. Integrate Passkey Authentication into SDK**:
+- **5. Integrate Passkey Authentication into SDK**:
   - [ ] Overhaul the authentication documentation.
   - [ ] Create new SDK entry points for passkey authentication.
   - [ ] Port `passkey-addon` code into `sdk/src/passkey`.
   - [ ] Refactor ported passkey code to use `requestInfo.response.headers`.
   - [ ] Create the `usePasskey` hook.
   - [ ] Add passkey authentication example to `playground/hello-world`.
+- **6. Rename "minimal" to "starter"**:
+  - [ ] Rename all remaining occurrences of "minimal" to "starter".
 - **7. Documentation Cleanup**:
   - [ ] The files have been identified, but the content has not yet been updated.
