@@ -18,7 +18,7 @@ import { miniflareHMRPlugin } from "./miniflareHMRPlugin.mjs";
 import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
 import { configPlugin } from "./configPlugin.mjs";
 import { $ } from "../lib/$.mjs";
-import { reactConditionsResolverPlugin } from "./reactConditionsResolverPlugin.mjs";
+import { knownDepsResolverPlugin } from "./knownDepsResolverPlugin.mjs";
 import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
 import { pathExists } from "fs-extra";
 import { injectVitePreamble } from "./injectVitePreamblePlugin.mjs";
@@ -132,7 +132,7 @@ export const redwoodPlugin = async (
       serverFiles,
       projectRootDir,
     }),
-    reactConditionsResolverPlugin({ projectRootDir }),
+    knownDepsResolverPlugin({ projectRootDir }),
     tsconfigPaths({ root: projectRootDir }),
     shouldIncludeCloudflarePlugin
       ? (cloudflare({
