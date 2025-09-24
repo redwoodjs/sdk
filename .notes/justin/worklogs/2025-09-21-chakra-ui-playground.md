@@ -272,3 +272,55 @@ The plan is to inject a side-effect import of the barrel file at the top of ever
 3.  **Resolve TDZ:** This ensures that `rwsdk_vendor_client_barrel_default` is always defined and populated before any code attempts to access it, thus resolving the temporal dead zone.
 
 This approach directly manipulates the module graph to enforce the correct execution order, which should finally resolve the issue.
+
+---
+
+## Final Resolution and Simplification
+
+The series of complex issues, including the Temporal Dead Zone error, were ultimately traced back to a single root cause: a stale SDK dependency in the pnpm cache. The local playground was using an outdated, cached version of the `rwsdk` package, which did not include the fixes for handling non-component exports from client modules that were developed and merged into `main` (see work log `2025-09-22-ssr-bridge-client-components.md` and PR `7.7.7.4`).
+
+The solution, as documented in the other work log, was to create a fresh tarball of the SDK and install it directly into the playground, bypassing the pnpm cache.
+
+With a clean SDK installation, the persistent build errors were resolved. However, the original `createContext` error related to Chakra UI's `Code` component remained, as it is an upstream issue in the library.
+
+Given that the primary goal was to have a stable playground example, the most pragmatic solution was to simplify the showcase. By removing the `Code` and `Kbd` components from the `Home.tsx` page, we avoid importing the problematic module altogether. The playground is now a basic but functional demonstration of Chakra UI's core components working correctly with our framework.
+
+---
+
+## PR Description
+
+**Title:** `feat(framework, playground): Add manual client module overrides and Chakra UI showcase`
+
+### Goal
+
+The primary goal was to create a playground to test and demonstrate the integration of the Chakra UI component library with our React Server Components framework, including comprehensive end-to-end tests.
+
+### Hurdles
+
+Several issues were encountered during the implementation.
+
+**1. `"use strict"` Directive Interference**
+
+Our directive scanner initially failed to detect `"use client"` in modules where it was preceded by `"use strict"`. This caused many Chakra UI components to be incorrectly treated as Server Components. This was fixed in a previous PR and merged into `main`.
+
+**2. Non-Component Exports from Client Modules**
+
+A subsequent error (`fieldAnatomy.extendWith is not a function`) revealed that our framework was incorrectly handling non-component exports (like utility functions or objects) from `"use client"` modules. The entire module was being replaced with a client reference proxy, making these exports inaccessible on the server. This was a significant architectural issue that was resolved with the "SSR Bridge" implementation in a separate PR, which is now merged into `main`.
+
+**3. Missing `"use client"` Directives in Chakra UI**
+
+After resolving the framework-level issues, a final blocker emerged. Certain Chakra UI files call `createContext`, a client-only React API, but are missing the required `"use client"` directive. This appears to be an oversight in the library, as other similar modules correctly include the directive. Importing any component that depends on these files (like `<Code>`) causes a server error because the code is incorrectly executed in the RSC environment.
+
+The problematic files are:
+-   [`code-block-context.ts`](https://github.com/chakra-ui/chakra-ui/blob/79971c0d1ccac7921e5e5c65faa93e3fe8456bca/packages/react/src/components/code-block/code-block-adapter-context.ts)
+-   [`code-block-adapter-context.ts`](https://github.com/chakra-ui/chakra-ui/blob/79971c0d1ccac7921e5e5c65faa93e3fe8456bca/packages/react/src/components/code-block/code-block-adapter-provider.tsx)
+
+### Solution
+
+This change introduces a framework-level feature to handle non-compliant third-party libraries and uses it to fix the Chakra UI playground.
+
+1.  **Manual Client Module Overrides:** The RedwoodSDK Vite plugin now accepts a `forceClientPaths` option. This option takes an array of paths or glob patterns, and any matching module will be treated as a client component, regardless of whether it has a `"use client"` directive. This provides a robust escape hatch for library integration issues.
+
+2.  **Chakra UI Playground:** The `chakra-ui` playground now uses the `forceClientPaths` option in its `vite.config.mts` to correctly mark the problematic `code-block` files as client modules. This resolves the final blocker and allows the playground to run.
+
+3.  **Simplified Showcase:** To ensure stability, the playground has been simplified to a basic showcase of core components, with the problematic `<Code>` component removed for now. The e2e tests have been updated accordingly.
