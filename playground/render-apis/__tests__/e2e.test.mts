@@ -7,14 +7,15 @@ describe("Render APIs Playground", () => {
   testDevAndDeploy("home page renders navigation", async ({ page, url }) => {
     await page.goto(url);
 
-    await poll(async () => {
-      const content = await page.content();
-      return content.includes("Render APIs Test Playground");
-    });
+    const getPageContent = () => page.content();
 
-    expect(await page.content()).toContain("Render APIs Test Playground");
-    expect(await page.content()).toContain("renderToStream API Test");
-    expect(await page.content()).toContain("renderToString API Test");
+    await poll(async () => {
+      const content = await getPageContent();
+      expect(content).toContain("Render APIs Test Playground");
+      expect(content).toContain("renderToStream API Test");
+      expect(content).toContain("renderToString API Test");
+      return true;
+    });
   });
 
   testDevAndDeploy(
@@ -22,18 +23,18 @@ describe("Render APIs Playground", () => {
     async ({ page, url }) => {
       await page.goto(`${url}/render-to-stream`);
 
+      const getPageContent = () => page.content();
+
       await poll(async () => {
-        const content = await page.content();
-        return content.includes("renderToStream API Test");
+        const content = await getPageContent();
+        expect(content).toContain("renderToStream API Test");
+        expect(content).toContain("renderToStream Test Status");
+        const testContent = await page.$(
+          '[data-testid="render-stream-content"]',
+        );
+        expect(testContent).toBeTruthy();
+        return true;
       });
-
-      // Verify page content
-      expect(await page.content()).toContain("renderToStream API Test");
-      expect(await page.content()).toContain("renderToStream Test Status");
-
-      // Verify the test content section is present
-      const testContent = await page.$('[data-testid="render-stream-content"]');
-      expect(testContent).toBeTruthy();
     },
   );
 
@@ -42,37 +43,38 @@ describe("Render APIs Playground", () => {
     async ({ page, url }) => {
       await page.goto(`${url}/render-to-string`);
 
+      const getPageContent = () => page.content();
+
       await poll(async () => {
-        const content = await page.content();
-        return content.includes("renderToString API Test");
+        const content = await getPageContent();
+        expect(content).toContain("renderToString API Test");
+        expect(content).toContain("renderToString Test Status");
+        const testContent = await page.$(
+          '[data-testid="render-string-content"]',
+        );
+        expect(testContent).toBeTruthy();
+        return true;
       });
-
-      // Verify page content
-      expect(await page.content()).toContain("renderToString API Test");
-      expect(await page.content()).toContain("renderToString Test Status");
-
-      // Verify the test content section is present
-      const testContent = await page.$('[data-testid="render-string-content"]');
-      expect(testContent).toBeTruthy();
     },
   );
 
   testDevAndDeploy("both APIs render successfully", async ({ page, url }) => {
+    const getPageContent = () => page.content();
+
     // Test renderToStream page
     await page.goto(`${url}/render-to-stream`);
     await poll(async () => {
-      const content = await page.content();
-      return content.includes("renderToStream API Test");
+      const content = await getPageContent();
+      expect(content).toContain("renderToStream API Test");
+      return true;
     });
 
     // Test renderToString page
     await page.goto(`${url}/render-to-string`);
     await poll(async () => {
-      const content = await page.content();
-      return content.includes("renderToString API Test");
+      const content = await getPageContent();
+      expect(content).toContain("renderToString API Test");
+      return true;
     });
-
-    // Both APIs should render without errors
-    expect(await page.content()).toContain("renderToString API Test");
   });
 });
