@@ -8,11 +8,9 @@ testDevAndDeploy("renders MDX and client component", async ({ page, url }) => {
 
   await poll(async () => {
     const content = await page.content();
-    return content.includes("Hello world");
+    expect(content).toContain("Hello world");
+    return true;
   });
-
-  const content = await page.content();
-  expect(content).toContain("Hello world");
 
   const button = await page.waitForSelector("button");
   expect(button).not.toBeNull();
@@ -22,6 +20,10 @@ testDevAndDeploy("renders MDX and client component", async ({ page, url }) => {
 
   await button?.click();
 
-  buttonText = await page.evaluate((el) => el?.textContent, button);
-  expect(buttonText).toBe("Clicks: 1");
+  await poll(async () => {
+    buttonText = await page.evaluate((el) => el?.textContent, button);
+    console.log("###", buttonText);
+    expect(buttonText).toBe("Clicks: 1");
+    return true;
+  });
 });

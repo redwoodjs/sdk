@@ -99,6 +99,57 @@ The script will create a temporary directory, copy the starter, install dependen
 
 The monorepo includes a `playground` directory for end-to-end (E2E) tests. These tests run against a real, packed tarball of the SDK in an isolated environment to simulate a user's project accurately.
 
+Playground examples are self-contained, runnable projects designed to demonstrate and test RedwoodSDK features. Each example, modeled after `playground/hello-world`, must include an `__tests__` directory with end-to-end tests. These tests are executed from the monorepo root. For context on using the framework to build playgroud examples refer to our docs in `docs/src/content/docs`. Run the tests from monorepo root, e.g: `pnpm test:e2e -- playground/hello-world/__tests__/e2e.test.mts`
+
+#### Best Practices
+
+The following is an annotated example of a good E2E test that follows our best practices.
+
+```typescript
+import { expect } from "vitest";
+import { setupPlaygroundEnvironment, testDevAndDeploy, poll } from "rwsdk/e2e";
+
+// This sets up the test environment for the entire file.
+// It ensures the playground is isolated and cleaned up automatically.
+setupPlaygroundEnvironment(import.meta.url);
+
+// In most cases, you should be checking the behaviour being tested both in dev and deployments
+// Use `testDevAndDeploy` to run the same test logic against both the
+// local dev server and a temporary Cloudflare deployment.
+testDevAndDeploy("renders MDX and client component", async ({ page, url }) => {
+  await page.goto(url);
+
+  // Use `poll` to wait for an element or content to appear.
+  // This should be used whenever possible over arbitrary waits (e.g. `setTimeout`).
+  // Place your assertion directly inside the poll to avoid redundant checks.
+  await poll(async () => {
+    const content = await page.content();
+    expect(content).toContain("Hello world");
+    return true;
+  });
+
+  // If you need to wait for a specific element to be available in the DOM,
+  // `waitForSelector` is the correct tool.
+  const button = await page.waitForSelector("button");
+  expect(button).not.toBeNull();
+
+  // Use `page.evaluate` to run code in the browser context and get
+  // information from elements, like their text content.
+  let buttonText = await page.evaluate((el) => el?.textContent, button);
+  expect(buttonText).toBe("Clicks: 0");
+
+  // Simulate user interactions, like clicking a button.
+  await button?.click();
+
+  // Poll again to wait for the result of the interaction.
+  await poll(async () => {
+    buttonText = await page.evaluate((el) => el?.textContent, button);
+    expect(buttonText).toBe("Clicks: 1");
+    return true;
+  });
+});
+```
+
 #### Getting Started
 
 Before running deployment tests, you need to authenticate with Cloudflare. You only need to do this once for the entire monorepo.
