@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { CounterButton } from "./CounterButton.js";
 
 export function DirectReactPortal() {
   const [showPortal, setShowPortal] = useState(false);
