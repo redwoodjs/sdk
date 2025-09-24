@@ -127,7 +127,7 @@ importers:
         specifier: 4.38.0
         version: 4.38.0(@cloudflare/workers-types@4.20250921.0)
 
-  playground/mdx-repro:
+  playground/mdx:
     dependencies:
       react:
         specifier: 19.2.0-canary-d415fd3e-20250919
