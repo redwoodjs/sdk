@@ -181,13 +181,13 @@ importers:
 
   playground/import-from-use-client/packages/ui-lib: {}
 
-  playground/monorepo-yarn-hoist:
+  playground/monorepo-top-level-deps:
     dependencies:
       ui-lib:
         specifier: file:./vendor/ui-lib
         version: link:vendor/ui-lib
 
-  playground/monorepo-yarn-hoist/packages/project:
+  playground/monorepo-top-level-deps/packages/project:
     dependencies:
       react:
         specifier: 19.2.0-canary-d415fd3e-20250919
@@ -230,7 +230,7 @@ importers:
         specifier: 4.38.0
         version: 4.38.0(@cloudflare/workers-types@4.20250921.0)
 
-  playground/monorepo-yarn-hoist/vendor/ui-lib: {}
+  playground/monorepo-top-level-deps/vendor/ui-lib: {}
 
   playground/render-apis:
     dependencies:
@@ -10881,7 +10881,7 @@ snapshots:
   '@types/fs-extra@11.0.4':
     dependencies:
       '@types/jsonfile': 6.1.4
-      '@types/node': 24.3.1
+      '@types/node': 22.14.0
 
   '@types/hast@3.0.4':
     dependencies:
@@ -10897,7 +10897,7 @@ snapshots:
 
   '@types/jsonfile@6.1.4':
     dependencies:
-      '@types/node': 24.3.1
+      '@types/node': 22.14.0
 
   '@types/lodash@4.17.16': {}
 
@@ -10938,6 +10938,7 @@ snapshots:
   '@types/node@24.3.1':
     dependencies:
       undici-types: 7.10.0
+    optional: true
 
   '@types/normalize-package-data@2.4.4': {}
 
@@ -10973,7 +10974,7 @@ snapshots:
 
   '@types/yauzl@2.10.3':
     dependencies:
-      '@types/node': 24.3.1
+      '@types/node': 22.14.0
     optional: true
 
   '@typescript-eslint/eslint-plugin@8.44.0(@typescript-eslint/parser@8.44.0(eslint@9.36.0(jiti@2.5.1))(typescript@5.8.3))(eslint@9.36.0(jiti@2.5.1))(typescript@5.8.3)':
@@ -16032,7 +16033,8 @@ snapshots:
 
   undici-types@6.21.0: {}
 
-  undici-types@7.10.0: {}
+  undici-types@7.10.0:
+    optional: true
 
   undici@5.28.5:
     dependencies:
