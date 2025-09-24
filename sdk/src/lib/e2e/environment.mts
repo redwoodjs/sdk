@@ -126,6 +126,7 @@ export async function copyProjectToTempDir(
   projectDir: string,
   resourceUniqueKey: string,
   packageManager?: PackageManager,
+  monorepoRoot?: string,
 ): Promise<{
   tempDir: tmp.DirectoryResult;
   targetDir: string;
@@ -137,16 +138,24 @@ export async function copyProjectToTempDir(
     // Create a temporary directory
     const tempDir = await tmp.dir({ unsafeCleanup: true });
 
-    // Create unique project directory name
-    const originalDirName = basename(projectDir);
-    const workerName = `${originalDirName}-test-${resourceUniqueKey}`;
-    const targetDir = resolve(tempDir.path, workerName);
+    // Determine the source directory to copy from
+    const sourceDir = monorepoRoot || projectDir;
 
-    console.log(`Copying project from ${projectDir} to ${targetDir}`);
+    // Create unique project directory name
+    const originalDirName = basename(sourceDir);
+    const workerName = `${originalDirName}-test-${resourceUniqueKey}`;
+    const tempCopyRoot = resolve(tempDir.path, workerName);
+
+    // If it's a monorepo, the targetDir for commands is a subdirectory
+    const targetDir = monorepoRoot
+      ? resolve(tempCopyRoot, relative(monorepoRoot, projectDir))
+      : tempCopyRoot;
+
+    console.log(`Copying project from ${sourceDir} to ${tempCopyRoot}`);
 
     // Read project's .gitignore if it exists
     let ig = ignore();
-    const gitignorePath = join(projectDir, ".gitignore");
+    const gitignorePath = join(sourceDir, ".gitignore");
 
     if (await pathExists(gitignorePath)) {
       log("Found .gitignore file at %s", gitignorePath);
@@ -175,10 +184,10 @@ export async function copyProjectToTempDir(
 
     // Copy the project directory, respecting .gitignore
     log("Starting copy process with ignored patterns");
-    await copy(projectDir, targetDir, {
+    await copy(sourceDir, tempCopyRoot, {
       filter: (src) => {
         // Get path relative to project directory
-        const relativePath = relative(projectDir, src);
+        const relativePath = relative(sourceDir, src);
         if (!relativePath) return true; // Include the root directory
 
         // Check against ignore patterns
@@ -187,6 +196,36 @@ export async function copyProjectToTempDir(
       },
     });
     log("Project copy completed successfully");
+
+    if (monorepoRoot) {
+      log("⚙️  Configuring monorepo workspace...");
+      const rwsdkWsPath = join(tempCopyRoot, "rwsdk-workspace.json");
+      if (await pathExists(rwsdkWsPath)) {
+        const rwsdkWs = JSON.parse(
+          await fs.promises.readFile(rwsdkWsPath, "utf-8"),
+        );
+        const workspaces = rwsdkWs.workspaces;
+
+        if (packageManager === "pnpm") {
+          const pnpmWsPath = join(tempCopyRoot, "pnpm-workspace.yaml");
+          const pnpmWsConfig = `packages:\n${workspaces.map((w: string) => `  - '${w}'`).join("\n")}\n`;
+          await fs.promises.writeFile(pnpmWsPath, pnpmWsConfig);
+          log("Created pnpm-workspace.yaml");
+        } else {
+          // For npm and yarn, add a workspaces property to package.json
+          const pkgJsonPath = join(tempCopyRoot, "package.json");
+          const pkgJson = JSON.parse(
+            await fs.promises.readFile(pkgJsonPath, "utf-8"),
+          );
+          pkgJson.workspaces = workspaces;
+          await fs.promises.writeFile(
+            pkgJsonPath,
+            JSON.stringify(pkgJson, null, 2),
+          );
+          log("Added workspaces to package.json");
+        }
+      }
+    }
 
     // Configure temp project to not use frozen lockfile
     log("⚙️  Configuring temp project to not use frozen lockfile...");
@@ -208,7 +247,8 @@ export async function copyProjectToTempDir(
     await setTarballDependency(targetDir, tarballPath);
 
     // Install dependencies in the target directory
-    await installDependencies(targetDir, packageManager);
+    const installDir = monorepoRoot ? tempCopyRoot : targetDir;
+    await installDependencies(installDir, packageManager);
 
     // Return the environment details
     return { tempDir, targetDir, workerName };

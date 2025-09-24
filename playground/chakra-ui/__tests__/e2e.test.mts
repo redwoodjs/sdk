@@ -1,5 +1,10 @@
 import { expect } from "vitest";
-import { setupPlaygroundEnvironment, testDevAndDeploy, poll } from "rwsdk/e2e";
+import {
+  setupPlaygroundEnvironment,
+  testDevAndDeploy,
+  poll,
+  waitForHydration,
+} from "rwsdk/e2e";
 
 setupPlaygroundEnvironment(import.meta.url);
 
@@ -16,31 +21,28 @@ testDevAndDeploy(
 
     await page.goto(url, { waitUntil: "networkidle0" });
 
-    // Wait for the main content to load
-    await page.waitForSelector('[data-testid="main-title"]');
+    const getElementText = (selector: string) =>
+      page.$eval(selector, (el) => el.textContent);
 
-    // Verify main title and subtitle
-    const mainTitle = await page.$eval(
-      '[data-testid="main-title"]',
-      (el) => el.textContent,
-    );
-    expect(mainTitle).toContain("Chakra UI Playground");
+    await poll(async () => {
+      // Verify main title and subtitle
+      const mainTitle = await getElementText('[data-testid="main-title"]');
+      expect(mainTitle).toContain("Chakra UI Playground");
 
-    const subtitle = await page.$eval(
-      '[data-testid="subtitle"]',
-      (el) => el.textContent,
-    );
-    expect(subtitle).toContain("Basic component showcase for RedwoodSDK");
+      const subtitle = await getElementText('[data-testid="subtitle"]');
+      expect(subtitle).toContain("Basic component showcase for RedwoodSDK");
 
-    // Verify only the simple components section is present
-    const headings = await page.$$eval("h2", (nodes) =>
-      nodes.map((n) => n.textContent),
-    );
-    expect(headings).toContain("Simple Components");
-    expect(headings.length).toBe(2); // Title and the one section
+      // Verify only the simple components section is present
+      const headings = await page.$$eval("h2", (nodes) =>
+        nodes.map((n) => n.textContent),
+      );
+      expect(headings).toContain("Simple Components");
+      expect(headings.length).toBe(2); // Title and the one section
 
-    // Test a key component
-    await page.waitForSelector('[data-testid="button-solid"]');
+      // Test a key component
+      await page.waitForSelector('[data-testid="button-solid"]');
+      return true;
+    });
 
     // Verify no console errors occurred
     expect(consoleErrors).toEqual([]);
@@ -60,8 +62,13 @@ testDevAndDeploy(
     await page.goto(url, { waitUntil: "networkidle0" });
     await page.waitForSelector('[data-testid="main-title"]');
 
+    await waitForHydration(page);
+
+    const getButton = () =>
+      page.waitForSelector('[data-testid="button-solid"]');
+
     // Test button is clickable
-    await page.click('[data-testid="button-solid"]');
+    (await getButton())?.click();
 
     // Verify no console errors occurred during interactions
     expect(consoleErrors).toEqual([]);

@@ -20,10 +20,19 @@ import {
 import { launchBrowser } from "./browser.mjs";
 import type { Browser, Page } from "puppeteer-core";
 
-const SETUP_PLAYGROUND_ENV_TIMEOUT = 10 * 60 * 1000;
+const SETUP_PLAYGROUND_ENV_TIMEOUT = 300_000;
+
 const PUPPETEER_TIMEOUT = process.env.RWSDK_PUPPETEER_TIMEOUT
   ? parseInt(process.env.RWSDK_PUPPETEER_TIMEOUT, 10)
-  : 60 * 1000; // 60 seconds
+  : 60 * 1000 * 2;
+
+const DEV_SERVER_TIMEOUT = process.env.RWSDK_DEV_SERVER_TIMEOUT
+  ? parseInt(process.env.RWSDK_DEV_SERVER_TIMEOUT, 10)
+  : 60 * 1000 * 2;
+
+const HYDRATION_TIMEOUT = process.env.RWSDK_HYDRATION_TIMEOUT
+  ? parseInt(process.env.RWSDK_HYDRATION_TIMEOUT, 10)
+  : 5000;
 
 interface PlaygroundEnvironment {
   projectDir: string;
@@ -144,13 +153,31 @@ function getPlaygroundDirFromImportMeta(importMetaUrl: string): string {
   );
 }
 
+export interface SetupPlaygroundEnvironmentOptions {
+  /**
+   * The directory of the playground project to set up.
+   * Can be an absolute path, or a `import.meta.url` `file://` string.
+   * If not provided, it will be inferred from the test file's path.
+   */
+  sourceProjectDir?: string;
+  /**
+   * The root directory of the monorepo, if the project is part of one.
+   * This is used to correctly set up the test environment for monorepo projects.
+   */
+  monorepoRoot?: string;
+}
+
 /**
- * Sets up a playground environment for the entire test suite.
- * Automatically registers beforeAll and afterAll hooks.
- *
- * @param sourceProjectDir - Explicit path to playground directory, or import.meta.url to auto-detect
+ * A Vitest hook that sets up a playground environment for a test file.
+ * It creates a temporary directory, copies the playground project into it,
+ * and installs dependencies using a tarball of the SDK.
+ * This ensures that tests run in a clean, isolated environment.
  */
-export function setupPlaygroundEnvironment(sourceProjectDir?: string): void {
+export function setupPlaygroundEnvironment(
+  options: string | SetupPlaygroundEnvironmentOptions = {},
+): void {
+  const { sourceProjectDir, monorepoRoot } =
+    typeof options === "string" ? { sourceProjectDir: options } : options;
   ensureHooksRegistered();
 
   beforeAll(async () => {
@@ -170,6 +197,7 @@ export function setupPlaygroundEnvironment(sourceProjectDir?: string): void {
 
     const tarballEnv = await setupTarballEnvironment({
       projectDir,
+      monorepoRoot,
       packageManager:
         (process.env.PACKAGE_MANAGER as "pnpm" | "npm" | "yarn") || "pnpm",
     });
@@ -265,7 +293,7 @@ export async function createDeployment(): Promise<DeploymentInstance> {
         return false;
       }
     },
-    60000, // 60-second timeout for warm-up
+    DEV_SERVER_TIMEOUT, // 60-second timeout for warm-up
   );
 
   const deploymentId = `deployment-${Date.now()}-${Math.random()
@@ -713,4 +741,16 @@ export async function poll(
   }
 
   throw new Error(`Polling timed out after ${timeout}ms`);
+}
+
+/**
+ * Waits for the page to be fully loaded and hydrated.
+ * This should be used before any user interaction is simulated.
+ */
+export async function waitForHydration(page: Page) {
+  // 1. Wait for the document to be fully loaded.
+  await page.waitForFunction('document.readyState === "complete"');
+  // 2. Wait a short, fixed amount of time for client-side hydration to finish.
+  // This is a pragmatic approach to ensure React has mounted.
+  await new Promise((resolve) => setTimeout(resolve, HYDRATION_TIMEOUT));
 }

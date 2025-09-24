@@ -14,6 +14,7 @@ const log = (message: string) => console.log(message);
 
 interface SetupTarballOptions {
   projectDir: string;
+  monorepoRoot?: string;
   packageManager?: "pnpm" | "npm" | "yarn";
 }
 
@@ -102,6 +103,7 @@ async function copyWranglerCache(
  */
 export async function setupTarballEnvironment({
   projectDir,
+  monorepoRoot,
   packageManager = "pnpm",
 }: SetupTarballOptions): Promise<TarballEnvironment> {
   log(`🚀 Setting up tarball environment for ${projectDir}`);
@@ -127,6 +129,7 @@ export async function setupTarballEnvironment({
       projectDir,
       resourceUniqueKey,
       packageManager,
+      monorepoRoot,
     );
 
     // Copy wrangler cache to improve deployment performance
