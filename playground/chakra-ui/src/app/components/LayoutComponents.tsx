@@ -1,223 +1,90 @@
 import {
   Box,
-  Flex,
   Grid,
   GridItem,
-  Stack,
   HStack,
+  SimpleGrid,
   VStack,
+  Text,
   Wrap,
   WrapItem,
-  Center,
-  Square,
-  Circle,
-  Container,
-  SimpleGrid,
-  Spacer,
-  AspectRatio,
-  Text,
-  Heading,
 } from "@chakra-ui/react";
 
 export function LayoutComponents() {
   return (
-    <VStack spacing={8} align="stretch">
-      {/* Box Component */}
+    <VStack gap={8} alignItems="flex-start">
       <Box>
-        <Heading as="h3" size="md" mb={4} data-testid="box-heading">
-          Box
-        </Heading>
-        <Box
-          bg="blue.500"
-          color="white"
-          p={4}
-          borderRadius="md"
-          data-testid="box-example"
-        >
-          This is a Box component with blue background
-        </Box>
-      </Box>
-
-      {/* Flex Component */}
-      <Box>
-        <Heading as="h3" size="md" mb={4} data-testid="flex-heading">
-          Flex
-        </Heading>
-        <Flex
-          bg="gray.100"
-          p={4}
-          borderRadius="md"
-          justify="space-between"
-          align="center"
-          data-testid="flex-example"
-        >
-          <Box bg="red.500" color="white" p={2} borderRadius="md">
-            Item 1
-          </Box>
-          <Box bg="green.500" color="white" p={2} borderRadius="md">
-            Item 2
-          </Box>
-          <Box bg="blue.500" color="white" p={2} borderRadius="md">
-            Item 3
-          </Box>
-        </Flex>
-      </Box>
-
-      {/* Grid Component */}
-      <Box>
-        <Heading as="h3" size="md" mb={4} data-testid="grid-heading">
-          Grid
-        </Heading>
-        <Grid
-          templateColumns="repeat(3, 1fr)"
-          gap={4}
-          data-testid="grid-example"
-        >
-          <GridItem bg="purple.500" color="white" p={4} borderRadius="md">
-            Grid Item 1
-          </GridItem>
-          <GridItem bg="orange.500" color="white" p={4} borderRadius="md">
-            Grid Item 2
-          </GridItem>
-          <GridItem bg="teal.500" color="white" p={4} borderRadius="md">
-            Grid Item 3
-          </GridItem>
-        </Grid>
-      </Box>
-
-      {/* Stack Components */}
-      <Box>
-        <Heading as="h3" size="md" mb={4} data-testid="stack-heading">
-          Stack (VStack & HStack)
-        </Heading>
-        <VStack spacing={4} data-testid="vstack-example">
-          <HStack spacing={4} data-testid="hstack-example">
-            <Box bg="pink.500" color="white" p={2} borderRadius="md">
+        <Text fontSize="xl" mb={4}>
+          VStack and HStack
+        </Text>
+        <HStack gap={4} data-testid="box-example">
+          <VStack gap={2} bg="gray.100" p={4} borderRadius="md">
+            <Box bg="blue.200" p={2} borderRadius="md">
+              VStack Item 1
+            </Box>
+            <Box bg="blue.300" p={2} borderRadius="md">
+              VStack Item 2
+            </Box>
+          </VStack>
+          <HStack gap={2} bg="gray.100" p={4} borderRadius="md">
+            <Box bg="green.200" p={2} borderRadius="md">
               HStack Item 1
             </Box>
-            <Box bg="cyan.500" color="white" p={2} borderRadius="md">
+            <Box bg="green.300" p={2} borderRadius="md">
               HStack Item 2
             </Box>
           </HStack>
-          <Box bg="yellow.500" color="black" p={2} borderRadius="md">
-            VStack Item
-          </Box>
-        </VStack>
-      </Box>
-
-      {/* Wrap Component */}
-      <Box>
-        <Heading as="h3" size="md" mb={4} data-testid="wrap-heading">
-          Wrap
-        </Heading>
-        <Wrap spacing={4} data-testid="wrap-example">
-          <WrapItem>
-            <Box bg="red.400" color="white" p={2} borderRadius="md">
-              Wrap Item 1
-            </Box>
-          </WrapItem>
-          <WrapItem>
-            <Box bg="green.400" color="white" p={2} borderRadius="md">
-              Wrap Item 2
-            </Box>
-          </WrapItem>
-          <WrapItem>
-            <Box bg="blue.400" color="white" p={2} borderRadius="md">
-              Wrap Item 3
-            </Box>
-          </WrapItem>
-          <WrapItem>
-            <Box bg="purple.400" color="white" p={2} borderRadius="md">
-              Wrap Item 4
-            </Box>
-          </WrapItem>
-        </Wrap>
-      </Box>
-
-      {/* Center, Square, Circle */}
-      <Box>
-        <Heading as="h3" size="md" mb={4} data-testid="center-heading">
-          Center, Square & Circle
-        </Heading>
-        <HStack spacing={4}>
-          <Center
-            bg="gray.200"
-            h="100px"
-            w="100px"
-            borderRadius="md"
-            data-testid="center-example"
-          >
-            Center
-          </Center>
-          <Square
-            bg="red.200"
-            size="100px"
-            borderRadius="md"
-            data-testid="square-example"
-          >
-            <Text>Square</Text>
-          </Square>
-          <Circle bg="blue.200" size="100px" data-testid="circle-example">
-            <Text>Circle</Text>
-          </Circle>
         </HStack>
       </Box>
 
-      {/* Container */}
       <Box>
-        <Heading as="h3" size="md" mb={4} data-testid="container-heading">
-          Container
-        </Heading>
-        <Container
-          maxW="md"
-          bg="gray.100"
-          p={4}
-          borderRadius="md"
-          data-testid="container-example"
-        >
-          This is a Container component with max width of 'md'
-        </Container>
-      </Box>
-
-      {/* SimpleGrid */}
-      <Box>
-        <Heading as="h3" size="md" mb={4} data-testid="simple-grid-heading">
+        <Text fontSize="xl" mb={4}>
           SimpleGrid
-        </Heading>
-        <SimpleGrid columns={2} spacing={4} data-testid="simple-grid-example">
-          <Box bg="indigo.500" color="white" p={4} borderRadius="md">
-            SimpleGrid Item 1
-          </Box>
-          <Box bg="pink.500" color="white" p={4} borderRadius="md">
-            SimpleGrid Item 2
-          </Box>
-          <Box bg="teal.500" color="white" p={4} borderRadius="md">
-            SimpleGrid Item 3
-          </Box>
-          <Box bg="orange.500" color="white" p={4} borderRadius="md">
-            SimpleGrid Item 4
-          </Box>
+        </Text>
+        <SimpleGrid columns={3} gap={4}>
+          <Box bg="purple.200" h="80px" borderRadius="md"></Box>
+          <Box bg="purple.300" h="80px" borderRadius="md"></Box>
+          <Box bg="purple.400" h="80px" borderRadius="md"></Box>
+          <Box bg="purple.500" h="80px" borderRadius="md"></Box>
+          <Box bg="purple.600" h="80px" borderRadius="md"></Box>
         </SimpleGrid>
       </Box>
 
-      {/* AspectRatio */}
       <Box>
-        <Heading as="h3" size="md" mb={4} data-testid="aspect-ratio-heading">
-          AspectRatio
-        </Heading>
-        <AspectRatio
-          ratio={16 / 9}
-          maxW="400px"
-          data-testid="aspect-ratio-example"
+        <Text fontSize="xl" mb={4}>
+          Grid with GridItem
+        </Text>
+        <Grid
+          h="200px"
+          templateRows="repeat(2, 1fr)"
+          templateColumns="repeat(5, 1fr)"
+          gap={4}
         >
-          <Box bg="gradient-to-r from-purple-400 to-pink-400" borderRadius="md">
-            <Center h="100%">
-              <Text color="white" fontSize="lg" fontWeight="bold">
-                16:9 Aspect Ratio
-              </Text>
-            </Center>
-          </Box>
-        </AspectRatio>
+          <GridItem rowSpan={2} colSpan={1} bg="orange.200" borderRadius="md" />
+          <GridItem colSpan={2} bg="orange.300" borderRadius="md" />
+          <GridItem colSpan={2} bg="orange.400" borderRadius="md" />
+          <GridItem colSpan={4} bg="orange.500" borderRadius="md" />
+        </Grid>
+      </Box>
+
+      <Box>
+        <Text fontSize="xl" mb={4}>
+          Wrap with WrapItem
+        </Text>
+        <Wrap gap={4}>
+          <WrapItem>
+            <Box w="150px" h="80px" bg="red.200" borderRadius="md"></Box>
+          </WrapItem>
+          <WrapItem>
+            <Box w="150px" h="80px" bg="red.300" borderRadius="md"></Box>
+          </WrapItem>
+          <WrapItem>
+            <Box w="150px" h="80px" bg="red.400" borderRadius="md"></Box>
+          </WrapItem>
+          <WrapItem>
+            <Box w="150px" h="80px" bg="red.500" borderRadius="md"></Box>
+          </WrapItem>
+        </Wrap>
       </Box>
     </VStack>
   );

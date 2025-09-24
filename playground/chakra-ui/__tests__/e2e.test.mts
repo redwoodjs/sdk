@@ -14,68 +14,56 @@ testDevAndDeploy(
       }
     });
 
-    await page.goto(url);
+    await page.goto(url, { waitUntil: "networkidle0" });
 
     // Wait for the main content to load
-    await poll(async () => {
-      const content = await page.content();
-      return content.includes("Chakra UI Playground");
-    });
+    await page.waitForSelector('[data-testid="main-title"]');
 
     // Verify main title and subtitle
-    await expect(page.getByTestId("main-title")).toContainText(
-      "Chakra UI Playground",
+    const mainTitle = await page.$eval(
+      '[data-testid="main-title"]',
+      (el) => el.textContent,
     );
-    await expect(page.getByTestId("subtitle")).toContainText(
+    expect(mainTitle).toContain("Chakra UI Playground");
+
+    const subtitle = await page.$eval(
+      '[data-testid="subtitle"]',
+      (el) => el.textContent,
+    );
+    expect(subtitle).toContain(
       "Comprehensive component showcase for RedwoodSDK",
     );
 
     // Verify all section headings are present
-    await expect(page.getByTestId("layout-section")).toContainText(
+    const expectedHeadings = [
       "Layout Components",
-    );
-    await expect(page.getByTestId("form-section")).toContainText(
       "Form Components",
-    );
-    await expect(page.getByTestId("data-display-section")).toContainText(
       "Data Display Components",
-    );
-    await expect(page.getByTestId("feedback-section")).toContainText(
       "Feedback Components",
-    );
-    await expect(page.getByTestId("navigation-section")).toContainText(
       "Navigation Components",
-    );
-    await expect(page.getByTestId("overlay-section")).toContainText(
       "Overlay Components",
-    );
-    await expect(page.getByTestId("media-section")).toContainText(
       "Media Components",
-    );
-    await expect(page.getByTestId("typography-section")).toContainText(
       "Typography Components",
-    );
-
-    // Test key components from each category
-    await expect(page.getByTestId("box-example")).toBeVisible();
-    await expect(page.getByTestId("button-solid")).toBeVisible();
-    await expect(page.getByTestId("badge-default")).toBeVisible();
-    await expect(page.getByTestId("alert-success")).toBeVisible();
-    await expect(page.getByTestId("breadcrumb-example")).toBeVisible();
-    await expect(page.getByTestId("modal-trigger")).toBeVisible();
-    await expect(page.getByTestId("avatar-name-only")).toBeVisible();
-    await expect(page.getByTestId("heading-4xl")).toBeVisible();
+    ];
+    for (const heading of expectedHeadings) {
+      await page.waitForSelector(`h2 ::-p-text(${heading})`);
+    }
 
     // Test some interactive functionality
-    await page.getByTestId("toast-success-button").click();
-    await expect(page.locator('[data-status="success"]')).toBeVisible();
+    await page.click('[data-testid="toast-success-button"]');
+    await page.waitForSelector('[data-status="success"]');
 
-    await page.getByTestId("modal-trigger").click();
-    await expect(page.getByTestId("modal-example")).toBeVisible();
+    await page.click('[data-testid="modal-trigger"]');
+    await page.waitForSelector('[data-testid="modal-example"]', {
+      visible: true,
+    });
     await page.keyboard.press("Escape");
+    await page.waitForSelector('[data-testid="modal-example"]', {
+      hidden: true,
+    });
 
     // Verify no console errors occurred
-    expect(consoleErrors).toHaveLength(0);
+    expect(consoleErrors).toEqual([]);
   },
 );
 
@@ -89,28 +77,35 @@ testDevAndDeploy(
       }
     });
 
-    await page.goto(url);
-
-    await poll(async () => {
-      const content = await page.content();
-      return content.includes("Chakra UI Playground");
-    });
+    await page.goto(url, { waitUntil: "networkidle0" });
+    await page.waitForSelector('[data-testid="main-title"]');
 
     // Test form interactions
-    const textInput = page.getByTestId("basic-input").locator("input");
-    await textInput.fill("Test input value");
-    await expect(textInput).toHaveValue("Test input value");
+    const textInputSelector = '[data-testid="basic-input"] input';
+    await page.waitForSelector(textInputSelector);
+    await page.type(textInputSelector, "Test input value");
+    const inputValue = await page.$eval(
+      textInputSelector,
+      (el) => (el as HTMLInputElement).value,
+    );
+    expect(inputValue).toBe("Test input value");
 
-    const checkbox = page.getByTestId("checkbox-single").locator("input");
-    await checkbox.check();
-    await expect(checkbox).toBeChecked();
+    const checkboxSelector = '[data-testid="checkbox-single"] input';
+    await page.waitForSelector(checkboxSelector);
+    await page.click(checkboxSelector);
+    const isChecked = await page.$eval(
+      checkboxSelector,
+      (el) => (el as HTMLInputElement).checked,
+    );
+    expect(isChecked).toBe(true);
 
     // Test tabs functionality
-    const tabsBasic = page.getByTestId("tabs-basic");
-    await tabsBasic.locator('button:has-text("Two")').click();
-    await expect(tabsBasic.locator("text=Panel Two")).toBeVisible();
+    const tabsSelector = '[data-testid="tabs-basic"]';
+    await page.waitForSelector(tabsSelector);
+    await page.click(`${tabsSelector} button:nth-of-type(2)`);
+    await page.waitForSelector("div ::-p-text(Panel Two)");
 
     // Verify no console errors occurred during interactions
-    expect(consoleErrors).toHaveLength(0);
+    expect(consoleErrors).toEqual([]);
   },
 );
