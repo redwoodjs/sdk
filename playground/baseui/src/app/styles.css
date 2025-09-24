@@ -1,3 +1,15 @@
+:root {
+  --color-blue: #007bff;
+  --color-gray-50: #f8f9fa;
+  --color-gray-100: #f1f3f5;
+  --color-gray-200: #e9ecef;
+  --color-gray-300: #dee2e6;
+  --color-gray-500: #adb5bd;
+  --color-gray-600: #6c757d;
+  --color-gray-700: #495057;
+  --color-gray-900: #212529;
+}
+
 /* Base UI Portal Setup */
 .root {
   isolation: isolate;

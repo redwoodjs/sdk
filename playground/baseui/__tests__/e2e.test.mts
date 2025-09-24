@@ -53,30 +53,30 @@ testDevAndDeploy(
 
     // Test accordion
     const accordionTrigger = await page.waitForSelector(
-      '[data-testid="accordion"] button',
+      '[data-testid="accordion-section"] button',
     );
     await accordionTrigger?.click();
     await poll(async () => {
       const content = await page.content();
-      return content.includes("Base UI is a library of headless UI components");
+      return content.includes(
+        "Base UI is a library of high-quality unstyled React components",
+      );
     });
 
     // Test dialog
     const dialogTrigger = await page.waitForSelector(
-      '[data-testid="dialog-trigger"]',
+      '[data-testid="dialog-section"] button',
     );
     await dialogTrigger?.click();
     await poll(async () => {
       return await page.$eval(
-        '[data-testid="dialog"]',
+        '[role="dialog"]',
         (el) => !!el && el.checkVisibility(),
       );
     });
 
     // Test switch
-    const switchComponent = await page.waitForSelector(
-      '[data-testid="switch"]',
-    );
+    const switchComponent = await page.waitForSelector('[role="switch"]');
     await switchComponent?.click();
 
     expect(consoleErrors).toEqual([]);
