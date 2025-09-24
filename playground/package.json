@@ -5,6 +5,7 @@
   "description": "E2E test playground for rwsdk",
   "scripts": {},
   "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
     "fs-extra": "^11.3.0",
     "rwsdk": "workspace:*",
     "vitest": "^3.1.1"

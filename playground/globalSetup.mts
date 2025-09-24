@@ -1,4 +1,4 @@
-import { launchBrowser, type Browser } from "rwsdk/e2e";
+import { launchBrowser, type Browser } from "rwsdk/e2e/setup";
 import fs from "fs-extra";
 import os from "os";
 import path from "path";
