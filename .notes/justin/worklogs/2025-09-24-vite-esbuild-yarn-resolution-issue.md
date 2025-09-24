@@ -48,6 +48,19 @@ The implementation will involve generalizing the existing `reactConditionsResolv
 
 This approach solves the problem elegantly by reusing and extending a battle-tested part of the framework's build process.
 
+## Update: Symlink Resolution Mismatch
+
+Further testing revealed a deeper issue. Even with the correct resolver in place for `optimizeDeps`, the `use client` module lookup was failing during server-side rendering.
+
+The root cause is a discrepancy in how paths are handled:
+
+-   **Vite/esbuild** resolves all symlinks in a file's path to get its canonical, "real" path on the filesystem. It uses this real path when processing the module.
+-   **Our Directive Scanner** was operating on the original, symlinked path.
+
+This created a mismatch where our internal module map was keyed by the symlink path, but Vite was requesting the module using its real path, resulting in a lookup failure.
+
+The solution is to ensure our scanner also operates on real paths by using `fs.realpathSync()` on every discovered module path before storing it.
+
 ## Test Plan: Simulating the Monorepo Environment
 
 To validate the chosen solution (Approach B), a new playground example, `monorepo-yarn-hoist`, will be created to reliably reproduce the resolution error in an isolated environment.
