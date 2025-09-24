@@ -16,16 +16,15 @@ testDevAndDeploy("renders MDX and client component", async ({ page, url }) => {
   await poll(async () => {
     const content = await getPageContent();
     expect(content).toContain("Hello world");
-    console.log("#########", await getButtonText());
     expect(await getButtonText()).toBe("Clicks: 0");
     return true;
   });
 
+  await page.waitForNetworkIdle();
   (await getButton())?.click();
 
   await poll(async () => {
     const buttonText = await getButtonText();
-    console.log("######### 2", await getPageContent());
     expect(buttonText).toBe("Clicks: 1");
     return true;
   });
