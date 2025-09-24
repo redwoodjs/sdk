@@ -1,0 +1,157 @@
+"use server";
+import {
+  generateRegistrationOptions,
+  generateAuthenticationOptions,
+  verifyRegistrationResponse,
+  verifyAuthenticationResponse,
+  RegistrationResponseJSON,
+  AuthenticationResponseJSON,
+} from "@simplewebauthn/server";
+
+import { sessions } from "@/session/store";
+import { requestInfo } from "rwsdk/worker";
+import { env } from "cloudflare:workers";
+import {
+  createCredential,
+  createUser,
+  getCredentialById,
+  updateCredentialCounter,
+  getUserById,
+} from "./db";
+
+const IS_DEV = process.env.NODE_ENV === "development";
+
+function getWebAuthnConfig(request: Request) {
+  const rpID = env.WEBAUTHN_RP_ID ?? new URL(request.url).hostname;
+  const rpName = IS_DEV ? "Development App" : env.WEBAUTHN_APP_NAME;
+  return {
+    rpName,
+    rpID,
+  };
+}
+
+export async function startPasskeyRegistration(username: string) {
+  const { headers } = requestInfo;
+
+  const user = await createUser(username);
+
+  const options = await generateRegistrationOptions({
+    rpName,
+    rpID,
+    userName: username,
+    authenticatorSelection: {
+      // Require the authenticator to store the credential, enabling a username-less login experience
+      residentKey: "required",
+      // Prefer user verification (biometric, PIN, etc.), but allow authentication even if it's not available
+      userVerification: "preferred",
+    },
+  });
+
+  await sessions.save(headers, { challenge: options.challenge });
+
+  return options;
+}
+
+export async function startPasskeyLogin() {
+  const { headers } = requestInfo;
+
+  // Get all credentials for the user
+  const options = await generateAuthenticationOptions({
+    rpID,
+    userVerification: "preferred",
+    allowCredentials: [],
+  });
+  await sessions.save(headers, { challenge: options.challenge });
+  return options;
+}
+
+export async function finishPasskeyRegistration(
+  username: string,
+  registration: RegistrationResponseJSON
+) {
+  "use server";
+  const { request, headers } = requestInfo;
+  const session = await sessions.get(request, headers);
+
+  if (!session.challenge) {
+    return false;
+  }
+
+  const verification = await verifyRegistrationResponse({
+    response: registration,
+    expectedChallenge: challenge,
+    expectedOrigin: origin,
+    expectedRPID: (env as any).WEBAUTHN_RP_ID || new URL(request.url).hostname,
+  });
+
+  if (!verification.verified || !verification.registrationInfo) {
+    return false;
+  }
+
+  await sessions.save(headers, { challenge: null });
+
+  const user = await createUser(username);
+
+  await createCredential({
+    userId: user.id,
+    credentialId: verification.registrationInfo.credential.id,
+    publicKey: verification.registrationInfo.credential.publicKey,
+    counter: verification.registrationInfo.credential.counter,
+  });
+
+  return true;
+}
+
+export async function finishPasskeyLogin(login: AuthenticationResponseJSON) {
+  "use server";
+
+  if (!login.rawId) {
+    throw new Error("Login failed: rawId is missing");
+  }
+
+  const credential = await getCredentialById(login.rawId);
+  if (!credential) {
+    throw new Error("Login failed: credential not found");
+  }
+  const { request, headers } = requestInfo;
+  const session = await sessions.get(request, headers);
+
+  if (!session.challenge) {
+    return false;
+  }
+
+  const verification = await verifyAuthenticationResponse({
+    response: login,
+    expectedChallenge: challenge,
+    expectedOrigin: origin,
+    expectedRPID: env.WEBAUTHN_RP_ID || new URL(request.url).hostname,
+    requireUserVerification: false,
+    credential: {
+      id: credential.credentialId,
+      publicKey: credential.publicKey,
+      counter: credential.counter,
+    },
+  });
+
+  if (!verification.verified) {
+    return false;
+  }
+
+  await updateCredentialCounter(
+    login.id,
+    verification.authenticationInfo.newCounter
+  );
+
+  const user = await getUserById(credential.userId);
+
+  if (!user) {
+    return false;
+  }
+
+  await sessions.save(headers, {
+    userId: credential.userId,
+    challenge: null,
+  });
+
+  return true;
+}

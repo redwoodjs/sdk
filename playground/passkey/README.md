@@ -1,6 +1,6 @@
 # RedwoodSDK Minimal Starter
 
-This is the starter project for RedwoodSDK. It's a template designed to get you up and running as quickly as possible.
+This starter gives you a bare-bones RedwoodSDK project.
 
 Create your new project:
 

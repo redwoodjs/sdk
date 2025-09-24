@@ -94,6 +94,14 @@
     "./realtime/durableObject": {
       "types": "./dist/runtime/lib/realtime/durableObject.d.ts",
       "default": "./dist/runtime/lib/realtime/durableObject.js"
+    },
+    "./passkey/worker": {
+      "types": "./dist/passkey/worker.d.ts",
+      "default": "./dist/passkey/worker.js"
+    },
+    "./passkey/client": {
+      "types": "./dist/passkey/client.d.ts",
+      "default": "./dist/passkey/client.js"
     }
   },
   "keywords": [

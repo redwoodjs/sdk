@@ -1,5 +1,5 @@
 {
-  "name": "@redwoodjs/starter",
+  "name": "@redwoodjs/playground-hello-world",
   "version": "1.0.0",
   "description": "A bare-bones RedwoodSDK starter",
   "main": "index.js",
@@ -22,10 +22,10 @@
     "types": "tsc"
   },
   "dependencies": {
+    "rwsdk": "workspace:*",
     "react": "19.2.0-canary-d415fd3e-20250919",
     "react-dom": "19.2.0-canary-d415fd3e-20250919",
-    "react-server-dom-webpack": "19.2.0-canary-d415fd3e-20250919",
-    "rwsdk": "1.0.0-alpha.9"
+    "react-server-dom-webpack": "19.2.0-canary-d415fd3e-20250919"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.13.3",
@@ -35,6 +35,7 @@
     "@types/react-dom": "19.1.2",
     "typescript": "5.8.3",
     "vite": "7.1.6",
+    "vitest": "^3.1.1",
     "wrangler": "4.38.0"
   },
   "pnpm": {

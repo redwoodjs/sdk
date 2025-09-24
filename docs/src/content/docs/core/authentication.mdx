@@ -11,228 +11,257 @@ import {
   Code,
   Badge,
 } from "@astrojs/starlight/components";
-import importedCodeStandardAuthFunctions from "../../../../../starters/standard/src/app/pages/user/functions.ts?raw";
-import importedCodeStandardLogin from "../../../../../starters/standard/src/app/pages/user/Login.tsx?raw";
-import importedCodeStandardWorker from "../../../../../starters/standard/src/worker.tsx?raw";
 
-## Email & Password
+RedwoodSDK provides built-in utilities for adding secure, passwordless authentication to your application using **passkeys ([WebAuthn](https://webauthn.guide/))**. The system uses **[Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/)** for session persistence, ensuring that session data is consistent and easy to manage, and **[Cloudflare D1](https://developers.cloudflare.com/d1/)** for the database layer.
 
-RedwoodSDK's built-in authentication uses sessions, which are stored in a
-
-We've baked authentication right into the [**standard starter**](https://github.com/redwoodjs/sdk/tree/main/starters/standard), giving you everything you need to handle users, sessions, and logins out of the box. The standard starter uses **passkeys ([WebAuthn](https://webauthn.guide/))** for passwordless authentication (keys can be shared on multiple devices), **session persistence via [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/)**, and **bot protection with [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/)**. The database layer is powered by **[Cloudflare D1](https://developers.cloudflare.com/d1/)** and **[Prisma](https://www.prisma.io/)**.
+This guide walks through the steps to integrate passkey authentication into your project.
 
 ## Setup
 
-Below covers the steps needed to getting authentication working in your **deployments**.
+Adding passkey authentication involves configuring your `wrangler.jsonc`, setting up a Durable Object for sessions, integrating the authentication middleware into your worker, and creating a user interface for login and registration.
 
-### Wrangler Setup
+### 1. `wrangler.jsonc` Configuration
 
-Within your project's `wrangler.jsonc`:
+First, you need to configure a D1 database for storing user data and a Durable Object for managing sessions.
 
-If you haven't already, replace the `__change_me__` placeholders with a name for your application.
+1.  Create a D1 database for your project if you haven't already:
+    ```bash showLineNumbers=false
+    npx wrangler d1 create your-project-name-db
+    ```
+2.  Add the following `d1_databases` and `durable_objects` configurations to your `wrangler.jsonc` file, replacing the placeholders with your own project's details.
 
-Then, create a new D1 database:
-
-```bash showLineNumbers=false
-npx wrangler d1 create my-project-db
-```
-
-Copy the database ID provided and paste it into your project's `wrangler.jsonc` file:
-
-```jsonc
-{
-  "d1_databases": [
+    ```jsonc title="wrangler.jsonc"
     {
-      "binding": "DB",
-      "database_name": "my-project-db",
-      "database_id": "your-database-id"
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "your-project-name-db",
+          "database_id": "your-database-id"
+        }
+      ],
+      "durable_objects": {
+        "bindings": [
+          { "name": "PASSKEY_DO", "class_name": "PasskeyDurableObject" },
+          { "name": "SESSION_DO", "class_name": "SessionDurableObject" }
+        ]
+      }
     }
-  ]
+    ```
+
+### 2. Database Migrations and Durable Object
+
+The SDK provides the necessary database migrations for passkeys out of the box. You'll need to create a small file to export a `PasskeyDurableObject` class that uses them.
+
+Create a new file, for example at `src/passkey/durableObject.ts`, and add the following:
+
+```typescript title="src/passkey/durableObject.ts"
+import { PasskeyDurableObject as RwSdkPasskeyDurableObject, passkeyMigrations } from 'rwsdk/passkey/worker';
+
+export class PasskeyDurableObject extends RwSdkPasskeyDurableObject {
+  migrations = passkeyMigrations;
 }
 ```
 
-### Environment Variables
+This class will be automatically discovered by the SDK.
 
-The following environment variables are used for authentication:
+#### Customizing Migrations
 
-- `WEBAUTHN_APP_NAME`: The application name shown in WebAuthn prompts (defaults to your application name)
-- `WEBAUTHN_RP_ID`: The relying party ID for WebAuthn (defaults to the request hostname)
-- `AUTH_SECRET_KEY`: Secret key for signing session tokens (defaults to a development key in development)
+If you need to add your own tables or modify the schema, you can extend the default migrations. The `passkeyMigrations` object can be spread into your own custom migrations object.
 
-For production deployments, these values are automatically configured by the deployment script. You can override them if needed:
+```typescript title="src/passkey/durableObject.ts"
+import { PasskeyDurableObject as RwSdkPasskeyDurableObject, passkeyMigrations } from 'rwsdk/passkey/worker';
 
-### Customizing WebAuthn Relying Party ID
+const myCustomMigrations = {
+  '002_add_user_roles': {
+    async up(db) {
+      // Add your custom migration logic here
+    },
+    async down(db) {
+      // Add your custom rollback logic here
+    },
+  },
+};
 
-By default, the RP_ID is set to the hostname of each request. You can override this by setting the `WEBAUTHN_RP_ID` environment variable:
-
-```shell
-npx wrangler secret put WEBAUTHN_RP_ID
+export class PasskeyDurableObject extends RwSdkPasskeyDurableObject {
+  migrations = {
+    ...passkeyMigrations,
+    ...myCustomMigrations,
+  };
+}
 ```
 
-When prompted, enter your production domain (e.g., `my-app.example.com`).
+### 3. Worker Setup
 
-Note: The WEBAUTHN_RP_ID must be a valid domain that matches your application's origin. For security reasons, WebAuthn will not work if these don't match.
+Next, integrate the passkey authentication middleware into your application's worker. This middleware handles session management and user authentication for incoming requests.
 
-### Setting up Session Secret Key
+In your `src/worker.tsx` file, import `setupPasskeyAuth` and add it to your middleware array:
 
-For production, generate a strong `AUTH_SECRET_KEY` for signing session IDs:
+```typescript title="src/worker.tsx"
+import { rwsdk } from "rwsdk/worker";
+import { setupPasskeyAuth } from "rwsdk/passkey/worker";
+import { routes } from "./app/pages/routes.js";
+
+// Initialize the passkey authentication middleware
+const passkeyAuth = setupPasskeyAuth();
+
+export default {
+  async fetch(request, env, ctx) {
+    return rwsdk(request, env, ctx, {
+      routes,
+      middleware: [
+        passkeyAuth,
+        // ... any other middleware
+      ],
+    });
+  },
+};
+```
+
+### 4. UI Implementation with `usePasskey`
+
+The SDK provides a client-side hook, `usePasskey`, to simplify the WebAuthn flow for login and registration. You will need to build your own UI components and use this hook to trigger the authentication process.
+
+The `usePasskey` hook returns two functions:
+- `login(username: string): Promise<boolean>`
+- `register(username: string): Promise<boolean>`
+
+Here is an example of a `Login.tsx` component:
+
+```tsx title="src/app/pages/Login.tsx"
+import { useState, useTransition } from "react";
+import { usePasskey } from "rwsdk/passkey/client";
+
+export function Login() {
+  const [username, setUsername] = useState("");
+  const [result, setResult] = useState("");
+  const [isPending, startTransition] = useTransition();
+  const { login, register } = usePasskey();
+
+  const handleRegister = async () => {
+    if (!username.trim()) {
+      setResult("Please enter a username");
+      return;
+    }
+    try {
+      const success = await register(username);
+      setResult(success ? "Registration successful!" : "Registration failed");
+    } catch (error: unknown) {
+      setResult(error instanceof Error ? error.message : "An unknown error occurred");
+    }
+  };
+
+  const handleLogin = async () => {
+    try {
+      const success = await login(username);
+      setResult(success ? "Login successful!" : "Login failed");
+    } catch (error: unknown) {
+      setResult(error instanceof Error ? error.message : "An unknown error occurred");
+    }
+  };
+
+  const handlePerformRegister = () => {
+    startTransition(() => void handleRegister());
+  };
+
+  const handlePerformLogin = () => {
+    startTransition(() => void handleLogin());
+  };
+
+  return (
+    <div>
+      <input
+        type="text"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        placeholder="Username"
+        disabled={isPending}
+      />
+      <button onClick={handlePerformLogin} disabled={isPending}>
+        {isPending ? "Logging in..." : "Login with Passkey"}
+      </button>
+      <button onClick={handlePerformRegister} disabled={isPending}>
+        {isPending ? "Registering..." : "Register with Passkey"}
+      </button>
+      {result && <p>{result}</p>}
+    </div>
+  );
+}
+```
+
+### 5. Setting Up Routes
+
+Finally, create a route for your login page. For example, in `src/app/pages/routes.ts`:
+
+```typescript title="src/app/pages/routes.ts"
+import { route } from 'rwsdk/router';
+import { Login } from './Login.js';
+import { Home } from './Home.js';
+
+export const routes = [
+  route('/', [Home]),
+  route('/login', [Login]),
+  // ... other routes
+];
+```
+
+## Environment Variables
+
+The authentication system uses the following environment variables:
+
+- `WEBAUTHN_APP_NAME`: The application name shown in WebAuthn prompts (defaults to your application name from `wrangler.jsonc`).
+- `WEBAUTHN_RP_ID`: The relying party ID for WebAuthn (defaults to the request hostname).
+- `AUTH_SECRET_KEY`: A secret key for signing session tokens.
+
+For production deployments, you must set a strong `AUTH_SECRET_KEY`.
+
+### Setting the Session Secret Key
+
+Generate a secure secret key:
 
 ```bash showLineNumbers=false
 # Generate a 32-byte random key and encode it as base64
 openssl rand -base64 32
 ```
 
-Then set this key as a Cloudflare secret:
+Set this key as a Cloudflare secret for your production environment:
 
 ```bash showLineNumbers=false
 npx wrangler secret put AUTH_SECRET_KEY
 ```
 
-Never use the same secret key for development and production environments, and avoid committing your secret keys to version control.
+<Aside type="caution">
+Never use the same secret key for development and production, and never commit secret keys to version control.
+</Aside>
 
-## Optional: Bot Protection with Turnstile <Badge text="Experimental" type="caution" />
+### Customizing WebAuthn Relying Party ID
 
-You can optionally enable bot protection for user registration using Cloudflare Turnstile. To enable this:
+By default, the `WEBAUTHN_RP_ID` is dynamically set to the hostname of each request. For production, it is recommended to lock this down to your application's domain.
 
-1. Visit [Cloudflare Turnstile Dashboard](https://dash.cloudflare.com/?to=/:account/turnstile).
-
-2. Create a new Turnstile widget:
-
-   - Set **Widget Mode** to `invisible`
-   - Add your application's hostname to **Allowed hostnames**, e.g., `my-app.example.com`.
-
-3. Copy your **Site Key** into your application's `LoginPage.tsx`:
-
-```tsx
-// LoginPage.tsx
-const TURNSTILE_SITE_KEY = "<YOUR_SITE_KEY>";
+```shell showLineNumbers=false
+npx wrangler secret put WEBAUTHN_RP_ID
 ```
 
-4. Set your **Turnstile Secret Key** via Cloudflare secrets for production:
-
-```bash showLineNumbers=false
-npx wrangler secret put TURNSTILE_SECRET_KEY
-```
-
-5. Update your registration function to include Turnstile verification:
-
-```tsx
-import { verifyTurnstileToken } from "rwsdk/auth";
-
-// In your registration handler:
-const turnstileResponse = await verifyTurnstileToken(token, env);
-if (!turnstileResponse.success) {
-  throw new Error("Bot protection verification failed");
-}
-```
+When prompted, enter your production domain (e.g., `my-app.example.com`).
 
 ## Security Considerations
 
-### Username vs Email
+- **Username vs. Email**: The authentication system uses usernames instead of emails to prevent user enumeration attacks.
+- **Authentication Flow**: The login flow uses credential IDs generated by the authenticator, which mitigates enumeration risks.
 
-The authentication system intentionally uses usernames instead of emails. This decision prevents enumeration attacks and avoids requiring valid email addresses for registration.
+## How it Works
 
-### Authentication Flow
+### Session Management
 
-Authentication uses credential IDs from the authenticator instead of usernames or emails, significantly mitigating enumeration risks.
+Sessions are handled using a combination of secure, signed cookies for session IDs and Durable Objects for storing session data. When a request is made, the middleware verifies the `session_id` cookie, retrieves the session data from the corresponding Durable Object, and fetches the user from the D1 database.
 
-### Bot Protection
+Using a single Durable Object per session ensures data consistency and simplifies session revocation. Active sessions are kept in memory, which reduces database lookups and improves performance.
 
-When enabled, registration is protected using [Cloudflare Turnstile](https://www.cloudflare.com/application-services/products/turnstile/) to prevent automated bot registrations. While Cloudflare's built-in bot detection will identify and block malicious patterns over time, Turnstile provides immediate verification before registration to prevent bot registrations from the start.
+### Passkey Authentication (WebAuthn)
 
-## How it all works
+The login and registration processes follow the standard WebAuthn ceremony.
 
-### Retrieving a Session
-
-Sessions are handled using **cookies** (for session IDs) and **Durable Objects** (for storing session data).
-
-When a request comes in, we:
-
-1. Check for a **`session_id` cookie**.
-2. Verify that the session ID is valid by checking its signature - this lets us be sure it was us that issued it
-3. If it's valid, load the session data from the **Durable Object**.
-4. If there's an active session, we pull the user ID from it and load the user from the **database ([D1](https://developers.cloudflare.com/d1/) + [Prisma](https://www.prisma.io/))**.
-
-<Code
-  lang="typescript"
-  title="src/worker.tsx"
-  code={importedCodeStandardWorker}
-  collapse={"2-17, 19-19, 21-22, 31-31, 33-47"}
-/>
-
-#### Why Durable Objects?
-
-Instead of keeping session data in multiple places where we'd have to worry about syncing and stale data, each session is stored in a single **Durable Object** instance. This means we don't have to deal with session data being out of date or lingering after logout—it's all in one place, making revocation straightforward. On top of this, when a session is active, it stays in memory, so lookups are faster without extra database queries.
-
-For more on Durable Objects, see [Cloudflare's documentation](https://developers.cloudflare.com/durable-objects/).
-
----
-
-### Logging In
-
-We use **passkeys ([WebAuthn](https://webauthn.guide/))** for authentication. This allows users to log in without passwords, using their authenticator, browser or device to handle authentication securely.
-
-For more on passkeys, see [passkeys.dev](https://passkeys.dev/).
-
-#### Login Flow
-
-1. The user clicks **Login**.
-2. The frontend calls a server action to get a WebAuthn challenge.
-3. The challenge is stored in the **session store** using `sessions.save()`.
-4. The user's authenticator signs the challenge.
-5. The signed challenge is sent back to the server and verified.
-6. If successful, the session is updated with the **user ID**.
-
-<Code
-  lang="typescript"
-  title="src/app/pages/user/Login.tsx"
-  code={importedCodeStandardLogin}
-  collapse={"1-18, 20-24, 41-90"}
-/>
-
-<Code
-  lang="typescript"
-  title="src/app/pages/user/functions.ts"
-  code={importedCodeStandardAuthFunctions}
-  collapse={"1-109, 111-112, 114-116, 119-169"}
-/>
-
----
-
-### Registering Users
-
-Registration follows a very similar 3-step WebAuthn process as login:
-
-<Code
-  lang="typescript"
-  title="src/app/pages/user/Login.tsx"
-  code={importedCodeStandardLogin}
-  collapse={"1-18, 20-41, 64-90"}
-/>
-
-One difference: we protect registrations with an extra layer of **bot protection** using [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/).
-
-#### Why Turnstile?
-
-Cloudflare has built-in bot protection, but it works by detecting and blocking malicious patterns over time. That means automated registrations can still get through until Cloudflare picks up on them. Turnstile prevents this from becoming an issue in the first place by requiring a lightweight challenge **before** registration happens, stopping bots at the point of entry.
-
-### Turnstile in the Registration Flow
-
-1. The Turnstile **client script** is loaded on the page.
-2. The frontend calls `useTurnstile()` to generate a challenge token.
-3. The token is sent to the backend along with the WebAuthn data.
-4. The backend verifies the token using `verifyTurnstileToken()` before completing registration.
-
-<Code
-  lang="typescript"
-  title="src/app/pages/user/Login.tsx"
-  code={importedCodeStandardLogin}
-  collapse={"1-15, 18-18, 20-22, 24-41, 43-48, 57-62, 64-72, 76-88"}
-/>
-
-<Code
-  lang="typescript"
-  title="src/app/pages/user/functions.ts"
-  code={importedCodeStandardAuthFunctions}
-  collapse={"1-38, 40-43, 45-46, 55-93, 95-176"}
-/>
+1.  The client requests a challenge from the server.
+2.  The server generates a challenge and stores it in the session Durable Object.
+3.  The browser's WebAuthn API prompts the user to use their passkey (e.g., via Face ID, Touch ID, or a hardware key) to sign the challenge.
+4.  The signed challenge is sent back to the server.
+5.  The server verifies the signature. If it is valid, the user's ID is associated with the session, completing the login.

@@ -71,15 +71,8 @@ This stack gives us the right balance: the power of low-level browser automation
 
 To run smoke tests for a starter project, run this from within the `sdk/` dir:
 ```sh
-pnpm smoke-test --path=../starters/standard
+pnpm smoke-test --path=../starter
 ```
 
 To run the playground E2E tests:
-```sh
-# (This command will be defined as part of the implementation)
-pnpm test:e2e
 ```
-
-### CI Integration
-
-All tests run automatically in GitHub Actions on pushes to the main branch and pull requests. The tests are run across a matrix of operating systems (Linux, Windows) and package managers (pnpm, npm, yarn) to ensure broad compatibility.
