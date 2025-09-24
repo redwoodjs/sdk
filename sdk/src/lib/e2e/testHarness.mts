@@ -1,14 +1,5 @@
-import {
-  test,
-  beforeAll,
-  afterAll,
-  beforeEach,
-  afterEach,
-  expect,
-  vi,
-} from "vitest";
+import { test, beforeAll, afterAll, afterEach } from "vitest";
 import { basename, join as pathJoin, dirname } from "path";
-import fs from "node:fs";
 import { setupTarballEnvironment } from "./tarball.mjs";
 import { runDevServer } from "./dev.mjs";
 import {
@@ -18,7 +9,11 @@ import {
   isRelatedToTest,
 } from "./release.mjs";
 import { launchBrowser } from "./browser.mjs";
-import type { Browser, Page } from "puppeteer-core";
+import puppeteer, { type Browser, type Page } from "puppeteer-core";
+export type { Browser, Page } from "puppeteer-core";
+import fs from "fs-extra";
+import os from "os";
+import path from "path";
 
 const SETUP_PLAYGROUND_ENV_TIMEOUT = 300_000;
 
@@ -261,17 +256,16 @@ export function setupPlaygroundEnvironment(
       }
     }
 
-    const [devInstance, deployInstance, browser] = await Promise.all([
+    const [devInstance, deployInstance] = await Promise.all([
       dev && devEnv ? createDevServer(devEnv.targetDir) : Promise.resolve(null),
       deploy && deployEnv
         ? createDeployment(deployEnv.targetDir)
         : Promise.resolve(null),
-      createBrowser(),
     ]);
 
     globalDevInstance = devInstance;
     globalDeploymentInstance = deployInstance;
-    globalBrowser = browser;
+    globalBrowser = await createBrowser();
   }, SETUP_PLAYGROUND_ENV_TIMEOUT);
 }
 
@@ -422,13 +416,22 @@ export async function cleanupDeployment(
 
 /**
  * Creates a browser instance for testing.
- * Automatically registers cleanup to run after the test.
  */
 export async function createBrowser(): Promise<Browser> {
-  // Check if we should run in headed mode for debugging
-  const headless = process.env.RWSDK_HEADLESS !== "false";
-  const browser = await launchBrowser(undefined, headless);
-  return browser;
+  const tempDir = path.join(os.tmpdir(), "rwsdk-e2e-tests");
+  const wsEndpointFile = path.join(tempDir, "wsEndpoint");
+
+  try {
+    const wsEndpoint = await fs.readFile(wsEndpointFile, "utf-8");
+    return await puppeteer.connect({ browserWSEndpoint: wsEndpoint });
+  } catch (error) {
+    console.warn(
+      "Failed to connect to existing browser instance. " +
+        "This might happen if you are running a single test file. " +
+        "Launching a new browser instance instead.",
+    );
+    return await launchBrowser();
+  }
 }
 
 /**
@@ -535,13 +538,8 @@ function createTestRunner(
           );
         }
 
-        if (!globalBrowser) {
-          throw new Error(
-            "No browser instance found. Make sure to enable it in setupPlaygroundEnvironment.",
-          );
-        }
-
-        const page = await globalBrowser.newPage();
+        const browser = await createBrowser();
+        const page = await browser.newPage();
         page.setDefaultTimeout(PUPPETEER_TIMEOUT);
 
         const cleanup = async () => {
@@ -551,7 +549,7 @@ function createTestRunner(
         try {
           await testLogic({
             [envType === "dev" ? "devServer" : "deployment"]: instance,
-            browser: globalBrowser,
+            browser,
             page,
             url: instance.url,
           });
