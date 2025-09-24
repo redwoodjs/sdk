@@ -1,0 +1,69 @@
+import { expect } from "vitest";
+import { setupPlaygroundEnvironment, testDevAndDeploy, poll } from "rwsdk/e2e";
+
+setupPlaygroundEnvironment(import.meta.url);
+
+testDevAndDeploy(
+  "renders Chakra UI playground without errors",
+  async ({ page, url }) => {
+    // Set up console error tracking
+    const consoleErrors: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error") {
+        consoleErrors.push(msg.text());
+      }
+    });
+
+    await page.goto(url, { waitUntil: "networkidle0" });
+
+    // Wait for the main content to load
+    await page.waitForSelector('[data-testid="main-title"]');
+
+    // Verify main title and subtitle
+    const mainTitle = await page.$eval(
+      '[data-testid="main-title"]',
+      (el) => el.textContent,
+    );
+    expect(mainTitle).toContain("Chakra UI Playground");
+
+    const subtitle = await page.$eval(
+      '[data-testid="subtitle"]',
+      (el) => el.textContent,
+    );
+    expect(subtitle).toContain("Basic component showcase for RedwoodSDK");
+
+    // Verify only the simple components section is present
+    const headings = await page.$$eval("h2", (nodes) =>
+      nodes.map((n) => n.textContent),
+    );
+    expect(headings).toContain("Simple Components");
+    expect(headings.length).toBe(2); // Title and the one section
+
+    // Test a key component
+    await page.waitForSelector('[data-testid="button-solid"]');
+
+    // Verify no console errors occurred
+    expect(consoleErrors).toEqual([]);
+  },
+);
+
+testDevAndDeploy(
+  "interactive components work correctly",
+  async ({ page, url }) => {
+    const consoleErrors: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error") {
+        consoleErrors.push(msg.text());
+      }
+    });
+
+    await page.goto(url, { waitUntil: "networkidle0" });
+    await page.waitForSelector('[data-testid="main-title"]');
+
+    // Test button is clickable
+    await page.click('[data-testid="button-solid"]');
+
+    // Verify no console errors occurred during interactions
+    expect(consoleErrors).toEqual([]);
+  },
+);
