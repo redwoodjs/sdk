@@ -49,12 +49,12 @@ describe("SSR Inter-Module Imports", () => {
       await page.goto(url);
 
       const getAppButton = (count: number) =>
-        page.waitForXPath(
-          `//button[contains(., 'App Button clicks: ${count}')]`,
+        page.waitForSelector(
+          `xpath/ //button[contains(., 'App Button clicks: ${count}')]`,
         );
       const getPackageButton = (count: number) =>
-        page.waitForXPath(
-          `//button[contains(., 'Package Button clicks: ${count}')]`,
+        page.waitForSelector(
+          `xpath/ //button[contains(., 'Package Button clicks: ${count}')]`,
         );
 
       await getAppButton(0);
