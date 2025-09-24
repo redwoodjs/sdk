@@ -1,26 +1,12 @@
 import { describe, expect } from "vitest";
-import { setupPlaygroundEnvironment, testDevAndDeploy, poll } from "rwsdk/e2e";
+import {
+  setupPlaygroundEnvironment,
+  testDevAndDeploy,
+  poll,
+  waitForHydration,
+} from "rwsdk/e2e";
 
 setupPlaygroundEnvironment(import.meta.url);
-
-// Helper function to wait for hydration to complete
-async function waitForHydration(page: any) {
-  await new Promise((resolve) => setTimeout(resolve, 1000)); // Initial wait for scripts to load
-
-  // Wait for DOMContentLoaded and any hydration indicators
-  await page.evaluate(() => {
-    return new Promise((resolve) => {
-      if (document.readyState === "complete") {
-        // Additional wait for React hydration
-        setTimeout(resolve, 500);
-      } else {
-        window.addEventListener("load", () => {
-          setTimeout(resolve, 500);
-        });
-      }
-    });
-  });
-}
 
 // Helper function to extract useId values from elements
 async function extractUseIdValues(page: any, testIds: string[]) {
@@ -49,26 +35,28 @@ async function extractUseIdValues(page: any, testIds: string[]) {
 describe("useId Playground", () => {
   testDevAndDeploy("home page renders navigation", async ({ page, url }) => {
     await page.goto(url);
+    const getPageContent = () => page.content();
 
     await poll(async () => {
-      const content = await page.content();
-      return content.includes("useId Test Playground");
+      const content = await getPageContent();
+      expect(content).toContain("useId Test Playground");
+      expect(content).toContain("Server-Only Components");
+      expect(content).toContain("Client-Only Components");
+      expect(content).toContain("Mixed Server/Client Components");
+      return true;
     });
-
-    expect(await page.content()).toContain("useId Test Playground");
-    expect(await page.content()).toContain("Server-Only Components");
-    expect(await page.content()).toContain("Client-Only Components");
-    expect(await page.content()).toContain("Mixed Server/Client Components");
   });
 
   testDevAndDeploy(
     "server-only page maintains stable IDs",
     async ({ page, url }) => {
       await page.goto(`${url}/server-only`);
+      const getPageContent = () => page.content();
 
       await poll(async () => {
-        const content = await page.content();
-        return content.includes("Server-Only useId Test");
+        const content = await getPageContent();
+        expect(content).toContain("Server-Only useId Test");
+        return true;
       });
 
       // Get initial server-rendered IDs
@@ -93,8 +81,8 @@ describe("useId Playground", () => {
       expect(initialIds["server-id-2"]).toBe(afterIds["server-id-2"]);
 
       // Verify the IDs follow the expected server pattern (_S_)
-      expect(initialIds["server-id-1"]).toMatch(/^_S_\w+_$/);
-      expect(initialIds["server-id-2"]).toMatch(/^_S_\w+_$/);
+      expect(initialIds["server-id-1"]).toMatch(/^_S_\\w+_$/);
+      expect(initialIds["server-id-2"]).toMatch(/^_S_\\w+_$/);
     },
   );
 
@@ -102,10 +90,14 @@ describe("useId Playground", () => {
     "client-only page hydrates consistently",
     async ({ page, url }) => {
       await page.goto(`${url}/client-only`);
+      const getPageContent = () => page.content();
+      const getElementText = (selector: string) =>
+        page.$eval(selector, (el) => el.textContent);
 
       await poll(async () => {
-        const content = await page.content();
-        return content.includes("Client-Only useId Test");
+        const content = await getPageContent();
+        expect(content).toContain("Client-Only useId Test");
+        return true;
       });
 
       // Get initial server-rendered IDs
@@ -119,11 +111,9 @@ describe("useId Playground", () => {
 
       // Wait for hydration status to update
       await poll(async () => {
-        const element = await page.$('[data-testid="hydration-status"]');
-        const status = element
-          ? await page.evaluate((el: Element) => el.textContent, element)
-          : null;
-        return status?.includes("Client hydration complete") ?? false;
+        const status = await getElementText('[data-testid="hydration-status"]');
+        expect(status).toContain("Client hydration complete");
+        return true;
       });
 
       // Get IDs after hydration
@@ -139,8 +129,8 @@ describe("useId Playground", () => {
       expect(initialIds["client-id-2"]).toBe(afterIds["client-id-2"]);
 
       // Verify the IDs follow the expected hydration pattern (_R_)
-      expect(initialIds["client-id-1"]).toMatch(/^_R_\w+_$/);
-      expect(initialIds["client-id-2"]).toMatch(/^_R_\w+_$/);
+      expect(initialIds["client-id-1"]).toMatch(/^_R_\\w+_$/);
+      expect(initialIds["client-id-2"]).toMatch(/^_R_\\w+_$/);
     },
   );
 
@@ -148,10 +138,12 @@ describe("useId Playground", () => {
     "mixed page maintains server IDs and hydrates client IDs consistently",
     async ({ page, url }) => {
       await page.goto(`${url}/mixed`);
+      const getPageContent = () => page.content();
 
       await poll(async () => {
-        const content = await page.content();
-        return content.includes("Mixed Server/Client useId Test");
+        const content = await getPageContent();
+        expect(content).toContain("Mixed Server/Client useId Test");
+        return true;
       });
 
       // Get initial server-rendered IDs
@@ -177,9 +169,12 @@ describe("useId Playground", () => {
             page.evaluate((element: Element) => element.textContent, el),
           ),
         );
-        return statuses.every(
-          (status: string | null) => status?.includes("Hydrated") ?? false,
-        );
+        expect(
+          statuses.every(
+            (status: string | null) => status?.includes("Hydrated") ?? false,
+          ),
+        ).toBe(true);
+        return true;
       });
 
       // Get IDs after hydration
@@ -223,12 +218,16 @@ describe("useId Playground", () => {
       );
 
       // Verify all IDs follow the expected pattern
-      expect(initialServerIds["mixed-server-id-1"]).toMatch(/^_S_\w+_$/);
-      expect(initialServerIds["mixed-server-id-2"]).toMatch(/^_S_\w+_$/);
-      expect(initialClientIds["mixed-first-client-id-1"]).toMatch(/^_R_\w+_$/);
-      expect(initialClientIds["mixed-first-client-id-2"]).toMatch(/^_R_\w+_$/);
-      expect(initialClientIds["mixed-second-client-id-1"]).toMatch(/^_R_\w+_$/);
-      expect(initialClientIds["mixed-second-client-id-2"]).toMatch(/^_R_\w+_$/);
+      expect(initialServerIds["mixed-server-id-1"]).toMatch(/^_S_\\w+_$/);
+      expect(initialServerIds["mixed-server-id-2"]).toMatch(/^_S_\\w+_$/);
+      expect(initialClientIds["mixed-first-client-id-1"]).toMatch(/^_R_\\w+_$/);
+      expect(initialClientIds["mixed-first-client-id-2"]).toMatch(/^_R_\\w+_$/);
+      expect(initialClientIds["mixed-second-client-id-1"]).toMatch(
+        /^_R_\\w+_$/,
+      );
+      expect(initialClientIds["mixed-second-client-id-2"]).toMatch(
+        /^_R_\\w+_$/,
+      );
     },
   );
 });

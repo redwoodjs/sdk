@@ -1,5 +1,10 @@
 import { expect } from "vitest";
-import { setupPlaygroundEnvironment, testDevAndDeploy, poll } from "rwsdk/e2e";
+import {
+  setupPlaygroundEnvironment,
+  testDevAndDeploy,
+  poll,
+  waitForHydration,
+} from "rwsdk/e2e";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -13,10 +18,13 @@ setupPlaygroundEnvironment({
 
 testDevAndDeploy("renders Hello World", async ({ page, url }) => {
   await page.goto(url);
+  const getPageContent = () => page.content();
 
   await poll(async () => {
-    const content = await page.content();
+    const content = await getPageContent();
     expect(content).toContain("Hello from UI Lib");
     return true;
   });
+
+  await waitForHydration(page);
 });
