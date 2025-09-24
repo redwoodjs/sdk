@@ -15,6 +15,9 @@ export default defineApp([
     // setup ctx here
     ctx;
   },
-  render(Document, [route("/", Home)]),
-  render(Document, [route("/working", Working), route("/broken", Broken)]),
+  render(Document, [
+    route("/", Home),
+    route("/working", Working),
+    route("/broken", Broken),
+  ]),
 ]);
