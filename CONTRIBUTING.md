@@ -99,7 +99,7 @@ The script will create a temporary directory, copy the starter, install dependen
 
 The monorepo includes a `playground` directory for end-to-end (E2E) tests. These tests run against a real, packed tarball of the SDK in an isolated environment to simulate a user's project accurately.
 
-Playground examples are self-contained, runnable projects designed to demonstrate and test RedwoodSDK features. Each example, modeled after `playground/hello-world`, must include an `__tests__` directory with end-to-end tests. These tests are executed from the monorepo root. For context on using the framework to build playgroud examples refer to our docs in `docs/src/content/docs`. Run the tests from monorepo root, e.g: `pnpm test:e2e -- playground/hello-world/__tests__/e2e.test.mts`
+Playground examples are self-contained, runnable projects designed to demonstrate and test RedwoodSDK features. Each example, modeled after `playground/hello-world`, must include an `__tests__` directory with end-to-end tests. These tests are executed from the monorepo root. For context on using the framework to build playgroud examples refer to our docs in `docs/src/content/docs`. Run the tests from monorepo root, `e.g: pnpm test:e2e -- playground/hello-world/__tests__/e2e.test.mts`
 
 #### Best Practices
 
@@ -119,31 +119,30 @@ setupPlaygroundEnvironment(import.meta.url);
 testDevAndDeploy("renders MDX and client component", async ({ page, url }) => {
   await page.goto(url);
 
+  // Use helper functions to improve legibility and reduce repetition.
+  const getButton = async () => page.waitForSelector("button");
+  const getButtonText = async () =>
+    await page.evaluate((el) => el?.textContent, await getButton());
+  const getPageContent = async () => await page.content();
+
   // Use `poll` to wait for an element or content to appear.
   // This should be used whenever possible over arbitrary waits (e.g. `setTimeout`).
   // Place your assertion directly inside the poll to avoid redundant checks.
   await poll(async () => {
-    const content = await page.content();
+    const content = await getPageContent();
     expect(content).toContain("Hello world");
+    expect(await getButtonText()).toBe("Clicks: 0");
     return true;
   });
 
-  // If you need to wait for a specific element to be available in the DOM,
-  // `waitForSelector` is the correct tool.
-  const button = await page.waitForSelector("button");
-  expect(button).not.toBeNull();
-
-  // Use `page.evaluate` to run code in the browser context and get
-  // information from elements, like their text content.
-  let buttonText = await page.evaluate((el) => el?.textContent, button);
-  expect(buttonText).toBe("Clicks: 0");
-
-  // Simulate user interactions, like clicking a button.
-  await button?.click();
+  // Re-fetch the element before interacting with it. The DOM may have been
+  // updated by a client-side render, and holding onto a stale element
+  // reference can cause flaky tests.
+  (await getButton())?.click();
 
   // Poll again to wait for the result of the interaction.
   await poll(async () => {
-    buttonText = await page.evaluate((el) => el?.textContent, button);
+    const buttonText = await getButtonText();
     expect(buttonText).toBe("Clicks: 1");
     return true;
   });

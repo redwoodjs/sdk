@@ -6,23 +6,26 @@ setupPlaygroundEnvironment(import.meta.url);
 testDevAndDeploy("renders MDX and client component", async ({ page, url }) => {
   await page.goto(url);
 
+  const getButton = async () => await page.waitForSelector("button");
+
+  const getButtonText = async () =>
+    await page.evaluate((el) => el?.textContent, await getButton());
+
+  const getPageContent = async () => await page.content();
+
   await poll(async () => {
-    const content = await page.content();
+    const content = await getPageContent();
     expect(content).toContain("Hello world");
+    console.log("#########", await getButtonText());
+    expect(await getButtonText()).toBe("Clicks: 0");
     return true;
   });
 
-  const button = await page.waitForSelector("button");
-  expect(button).not.toBeNull();
-
-  let buttonText = await page.evaluate((el) => el?.textContent, button);
-  expect(buttonText).toBe("Clicks: 0");
-
-  await button?.click();
+  (await getButton())?.click();
 
   await poll(async () => {
-    buttonText = await page.evaluate((el) => el?.textContent, button);
-    console.log("###", buttonText);
+    const buttonText = await getButtonText();
+    console.log("######### 2", await getPageContent());
     expect(buttonText).toBe("Clicks: 1");
     return true;
   });
