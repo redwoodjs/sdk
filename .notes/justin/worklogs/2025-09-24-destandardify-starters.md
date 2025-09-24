@@ -129,8 +129,62 @@ Here is a summary of the progress so far, cross-referenced with the tasks in thi
   - [ ] Port `passkey-addon` code into `sdk/src/passkey`.
   - [ ] Refactor ported passkey code to use `requestInfo.response.headers`.
   - [ ] Create the `usePasskey` hook.
-  - [ ] Add passkey authentication example to `playground/hello-world`.
+  - [ ] Add `passkey` authentication example to `playground/`
+    - copy-paste `hello-world` example as starting point
+    - use conventions below + other examples as a reference for how to e2e test
 - **6. Rename "minimal" to "starter"**:
   - [ ] Rename all remaining occurrences of "minimal" to "starter".
 - **7. Documentation Cleanup**:
   - [ ] The files have been identified, but the content has not yet been updated.
+
+## E2E conventions
+
+We use puppeteer. Here are the conventions:
+```ts
+import { expect } from "vitest";
+import { setupPlaygroundEnvironment, testDevAndDeploy, poll } from "rwsdk/e2e";
+
+// This sets up the test environment for the entire file.
+// It ensures the playground is isolated and cleaned up automatically.
+setupPlaygroundEnvironment(import.meta.url);
+
+// In most cases, you should be checking the behaviour being tested both in dev and deployments
+// Use `testDevAndDeploy` to run the same test logic against both the
+// local dev server and a temporary Cloudflare deployment.
+testDevAndDeploy("renders MDX and client component", async ({ page, url }) => {
+  await page.goto(url);
+
+  // Use helper functions to improve legibility and reduce repetition.
+  const getButton = async () => page.waitForSelector("button");
+  const getButtonText = async () =>
+    await page.evaluate((el) => el?.textContent, await getButton());
+  const getPageContent = async () => await page.content();
+
+  // Use `poll` to wait for an element or content to appear.
+  // This should be used whenever possible over arbitrary waits (e.g. `setTimeout`).
+  // Place your assertion directly inside the poll to avoid redundant checks.
+  await poll(async () => {
+    const content = await getPageContent();
+    expect(content).toContain("Hello world");
+    expect(await getButtonText()).toBe("Clicks: 0");
+    return true;
+  });
+
+  // Before interacting with the page, wait for it to be fully loaded and
+  // interactive by calling `waitForHydration`. This ensures client-side
+  // hydration is complete and event listeners are attached.
+  await waitForHydration(page);
+
+  // Re-fetch the element before interacting with it. The DOM may have been
+  // updated by a client-side render, and holding onto a stale element
+  // reference can cause flaky tests.
+  (await getButton())?.click();
+
+  // Poll again to wait for the result of the interaction.
+  await poll(async () => {
+    const buttonText = await getButtonText();
+    expect(buttonText).toBe("Clicks: 1");
+    return true;
+  });
+});
+```
