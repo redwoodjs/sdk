@@ -471,11 +471,14 @@ Releases are managed by a GitHub Actions workflow that automates versioning, pub
 1.  Navigate to the [Release workflow](.github/workflows/release.yml) in the repository's "Actions" tab.
 2.  Click the "Run workflow" dropdown.
 3.  Choose the `version_type` for the release. The options are:
-    *   `patch`, `minor`, `major`: For standard releases.
-    *   `prepatch`, `preminor`, `premajor`: For pre-releases (e.g., `1.0.0-alpha.0`).
-    *   `test`: For internal test releases. These are tagged with `test` on npm and are not considered "latest".
-4.  If you are creating a pre-release, you can specify a `preid` (e.g., `beta`, `rc`). The default is `alpha`.
-5.  Click the "Run workflow" button.
+    *   `patch`, `minor`: For standard incremental releases where the next version is calculated automatically.
+    *   `test`: For internal test releases.
+    *   `explicit`: This is **required** for all major and pre-releases. When you select this, you must also provide the full version string in the `version` field below.
+4.  The `version` field is only used when the `version_type` is `explicit`. It allows you to specify the exact version to release.
+    *   **Example for a major release:** Select `explicit` as the `version_type` and enter `2.0.0` in the `version` field.
+    *   **Example for a pre-release:** Select `explicit` as the `version_type` and enter `1.2.3-beta.0` in the `version` field.
+5.  Optionally, you can check `skip_smoke_tests` to bypass the smoke testing phase. This is useful for speeding up dry runs or when you are certain the tests are not needed, but should be used with caution for actual releases.
+6.  Click the "Run workflow" button.
 
 ### How to Unrelease a Version
 
