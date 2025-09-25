@@ -4,18 +4,13 @@ import {
   testDevAndDeploy,
   poll,
   waitForHydration,
+  trackPageErrors,
 } from "rwsdk/e2e";
 
 setupPlaygroundEnvironment(import.meta.url);
 
 testDevAndDeploy("Chakra UI playground", async ({ page, url }) => {
-  // Set up console error tracking
-  const consoleErrors: string[] = [];
-  page.on("console", (msg) => {
-    if (msg.type() === "error") {
-      consoleErrors.push(msg.text());
-    }
-  });
+  const errorTracker = trackPageErrors(page);
 
   await page.goto(url, { waitUntil: "networkidle0" });
 
@@ -43,7 +38,7 @@ testDevAndDeploy("Chakra UI playground", async ({ page, url }) => {
   });
 
   // Verify no console errors occurred on render
-  expect(consoleErrors).toEqual([]);
+  expect(errorTracker.get().consoleErrors).toEqual([]);
 
   await waitForHydration(page);
 
@@ -53,5 +48,5 @@ testDevAndDeploy("Chakra UI playground", async ({ page, url }) => {
   (await getButton())?.click();
 
   // Verify no console errors occurred during interactions
-  expect(consoleErrors).toEqual([]);
+  expect(errorTracker.get().consoleErrors).toEqual([]);
 });
