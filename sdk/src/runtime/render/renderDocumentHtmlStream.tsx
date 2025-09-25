@@ -55,8 +55,7 @@ export const renderDocumentHtmlStream = async ({
       <Stylesheets requestInfo={requestInfo} />
       <Preloads requestInfo={requestInfo} />
       <div id="hydrate-root">
-        {/* @ts-ignore */}
-        <rwsdk-app-start />
+        <div id="rwsdk-app-start" />
       </div>
     </Document>
   );
@@ -78,7 +77,7 @@ export const renderDocumentHtmlStream = async ({
   const stitchedStream = stitchDocumentAndAppStreams(
     outerHtmlStream,
     appHtmlStream,
-    "<rwsdk-app-start></rwsdk-app-start>",
+    '<div id="rwsdk-app-start"></div>',
     '<div id="rwsdk-app-end"></div>',
   );
 
