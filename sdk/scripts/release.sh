@@ -318,17 +318,23 @@ else
   while IFS= read -r package_json; do
     if [[ "$package_json" != "./package.json" ]]; then
       PROJECT_DIR=$(dirname "$package_json")
-      CURRENT_DEP_VERSION=$(cd "$PROJECT_DIR" && npm pkg get dependencies."$DEPENDENCY_NAME" | tr -d '"')
       
-      # Only process if the dependency exists (not {} or empty) and isn't a workspace dependency
-      if [[ "$CURRENT_DEP_VERSION" != "{}" && -n "$CURRENT_DEP_VERSION" && "$CURRENT_DEP_VERSION" != workspace:* ]]; then
-        # Get relative path for cleaner output
-        REL_PATH=$(echo "$package_json" | sed 's/\.\.\///')
-        echo "  └─ $REL_PATH"
-        if [[ "$DRY_RUN" == true ]]; then
-          echo "     [DRY RUN] Update to $NEW_VERSION"
-        else
-          (cd "$PROJECT_DIR" && sed -i.bak "s/\"$DEPENDENCY_NAME\": \"[^\"]*\"/\"$DEPENDENCY_NAME\": \"$NEW_VERSION\"/" package.json && rm package.json.bak)
+      # Check for the literal string "workspace:" to avoid resolving the version.
+      # This is more reliable than `npm pkg get` which resolves the workspace version.
+      IS_WORKSPACE_DEP=$(grep -q "\"$DEPENDENCY_NAME\": \"workspace:" "$PROJECT_DIR/package.json" && echo "true" || echo "false")
+
+      if [[ "$IS_WORKSPACE_DEP" == "false" ]]; then
+        # Now, safely check if the dependency exists.
+        CURRENT_DEP_VERSION=$(cd "$PROJECT_DIR" && npm pkg get dependencies."$DEPENDENCY_NAME" 2>/dev/null | tr -d '"')
+        if [[ "$CURRENT_DEP_VERSION" != "{}" && -n "$CURRENT_DEP_VERSION" ]]; then
+          # Get relative path for cleaner output
+          REL_PATH=$(echo "$package_json" | sed 's/\.\.\///')
+          echo "  └─ $REL_PATH"
+          if [[ "$DRY_RUN" == true ]]; then
+            echo "     [DRY RUN] Update to $NEW_VERSION"
+          else
+            (cd "$PROJECT_DIR" && sed -i.bak "s/\"$DEPENDENCY_NAME\": \"[^\"]*\"/\"$DEPENDENCY_NAME\": \"$NEW_VERSION\"/" package.json && rm package.json.bak)
+          fi
         fi
       fi
     fi
