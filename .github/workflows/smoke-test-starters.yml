@@ -48,6 +48,7 @@ on:
           - npm
           - yarn
           - yarn-classic
+  workflow_call:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -65,8 +66,8 @@ jobs:
     steps:
       - id: set-matrix
         run: |
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo 'matrix={"include":[{"starter":"minimal","os":"ubuntu-latest","package-manager":"pnpm"}]}' >> $GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" == "pull_request" ] || [ "${{ github.event_name }}" == "push" ]; then
+            echo 'matrix={"include":[{"starter":"minimal","os":"ubuntu-latest","package-manager":"npm"}]}' >> $GITHUB_OUTPUT
           elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             STARTER_INPUT=${{ github.event.inputs.starter }}
             OS_INPUT=${{ github.event.inputs.os }}
@@ -85,7 +86,7 @@ jobs:
               done
             done
             echo "matrix={\"include\":${JSON_ARRAY}}" >> $GITHUB_OUTPUT
-          else
+          else # this is for workflow_call
             echo 'matrix={"include":[{"starter":"minimal","os":"ubuntu-latest","package-manager":"pnpm"},{"starter":"minimal","os":"ubuntu-latest","package-manager":"npm"},{"starter":"minimal","os":"ubuntu-latest","package-manager":"yarn"},{"starter":"minimal","os":"ubuntu-latest","package-manager":"yarn-classic"},{"starter":"minimal","os":"macos-latest","package-manager":"pnpm"},{"starter":"minimal","os":"macos-latest","package-manager":"npm"},{"starter":"minimal","os":"macos-latest","package-manager":"yarn"},{"starter":"minimal","os":"macos-latest","package-manager":"yarn-classic"},{"starter":"standard","os":"ubuntu-latest","package-manager":"pnpm"},{"starter":"standard","os":"ubuntu-latest","package-manager":"npm"},{"starter":"standard","os":"ubuntu-latest","package-manager":"yarn"},{"starter":"standard","os":"ubuntu-latest","package-manager":"yarn-classic"},{"starter":"standard","os":"macos-latest","package-manager":"pnpm"},{"starter":"standard","os":"macos-latest","package-manager":"npm"},{"starter":"standard","os":"macos-latest","package-manager":"yarn"},{"starter":"standard","os":"macos-latest","package-manager":"yarn-classic"}]}' >> $GITHUB_OUTPUT
           fi
 

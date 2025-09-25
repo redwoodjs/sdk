@@ -40,6 +40,7 @@ on:
           - yarn
           # todo(justinvdm, 25 Sep 2025): Re-enable yarn-classic once E2E tests are fixed
           # - yarn-classic
+  workflow_call:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -57,8 +58,8 @@ jobs:
     steps:
       - id: set-matrix
         run: |
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"}]}' >> $GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" == "pull_request" ] || [ "${{ github.event_name }}" == "push" ]; then
+            echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"npm"}]}' >> $GITHUB_OUTPUT
           elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             OS_INPUT=${{ github.event.inputs.os }}
             PM_INPUT=${{ github.event.inputs.package-manager }}
@@ -74,7 +75,7 @@ jobs:
               done
             done
             echo "matrix={\"include\":${JSON_ARRAY}}" >> $GITHUB_OUTPUT
-          else
+          else # this is for workflow_call
             # todo(justinvdm, 25 Sep 2025): Re-enable yarn-classic once E2E tests are fixed
             echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"},{"os":"ubuntu-latest","package-manager":"npm"},{"os":"ubuntu-latest","package-manager":"yarn"},{"os":"macos-latest","package-manager":"pnpm"},{"os":"macos-latest","package-manager":"npm"},{"os":"macos-latest","package-manager":"yarn"}]}' >> $GITHUB_OUTPUT
           fi
