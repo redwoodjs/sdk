@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import "@react-email/render";
 import { Resend } from "resend";
 import WelcomeEmail from "./WelcomeEmail.js";
