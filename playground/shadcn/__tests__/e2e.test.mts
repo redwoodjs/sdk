@@ -31,6 +31,7 @@ testDevAndDeploy(
     await page.goto(url);
     const getPageContent = () => page.content();
 
+    // Verify initial render
     await poll(async () => {
       const content = await getPageContent();
       expect(content).toContain("Basic UI Components");

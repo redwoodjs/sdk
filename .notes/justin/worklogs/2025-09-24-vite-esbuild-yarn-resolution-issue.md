@@ -110,3 +110,65 @@ After fixing the symlink resolution, the e2e test revealed a new issue: Vite's d
 This re-optimization is problematic because it can lead to duplicate instances of the framework's modules being loaded, which breaks internal state management that relies on singletons (like `AsyncLocalStorage` for request context).
 
 The root cause of this re-optimization needs to be investigated. It should not be happening if all dependencies are correctly discovered during the initial scan. As an immediate mitigation to unblock testing, all known `rwsdk` entry points will be explicitly added to `optimizeDeps.include`.
+
+## Update: Explanation for Re-optimization Behavior
+
+The re-optimization issue is a direct consequence of fixing the monorepo resolution problem in PR #775. The behavior changed for the following reasons:
+
+1.  **Before the Fix:** In specific monorepo hoisting scenarios, Vite's dependency scanner failed to resolve `rwsdk` modules entirely. The build process would halt with a resolution error before it could even attempt a deep scan of the framework's dependencies.
+
+2.  **After the Fix:** The `knownDepsResolverPlugin` now correctly resolves the initial `rwsdk` import, allowing Vite's optimizer to proceed. However, Vite's static analysis of the package is not exhaustive and can miss indirectly referenced internal modules (like `rwsdk/constants`). When one of these undiscovered modules is requested at runtime, Vite's dev server identifies it as a new dependency, triggers a re-optimization to include it, and forces a full-page reload.
+
+This reload is disruptive to the framework, as it can break internal state management that relies on singletons.
+
+The solution is not a workaround for a new bug, but rather a necessary measure to accommodate the limitations of static analysis. By explicitly listing all public `rwsdk` entry points in `optimizeDeps.include`, we provide Vite with a complete dependency map upfront. This ensures all framework modules are pre-bundled from the start, preventing runtime discoveries and the resulting re-optimizations.
+
+### Plan
+
+1.  Add `rwsdk/constants` to the `optimizeDeps.include` list in `configPlugin.mts`.
+2.  Review the `rwsdk` `package.json` exports to identify any other public entry points that should also be added to the list to prevent future issues.
+3.  Update the `configPlugin.mts` with the comprehensive list.
+
+### Implementation Details and Rationale
+
+The `sdk/package.json` file's `exports` map was used as the source of truth for all public framework entry points. Each entry point was categorized for its relevance to the `worker`, `client`, and `ssr` environments to create a comprehensive dependency list for each.
+
+#### 1. `worker` Environment (Server-Side)
+
+*   **Goal:** Ensure all backend-related modules are pre-optimized.
+*   **Rationale:** This environment includes all server-side functionalities. `rwsdk/auth`, `rwsdk/db`, `rwsdk/llms`, and `rwsdk/router` are all exclusively used for backend logic and are therefore included.
+
+#### 2. `client` Environment (Browser)
+
+*   **Goal:** Pre-optimize all modules intended for browser execution.
+*   **Rationale:** This list includes only modules that are safe and necessary for the client. `rwsdk/turnstile` (client-side captcha) and `rwsdk/realtime/client` are the primary client-specific modules. `rwsdk/auth` and `rwsdk/router` are excluded as their functionality is worker-only.
+
+#### 3. `ssr` Environment (Server-Side Rendering)
+
+*   **Goal:** Pre-optimize modules needed to render client components on the server. Its dependencies mirror the `client` environment.
+*   **Rationale:** Since this environment pre-renders client components, its dependencies should align with the client. As such, `rwsdk/auth` and `rwsdk/router` are not required.
+
+#### 4. All Environments
+
+*   **Goal:** Include platform-agnostic utilities everywhere.
+*   **Rationale:** `rwsdk/constants` and `rwsdk/debug` are general-purpose utilities that can be used in any environment.
+
+## PR Description
+
+### fix(vite): Prevent re-optimization by defining all framework dependencies
+
+This change prevents the dev server from crashing with a pre-bundling error by ensuring Vite's dependency optimizer has a complete map of all framework modules from the start.
+
+#### Problem
+
+The dev server would crash with the error `Internal server error: There is a new version of the pre-bundle...` during development.
+
+This was a side effect of a fix in PR #775. To support 'use client' and 'use server' directives in third-party packages, our build process transforms code in `node_modules`, which can inject imports to `rwsdk` modules. In a monorepo, a transformed dependency can be hoisted to the root, while the `rwsdk` package itself is located in a nested project's `node_modules`.
+
+To handle this inverted resolution path, we introduced custom resolution logic in a vite plugin in RedwoodSDK. While this fixed the resolution failure, it revealed a limitation in Vite's dependency scanner. Once Vite could find an initial `rwsdk` module, its static analysis could not always discover the framework's entire internal dependency graph.
+
+When a module missed during the initial scan (e.g., `rwsdk/constants`) was requested at runtime, Vite would trigger a re-optimization to create a new dependency bundle. This caused the running server code, which still referenced the old bundle, to become inconsistent with Vite's module map, leading to the crash.
+
+#### Solution
+
+This is addressed by explicitly defining all public `rwsdk` entry points in each environment's `optimizeDeps.include` list (`worker`, `client`, and `ssr`). This provides Vite with a complete and accurate dependency map upfront, ensuring that all framework modules are pre-bundled from the start. This prevents any runtime discoveries that would lead to the re-optimization and subsequent server error.

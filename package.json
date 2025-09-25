@@ -16,17 +16,26 @@
     "node": ">=18.0.0",
     "pnpm": ">=8.0.0"
   },
-  "packageManager": "pnpm@9.4.0",
+  "packageManager": "pnpm@10.0.0",
   "devDependencies": {
     "@antfu/eslint-config": "^2.21.1",
     "@manypkg/cli": "^0.21.4",
     "@types/node": "^20.14.2",
     "eslint": "^9.5.0",
-    "pnpm": "^9.4.0",
+    "pnpm": "^10.0.0",
     "prettier": "^3.3.2",
     "tsx": "^4.15.7",
     "typescript": "^5.4.5",
     "wrangler": "^4.35.0",
     "vitest": "^3.1.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "esbuild",
+      "sharp",
+      "unrs-resolver",
+      "workerd"
+    ]
   }
 }

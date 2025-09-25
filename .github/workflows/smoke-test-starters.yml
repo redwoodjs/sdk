@@ -39,6 +39,7 @@ on:
           - npm
           - yarn
           - yarn-classic
+  workflow_call:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -56,7 +57,7 @@ jobs:
     steps:
       - id: set-matrix
         run: |
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
+          if [ "${{ github.event_name }}" == "pull_request" ] || [ "${{ github.event_name }}" == "push" ]; then
             echo 'matrix={"include":[{"starter":"starter","os":"ubuntu-latest","package-manager":"pnpm"}]}' >> $GITHUB_OUTPUT
           elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             OS_INPUT=${{ github.event.inputs.os }}
@@ -75,7 +76,7 @@ jobs:
               done
             done
             echo "matrix={\"include\":${JSON_ARRAY}}" >> $GITHUB_OUTPUT
-          else
+          else # this is for workflow_call
             echo 'matrix={"include":[{"starter":"starter","os":"ubuntu-latest","package-manager":"pnpm"},{"starter":"starter","os":"ubuntu-latest","package-manager":"npm"},{"starter":"starter","os":"ubuntu-latest","package-manager":"yarn"},{"starter":"starter","os":"ubuntu-latest","package-manager":"yarn-classic"},{"starter":"starter","os":"macos-latest","package-manager":"pnpm"},{"starter":"starter","os":"macos-latest","package-manager":"npm"},{"starter":"starter","os":"macos-latest","package-manager":"yarn"},{"starter":"starter","os":"macos-latest","package-manager":"yarn-classic"}]}' >> $GITHUB_OUTPUT
           fi
 
@@ -87,6 +88,15 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
     timeout-minutes: 60
+    env:
+      MAX_RETRIES: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '10' || '3' }}
+      RWSDK_SETUP_PLAYGROUND_ENV_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '1800000' || '' }} # 30 mins
+      RWSDK_DEPLOYMENT_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '900000' || '' }} # 15 mins
+      RWSDK_DEPLOYMENT_MIN_TRIES: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '10' || '' }}
+      RWSDK_DEPLOYMENT_CHECK_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '600000' || '' }} # 10 mins
+      RWSDK_PUPPETEER_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '300000' || '' }} # 5 mins
+      RWSDK_HYDRATION_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '10000' || '' }} # 10s
+      RWSDK_DEV_SERVER_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '900000' || '' }} # 15 mins
 
     # context(justinvdm, 2025-05-12):
     # Only run this job for PRs from the same repository and pushes to main

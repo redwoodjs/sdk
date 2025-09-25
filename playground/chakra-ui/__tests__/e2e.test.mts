@@ -9,9 +9,8 @@ import {
 setupPlaygroundEnvironment(import.meta.url);
 
 testDevAndDeploy(
-  "renders Chakra UI playground without errors",
+  "Chakra-UI comprehensive playground",
   async ({ page, url }) => {
-    // Set up console error tracking
     const consoleErrors: string[] = [];
     page.on("console", (msg) => {
       if (msg.type() === "error") {
@@ -19,7 +18,10 @@ testDevAndDeploy(
       }
     });
 
-    await page.goto(url, { waitUntil: "networkidle0" });
+    await page.goto(url);
+
+    // 1. Initial Render & Style Check
+    await waitForHydration(page);
 
     const getElementText = (selector: string) =>
       page.$eval(selector, (el) => el.textContent);
@@ -68,7 +70,8 @@ testDevAndDeploy(
       page.waitForSelector('[data-testid="button-solid"]');
 
     // Test button is clickable
-    (await getButton())?.click();
+    const button = await getButton();
+    await button?.click();
 
     // Verify no console errors occurred during interactions
     expect(consoleErrors).toEqual([]);

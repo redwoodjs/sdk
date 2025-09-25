@@ -73,12 +73,13 @@ This project employs a multi-layered testing strategy to ensure code quality and
 
 #### CI/CD Testing Pipeline
 
-Our GitHub Actions workflows are configured to provide two different levels of testing:
+Our GitHub Actions workflows are configured to provide a tiered testing strategy to balance rapid feedback with comprehensive coverage.
 
-*   **On Pull Requests**: To provide fast feedback, we run a lightweight but representative subset of our test suite. This includes all **unit tests**, plus a minimal configuration of our **smoke tests** and **E2E tests** (running on Ubuntu with pnpm). This quick sanity check is designed to catch most common regressions without the long wait times of the full test matrix.
-*   **On Pushes to `main`**: Before any code is considered for a release, it must pass the full, comprehensive test suite. This includes all **unit tests**, and the complete matrix for **smoke tests** and **E2E tests**, covering all supported operating systems (Ubuntu, macOS) and package managers (pnpm, npm, yarn, yarn-classic). A failure in any part of this matrix will block a release, ensuring that the `main` branch is always stable.
+*   **On Pull Requests and Pushes to `main`**: To provide fast feedback, we run a lightweight but representative subset of our test suite. This includes all **unit tests**, plus a minimal configuration of our **smoke tests** and **E2E tests** (running on `ubuntu-latest` with `npm`). This serves as a quick health check to catch common regressions.
 
-All tests can also be run manually on any branch using the `workflow_dispatch` trigger in GitHub Actions, giving contributors the power to run the full suite on their changes when needed.
+*   **Nightly Runs**: To ensure broad compatibility, the full test matrix is run on a schedule (every 12 hours). This includes **smoke tests** and **E2E tests** across all supported operating systems (Ubuntu, macOS) and package managers (pnpm, npm, yarn, yarn-classic). This process catches environment-specific issues without blocking development on `main`.
+
+All test suites can also be run manually on any branch using the `workflow_dispatch` trigger in GitHub Actions, giving contributors the power to run the full suite on their changes when needed.
 
 ### Smoke Testing
 
@@ -98,6 +99,61 @@ The script will create a temporary directory, copy the starter, install dependen
 ### End-to-End Tests (Playground)
 
 The monorepo includes a `playground` directory for end-to-end (E2E) tests. These tests run against a real, packed tarball of the SDK in an isolated environment to simulate a user's project accurately.
+
+Playground examples are self-contained, runnable projects designed to demonstrate and test RedwoodSDK features. Each example, modeled after `playground/hello-world`, must include an `__tests__` directory with end-to-end tests. These tests are executed from the monorepo root. For context on using the framework to build playgroud examples refer to our docs in `docs/src/content/docs`. Run the tests from monorepo root, `e.g: pnpm test:e2e -- playground/hello-world/__tests__/e2e.test.mts`
+
+#### Best Practices
+
+The following is an annotated example of a good E2E test that follows our best practices.
+
+```typescript
+import { expect } from "vitest";
+import { setupPlaygroundEnvironment, testDevAndDeploy, poll } from "rwsdk/e2e";
+
+// This sets up the test environment for the entire file.
+// It ensures the playground is isolated and cleaned up automatically.
+setupPlaygroundEnvironment(import.meta.url);
+
+// In most cases, you should be checking the behaviour being tested both in dev and deployments
+// Use `testDevAndDeploy` to run the same test logic against both the
+// local dev server and a temporary Cloudflare deployment.
+testDevAndDeploy("renders MDX and client component", async ({ page, url }) => {
+  await page.goto(url);
+
+  // Use helper functions to improve legibility and reduce repetition.
+  const getButton = async () => page.waitForSelector("button");
+  const getButtonText = async () =>
+    await page.evaluate((el) => el?.textContent, await getButton());
+  const getPageContent = async () => await page.content();
+
+  // Use `poll` to wait for an element or content to appear.
+  // This should be used whenever possible over arbitrary waits (e.g. `setTimeout`).
+  // Place your assertion directly inside the poll to avoid redundant checks.
+  await poll(async () => {
+    const content = await getPageContent();
+    expect(content).toContain("Hello world");
+    expect(await getButtonText()).toBe("Clicks: 0");
+    return true;
+  });
+
+  // Before interacting with the page, wait for it to be fully loaded and
+  // interactive by calling `waitForHydration`. This ensures client-side
+  // hydration is complete and event listeners are attached.
+  await waitForHydration(page);
+
+  // Re-fetch the element before interacting with it. The DOM may have been
+  // updated by a client-side render, and holding onto a stale element
+  // reference can cause flaky tests.
+  (await getButton())?.click();
+
+  // Poll again to wait for the result of the interaction.
+  await poll(async () => {
+    const buttonText = await getButtonText();
+    expect(buttonText).toBe("Clicks: 1");
+    return true;
+  });
+});
+```
 
 #### Getting Started
 
@@ -471,11 +527,14 @@ Releases are managed by a GitHub Actions workflow that automates versioning, pub
 1.  Navigate to the [Release workflow](.github/workflows/release.yml) in the repository's "Actions" tab.
 2.  Click the "Run workflow" dropdown.
 3.  Choose the `version_type` for the release. The options are:
-    *   `patch`, `minor`, `major`: For standard releases.
-    *   `prepatch`, `preminor`, `premajor`: For pre-releases (e.g., `1.0.0-alpha.0`).
-    *   `test`: For internal test releases. These are tagged with `test` on npm and are not considered "latest".
-4.  If you are creating a pre-release, you can specify a `preid` (e.g., `beta`, `rc`). The default is `alpha`.
-5.  Click the "Run workflow" button.
+    *   `patch`, `minor`: For standard incremental releases where the next version is calculated automatically.
+    *   `test`: For internal test releases.
+    *   `explicit`: This is **required** for all major and pre-releases. When you select this, you must also provide the full version string in the `version` field below.
+4.  The `version` field is only used when the `version_type` is `explicit`. It allows you to specify the exact version to release.
+    *   **Example for a major release:** Select `explicit` as the `version_type` and enter `2.0.0` in the `version` field.
+    *   **Example for a pre-release:** Select `explicit` as the `version_type` and enter `1.2.3-beta.0` in the `version` field.
+5.  Optionally, you can check `skip_smoke_tests` to bypass the smoke testing phase. This is useful for speeding up dry runs or when you are certain the tests are not needed, but should be used with caution for actual releases.
+6.  Click the "Run workflow" button.
 
 ### How to Unrelease a Version
 

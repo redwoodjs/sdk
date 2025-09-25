@@ -1,5 +1,4 @@
 import { Plugin } from "vite";
-import fs from "fs/promises";
 import debug from "debug";
 import { ROOT_DIR } from "../lib/constants.mjs";
 import enhancedResolve from "enhanced-resolve";

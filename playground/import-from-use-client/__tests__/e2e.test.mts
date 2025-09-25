@@ -62,14 +62,18 @@ describe("SSR Inter-Module Imports", () => {
 
       await waitForHydration(page);
 
-      (await getAppButton(0))?.click();
+      const appButton = await getAppButton(0);
+      await appButton?.click();
+
       await poll(async () => {
         const button = await getAppButton(1);
         expect(button).not.toBeNull();
         return true;
       });
 
-      (await getPackageButton(0))?.click();
+      const packageButton = await getPackageButton(0);
+      await packageButton?.click();
+
       await poll(async () => {
         const button = await getPackageButton(1);
         expect(button).not.toBeNull();
