@@ -14,7 +14,7 @@ export function Home() {
       <Suspense fallback={<div>Loading...</div>}>
         <DisplayRequest requestPromise={requestPromise} />
       </Suspense>
-      <ExampleButton message="Hello from the interactive button!" />
+      <ExampleButton />
     </div>
   );
 }

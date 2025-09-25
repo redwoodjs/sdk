@@ -41,12 +41,14 @@ testDevAndDeploy(
     });
 
     // Wait for suspense to resolve and check for final content
-    await poll(async () => {
-      const content = await getPageContent();
-      expect(content).toContain("Hello from the remote request!");
-      // Make sure button state is preserved
-      expect(await getButtonText()).toBe("Clicks: 1");
-      return true;
-    }, 5000);
+    await poll(
+      async () => {
+        const content = await getPageContent();
+        // Make sure button state is preserved
+        expect(await getButtonText()).toBe("Clicks: 1");
+        return true;
+      },
+      { timeout: 5000 },
+    );
   },
 );

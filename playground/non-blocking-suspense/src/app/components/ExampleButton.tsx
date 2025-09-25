@@ -2,13 +2,12 @@
 
 import { useState } from "react";
 
-export function ExampleButton({ message }: { message: string }) {
+export function ExampleButton() {
   const [count, setCount] = useState(0);
 
   return (
     <button
       onClick={() => {
-        alert(message);
         setCount(count + 1);
       }}
     >

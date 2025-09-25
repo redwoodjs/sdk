@@ -20,8 +20,7 @@
       "./types/vite.d.ts"
     ],
     "paths": {
-      "@/*": ["./src/*"],
-      "rwsdk/*": ["../../sdk/src/*"]
+      "@/*": ["./src/*"]
     },
     /* Enable importing .json files */
     "resolveJsonModule": true,
