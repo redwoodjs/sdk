@@ -1,35 +1,33 @@
 import { expect } from "vitest";
-import { setupPlaygroundEnvironment, testDevAndDeploy, poll } from "rwsdk/e2e";
+import {
+  setupPlaygroundEnvironment,
+  testDevAndDeploy,
+  poll,
+  waitForHydration,
+} from "rwsdk/e2e";
 
 setupPlaygroundEnvironment(import.meta.url);
 
-testDevAndDeploy(
-  "renders Chakra UI playground without errors",
-  async ({ page, url }) => {
-    // Set up console error tracking
-    const consoleErrors: string[] = [];
-    page.on("console", (msg) => {
-      if (msg.type() === "error") {
-        consoleErrors.push(msg.text());
-      }
-    });
+testDevAndDeploy("Chakra UI playground", async ({ page, url }) => {
+  // Set up console error tracking
+  const consoleErrors: string[] = [];
+  page.on("console", (msg) => {
+    if (msg.type() === "error") {
+      consoleErrors.push(msg.text());
+    }
+  });
 
-    await page.goto(url, { waitUntil: "networkidle0" });
+  await page.goto(url, { waitUntil: "networkidle0" });
 
-    // Wait for the main content to load
-    await page.waitForSelector('[data-testid="main-title"]');
+  const getElementText = (selector: string) =>
+    page.$eval(selector, (el) => el.textContent);
 
+  await poll(async () => {
     // Verify main title and subtitle
-    const mainTitle = await page.$eval(
-      '[data-testid="main-title"]',
-      (el) => el.textContent,
-    );
+    const mainTitle = await getElementText('[data-testid="main-title"]');
     expect(mainTitle).toContain("Chakra UI Playground");
 
-    const subtitle = await page.$eval(
-      '[data-testid="subtitle"]',
-      (el) => el.textContent,
-    );
+    const subtitle = await getElementText('[data-testid="subtitle"]');
     expect(subtitle).toContain("Basic component showcase for RedwoodSDK");
 
     // Verify only the simple components section is present
@@ -41,29 +39,19 @@ testDevAndDeploy(
 
     // Test a key component
     await page.waitForSelector('[data-testid="button-solid"]');
+    return true;
+  });
 
-    // Verify no console errors occurred
-    expect(consoleErrors).toEqual([]);
-  },
-);
+  // Verify no console errors occurred on render
+  expect(consoleErrors).toEqual([]);
 
-testDevAndDeploy(
-  "interactive components work correctly",
-  async ({ page, url }) => {
-    const consoleErrors: string[] = [];
-    page.on("console", (msg) => {
-      if (msg.type() === "error") {
-        consoleErrors.push(msg.text());
-      }
-    });
+  await waitForHydration(page);
 
-    await page.goto(url, { waitUntil: "networkidle0" });
-    await page.waitForSelector('[data-testid="main-title"]');
+  const getButton = () => page.waitForSelector('[data-testid="button-solid"]');
 
-    // Test button is clickable
-    await page.click('[data-testid="button-solid"]');
+  // Test button is clickable
+  (await getButton())?.click();
 
-    // Verify no console errors occurred during interactions
-    expect(consoleErrors).toEqual([]);
-  },
-);
+  // Verify no console errors occurred during interactions
+  expect(consoleErrors).toEqual([]);
+});

@@ -3,6 +3,8 @@ title: Client Side Navigation (Single Page Apps)
 description: Implement client side navigation in your RedwoodSDK project
 ---
 
+import { Aside, Badge } from '@astrojs/starlight/components';
+
 ## What is Client Side Navigation?
 
 Client-side navigation is a technique that allows users to move between pages without a full-page reload. Instead of the browser reloading the entire HTML document, the JavaScript runtime intercepts navigation events (like link clicks), fetches the next page's content (usually as JavaScript modules or RSC payload), and updates the current view.
@@ -95,3 +97,9 @@ initClientNavigation({
 
 That’s it! No additional code or router configuration required – RedwoodSDK
 watches for DOM updates and performs the scroll automatically.
+
+## API Reference
+
+### `initClientNavigation()` <Badge text="Experimental" type="caution" />
+
+Initializes the client-side navigation. Call this function from your `client.tsx` entry point.

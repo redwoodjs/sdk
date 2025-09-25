@@ -9,8 +9,12 @@ export default defineConfig({
   integrations: [
     starlight({
       plugins: [starlightLlmsTxt()],
+      components: {
+        // Override the default PageTitle component to support experimental badges
+        PageTitle: "./src/components/PageTitle.astro",
+      },
       expressiveCode: {
-        themes: ['github-dark', 'github-light'],
+        themes: ["github-dark", "github-light"],
         shiki: {
           bundledLangs: ["bash", "ts", "tsx"],
         },
