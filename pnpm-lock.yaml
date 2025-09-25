@@ -21,8 +21,8 @@ importers:
         specifier: ^9.5.0
         version: 9.36.0(jiti@2.6.0)
       pnpm:
-        specifier: ^9.4.0
-        version: 9.15.9
+        specifier: ^10.0.0
+        version: 10.17.1
       prettier:
         specifier: ^3.3.2
         version: 3.5.3
@@ -7025,8 +7025,8 @@ packages:
     resolution: {integrity: sha512-Nc3IT5yHzflTfbjgqWcCPpo7DaKy4FnpB0l/zCAW0Tc7jxAiuqSxHasntB3D7887LSrA93kDJ9IXovxJYxyLCA==}
     engines: {node: '>=4'}
 
-  pnpm@9.15.9:
-    resolution: {integrity: sha512-aARhQYk8ZvrQHAeSMRKOmvuJ74fiaR1p5NQO7iKJiClf1GghgbrlW1hBjDolO95lpQXsfF+UA+zlzDzTfc8lMQ==}
+  pnpm@10.17.1:
+    resolution: {integrity: sha512-F8Vg/KSGeulHOjiZrYSogzSRTzeb5G1FXL+S5c9LOdNJhdRS0lg7rxmWf6dstcF7yeJFUp0LmHRXIapyAOyveg==}
     engines: {node: '>=18.12'}
     hasBin: true
 
@@ -15906,7 +15906,7 @@ snapshots:
 
   pluralize@8.0.0: {}
 
-  pnpm@9.15.9: {}
+  pnpm@10.17.1: {}
 
   postcss-nested@6.2.0(postcss@8.5.6):
     dependencies:
