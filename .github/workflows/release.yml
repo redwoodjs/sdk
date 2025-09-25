@@ -44,7 +44,7 @@ env:
 
 jobs:
   check-ci-status:
-    if: github.ref == 'refs/heads/main' && github.event.inputs.dangerously_override_checks != 'true'
+    if: github.ref == 'refs/heads/main' && github.event.inputs.dangerously_override_checks == 'false'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
