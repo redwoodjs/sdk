@@ -26,7 +26,7 @@ import { poll, pollValue } from "./poll.mjs";
 const SETUP_PLAYGROUND_ENV_TIMEOUT = process.env
   .RWSDK_SETUP_PLAYGROUND_ENV_TIMEOUT
   ? parseInt(process.env.RWSDK_SETUP_PLAYGROUND_ENV_TIMEOUT, 10)
-  : 5 * 60 * 1000;
+  : 15 * 60 * 1000;
 
 const DEPLOYMENT_TIMEOUT = process.env.RWSDK_DEPLOYMENT_TIMEOUT
   ? parseInt(process.env.RWSDK_DEPLOYMENT_TIMEOUT, 10)
@@ -58,7 +58,7 @@ const DEV_SERVER_MIN_TRIES = process.env.RWSDK_DEV_SERVER_MIN_TRIES
 
 const SETUP_WAIT_TIMEOUT = process.env.RWSDK_SETUP_WAIT_TIMEOUT
   ? parseInt(process.env.RWSDK_SETUP_WAIT_TIMEOUT, 10)
-  : 6 * 60 * 1000;
+  : 10 * 60 * 1000;
 
 interface PlaygroundEnvironment {
   projectDir: string;
@@ -83,14 +83,13 @@ const SKIP_DEV_SERVER_TESTS = process.env.RWSDK_SKIP_DEV === "1";
 const SKIP_DEPLOYMENT_TESTS = process.env.RWSDK_SKIP_DEPLOY === "1";
 
 // Global test environment state
-let globalPlaygroundEnv: PlaygroundEnvironment | null = null;
+let globalDevPlaygroundEnv: PlaygroundEnvironment | null = null;
+let globalDeployPlaygroundEnv: PlaygroundEnvironment | null = null;
 let globalDevInstancePromise: Promise<DevServerInstance | null> | null = null;
 let globalDeploymentInstancePromise: Promise<DeploymentInstance | null> | null =
   null;
-let globalBrowserPromise: Promise<Browser | null> | null = null;
 let globalDevInstance: DevServerInstance | null = null;
 let globalDeploymentInstance: DeploymentInstance | null = null;
-let globalBrowser: Browser | null = null;
 
 let hooksRegistered = false;
 
@@ -109,22 +108,18 @@ function ensureHooksRegistered() {
     if (globalDeploymentInstance) {
       cleanupPromises.push(globalDeploymentInstance.cleanup());
     }
-    if (globalBrowser) {
-      cleanupPromises.push(globalBrowser.close());
+    if (globalDevPlaygroundEnv) {
+      cleanupPromises.push(globalDevPlaygroundEnv.cleanup());
     }
+    if (globalDeployPlaygroundEnv) {
+      cleanupPromises.push(globalDeployPlaygroundEnv.cleanup());
+    }
+
     await Promise.all(cleanupPromises);
     globalDevInstance = null;
     globalDeploymentInstance = null;
-    globalBrowser = null;
-
-    if (globalPlaygroundEnv) {
-      try {
-        await globalPlaygroundEnv.cleanup();
-        globalPlaygroundEnv = null;
-      } catch (error) {
-        console.warn("Failed to cleanup playground environment:", error);
-      }
-    }
+    globalDevPlaygroundEnv = null;
+    globalDeployPlaygroundEnv = null;
   });
 
   hooksRegistered = true;
@@ -218,73 +213,53 @@ export function setupPlaygroundEnvironment(
 
     console.log(`Setting up playground environment from ${projectDir}...`);
 
-    let devEnv: { targetDir: string; cleanup: () => Promise<void> } | undefined;
     if (dev) {
-      devEnv = await setupTarballEnvironment({
+      const devEnv = await setupTarballEnvironment({
         projectDir,
         monorepoRoot,
         packageManager:
           (process.env.PACKAGE_MANAGER as "pnpm" | "npm" | "yarn") || "pnpm",
       });
-      globalPlaygroundEnv = {
+      globalDevPlaygroundEnv = {
         projectDir: devEnv.targetDir,
         cleanup: devEnv.cleanup,
       };
+      globalDevInstancePromise = createDevServer(devEnv.targetDir).then(
+        (instance) => {
+          globalDevInstance = instance;
+          return instance;
+        },
+      );
+      // Prevent unhandled promise rejections. The error will be handled inside
+      // the test's beforeEach hook where this promise is awaited.
+      globalDevInstancePromise.catch(() => {});
+    } else {
+      globalDevInstancePromise = Promise.resolve(null);
     }
 
-    let deployEnv:
-      | { targetDir: string; cleanup: () => Promise<void> }
-      | undefined;
     if (deploy) {
-      deployEnv = await setupTarballEnvironment({
+      const deployEnv = await setupTarballEnvironment({
         projectDir,
         monorepoRoot,
         packageManager:
           (process.env.PACKAGE_MANAGER as "pnpm" | "npm" | "yarn") || "pnpm",
       });
-      // If there's no dev env, we still need to set the global env for cleanup
-      if (!devEnv) {
-        globalPlaygroundEnv = {
-          projectDir: deployEnv.targetDir,
-          cleanup: deployEnv.cleanup,
-        };
-      }
+      globalDeployPlaygroundEnv = {
+        projectDir: deployEnv.targetDir,
+        cleanup: deployEnv.cleanup,
+      };
+      globalDeploymentInstancePromise = createDeployment(
+        deployEnv.targetDir,
+      ).then((instance) => {
+        globalDeploymentInstance = instance;
+        return instance;
+      });
+      // Prevent unhandled promise rejections
+      globalDeploymentInstancePromise.catch(() => {});
+    } else {
+      globalDeploymentInstancePromise = Promise.resolve(null);
     }
-
-    globalDevInstancePromise = (
-      dev && devEnv ? createDevServer(devEnv.targetDir) : Promise.resolve(null)
-    ).then((instance) => {
-      globalDevInstance = instance;
-      return instance;
-    });
-
-    globalDeploymentInstancePromise = (
-      deploy && deployEnv
-        ? createDeployment(deployEnv.targetDir)
-        : Promise.resolve(null)
-    ).then((instance) => {
-      globalDeploymentInstance = instance;
-      return instance;
-    });
-
-    globalBrowserPromise = createBrowser().then((browser) => {
-      globalBrowser = browser;
-      return browser;
-    });
   }, SETUP_PLAYGROUND_ENV_TIMEOUT);
-}
-
-/**
- * Gets the current playground environment.
- * Throws if no environment has been set up.
- */
-export function getPlaygroundEnvironment(): PlaygroundEnvironment {
-  if (!globalPlaygroundEnv) {
-    throw new Error(
-      "No playground environment set up. Call setupPlaygroundEnvironment() in beforeAll()",
-    );
-  }
-  return globalPlaygroundEnv;
 }
 
 /**
@@ -417,53 +392,6 @@ export async function createDeployment(
 }
 
 /**
- * Manually cleans up a deployment instance (deletes worker and D1 database).
- * This is optional since cleanup happens automatically after each test.
- */
-export async function cleanupDeployment(
-  deployment: DeploymentInstance,
-): Promise<void> {
-  console.log(
-    `🧹 Cleaning up deployment: ${deployment.workerName} (${deployment.resourceUniqueKey})`,
-  );
-  const env = getPlaygroundEnvironment();
-
-  if (isRelatedToTest(deployment.workerName, deployment.resourceUniqueKey)) {
-    await deleteWorker(
-      deployment.workerName,
-      env.projectDir,
-      deployment.resourceUniqueKey,
-    );
-  }
-
-  await deleteD1Database(
-    deployment.resourceUniqueKey,
-    env.projectDir,
-    deployment.resourceUniqueKey,
-  );
-}
-
-/**
- * Creates a browser instance for testing.
- */
-export async function createBrowser(): Promise<Browser> {
-  const tempDir = path.join(os.tmpdir(), "rwsdk-e2e-tests");
-  const wsEndpointFile = path.join(tempDir, "wsEndpoint");
-
-  try {
-    const wsEndpoint = await fs.readFile(wsEndpointFile, "utf-8");
-    return await puppeteer.connect({ browserWSEndpoint: wsEndpoint });
-  } catch (error) {
-    console.warn(
-      "Failed to connect to existing browser instance. " +
-        "This might happen if you are running a single test file. " +
-        "Launching a new browser instance instead.",
-    );
-    return await launchBrowser();
-  }
-}
-
-/**
  * Executes a test function with a retry mechanism for specific error codes.
  * @param name - The name of the test, used for logging.
  * @param attemptFn - A function that executes one attempt of the test.
@@ -545,7 +473,30 @@ function createTestRunner(
     describe.concurrent(name, () => {
       let page: Page;
       let instance: DevServerInstance | DeploymentInstance | null;
-      let browser: Browser | null;
+      let browser: Browser;
+
+      beforeAll(async () => {
+        const tempDir = path.join(os.tmpdir(), "rwsdk-e2e-tests");
+        const wsEndpointFile = path.join(tempDir, "wsEndpoint");
+
+        try {
+          const wsEndpoint = await fs.readFile(wsEndpointFile, "utf-8");
+          browser = await puppeteer.connect({ browserWSEndpoint: wsEndpoint });
+        } catch (error) {
+          console.warn(
+            "Failed to connect to existing browser instance. " +
+              "This might happen if you are running a single test file. " +
+              "Launching a new browser instance instead.",
+          );
+          browser = await launchBrowser();
+        }
+      }, SETUP_WAIT_TIMEOUT);
+
+      afterAll(async () => {
+        if (browser) {
+          await browser.disconnect();
+        }
+      });
 
       beforeEach(async () => {
         const instancePromise =
@@ -553,18 +504,15 @@ function createTestRunner(
             ? globalDevInstancePromise
             : globalDeploymentInstancePromise;
 
-        if (!instancePromise || !globalBrowserPromise) {
+        if (!instancePromise) {
           throw new Error(
             "Test environment promises not initialized. Call setupPlaygroundEnvironment() in your test file.",
           );
         }
 
-        [instance, browser] = await Promise.all([
-          instancePromise,
-          globalBrowserPromise,
-        ]);
+        [instance] = await Promise.all([instancePromise]);
 
-        if (!instance || !browser) {
+        if (!instance) {
           throw new Error(
             `No ${envType} instance found. Make sure to enable it in setupPlaygroundEnvironment.`,
           );
@@ -576,7 +524,16 @@ function createTestRunner(
 
       afterEach(async () => {
         if (page) {
-          await page.close();
+          try {
+            await page.close();
+          } catch (error) {
+            // Suppress errors during page close, as the browser might already be disconnecting
+            // due to the test suite finishing.
+            console.warn(
+              `Suppressing error during page.close() in test "${name}":`,
+              error,
+            );
+          }
         }
       });
 
@@ -675,4 +632,27 @@ export async function waitForHydration(page: Page) {
   // 2. Wait a short, fixed amount of time for client-side hydration to finish.
   // This is a pragmatic approach to ensure React has mounted.
   await new Promise((resolve) => setTimeout(resolve, HYDRATION_TIMEOUT));
+}
+
+export function trackPageErrors(page: Page) {
+  const consoleErrors: string[] = [];
+  const failedRequests: string[] = [];
+
+  page.on("requestfailed", (request) => {
+    failedRequests.push(`${request.url()} | ${request.failure()?.errorText}`);
+  });
+
+  page.on("console", (msg) => {
+    if (msg.type() === "error") {
+      consoleErrors.push(msg.text());
+    }
+  });
+
+  return {
+    get: () => ({
+      // context(justinvdm, 25 Sep 2025): Filter out irrelevant 404s (e.g. favicon)
+      consoleErrors: consoleErrors.filter((e) => !e.includes("404")),
+      failedRequests,
+    }),
+  };
 }

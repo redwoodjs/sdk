@@ -10,6 +10,7 @@ import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { INTERMEDIATES_OUTPUT_DIR } from "../lib/constants.mjs";
 import { externalModules } from "./constants.mjs";
 import { createViteAwareResolver } from "./createViteAwareResolver.mjs";
+import { compile } from "@mdx-js/mdx";
 
 const log = debug("rwsdk:vite:run-directives-scan");
 
@@ -84,6 +85,8 @@ export function classifyModule({
   return { moduleEnv, isClient, isServer };
 }
 
+export type EsbuildLoader = "js" | "jsx" | "ts" | "tsx" | "default";
+
 export const runDirectivesScan = async ({
   rootConfig,
   environments,
@@ -95,9 +98,11 @@ export const runDirectivesScan = async ({
   environments: Record<string, Environment>;
   clientFiles: Set<string>;
   serverFiles: Set<string>;
-  entries: string[];
+  entries?: string[];
 }) => {
-  console.log("\n🔍 Scanning for 'use client' and 'use server' directives...");
+  deferredLog(
+    "\n… (rwsdk) Scanning for 'use client' and 'use server' directives...",
+  );
 
   // Set environment variable to indicate scanning is in progress
   process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE = "true";
@@ -164,7 +169,7 @@ export const runDirectivesScan = async ({
       setup(build: PluginBuild) {
         // Match Vite's behavior by externalizing assets and special queries.
         // This prevents esbuild from trying to bundle them, which would fail.
-        const scriptFilter = /\.(c|m)?[jt]sx?$/;
+        const scriptFilter = /\.(c|m)?[jt]sx?$|\.mdx$/;
         const specialQueryFilter =
           /[?&](?:url|raw|worker|sharedworker|inline)\b/;
         // This regex is used to identify if a path has any file extension.
@@ -267,7 +272,7 @@ export const runDirectivesScan = async ({
         });
 
         build.onLoad(
-          { filter: /\.(m|c)?[jt]sx?$/ },
+          { filter: /\.(m|c)?[jt]sx?$|\.mdx$/ },
           async (args: OnLoadArgs) => {
             log("onLoad called for:", args.path);
 
@@ -285,11 +290,11 @@ export const runDirectivesScan = async ({
             }
 
             try {
-              const contents = await readFileWithCache(args.path);
+              const originalContents = await readFileWithCache(args.path);
               const inheritedEnv = args.pluginData?.inheritedEnv || "worker";
 
               const { moduleEnv, isClient, isServer } = classifyModule({
-                contents,
+                contents: originalContents,
                 inheritedEnv,
               });
 
@@ -308,7 +313,31 @@ export const runDirectivesScan = async ({
                 serverFiles.add(normalizeModulePath(realPath, rootConfig.root));
               }
 
-              return { contents, loader: "default" };
+              let code: string;
+              let loader: EsbuildLoader;
+
+              if (args.path.endsWith(".mdx")) {
+                const result = await compile(originalContents, {
+                  jsx: true,
+                  jsxImportSource: "react",
+                });
+                code = String(result.value);
+                loader = "tsx";
+              } else if (/\.(m|c)?tsx$/.test(args.path)) {
+                code = originalContents;
+                loader = "tsx";
+              } else if (/\.(m|c)?ts$/.test(args.path)) {
+                code = originalContents;
+                loader = "ts";
+              } else if (/\.(m|c)?jsx$/.test(args.path)) {
+                code = originalContents;
+                loader = "jsx";
+              } else {
+                code = originalContents;
+                loader = "js";
+              }
+
+              return { contents: code, loader };
             } catch (e) {
               log("Could not read file during scan, skipping:", args.path, e);
               return null;
@@ -333,7 +362,9 @@ export const runDirectivesScan = async ({
   } finally {
     // Always clear the scanning flag when done
     delete process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE;
-    console.log("✅ Scan complete.");
+    deferredLog(
+      "✔ (rwsdk) Done scanning for 'use client' and 'use server' directives.",
+    );
     process.env.VERBOSE &&
       log(
         "Client/server files after scanning: client=%O, server=%O",
@@ -341,4 +372,10 @@ export const runDirectivesScan = async ({
         Array.from(serverFiles),
       );
   }
+};
+
+const deferredLog = (message: string) => {
+  setTimeout(() => {
+    console.log(message);
+  }, 500);
 };

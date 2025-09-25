@@ -20,6 +20,9 @@ export function registerServerReference(
   return baseRegisterServerReference(action, id, name);
 }
 
+const isComponent = (target: unknown) =>
+  isValidElementType(target) && target?.toString().includes("jsx");
+
 export function registerClientReference<Target extends Record<string, unknown>>(
   ssrModule: Target,
   id: string,
@@ -50,7 +53,15 @@ export function registerClientReference<Target extends Record<string, unknown>>(
     finalDescriptors.$$async = { value: true };
     finalDescriptors.$$isClientReference = { value: true };
 
-    return Object.defineProperties(() => null, finalDescriptors);
+    // context(justinvdm, 25 Sep 2025): We create a wrapper function to avoid
+    // getting the SSR component's property descriptors - otherwise
+    // this will take precedence over the client reference descriptors
+    const fn =
+      typeof target === "function"
+        ? (...args: unknown[]) => (target as Function)(...args)
+        : () => null;
+
+    return Object.defineProperties(fn, finalDescriptors);
   }
 
   // For non-components, return the target object directly for use in SSR.
