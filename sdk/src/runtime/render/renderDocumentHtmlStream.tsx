@@ -79,7 +79,7 @@ export const renderDocumentHtmlStream = async ({
     outerHtmlStream,
     appHtmlStream,
     "<rwsdk-app-start></rwsdk-app-start>",
-    "<template",
+    '<div id="rwsdk-app-end"></div>',
   );
 
   return stitchedStream;

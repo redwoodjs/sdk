@@ -70,8 +70,11 @@ export function stitchDocumentAndAppStreams(
           buffer += decoder.decode(value, { stream: true });
           const markerIndex = buffer.indexOf(endMarker);
           if (markerIndex !== -1) {
-            controller.enqueue(encoder.encode(buffer.slice(0, markerIndex)));
-            buffer = ""; // Do not keep the buffer from the inner stream
+            const endOfMarkerIndex = markerIndex + endMarker.length;
+            controller.enqueue(
+              encoder.encode(buffer.slice(0, endOfMarkerIndex)),
+            );
+            buffer = buffer.slice(endOfMarkerIndex);
             phase = "outer-tail";
           } else {
             const flushIndex = buffer.lastIndexOf("\n");

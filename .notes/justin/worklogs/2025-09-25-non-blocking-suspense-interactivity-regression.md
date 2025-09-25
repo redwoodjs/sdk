@@ -63,35 +63,27 @@ The new approach for initial page loads is as follows:
 
 This "Unified RSC Render -> Tee -> Strip" strategy is architecturally cleaner and gives React full control over the streaming process. The primary technical challenge to investigate is the feasibility of creating a streaming transformer that can reliably parse and modify the RSC wire format without full buffering.
 
-## 4. A New Streaming Strategy: Marker-Based Interleaving (Surgical Implementation)
+## 4. Final Architecture: Suspense-Aware Stitching with Refined Logic
 
-The "Unified RSC Render" approach was re-evaluated and determined to be overly complex. A more surgical and robust stream-stitching strategy has been devised that is aware of how React handles Suspense. This approach contains all necessary changes within the SSR rendering logic, requiring no modifications to `worker.tsx`.
+The "Unified RSC Render" approach was re-evaluated and determined to be overly complex. The marker-based interleaving strategy was ultimately successful after two critical fixes were implemented.
 
-### The Core Insight & Flaw in Previous Stitching
+### The Core Problem: A Cascade of Mismatches
 
-The fundamental challenge is that the browser needs the client-side `<script>` tag (from the document shell) to begin hydration, but that tag is located *after* the application content. If the application content stream pauses due to Suspense, the script tag is blocked.
+The investigation revealed a cascade of issues that masked the root cause:
 
-### The New Architecture: Suspense-Aware Stitching
+1.  **DOM Structure Mismatch:** The initial attempts to inject a marker component (first a `div`, then a custom element) failed because they were wrapped in a `<React.Fragment>` on the server. This created a component tree that was structurally different from the client's RSC payload, which does not contain the fragment. This was the primary cause of the hydration failures.
+2.  **Stream Stitching Bug:** A logic flaw in the `stitchDocumentAndAppStreams` utility was causing content from the document and app streams to be mixed in a shared buffer. This corrupted the HTML, placing the closing `</div>` tag for the `#hydrate-root` element *before* the application content, further breaking the DOM structure.
+3.  **Underlying `useId` Mismatch:** Once the stitching bug and the structural mismatch were fixed, a final, underlying issue was revealed: the server and client were using different `useId` counters, leading to the classic `_R_1_` vs `_r_0_` mismatch.
 
-The new approach leverages the fact that React will stream all available, non-suspended HTML content synchronously before the first pause. We can use this behavior by strategically placing a second marker.
+### The Fix: A Three-Part Solution
 
-The implementation will be as follows:
+The final, working solution addresses all three issues:
 
-1.  **Inject an End Marker (in `renderDocumentHtmlStream.tsx`):** For initial page loads, after extracting the `innerAppNode` from the RSC payload stream, it will be wrapped in a `<React.Fragment>`. This fragment will contain two children:
-    1.  The original `innerAppNode`.
-    2.  A new, special "end marker" component that renders a unique HTML comment (e.g., `<!-- RWSDK_APP_HTML_END -->`).
+1.  **Corrected Stitching Logic:** The bug in `stitchDocumentAndAppStreams` was fixed by introducing a separate buffer for the document stream's remainder. This ensures the two streams are processed cleanly and never mixed.
+2.  **No App Wrapper:** The `<React.Fragment>` wrapper and the custom marker component were removed. The RSC `innerAppNode` is now passed directly to the renderer, guaranteeing that the server-side component tree is identical to the client-side RSC payload.
+3.  **Reliable End Marker:** Instead of injecting a custom marker, the solution now uses React's native streaming behavior. When React hits a `<Suspense>` boundary, it emits a `<template>` tag for the suspended content. The stitcher now uses the first occurrence of `"<template"` as the unambiguous signal for the end of the initial, non-suspended HTML shell.
 
-    Because this marker is a sibling to the application content and is not suspended, React will render it as part of the initial, non-suspended HTML shell when `appNode` is rendered to its own stream.
-
-2.  **Implement a `stitchDocumentAndAppStreams` Utility:** A new, more specialized utility will replace the generic `injectHtmlAtMarker`. It will orchestrate the two streams with the following logic:
-    1.  **Stream Document Head:** Read from the document stream and send chunks to the browser until the *start marker* (`<!-- RWSDK_INJECT_APP_HTML -->`) is found.
-    2.  **Stream Initial App Shell:** Switch to the app stream. Read from it and send chunks to the browser until the *end marker* (`<!-- RWSDK_APP_HTML_END -->`) is found. This represents the complete, non-suspended part of the application.
-    3.  **Stream Document Tail (with script):** Once the app's end marker is found, switch *back* to the document stream. Continue sending its chunks. This is the critical step that sends the remainder of the `<body>`, including the `<script>import("/src/client.tsx")</script>` tag, to the browser, allowing hydration to begin immediately.
-    4.  **Pause Before Body End:** Continue streaming the document until the closing `</body>` tag is encountered. Pause here.
-    5.  **Stream Suspended App Content:** Switch back to the app stream and pipe the entire remainder of its content. This is all the content that was suspended and is now resolving.
-    6.  **Finish Document:** Once the app stream is complete, send the final `</body>` and `</html>` tags from the document stream.
-
-This marker-based interleaving strategy solves the race condition. It ensures the client script is delivered as soon as the initial UI is rendered, without waiting for slow data fetches, restoring the intended non-blocking, early-hydration behavior.
+This combination of fixes ensures the DOM structure is correct, the `useId`s are synchronized, and the client script is delivered for early hydration without being blocked by Suspense.
 
 ## 5. PR Title and Description
 
