@@ -1,17 +1,9 @@
-import {
-  expect,
-  test,
-  beforeAll,
-  afterAll,
-  describe,
-  beforeEach,
-} from "vitest";
+import { expect } from "vitest";
 import {
   setupPlaygroundEnvironment,
   testDevAndDeploy,
   poll,
   waitForHydration,
-  trackPageErrors,
 } from "rwsdk/e2e";
 
 setupPlaygroundEnvironment(import.meta.url);

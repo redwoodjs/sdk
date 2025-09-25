@@ -4,7 +4,6 @@ import {
   testDevAndDeploy,
   poll,
   waitForHydration,
-  trackPageErrors,
 } from "rwsdk/e2e";
 
 setupPlaygroundEnvironment(import.meta.url);
