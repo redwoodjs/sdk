@@ -11,7 +11,6 @@ export async function sendWelcomeEmail(formData: FormData) {
     return { error: "Email is required", success: false };
   }
 
-  console.log("########", ssrSendWelcomeEmail);
   const { data, error } = await ssrSendWelcomeEmail(env.RESEND_API, email);
 
   if (error) {
