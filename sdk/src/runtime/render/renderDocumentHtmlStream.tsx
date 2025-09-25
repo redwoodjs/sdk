@@ -31,9 +31,8 @@ export const renderDocumentHtmlStream = async ({
   const appNode = (
     <>
       {innerAppNode}
-      <div
-        dangerouslySetInnerHTML={{ __html: "<!-- RWSDK_APP_HTML_END -->" }}
-      />
+      {/* @ts-ignore */}
+      <rwsdk-app-end />
     </>
   );
   // todo(justinvdm, 18 Jun 2025): We can build on this later to allow users
@@ -61,10 +60,10 @@ export const renderDocumentHtmlStream = async ({
       />
       <Stylesheets requestInfo={requestInfo} />
       <Preloads requestInfo={requestInfo} />
-      <div
-        id="hydrate-root"
-        dangerouslySetInnerHTML={{ __html: "<!-- RWSDK_INJECT_APP_HTML -->" }}
-      />
+      <div id="hydrate-root">
+        {/* @ts-ignore */}
+        <rwsdk-app-start />
+      </div>
     </Document>
   );
 
@@ -85,8 +84,8 @@ export const renderDocumentHtmlStream = async ({
   const stitchedStream = stitchDocumentAndAppStreams(
     outerHtmlStream,
     appHtmlStream,
-    "<!-- RWSDK_INJECT_APP_HTML -->",
-    "<!-- RWSDK_APP_HTML_END -->",
+    "<rwsdk-app-start></rwsdk-app-start>",
+    "<rwsdk-app-end></rwsdk-app-end>",
   );
 
   return stitchedStream;
