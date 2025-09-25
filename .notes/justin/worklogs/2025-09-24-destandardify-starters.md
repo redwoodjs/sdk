@@ -362,3 +362,44 @@ Based on this, here is the plan for moving forward:
     *   Revert the `docs/` directory in this branch back to its state on `main` using `git checkout main -- docs/`.
     *   This will leave the PR with only code changes, ready for you to merge. The new documentation will be safely stored, ready to be moved into a new branch for the final release.
 *   **Update `create-rwsdk`**: The CLI will be updated with `--legacy` and `--pre` flags to control which version of the starter is downloaded. For the initial merge, the default behavior will be `legacy` to avoid impacting current users.
+
+## Review Plan
+
+This plan provides a structured approach to efficiently review the comprehensive changes in this branch.
+
+### 1. High-Level Refresher (The Goal)
+
+The primary objective of this branch is twofold:
+
+*   **Destandardize**: Simplify the project by removing the `standard` starter, promoting `minimal` to the single default `starter`, and updating all tooling and documentation to reflect this.
+*   **Integrate Passkey**: Move the passkey authentication logic from the old `standard` starter into the SDK itself (`rwsdk/passkey`), making it an officially supported, optional feature.
+
+### 2. Core Changes & Key Decisions (The "What" & "Why")
+
+*   **Code**: The main functional additions are the `sdk/src/passkey` directory (the core logic) and the corresponding `playground/passkey` example. The main structural changes are the removal of `starters/standard` and the renaming of `starters/minimal` to `starter`, which touched many CI and script files.
+*   **Strategy**: We landed on a **"Code-First, Docs-Later"** release plan. This means this PR, once approved, will be prepared to merge *without* the documentation changes to avoid a "big bang" release. The `create-rwsdk` tool defaults to `--legacy` for now to prevent impacting existing users.
+
+### 3. Suggested Review Flow (The "How")
+
+A recommended path for an efficient review:
+
+*   **Step 1: Skim the Work Log (5 mins)**
+    *   Quickly read through the **"Status Update"** and **"Release Strategy and Next Steps"** sections in this work log for the full narrative.
+
+*   **Step 2: Review the Passkey Feature (15 mins)**
+    *   Start with `sdk/src/passkey/`, focusing on `client.ts` (`usePasskey` hook) and `worker.ts` (server-side exports).
+    *   Then, review the `playground/passkey/` example, which demonstrates the API in a practical implementation.
+
+*   **Step 3: Review the Tooling & CI Changes (10 mins)**
+    *   Look at `sdk/scripts/release.sh` and `.github/workflows/smoke-test-starters.yml`. The key change is the simplification to a single `starter`.
+
+*   **Step 4: Review `create-rwsdk` (5 mins)**
+    *   Check `create-rwsdk/index.js` for the removal of template selection logic and the addition of the `--pre`/`--legacy` flags.
+
+*   **Step 5: Review the Documentation (10 mins)**
+    *   Focus on the two most important documents: `docs/src/content/docs/migrating.mdx` and `docs/src/content/docs/core/authentication.mdx`.
+
+### 4. Suggested Validation (Optional)
+
+*   **Test `create-rwsdk`**: Run `npx create-rwsdk my-test-app --pre` to confirm it pulls the latest pre-release.
+*   **Run Passkey E2E Tests**: Run `pnpm test:e2e -- playground/passkey` to validate the test setup and initial interactions.
