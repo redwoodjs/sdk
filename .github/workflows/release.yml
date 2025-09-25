@@ -8,14 +8,10 @@ on:
         required: true
         type: choice
         options:
-          - explicit
           - patch
           - minor
           - test
-      preid:
-        description: "Prerelease identifier (e.g., alpha, beta, rc). Used with prepatch/preminor/premajor."
-        required: false
-        default: "alpha"
+          - explicit
       version:
         description: "Required when version_type is 'explicit'. The exact version string to release (e.g., '1.0.0' or '1.0.0-alpha.11')."
         required: false
