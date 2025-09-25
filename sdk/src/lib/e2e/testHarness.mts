@@ -321,6 +321,13 @@ export async function createDevServer(
     {
       timeout: DEV_SERVER_TIMEOUT,
       minTries: DEV_SERVER_MIN_TRIES,
+      onRetry: (error, tries) => {
+        console.log(
+          `Retrying dev server creation (attempt ${tries})... Error: ${
+            (error as Error).message
+          }`,
+        );
+      },
     },
   );
 
@@ -413,6 +420,13 @@ export async function createDeployment(
     {
       timeout: DEPLOYMENT_TIMEOUT,
       minTries: DEPLOYMENT_MIN_TRIES,
+      onRetry: (error, tries) => {
+        console.log(
+          `Retrying deployment creation (attempt ${tries})... Error: ${
+            (error as Error).message
+          }`,
+        );
+      },
     },
   );
 }
