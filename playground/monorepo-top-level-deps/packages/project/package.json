@@ -23,7 +23,7 @@
     "postinstall": "rm -rf node_modules/ui-lib"
   },
   "dependencies": {
-    "rwsdk": "workspace:*",
+    "rwsdk": "1.0.0-alpha.12",
     "react": "19.2.0-canary-d415fd3e-20250919",
     "react-dom": "19.2.0-canary-d415fd3e-20250919",
     "react-server-dom-webpack": "19.2.0-canary-d415fd3e-20250919"

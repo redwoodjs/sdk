@@ -93,8 +93,8 @@ importers:
         specifier: ^11.3.0
         version: 11.3.2
       rwsdk:
-        specifier: workspace:*
-        version: link:../sdk
+        specifier: 1.0.0-alpha.12
+        version: 1.0.0-alpha.12(@cloudflare/vite-plugin@1.13.3(vite@7.1.6(@types/node@24.3.1)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0)))(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react-server-dom-webpack@19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1))(react@19.2.0-canary-d415fd3e-20250919)(typescript@5.8.3)(vite@7.1.6(@types/node@24.3.1)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))
       vitest:
         specifier: ^3.1.1
         version: 3.1.1(@types/debug@4.1.12)(@types/node@24.3.1)(jiti@2.6.0)(lightningcss@1.30.1)(msw@2.11.3(@types/node@24.3.1)(typescript@5.8.3))(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0)
@@ -114,8 +114,8 @@ importers:
         specifier: 19.2.0-canary-d415fd3e-20250919
         version: 19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1)
       rwsdk:
-        specifier: workspace:*
-        version: link:../../sdk
+        specifier: 1.0.0-alpha.12
+        version: 1.0.0-alpha.12(@cloudflare/vite-plugin@1.13.3(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0)))(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react-server-dom-webpack@19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1))(react@19.2.0-canary-d415fd3e-20250919)(typescript@5.8.3)(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.13.3
@@ -160,8 +160,8 @@ importers:
         specifier: 19.2.0-canary-d415fd3e-20250919
         version: 19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1)
       rwsdk:
-        specifier: workspace:*
-        version: link:../../sdk
+        specifier: 1.0.0-alpha.12
+        version: 1.0.0-alpha.12(@cloudflare/vite-plugin@1.13.3(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0)))(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react-server-dom-webpack@19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1))(react@19.2.0-canary-d415fd3e-20250919)(typescript@5.8.3)(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.13.3
@@ -203,8 +203,8 @@ importers:
         specifier: 19.2.0-canary-d415fd3e-20250919
         version: 19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1)
       rwsdk:
-        specifier: workspace:*
-        version: link:../../sdk
+        specifier: 1.0.0-alpha.12
+        version: 1.0.0-alpha.12(@cloudflare/vite-plugin@1.13.3(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0)))(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react-server-dom-webpack@19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1))(react@19.2.0-canary-d415fd3e-20250919)(typescript@5.8.3)(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.13.3
@@ -246,8 +246,8 @@ importers:
         specifier: 19.2.0-canary-d415fd3e-20250919
         version: 19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1)
       rwsdk:
-        specifier: workspace:*
-        version: link:../../sdk
+        specifier: 1.0.0-alpha.12
+        version: 1.0.0-alpha.12(@cloudflare/vite-plugin@1.13.3(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0)))(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react-server-dom-webpack@19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1))(react@19.2.0-canary-d415fd3e-20250919)(typescript@5.8.3)(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))
       ui-lib:
         specifier: file:./packages/ui-lib
         version: link:packages/ui-lib
@@ -294,8 +294,8 @@ importers:
         specifier: 19.2.0-canary-d415fd3e-20250919
         version: 19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1)
       rwsdk:
-        specifier: workspace:*
-        version: link:../../sdk
+        specifier: 1.0.0-alpha.12
+        version: 1.0.0-alpha.12(@cloudflare/vite-plugin@1.13.3(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0)))(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react-server-dom-webpack@19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1))(react@19.2.0-canary-d415fd3e-20250919)(typescript@5.8.3)(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.13.3
@@ -346,8 +346,8 @@ importers:
         specifier: 19.2.0-canary-d415fd3e-20250919
         version: 19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1)
       rwsdk:
-        specifier: workspace:*
-        version: link:../../../../sdk
+        specifier: 1.0.0-alpha.12
+        version: 1.0.0-alpha.12(@cloudflare/vite-plugin@1.13.3(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0)))(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react-server-dom-webpack@19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1))(react@19.2.0-canary-d415fd3e-20250919)(typescript@5.8.3)(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.13.3
@@ -391,8 +391,8 @@ importers:
         specifier: 19.2.0-canary-d415fd3e-20250919
         version: 19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1)
       rwsdk:
-        specifier: workspace:*
-        version: link:../../sdk
+        specifier: 1.0.0-alpha.12
+        version: 1.0.0-alpha.12(@cloudflare/vite-plugin@1.13.3(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0)))(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react-server-dom-webpack@19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1))(react@19.2.0-canary-d415fd3e-20250919)(typescript@5.8.3)(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.13.3
@@ -443,8 +443,8 @@ importers:
         specifier: ^6.0.2
         version: 6.1.0(@react-email/render@1.3.1(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919))
       rwsdk:
-        specifier: workspace:*
-        version: link:../../sdk
+        specifier: 1.0.0-alpha.12
+        version: 1.0.0-alpha.12(@cloudflare/vite-plugin@1.13.3(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0)))(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react-server-dom-webpack@19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1))(react@19.2.0-canary-d415fd3e-20250919)(typescript@5.8.3)(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.13.3
@@ -486,8 +486,8 @@ importers:
         specifier: 19.2.0-canary-d415fd3e-20250919
         version: 19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1)
       rwsdk:
-        specifier: workspace:*
-        version: link:../../sdk
+        specifier: 1.0.0-alpha.12
+        version: 1.0.0-alpha.12(@cloudflare/vite-plugin@1.13.3(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0)))(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react-server-dom-webpack@19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1))(react@19.2.0-canary-d415fd3e-20250919)(typescript@5.8.3)(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.13.3
@@ -646,8 +646,8 @@ importers:
         specifier: 2.15.4
         version: 2.15.4(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)
       rwsdk:
-        specifier: workspace:*
-        version: link:../../sdk
+        specifier: 1.0.0-alpha.12
+        version: 1.0.0-alpha.12(@cloudflare/vite-plugin@1.13.3(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0)))(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react-server-dom-webpack@19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1))(react@19.2.0-canary-d415fd3e-20250919)(typescript@5.8.3)(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))
       sonner:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)
@@ -713,8 +713,8 @@ importers:
         specifier: 19.2.0-canary-d415fd3e-20250919
         version: 19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1)
       rwsdk:
-        specifier: workspace:*
-        version: link:../../sdk
+        specifier: 1.0.0-alpha.12
+        version: 1.0.0-alpha.12(@cloudflare/vite-plugin@1.13.3(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0)))(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react-server-dom-webpack@19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1))(react@19.2.0-canary-d415fd3e-20250919)(typescript@5.8.3)(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.13.3
@@ -907,8 +907,8 @@ importers:
         specifier: 19.2.0-canary-d415fd3e-20250919
         version: 19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1)
       rwsdk:
-        specifier: 1.0.0-alpha.9
-        version: 1.0.0-alpha.9(@cloudflare/vite-plugin@1.13.3(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0)))(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react-server-dom-webpack@19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1))(react@19.2.0-canary-d415fd3e-20250919)(typescript@5.8.3)(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))
+        specifier: 1.0.0-alpha.12
+        version: 1.0.0-alpha.12(@cloudflare/vite-plugin@1.13.3(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0)))(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react-server-dom-webpack@19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1))(react@19.2.0-canary-d415fd3e-20250919)(typescript@5.8.3)(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.13.3
@@ -959,8 +959,8 @@ importers:
         specifier: 19.2.0-canary-d415fd3e-20250919
         version: 19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1)
       rwsdk:
-        specifier: 1.0.0-alpha.9
-        version: 1.0.0-alpha.9(@cloudflare/vite-plugin@1.13.3(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0)))(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react-server-dom-webpack@19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1))(react@19.2.0-canary-d415fd3e-20250919)(typescript@5.8.3)(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))
+        specifier: 1.0.0-alpha.12
+        version: 1.0.0-alpha.12(@cloudflare/vite-plugin@1.13.3(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0)))(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react-server-dom-webpack@19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1))(react@19.2.0-canary-d415fd3e-20250919)(typescript@5.8.3)(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.13.3
@@ -7577,8 +7577,8 @@ packages:
   run-parallel@1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
 
-  rwsdk@1.0.0-alpha.9:
-    resolution: {integrity: sha512-Fp8SiqocZu+H0cUA9CPaCr0R03PWcn9O9z9DaD48YJL1N5eh+80jE3orLqg6eDOV/fBY3WyrKYuXIM8miKzhlQ==}
+  rwsdk@1.0.0-alpha.12:
+    resolution: {integrity: sha512-ukBmdjfh6+lkos91/iRu/IgAXRYWaH44a9mg/A44W3Yc1rO+NRVYrc3nTxfoZgp5BJ9VsJWPbjZSXni5Mm488w==}
     hasBin: true
     peerDependencies:
       '@cloudflare/vite-plugin': ^1.12.4
@@ -9601,6 +9601,23 @@ snapshots:
       tinyglobby: 0.2.15
       unenv: 2.0.0-rc.21
       vite: 7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0)
+      wrangler: 4.38.0(@cloudflare/workers-types@4.20250921.0)
+      ws: 8.18.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+      - workerd
+
+  '@cloudflare/vite-plugin@1.13.3(vite@7.1.6(@types/node@24.3.1)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))':
+    dependencies:
+      '@cloudflare/unenv-preset': 2.7.4(unenv@2.0.0-rc.21)(workerd@1.20250917.0)
+      '@remix-run/node-fetch-server': 0.8.0
+      get-port: 7.1.0
+      miniflare: 4.20250917.0
+      picocolors: 1.1.1
+      tinyglobby: 0.2.15
+      unenv: 2.0.0-rc.21
+      vite: 7.1.6(@types/node@24.3.1)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0)
       wrangler: 4.38.0(@cloudflare/workers-types@4.20250921.0)
       ws: 8.18.0
     transitivePeerDependencies:
@@ -12027,6 +12044,17 @@ snapshots:
       '@types/babel__core': 7.20.5
       react-refresh: 0.14.2
       vite: 7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0)
+    transitivePeerDependencies:
+      - supports-color
+
+  '@vitejs/plugin-react@4.3.4(vite@7.1.6(@types/node@24.3.1)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))':
+    dependencies:
+      '@babel/core': 7.26.0
+      '@babel/plugin-transform-react-jsx-self': 7.25.9(@babel/core@7.26.0)
+      '@babel/plugin-transform-react-jsx-source': 7.25.9(@babel/core@7.26.0)
+      '@types/babel__core': 7.20.5
+      react-refresh: 0.14.2
+      vite: 7.1.6(@types/node@24.3.1)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -16744,11 +16772,12 @@ snapshots:
     dependencies:
       queue-microtask: 1.2.3
 
-  rwsdk@1.0.0-alpha.9(@cloudflare/vite-plugin@1.13.3(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0)))(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react-server-dom-webpack@19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1))(react@19.2.0-canary-d415fd3e-20250919)(typescript@5.8.3)(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0)):
+  rwsdk@1.0.0-alpha.12(@cloudflare/vite-plugin@1.13.3(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0)))(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react-server-dom-webpack@19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1))(react@19.2.0-canary-d415fd3e-20250919)(typescript@5.8.3)(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0)):
     dependencies:
       '@ast-grep/napi': 0.38.5
       '@cloudflare/vite-plugin': 1.13.3(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))
       '@cloudflare/workers-types': 4.20250921.0
+      '@mdx-js/mdx': 3.1.1
       '@puppeteer/browsers': 2.10.1
       '@types/fs-extra': 11.0.4
       '@types/react': 19.1.2
@@ -16758,9 +16787,9 @@ snapshots:
       chokidar: 3.6.0
       debug: 4.4.1
       enhanced-resolve: 5.18.3
-      eventsource-parser: 3.0.0
-      execa: 9.5.2
-      fs-extra: 11.3.0
+      eventsource-parser: 3.0.6
+      execa: 9.6.0
+      fs-extra: 11.3.2
       glob: 11.0.1
       ignore: 7.0.4
       jsonc-parser: 3.3.1
@@ -16768,7 +16797,7 @@ snapshots:
       kysely-do: 0.0.1-rc.1(kysely@0.28.2)
       lodash: 4.17.21
       magic-string: 0.30.19
-      miniflare: 4.20250906.0
+      miniflare: 4.20250917.0
       picocolors: 1.1.1
       proper-lockfile: 4.1.2
       puppeteer-core: 22.15.0
@@ -16783,6 +16812,55 @@ snapshots:
       vibe-rules: 0.2.31
       vite: 7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0)
       vite-tsconfig-paths: 5.1.4(typescript@5.8.3)(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))
+      wrangler: 4.38.0(@cloudflare/workers-types@4.20250921.0)
+    transitivePeerDependencies:
+      - bare-buffer
+      - bare-url
+      - bufferutil
+      - supports-color
+      - typescript
+      - utf-8-validate
+
+  rwsdk@1.0.0-alpha.12(@cloudflare/vite-plugin@1.13.3(vite@7.1.6(@types/node@24.3.1)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0)))(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react-server-dom-webpack@19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1))(react@19.2.0-canary-d415fd3e-20250919)(typescript@5.8.3)(vite@7.1.6(@types/node@24.3.1)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0)):
+    dependencies:
+      '@ast-grep/napi': 0.38.5
+      '@cloudflare/vite-plugin': 1.13.3(vite@7.1.6(@types/node@24.3.1)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))
+      '@cloudflare/workers-types': 4.20250921.0
+      '@mdx-js/mdx': 3.1.1
+      '@puppeteer/browsers': 2.10.1
+      '@types/fs-extra': 11.0.4
+      '@types/react': 19.1.2
+      '@types/react-dom': 19.1.2(@types/react@19.1.2)
+      '@types/react-is': 19.0.0
+      '@vitejs/plugin-react': 4.3.4(vite@7.1.6(@types/node@24.3.1)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))
+      chokidar: 3.6.0
+      debug: 4.4.1
+      enhanced-resolve: 5.18.3
+      eventsource-parser: 3.0.6
+      execa: 9.6.0
+      fs-extra: 11.3.2
+      glob: 11.0.1
+      ignore: 7.0.4
+      jsonc-parser: 3.3.1
+      kysely: 0.28.2
+      kysely-do: 0.0.1-rc.1(kysely@0.28.2)
+      lodash: 4.17.21
+      magic-string: 0.30.19
+      miniflare: 4.20250917.0
+      picocolors: 1.1.1
+      proper-lockfile: 4.1.2
+      puppeteer-core: 22.15.0
+      react: 19.2.0-canary-d415fd3e-20250919
+      react-dom: 19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919)
+      react-is: 19.0.0
+      react-server-dom-webpack: 19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1)
+      rsc-html-stream: 0.0.6
+      tmp-promise: 3.0.3
+      ts-morph: 25.0.1
+      unique-names-generator: 4.7.1
+      vibe-rules: 0.2.31
+      vite: 7.1.6(@types/node@24.3.1)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0)
+      vite-tsconfig-paths: 5.1.4(typescript@5.8.3)(vite@7.1.6(@types/node@24.3.1)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))
       wrangler: 4.38.0(@cloudflare/workers-types@4.20250921.0)
     transitivePeerDependencies:
       - bare-buffer
@@ -17820,6 +17898,17 @@ snapshots:
       - supports-color
       - typescript
 
+  vite-tsconfig-paths@5.1.4(typescript@5.8.3)(vite@7.1.6(@types/node@24.3.1)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0)):
+    dependencies:
+      debug: 4.4.0
+      globrex: 0.1.2
+      tsconfck: 3.1.4(typescript@5.8.3)
+    optionalDependencies:
+      vite: 7.1.6(@types/node@24.3.1)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0)
+    transitivePeerDependencies:
+      - supports-color
+      - typescript
+
   vite@6.3.6(@types/node@20.19.17)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0):
     dependencies:
       esbuild: 0.25.9
@@ -17898,6 +17987,23 @@ snapshots:
       tinyglobby: 0.2.15
     optionalDependencies:
       '@types/node': 22.14.0
+      fsevents: 2.3.3
+      jiti: 2.6.0
+      lightningcss: 1.30.1
+      terser: 5.44.0
+      tsx: 4.19.4
+      yaml: 2.7.0
+
+  vite@7.1.6(@types/node@24.3.1)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0):
+    dependencies:
+      esbuild: 0.25.9
+      fdir: 6.5.0(picomatch@4.0.3)
+      picomatch: 4.0.3
+      postcss: 8.5.6
+      rollup: 4.50.1
+      tinyglobby: 0.2.15
+    optionalDependencies:
+      '@types/node': 24.3.1
       fsevents: 2.3.3
       jiti: 2.6.0
       lightningcss: 1.30.1
