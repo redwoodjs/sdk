@@ -40,12 +40,12 @@ const createSdkTarball = async (): Promise<{
 
 const setTarballDependency = async (
   targetDir: string,
-  tarballPath: string,
+  tarballName: string,
 ): Promise<void> => {
   const filePath = join(targetDir, "package.json");
   const packageJson = await fs.promises.readFile(filePath, "utf-8");
   const packageJsonContent = JSON.parse(packageJson);
-  packageJsonContent.dependencies.rwsdk = `file:${tarballPath}`;
+  packageJsonContent.dependencies.rwsdk = `file:${tarballName}`;
   await fs.promises.writeFile(
     filePath,
     JSON.stringify(packageJsonContent, null, 2),
@@ -196,6 +196,11 @@ export async function copyProjectToTempDir(
     });
     log("Project copy completed successfully");
 
+    // Copy the SDK tarball into the target directory
+    const tarballFilename = basename(tarballPath);
+    const tempTarballPath = join(targetDir, tarballFilename);
+    await fs.promises.copyFile(tarballPath, tempTarballPath);
+
     if (monorepoRoot) {
       log("⚙️  Configuring monorepo workspace...");
       const rwsdkWsPath = join(tempCopyRoot, "rwsdk-workspace.json");
@@ -243,7 +248,7 @@ export async function copyProjectToTempDir(
       log("Created .yarnrc.yml to allow lockfile changes for yarn");
     }
 
-    await setTarballDependency(targetDir, tarballPath);
+    await setTarballDependency(targetDir, tarballFilename);
 
     // Install dependencies in the target directory
     const installDir = monorepoRoot ? tempCopyRoot : targetDir;
