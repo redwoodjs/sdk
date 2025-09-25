@@ -108,11 +108,19 @@ jobs:
         run: |
           FLAGS="--generate-notes"
           VERSION_TYPE="${{ github.event.inputs.version_type }}"
-          if [[ "$VERSION_TYPE" == "patch" || "$VERSION_TYPE" == "minor" || "$VERSION_TYPE" == "major" ]]; then
+          VERSION="${{ github.event.inputs.version }}"
+
+          if [[ "$VERSION_TYPE" == "patch" || "$VERSION_TYPE" == "minor" ]]; then
             FLAGS="$FLAGS --latest"
-          elif [[ "$VERSION_TYPE" == "pre"* ]]; then
-            FLAGS="$FLAGS --prerelease"
+          elif [[ "$VERSION_TYPE" == "explicit" ]]; then
+            # For explicit versions, we check the version string to determine if it's a pre-release
+            if [[ "$VERSION" == *"-"* ]]; then
+              FLAGS="$FLAGS --prerelease"
+            else
+              FLAGS="$FLAGS --latest"
+            fi
           fi
+
           echo "Creating GitHub release for tag ${{ env.TAG_NAME }} with flags: $FLAGS"
           gh release create ${{ env.TAG_NAME }} $FLAGS
 
