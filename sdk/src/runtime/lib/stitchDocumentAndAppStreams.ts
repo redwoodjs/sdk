@@ -28,6 +28,7 @@ export function stitchDocumentAndAppStreams(
   let innerReader: ReadableStreamDefaultReader<Uint8Array>;
 
   let buffer = "";
+  let outerBufferRemains = "";
   let phase:
     | "outer-head"
     | "inner-shell"
@@ -50,7 +51,8 @@ export function stitchDocumentAndAppStreams(
         const markerIndex = buffer.indexOf(startMarker);
         if (markerIndex !== -1) {
           controller.enqueue(encoder.encode(buffer.slice(0, markerIndex)));
-          buffer = buffer.slice(markerIndex + startMarker.length);
+          outerBufferRemains = buffer.slice(markerIndex + startMarker.length);
+          buffer = "";
           phase = "inner-shell";
         } else {
           const flushIndex = buffer.lastIndexOf("\n");
@@ -68,9 +70,7 @@ export function stitchDocumentAndAppStreams(
           buffer += decoder.decode(value, { stream: true });
           const markerIndex = buffer.indexOf(endMarker);
           if (markerIndex !== -1) {
-            controller.enqueue(
-              encoder.encode(buffer.slice(0, markerIndex + endMarker.length)),
-            );
+            controller.enqueue(encoder.encode(buffer.slice(0, markerIndex)));
             buffer = ""; // Do not keep the buffer from the inner stream
             phase = "outer-tail";
           } else {
@@ -84,6 +84,10 @@ export function stitchDocumentAndAppStreams(
           }
         }
       } else if (phase === "outer-tail") {
+        if (outerBufferRemains) {
+          buffer = outerBufferRemains;
+          outerBufferRemains = "";
+        }
         const { done, value } = await outerReader.read();
         if (done) {
           if (buffer) controller.enqueue(encoder.encode(buffer));
