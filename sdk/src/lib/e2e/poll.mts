@@ -36,3 +36,17 @@ export async function poll(
     `Polling timed out after ${Date.now() - startTime}ms and ${tries} attempts`,
   );
 }
+
+export async function pollValue<T>(
+  fn: () => Promise<T>,
+  options: Partial<PollOptions> = {},
+): Promise<T> {
+  let value: T | undefined;
+
+  await poll(async () => {
+    value = await fn();
+    return true;
+  }, options);
+
+  return value as unknown as T;
+}

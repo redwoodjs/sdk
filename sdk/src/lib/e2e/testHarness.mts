@@ -14,7 +14,7 @@ export type { Browser, Page } from "puppeteer-core";
 import fs from "fs-extra";
 import os from "os";
 import path from "path";
-import { poll } from "./poll.mjs";
+import { poll, pollValue } from "./poll.mjs";
 
 const SETUP_PLAYGROUND_ENV_TIMEOUT = process.env
   .RWSDK_SETUP_PLAYGROUND_ENV_TIMEOUT
@@ -29,6 +29,10 @@ const DEPLOYMENT_MIN_TRIES = process.env.RWSDK_DEPLOYMENT_MIN_TRIES
   ? parseInt(process.env.RWSDK_DEPLOYMENT_MIN_TRIES, 10)
   : 5;
 
+const DEPLOYMENT_CHECK_TIMEOUT = process.env.RWSDK_DEPLOYMENT_CHECK_TIMEOUT
+  ? parseInt(process.env.RWSDK_DEPLOYMENT_CHECK_TIMEOUT, 10)
+  : 5 * 60 * 1000;
+
 const PUPPETEER_TIMEOUT = process.env.RWSDK_PUPPETEER_TIMEOUT
   ? parseInt(process.env.RWSDK_PUPPETEER_TIMEOUT, 10)
   : 60 * 1000 * 2;
@@ -36,6 +40,14 @@ const PUPPETEER_TIMEOUT = process.env.RWSDK_PUPPETEER_TIMEOUT
 const HYDRATION_TIMEOUT = process.env.RWSDK_HYDRATION_TIMEOUT
   ? parseInt(process.env.RWSDK_HYDRATION_TIMEOUT, 10)
   : 5000;
+
+const DEV_SERVER_TIMEOUT = process.env.RWSDK_DEV_SERVER_TIMEOUT
+  ? parseInt(process.env.RWSDK_DEV_SERVER_TIMEOUT, 10)
+  : 5 * 60 * 1000;
+
+const DEV_SERVER_MIN_TRIES = process.env.RWSDK_DEV_SERVER_MIN_TRIES
+  ? parseInt(process.env.RWSDK_DEV_SERVER_MIN_TRIES, 10)
+  : 5;
 
 interface PlaygroundEnvironment {
   projectDir: string;
@@ -303,7 +315,14 @@ export async function createDevServer(
 
   const packageManager =
     (process.env.PACKAGE_MANAGER as "pnpm" | "npm" | "yarn") || "pnpm";
-  const devResult = await runDevServer(packageManager, projectDir);
+
+  const devResult = await pollValue(
+    () => runDevServer(packageManager, projectDir),
+    {
+      timeout: DEV_SERVER_TIMEOUT,
+      minTries: DEV_SERVER_MIN_TRIES,
+    },
+  );
 
   return {
     url: devResult.url,
@@ -322,69 +341,80 @@ export async function createDeployment(
     throw new Error("Deployment tests are skipped via RWSDK_SKIP_DEPLOY=1");
   }
 
-  // Extract the unique key from the project directory name instead of generating a new one
-  // The directory name format is: {projectName}-e2e-test-{randomId}
-  const dirName = basename(projectDir);
-  const match = dirName.match(/-e2e-test-([a-f0-9]+)$/);
-  const resourceUniqueKey = match
-    ? match[1]
-    : Math.random().toString(36).substring(2, 15);
-
-  const deployResult = await runRelease(
-    projectDir,
-    projectDir,
-    resourceUniqueKey,
-  );
-
-  // Poll the URL to ensure it's live before proceeding
-  await poll(
+  return await pollValue(
     async () => {
-      try {
-        const response = await fetch(deployResult.url);
-        // We consider any response (even 4xx or 5xx) as success,
-        // as it means the worker is routable.
-        return response.status > 0;
-      } catch (e) {
-        return false;
-      }
+      // Extract the unique key from the project directory name instead of generating a new one
+      // The directory name format is: {projectName}-e2e-test-{randomId}
+      const dirName = basename(projectDir);
+      const match = dirName.match(/-e2e-test-([a-f0-9]+)$/);
+      const resourceUniqueKey = match
+        ? match[1]
+        : Math.random().toString(36).substring(2, 15);
+
+      const deployResult = await runRelease(
+        projectDir,
+        projectDir,
+        resourceUniqueKey,
+      );
+
+      // Poll the URL to ensure it's live before proceeding
+      await poll(
+        async () => {
+          try {
+            const response = await fetch(deployResult.url);
+            // We consider any response (even 4xx or 5xx) as success,
+            // as it means the worker is routable.
+            return response.status > 0;
+          } catch (e) {
+            return false;
+          }
+        },
+        {
+          timeout: DEPLOYMENT_CHECK_TIMEOUT,
+        },
+      );
+
+      const cleanup = async () => {
+        // Run deployment cleanup in background without blocking
+        const performCleanup = async () => {
+          if (isRelatedToTest(deployResult.workerName, resourceUniqueKey)) {
+            await deleteWorker(
+              deployResult.workerName,
+              projectDir,
+              resourceUniqueKey,
+            );
+          }
+          await deleteD1Database(
+            resourceUniqueKey,
+            projectDir,
+            resourceUniqueKey,
+          );
+        };
+
+        // Start cleanup in background and return immediately
+        performCleanup().catch((error) => {
+          console.warn(
+            `Warning: Background deployment cleanup failed: ${
+              (error as Error).message
+            }`,
+          );
+        });
+        return Promise.resolve();
+      };
+
+      return {
+        url: deployResult.url,
+        workerName: deployResult.workerName,
+        resourceUniqueKey,
+        projectDir: projectDir,
+        cleanup,
+      };
     },
     {
       timeout: DEPLOYMENT_TIMEOUT,
       minTries: DEPLOYMENT_MIN_TRIES,
     },
   );
-
-  const cleanup = async () => {
-    // Run deployment cleanup in background without blocking
-    const performCleanup = async () => {
-      if (isRelatedToTest(deployResult.workerName, resourceUniqueKey)) {
-        await deleteWorker(
-          deployResult.workerName,
-          projectDir,
-          resourceUniqueKey,
-        );
-      }
-      await deleteD1Database(resourceUniqueKey, projectDir, resourceUniqueKey);
-    };
-
-    // Start cleanup in background and return immediately
-    performCleanup().catch((error) => {
-      console.warn(
-        `Warning: Background deployment cleanup failed: ${
-          (error as Error).message
-        }`,
-      );
-    });
-    return Promise.resolve();
-  };
-
-  return {
-    url: deployResult.url,
-    workerName: deployResult.workerName,
-    resourceUniqueKey,
-    projectDir: projectDir,
-    cleanup,
-  };
 }
 
 /**
