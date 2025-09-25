@@ -179,7 +179,7 @@
     "@types/debug": "~4.1.12",
     "@types/js-beautify": "~1.14.3",
     "@types/lodash": "~4.17.16",
-    "@types/node": "~22.14.0",
+    "@types/node": "~24.5.2",
     "@types/proper-lockfile": "~4.1.4",
     "js-beautify": "~1.15.4",
     "semver": "~7.7.1",
