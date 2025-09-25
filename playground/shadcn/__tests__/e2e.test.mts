@@ -4,6 +4,7 @@ import {
   testDevAndDeploy,
   poll,
   waitForHydration,
+  trackPageErrors,
 } from "rwsdk/e2e";
 
 setupPlaygroundEnvironment(import.meta.url);
@@ -11,18 +12,7 @@ setupPlaygroundEnvironment(import.meta.url);
 testDevAndDeploy(
   "shadcn/ui comprehensive playground",
   async ({ page, url }) => {
-    const consoleErrors: string[] = [];
-    const failedRequests: string[] = [];
-
-    page.on("requestfailed", (request) => {
-      failedRequests.push(`${request.url()} | ${request.failure()?.errorText}`);
-    });
-
-    page.on("console", (msg) => {
-      if (msg.type() === "error") {
-        consoleErrors.push(msg.text());
-      }
-    });
+    const errorTracker = trackPageErrors(page);
 
     await page.goto(url);
     const getPageContent = () => page.content();
@@ -49,7 +39,7 @@ testDevAndDeploy(
 
     // Wait for any async rendering to complete and check for errors
     await page.waitForNetworkIdle();
-    expect({ consoleErrors, failedRequests }).toEqual({
+    expect(errorTracker.get()).toEqual({
       consoleErrors: [],
       failedRequests: [],
     });
@@ -73,7 +63,7 @@ testDevAndDeploy(
     }
 
     // Final check for interaction-based errors
-    expect({ consoleErrors, failedRequests }).toEqual({
+    expect(errorTracker.get()).toEqual({
       consoleErrors: [],
       failedRequests: [],
     });
