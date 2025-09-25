@@ -15,8 +15,8 @@ export default defineConfig({
     globalSetup: "./globalSetup.mts",
     include: ["**/__tests__/**/*.test.mts"],
     exclude: ["**/node_modules/**", "**/dist/**"],
-    testTimeout: 5 * 60 * 1000,
-    hookTimeout: 5 * 60 * 1000,
+    testTimeout: 15 * 60 * 1000,
+    hookTimeout: 15 * 60 * 1000,
     pool: "threads",
     // context(justinvdm, 24 Sep 2025): Use 4x the number of logical CPUs. The tests
     // are heavily network-bound (e.g. deploying workers), so a high degree of
