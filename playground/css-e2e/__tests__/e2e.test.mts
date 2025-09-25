@@ -84,14 +84,13 @@ describe("CSS Handling", () => {
   describe("HMR", () => {
     testDev(
       "should update styles from Document.tsx link on change",
-      async ({ page, url }) => {
+      async ({ page, url, projectDir }) => {
         const getBackgroundColor = (selector: string) => {
           return page.$eval(selector, (el) => {
             return window.getComputedStyle(el).backgroundColor;
           });
         };
 
-        const { projectDir } = getPlaygroundEnvironment();
         const cssPath = path.join(projectDir, "src", "app", "globals.css");
 
         await page.goto(url);
@@ -122,14 +121,13 @@ describe("CSS Handling", () => {
 
     testDev(
       "should update styles from CSS Modules on change",
-      async ({ page, url }) => {
+      async ({ page, url, projectDir }) => {
         const getBackgroundColor = (selector: string) => {
           return page.$eval(selector, (el) => {
             return window.getComputedStyle(el).backgroundColor;
           });
         };
 
-        const { projectDir } = getPlaygroundEnvironment();
         const cssPath = path.join(
           projectDir,
           "src",
@@ -166,14 +164,13 @@ describe("CSS Handling", () => {
 
     testDev(
       "should update styles from side-effect CSS on change",
-      async ({ page, url }) => {
+      async ({ page, url, projectDir }) => {
         const getBackgroundColor = (selector: string) => {
           return page.$eval(selector, (el) => {
             return window.getComputedStyle(el).backgroundColor;
           });
         };
 
-        const { projectDir } = getPlaygroundEnvironment();
         const cssPath = path.join(
           projectDir,
           "src",
