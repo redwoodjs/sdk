@@ -7,7 +7,7 @@
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
     "fs-extra": "^11.3.0",
-    "rwsdk": "workspace:*",
+    "rwsdk": "1.0.0-alpha.11",
     "vitest": "^3.1.1"
   }
 }
