@@ -65,13 +65,13 @@ jobs:
             [ "$OS_INPUT" == "all" ] && OS_LIST='ubuntu-latest macos-latest' || OS_LIST=$OS_INPUT
             [ "$PM_INPUT" == "all" ] && PM_LIST='pnpm npm yarn yarn-classic' || PM_LIST=$PM_INPUT
 
-            MATRIX="{\"include\":[]}"
+            JSON_ARRAY="[]"
             for o in $OS_LIST; do
               for p in $PM_LIST; do
-                MATRIX=$(echo $MATRIX | jq ".include += [{\"os\":\"$o\",\"package-manager\":\"$p\"}]")
+                JSON_ARRAY=$(echo "$JSON_ARRAY" | jq ". + [{\"os\":\"$o\",\"package-manager\":\"$p\"}]")
               done
             done
-            echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+            echo "matrix={\"include\":${JSON_ARRAY}}" >> $GITHUB_OUTPUT
           else
             echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"},{"os":"ubuntu-latest","package-manager":"npm"},{"os":"ubuntu-latest","package-manager":"yarn"},{"os":"ubuntu-latest","package-manager":"yarn-classic"},{"os":"macos-latest","package-manager":"pnpm"},{"os":"macos-latest","package-manager":"npm"},{"os":"macos-latest","package-manager":"yarn"},{"os":"macos-latest","package-manager":"yarn-classic"}]}' >> $GITHUB_OUTPUT
           fi

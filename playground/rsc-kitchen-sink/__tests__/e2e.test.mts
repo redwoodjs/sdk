@@ -1,61 +1,70 @@
 import { expect } from "vitest";
-import { setupPlaygroundEnvironment, testDevAndDeploy, poll } from "rwsdk/e2e";
+import {
+  setupPlaygroundEnvironment,
+  testDevAndDeploy,
+  poll,
+  waitForHydration,
+} from "rwsdk/e2e";
 
 setupPlaygroundEnvironment(import.meta.url);
 
 testDevAndDeploy("RSC Kitchen Sink", async ({ page, url }) => {
   await page.goto(url);
 
-  // Wait for hydration and initial render
+  const getPageContent = () => page.content();
+  const getElementText = (selector: string) =>
+    page.$eval(selector, (el) => el.textContent);
+
   await poll(async () => {
-    const content = await page.content();
-    return content.includes("RSC Kitchen Sink");
+    const content = await getPageContent();
+    expect(content).toContain("RSC Kitchen Sink");
+
+    // Check server component render
+    const h1 = await getElementText("h1[data-testid='h1']");
+    expect(h1).toBe("RSC Kitchen Sink");
+
+    // Check client component render
+    const clientComponentHeader = await getElementText("h2");
+    expect(clientComponentHeader).toBe("Client Component");
+    return true;
   });
 
-  // Check server component render
-  const h1 = await page.$eval("h1[data-testid='h1']", (el) => el.textContent);
-  expect(h1).toBe("RSC Kitchen Sink");
-
-  // Check client component render
-  const clientComponentHeader = await page.$eval("h2", (el) => el.textContent);
-  expect(clientComponentHeader).toBe("Client Component");
+  await waitForHydration(page);
 
   // Test form action
   const formResultSelector = "[data-testid='form-result']";
-  let formResult = await page.$eval(formResultSelector, (el) => el.textContent);
-  expect(formResult).toBe("");
+  const getFormResultText = () => getElementText(formResultSelector);
+
+  await poll(async () => {
+    const formResult = await getFormResultText();
+    expect(formResult).toBe("");
+    return true;
+  });
 
   await page.type("input[name='text']", "Hello from test");
   await page.click("button[type='submit']");
 
   await poll(async () => {
-    const result = await page.$eval(formResultSelector, (el) => el.textContent);
-    return result === "Message from form action: Hello from test";
+    const result = await getFormResultText();
+    expect(result).toBe("Message from form action: Hello from test");
+    return true;
   });
-  formResult = await page.$eval(formResultSelector, (el) => el.textContent);
-  expect(formResult).toBe("Message from form action: Hello from test");
 
   // Test onClick action
   const onClickResultSelector = "[data-testid='onclick-result']";
-  let onClickResult = await page.$eval(
-    onClickResultSelector,
-    (el) => el.textContent,
-  );
-  expect(onClickResult).toBe("");
+  const getOnClickResultText = () => getElementText(onClickResultSelector);
+
+  await poll(async () => {
+    const onClickResult = await getOnClickResultText();
+    expect(onClickResult).toBe("");
+    return true;
+  });
 
   await page.click("button[data-testid='onclick-action-button']");
 
   await poll(async () => {
-    const result = await page.$eval(
-      onClickResultSelector,
-      (el) => el.textContent,
-    );
-    return result?.startsWith("Message from onClick action at");
+    const result = await getOnClickResultText();
+    expect(result).toMatch(/Message from onClick action at/);
+    return true;
   });
-
-  onClickResult = await page.$eval(
-    onClickResultSelector,
-    (el) => el.textContent,
-  );
-  expect(onClickResult).toMatch(/Message from onClick action at/);
 });

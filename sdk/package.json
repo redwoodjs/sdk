@@ -63,6 +63,10 @@
       "types": "./dist/lib/e2e/index.d.mts",
       "default": "./dist/lib/e2e/index.mjs"
     },
+    "./e2e/setup": {
+      "types": "./dist/lib/e2e/setup.d.mts",
+      "default": "./dist/lib/e2e/setup.mjs"
+    },
     "./db": {
       "types": "./dist/runtime/lib/db/index.d.ts",
       "default": "./dist/runtime/lib/db/index.js"

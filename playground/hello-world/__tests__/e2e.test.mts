@@ -6,11 +6,11 @@ setupPlaygroundEnvironment(import.meta.url);
 testDevAndDeploy("renders Hello World", async ({ page, url }) => {
   await page.goto(url);
 
-  await poll(async () => {
-    const content = await page.content();
-    return content.includes("Hello World");
-  });
+  const getPageContent = () => page.content();
 
-  const content = await page.content();
-  expect(content).toContain("Hello World");
+  await poll(async () => {
+    const content = await getPageContent();
+    expect(content).toContain("Hello World");
+    return true;
+  });
 });
