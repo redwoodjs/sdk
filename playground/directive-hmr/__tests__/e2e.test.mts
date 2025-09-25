@@ -56,6 +56,22 @@ testDev("HMR for 'use client' directive", async ({ page, url, projectDir }) => {
       return (await getCount(addContainer)) === "1";
     });
 
+    // Now that it's a client component, test HMR for markup change
+    const updatedClientToggleAdd = originalClientToggleAdd.replace(
+      "Client Toggle Add",
+      "Client Toggle Add HMR",
+    );
+    fs.writeFileSync(
+      clientToggleAddPath,
+      `"use client";
+${updatedClientToggleAdd}`,
+    );
+
+    await poll(async () => {
+      const content = await page.content();
+      return content.includes("Client Toggle Add HMR");
+    });
+
     // `ClientToggleRemove` starts as a Client Component
     const removeContainer = '[data-testid="client-toggle-remove"]';
     const removeButton = `${removeContainer} button`;
@@ -80,6 +96,21 @@ testDev("HMR for 'use client' directive", async ({ page, url, projectDir }) => {
     // Clicking does nothing
     await page.click(removeButton);
     expect(await getCount(removeContainer)).toBe("0");
+
+    // Now that it is a server component again, test HMR for markup change
+    const updatedClientToggleRemove = originalClientToggleRemove.replace(
+      "Client Toggle Remove",
+      "Client Toggle Remove HMR",
+    );
+    fs.writeFileSync(
+      clientToggleRemovePath,
+      updatedClientToggleRemove.replace(/"use client";\s*\n/, ""),
+    );
+
+    await poll(async () => {
+      const content = await page.content();
+      return content.includes("Client Toggle Remove HMR");
+    });
   } finally {
     fs.writeFileSync(clientToggleAddPath, originalClientToggleAdd);
     fs.writeFileSync(clientToggleRemovePath, originalClientToggleRemove);
@@ -115,38 +146,19 @@ testDev("HMR for 'use server' directive", async ({ page, url, projectDir }) => {
       "Hello, World!",
     );
 
-    // Comment out the server action import
-    fs.writeFileSync(
-      serverActionFormPath,
-      originalServerActionForm.replace(
-        `import { greet } from "../actions.mjs";`,
-        `// import { greet } from "../actions.mjs";`,
-      ),
-    );
-
-    // Poll for HMR update - expect an error because greet is not defined
-    let consoleErrors: string[] = [];
-    page.on("console", (msg) => {
-      if (msg.type() === "error") {
-        consoleErrors.push(msg.text());
-      }
-    });
-
-    await poll(async () => {
-      consoleErrors = [];
-      await page.click(submitButton);
-      await new Promise((resolve) => setTimeout(resolve, 100)); // give console time to report
-      return consoleErrors.some((e) => e.includes("greet is not defined"));
-    });
-
-    // Restore the import and remove "use server" from the action
-    fs.writeFileSync(serverActionFormPath, originalServerActionForm);
+    // Remove "use server" from the action
     fs.writeFileSync(
       actionsPath,
       originalActions.replace(/"use server";\s*\n/, ""),
     );
 
     // Poll for HMR update - expect an error because it's not a server action
+    let consoleErrors: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error") {
+        consoleErrors.push(msg.text());
+      }
+    });
     await poll(async () => {
       consoleErrors = [];
       await page.click(submitButton);
@@ -154,6 +166,22 @@ testDev("HMR for 'use server' directive", async ({ page, url, projectDir }) => {
       return consoleErrors.some((e) =>
         e.includes("Cannot read properties of undefined"),
       );
+    });
+
+    // Add "use server" back and change the message
+    const updatedActions = originalActions.replace(
+      "Hello, World!",
+      "Hello, HMR!",
+    );
+    fs.writeFileSync(actionsPath, updatedActions);
+
+    // Poll for HMR update - expect the new message
+    await poll(async () => {
+      await page.click(submitButton);
+      await page.waitForSelector(message);
+      const messageHandle = await page.$(message);
+      const text = await page.evaluate((el) => el?.textContent, messageHandle);
+      return text === "Hello, HMR!";
     });
   } finally {
     fs.writeFileSync(serverActionFormPath, originalServerActionForm);
