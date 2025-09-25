@@ -532,7 +532,16 @@ function createTestRunner(
 
       afterEach(async () => {
         if (page) {
-          await page.close();
+          try {
+            await page.close();
+          } catch (error) {
+            // Suppress errors during page close, as the browser might already be disconnecting
+            // due to the test suite finishing.
+            console.warn(
+              `Suppressing error during page.close() in test "${name}":`,
+              error,
+            );
+          }
         }
       });
 

@@ -1,4 +1,4 @@
-import { setTimeout } from "node:timers/promises";
+import { setTimeout as sleep } from "node:timers/promises";
 import debug from "debug";
 import { $ } from "../../lib/$.mjs";
 import { poll } from "./poll.mjs";
@@ -29,66 +29,57 @@ export async function runDevServer(
   const stopDev = async () => {
     isErrorExpected = true;
 
-    if (!devProcess) {
-      log("No dev process to stop");
+    if (!devProcess || !devProcess.pid) {
+      log("No dev process to stop or PID is missing");
       return;
     }
 
     console.log("Stopping development server...");
 
     try {
-      // Send a regular termination signal first
-      devProcess.kill();
-
-      // Wait for the process to terminate with a timeout
-      const terminationTimeout = 5000; // 5 seconds timeout
-      const terminationPromise = Promise.race([
-        // Wait for natural process termination
-        (async () => {
-          try {
-            await devProcess;
-            log("Dev server process was terminated normally");
-            return true;
-          } catch (e) {
-            // Expected error when the process is killed
-            log("Dev server process was terminated");
-            return true;
-          }
-        })(),
-        // Or timeout
-        (async () => {
-          await setTimeout(terminationTimeout);
-          return false;
-        })(),
-      ]);
-
-      // Check if process terminated within timeout
-      const terminated = await terminationPromise;
-
-      // If not terminated within timeout, force kill
-      if (!terminated) {
-        log(
-          "Dev server process did not terminate within timeout, force killing with SIGKILL",
-        );
-        console.log(
-          "⚠️ Development server not responding after 5 seconds timeout, force killing...",
-        );
-
-        // Try to kill with SIGKILL if the process still has a pid
-        if (devProcess.pid) {
-          try {
-            // Use process.kill with SIGKILL for a stronger termination
-            process.kill(devProcess.pid, "SIGKILL");
-            log("Sent SIGKILL to process %d", devProcess.pid);
-          } catch (killError) {
-            log("Error sending SIGKILL to process: %O", killError);
-            // Non-fatal, as the process might already be gone
-          }
-        }
-      }
+      // Send a regular termination signal to the entire process group first
+      process.kill(-devProcess.pid, "SIGTERM");
     } catch (e) {
-      // Process might already have exited
-      log("Could not kill dev server process: %O", e);
+      log("Could not send SIGTERM to dev server process group: %O", e);
+    }
+
+    // Wait for the process to terminate with a timeout
+    const terminationTimeout = 5000; // 5 seconds
+    const processExitPromise = devProcess.catch(() => {
+      // We expect this promise to reject when the process is killed,
+      // so we catch and ignore the error.
+    });
+
+    const timeoutPromise = new Promise((resolve) =>
+      setTimeout(() => resolve(undefined), terminationTimeout),
+    );
+
+    await Promise.race([processExitPromise, timeoutPromise]);
+
+    // Check if the process is still alive. We can't reliably check exitCode
+    // on a detached process, so we try sending a signal 0, which errors
+    // if the process doesn't exist.
+    let isAlive = true;
+    try {
+      // Sending signal 0 doesn't kill the process, but checks if it exists
+      process.kill(-devProcess.pid, 0);
+    } catch (e) {
+      isAlive = false;
+    }
+
+    // If not terminated within timeout, force kill the entire process group
+    if (isAlive) {
+      log(
+        "Dev server process did not terminate within timeout, force killing with SIGKILL",
+      );
+      console.log(
+        "⚠️ Development server not responding after 5 seconds timeout, force killing...",
+      );
+      try {
+        process.kill(-devProcess.pid, "SIGKILL");
+      } catch (e) {
+        log("Could not send SIGKILL to dev server process group: %O", e);
+      }
     }
 
     console.log("Development server stopped");
@@ -127,7 +118,7 @@ export async function runDevServer(
     // Use the provided cwd if available
     devProcess = $({
       all: true,
-      detached: false, // Keep attached so we can access streams
+      detached: true, // Run in a new process group so we can kill the entire group
       cleanup: false, // Don't auto-kill on exit
       cwd: cwd || process.cwd(), // Use provided directory or current directory
       env, // Pass the updated environment variables
@@ -303,7 +294,7 @@ export async function runDevServer(
           );
         }
 
-        await setTimeout(500); // Check every 500ms
+        await sleep(500); // Check every 500ms
       }
 
       log(
