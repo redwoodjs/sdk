@@ -88,6 +88,8 @@ let globalDeployPlaygroundEnv: PlaygroundEnvironment | null = null;
 let globalDevInstancePromise: Promise<DevServerInstance | null> | null = null;
 let globalDeploymentInstancePromise: Promise<DeploymentInstance | null> | null =
   null;
+let globalDevInstance: DevServerInstance | null = null;
+let globalDeploymentInstance: DeploymentInstance | null = null;
 
 let hooksRegistered = false;
 
@@ -100,13 +102,11 @@ function ensureHooksRegistered() {
   // Register global afterAll to clean up the playground environment
   afterAll(async () => {
     const cleanupPromises = [];
-    if (globalDevInstancePromise) {
-      // The cleanup for globalDevInstance is now handled within the test suite's beforeAll/afterAll
-      // globalDevInstancePromise.then(instance => instance?.stopDev()).catch(() => {});
+    if (globalDevInstance) {
+      cleanupPromises.push(globalDevInstance.stopDev());
     }
-    if (globalDeploymentInstancePromise) {
-      // The cleanup for globalDeploymentInstance is now handled within the test suite's beforeAll/afterAll
-      // globalDeploymentInstancePromise.then(instance => instance?.cleanup()).catch(() => {});
+    if (globalDeploymentInstance) {
+      cleanupPromises.push(globalDeploymentInstance.cleanup());
     }
     if (globalDevPlaygroundEnv) {
       cleanupPromises.push(globalDevPlaygroundEnv.cleanup());
@@ -116,6 +116,8 @@ function ensureHooksRegistered() {
     }
 
     await Promise.all(cleanupPromises);
+    globalDevInstance = null;
+    globalDeploymentInstance = null;
     globalDevPlaygroundEnv = null;
     globalDeployPlaygroundEnv = null;
   });
