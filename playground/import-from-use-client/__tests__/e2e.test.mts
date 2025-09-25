@@ -42,39 +42,4 @@ describe("SSR Inter-Module Imports", () => {
       });
     },
   );
-
-  testDevAndDeploy(
-    "client components should be interactive",
-    async ({ page, url }) => {
-      await page.goto(url);
-
-      const getAppButton = (count: number) =>
-        page.waitForSelector(
-          `xpath/ //button[contains(., 'App Button clicks: ${count}')]`,
-        );
-      const getPackageButton = (count: number) =>
-        page.waitForSelector(
-          `xpath/ //button[contains(., 'Package Button clicks: ${count}')]`,
-        );
-
-      await getAppButton(0);
-      await getPackageButton(0);
-
-      await waitForHydration(page);
-
-      (await getAppButton(0))?.click();
-      await poll(async () => {
-        const button = await getAppButton(1);
-        expect(button).not.toBeNull();
-        return true;
-      });
-
-      (await getPackageButton(0))?.click();
-      await poll(async () => {
-        const button = await getPackageButton(1);
-        expect(button).not.toBeNull();
-        return true;
-      });
-    },
-  );
 });

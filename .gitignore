@@ -188,4 +188,5 @@ smoke-test-artifacts
 starters/standard/.cursor/rules/*
 starters/standard/.pnpm-store
 
+# Cursor User Rules
 .cursor/rules/user

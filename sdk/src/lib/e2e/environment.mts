@@ -15,7 +15,6 @@ import { createHash } from "crypto";
 import { $ } from "../../lib/$.mjs";
 import { ROOT_DIR } from "../constants.mjs";
 import path from "node:path";
-import { cpSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 
 const log = debug("rwsdk:e2e:environment");
 
