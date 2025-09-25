@@ -76,7 +76,7 @@ jobs:
 
   release:
     needs: check-ci-status
-    if: (needs.check-ci-status.result == 'success' || needs.check-ci-status.result == 'skipped') || github.event.inputs.dangerously_override_checks == 'true'
+    if: always() && ((needs.check-ci-status.result == 'success' || needs.check-ci-status.result == 'skipped') || github.event.inputs.dangerously_override_checks == 'true')
     runs-on: ubuntu-latest
 
     steps:
