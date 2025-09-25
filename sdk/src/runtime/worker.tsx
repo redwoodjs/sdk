@@ -101,6 +101,12 @@ export const defineApp = <
           } else {
             pageElement = <Page {...requestInfo} />;
           }
+          pageElement = (
+            <>
+              {pageElement}
+              <div id="rwsdk-app-end" />
+            </>
+          );
 
           return pageElement;
         };
