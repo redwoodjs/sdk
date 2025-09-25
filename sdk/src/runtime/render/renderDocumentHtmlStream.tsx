@@ -35,6 +35,9 @@ export const renderDocumentHtmlStream = async ({
       <rwsdk-app-end />
     </>
   );
+
+  const appIdentifierPrefix = "rwsdk-app";
+
   // todo(justinvdm, 18 Jun 2025): We can build on this later to allow users
   // surface context. e.g:
   // * we assign `user: requestInfo.clientCtx` here
@@ -53,9 +56,11 @@ export const renderDocumentHtmlStream = async ({
       <script
         nonce={requestInfo.rw.nonce}
         dangerouslySetInnerHTML={{
-          __html: `globalThis.__RWSDK_CONTEXT = ${JSON.stringify(
-            clientContext,
-          )}`,
+          __html:
+            `globalThis.__RWSDK_CONTEXT = ${JSON.stringify(clientContext)};` +
+            `globalThis.__RWSDK_HYDRATE_OPTIONS = ${JSON.stringify({
+              identifierPrefix: appIdentifierPrefix,
+            })};`,
         }}
       />
       <Stylesheets requestInfo={requestInfo} />
@@ -78,6 +83,7 @@ export const renderDocumentHtmlStream = async ({
     node: appNode,
     requestInfo,
     onError,
+    identifierPrefix: appIdentifierPrefix,
   });
 
   // Stitch the streams together

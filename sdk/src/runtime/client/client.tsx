@@ -112,6 +112,9 @@ export const initClient = async ({
     throw new Error('no element with id "hydrate-root"');
   }
 
+  const serverHydrateOptions =
+    (globalThis as any).__RWSDK_HYDRATE_OPTIONS ?? {};
+
   let rscPayload: any;
 
   // context(justinvdm, 18 Jun 2025): We inject the RSC payload
@@ -144,7 +147,7 @@ export const initClient = async ({
         componentStack,
       );
     },
-
+    ...serverHydrateOptions,
     ...hydrateRootOptions,
   });
 
