@@ -357,7 +357,8 @@ Based on this, here is the plan for moving forward:
     *   **The Concern**: This will likely cause the E2E test to hang and fail in CI.
     *   **Potential Solution**: As I considered, I may need to scope this test down. Instead of verifying the full end-to-end flow, the test could be modified to confirm that the correct UI elements (e.g., "Register with Passkey" button) render on the page. The full flow would then be marked for manual testing for the time being.
 
-3.  **Finalizing This PR**: Once my review is complete and I've decided on the E2E test strategy, the next step is to prepare this branch for the "Code-First" merge. The agreed-upon technical steps are:
-    *   Copy the current `docs/` directory to a temporary location (e.g., `/tmp/docs-next`).
+3.  **Finalizing This PR (My Task, Upon Your Request)**: Once your review is complete and we've decided on the E2E test strategy, I will prepare this branch for the "Code-First" merge. The agreed-upon technical steps are:
+    *   Copy the current `docs/` directory to a temporary location (e.g., `/tmp/docs-pre`).
     *   Revert the `docs/` directory in this branch back to its state on `main` using `git checkout main -- docs/`.
-    *   This will leave the PR with only code changes, ready for me to merge. The new documentation will be safely stored, ready to be moved into a new branch for the final release.
+    *   This will leave the PR with only code changes, ready for you to merge. The new documentation will be safely stored, ready to be moved into a new branch for the final release.
+*   **Update `create-rwsdk`**: The CLI will be updated with `--legacy` and `--pre` flags to control which version of the starter is downloaded. For the initial merge, the default behavior will be `legacy` to avoid impacting current users.
