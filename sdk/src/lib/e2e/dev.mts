@@ -4,13 +4,9 @@ import { $ } from "../../lib/$.mjs";
 import { poll } from "./poll.mjs";
 import { PackageManager } from "./types.mjs";
 
-const DEV_SERVER_TIMEOUT = process.env.RWSDK_DEV_SERVER_TIMEOUT
-  ? parseInt(process.env.RWSDK_DEV_SERVER_TIMEOUT, 10)
+const DEV_SERVER_CHECK_TIMEOUT = process.env.RWSDK_DEV_SERVER_CHECK_TIMEOUT
+  ? parseInt(process.env.RWSDK_DEV_SERVER_CHECK_TIMEOUT, 10)
   : 5 * 60 * 1000;
-
-const DEV_SERVER_MIN_TRIES = process.env.RWSDK_DEV_SERVER_MIN_TRIES
-  ? parseInt(process.env.RWSDK_DEV_SERVER_MIN_TRIES, 10)
-  : 5;
 
 const log = debug("rwsdk:e2e:dev");
 
@@ -336,8 +332,7 @@ export async function runDevServer(
         }
       },
       {
-        timeout: DEV_SERVER_TIMEOUT,
-        minTries: DEV_SERVER_MIN_TRIES,
+        timeout: DEV_SERVER_CHECK_TIMEOUT,
       },
     );
 

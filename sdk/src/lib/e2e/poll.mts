@@ -8,13 +8,19 @@ export interface PollOptions {
   timeout: number;
   interval: number;
   minTries: number;
+  onRetry?: (error: unknown, tries: number) => void;
 }
 
 export async function poll(
   fn: () => Promise<boolean>,
   options: Partial<PollOptions> = {},
 ): Promise<void> {
-  const { timeout = POLL_TIMEOUT, interval = 100, minTries = 3 } = options;
+  const {
+    timeout = POLL_TIMEOUT,
+    interval = 100,
+    minTries = 3,
+    onRetry,
+  } = options;
 
   const startTime = Date.now();
   let tries = 0;
@@ -26,6 +32,7 @@ export async function poll(
         return;
       }
     } catch (error) {
+      onRetry?.(error, tries);
       // Continue polling on errors
     }
 
@@ -35,4 +42,18 @@ export async function poll(
   throw new Error(
     `Polling timed out after ${Date.now() - startTime}ms and ${tries} attempts`,
   );
+}
+
+export async function pollValue<T>(
+  fn: () => Promise<T>,
+  options: Partial<PollOptions> = {},
+): Promise<T> {
+  let value: T | undefined;
+
+  await poll(async () => {
+    value = await fn();
+    return true;
+  }, options);
+
+  return value as unknown as T;
 }
