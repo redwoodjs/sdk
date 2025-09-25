@@ -580,7 +580,7 @@ function createTestRunner(
         }
       });
 
-      testFn("implementation", async () => {
+      testFn(">", async () => {
         if (!instance || !browser) {
           throw new Error("Test environment not ready.");
         }
