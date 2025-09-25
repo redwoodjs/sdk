@@ -141,7 +141,7 @@ export const directiveModulesDevPlugin = ({
           VENDOR_SERVER_BARREL_EXPORT_PATH,
         );
 
-        if (envName === "client") {
+        if (envName === "client" || envName === "ssr") {
           entries.push(APP_CLIENT_BARREL_PATH);
         } else if (envName === "worker") {
           entries.push(APP_SERVER_BARREL_PATH);
