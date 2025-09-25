@@ -69,3 +69,19 @@ The harness was refactored to address these issues and improve its internal desi
 1.  **Abstracted Test Runner**: A generic `createTestRunner` function was introduced to abstract away the common logic for setting up and executing a test against a given environment (`dev` or `deploy`).
 2.  **Simplified Test Runners**: The `testDev`, `testDeploy`, and their `.only` variants were reimplemented as simple wrappers around the new `createTestRunner` function, eliminating code duplication.
 3.  **Corrected API**: The test runners were converted back to standard functions to allow the `.skip` and `.only` properties to be correctly attached, restoring their full functionality.
+
+## Addendum: Decoupled Test Execution
+
+### Problem
+
+Although the dev server and deployment setups are initiated concurrently in `beforeAll`, the tests for one environment (e.g., `dev`) cannot begin until the setup for *both* environments is complete. This creates an unnecessary bottleneck, where the faster setup process is forced to wait for the slower one.
+
+### Plan
+
+The test harness will be updated to allow tests for each environment to start as soon as their respective setup is finished, without waiting for the other.
+
+1.  **Promise-Based State**: The global state will be modified to store promises for the `dev` and `deploy` instances, rather than the resolved instances themselves. The `setupPlaygroundEnvironment` function will populate these promises but will not `await` them.
+2.  **Pre-Test Waiting**: The `createTestRunner` function will be refactored to use `describe.concurrent` and a `beforeEach` hook.
+3.  **Lenient Timeout**: This hook will be responsible for `await`-ing the relevant setup promise (e.g., the dev server promise for a `testDev` run). It will have a separate, lenient timeout, ensuring that the wait time does not count against the individual test's execution timeout. This makes the system more robust, as the primary timeout logic remains within the setup functions themselves.
+
+This change allows the `dev` and `deploy` test suites to run in a fully decoupled manner, improving overall test suite execution time.
