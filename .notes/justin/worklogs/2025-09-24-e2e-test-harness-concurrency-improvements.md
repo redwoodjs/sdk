@@ -85,3 +85,21 @@ The test harness will be updated to allow tests for each environment to start as
 3.  **Lenient Timeout**: This hook will be responsible for `await`-ing the relevant setup promise (e.g., the dev server promise for a `testDev` run). It will have a separate, lenient timeout, ensuring that the wait time does not count against the individual test's execution timeout. This makes the system more robust, as the primary timeout logic remains within the setup functions themselves.
 
 This change allows the `dev` and `deploy` test suites to run in a fully decoupled manner, improving overall test suite execution time.
+
+## Addendum: Isolate Browser Connections
+
+### Problem
+
+The previous refactors correctly parallelized the setup of the dev server and deployment, but they introduced a race condition related to the browser connection. While the `globalSetup.mts` script correctly launches a single, shared browser *instance* for the entire test run, the test harness was creating a single, shared *connection* to that browser within each test file.
+
+When `testDev` and `testDeploy` suites ran concurrently within the same file, they would share this single connection. The first suite to complete its tests would trigger its cleanup phase and disconnect from the browser, severing the connection for the other suite that was still running. This caused the remaining suite to fail with `TargetCloseError`.
+
+### Plan
+
+To fix this, each test suite (`dev` and `deploy`) will manage its own independent connection to the shared browser instance.
+
+1.  **Remove Global Connection Management**: All browser connection logic will be removed from the file-level `beforeAll` and `afterAll` hooks in `testHarness.mts`. The harness will no longer maintain a global browser promise.
+2.  **Suite-Scoped Connections**: The connection logic will be moved into the `createTestRunner` function. Inside its `describe.concurrent` block, a new `beforeAll` hook will be added.
+3.  **Connect and Disconnect**: This new, suite-scoped `beforeAll` hook will connect to the global browser's WebSocket endpoint. A corresponding `afterAll` hook within the same `describe` block will disconnect it.
+
+This ensures that the `dev` and `deploy` suites each have their own connection lifecycle, preventing them from interfering with each other and resolving the race condition.

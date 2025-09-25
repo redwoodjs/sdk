@@ -88,10 +88,6 @@ let globalDeployPlaygroundEnv: PlaygroundEnvironment | null = null;
 let globalDevInstancePromise: Promise<DevServerInstance | null> | null = null;
 let globalDeploymentInstancePromise: Promise<DeploymentInstance | null> | null =
   null;
-let globalBrowserPromise: Promise<Browser | null> | null = null;
-let globalDevInstance: DevServerInstance | null = null;
-let globalDeploymentInstance: DeploymentInstance | null = null;
-let globalBrowser: Browser | null = null;
 
 let hooksRegistered = false;
 
@@ -104,16 +100,13 @@ function ensureHooksRegistered() {
   // Register global afterAll to clean up the playground environment
   afterAll(async () => {
     const cleanupPromises = [];
-    if (globalDevInstance) {
-      cleanupPromises.push(globalDevInstance.stopDev());
+    if (globalDevInstancePromise) {
+      // The cleanup for globalDevInstance is now handled within the test suite's beforeAll/afterAll
+      // globalDevInstancePromise.then(instance => instance?.stopDev()).catch(() => {});
     }
-    if (globalDeploymentInstance) {
-      cleanupPromises.push(globalDeploymentInstance.cleanup());
-    }
-    if (globalBrowser) {
-      // We disconnect instead of closing, because the browser instance is shared
-      // across all test suites and is managed by a global setup/teardown script.
-      cleanupPromises.push(globalBrowser.disconnect());
+    if (globalDeploymentInstancePromise) {
+      // The cleanup for globalDeploymentInstance is now handled within the test suite's beforeAll/afterAll
+      // globalDeploymentInstancePromise.then(instance => instance?.cleanup()).catch(() => {});
     }
     if (globalDevPlaygroundEnv) {
       cleanupPromises.push(globalDevPlaygroundEnv.cleanup());
@@ -123,9 +116,6 @@ function ensureHooksRegistered() {
     }
 
     await Promise.all(cleanupPromises);
-    globalDevInstance = null;
-    globalDeploymentInstance = null;
-    globalBrowser = null;
     globalDevPlaygroundEnv = null;
     globalDeployPlaygroundEnv = null;
   });
@@ -267,13 +257,6 @@ export function setupPlaygroundEnvironment(
     } else {
       globalDeploymentInstancePromise = Promise.resolve(null);
     }
-
-    globalBrowserPromise = createBrowser().then((browser) => {
-      globalBrowser = browser;
-      return browser;
-    });
-    // Prevent unhandled promise rejections
-    globalBrowserPromise.catch(() => {});
   }, SETUP_PLAYGROUND_ENV_TIMEOUT);
 }
 
@@ -407,26 +390,6 @@ export async function createDeployment(
 }
 
 /**
- * Creates a browser instance for testing.
- */
-export async function createBrowser(): Promise<Browser> {
-  const tempDir = path.join(os.tmpdir(), "rwsdk-e2e-tests");
-  const wsEndpointFile = path.join(tempDir, "wsEndpoint");
-
-  try {
-    const wsEndpoint = await fs.readFile(wsEndpointFile, "utf-8");
-    return await puppeteer.connect({ browserWSEndpoint: wsEndpoint });
-  } catch (error) {
-    console.warn(
-      "Failed to connect to existing browser instance. " +
-        "This might happen if you are running a single test file. " +
-        "Launching a new browser instance instead.",
-    );
-    return await launchBrowser();
-  }
-}
-
-/**
  * Executes a test function with a retry mechanism for specific error codes.
  * @param name - The name of the test, used for logging.
  * @param attemptFn - A function that executes one attempt of the test.
@@ -508,7 +471,30 @@ function createTestRunner(
     describe.concurrent(name, () => {
       let page: Page;
       let instance: DevServerInstance | DeploymentInstance | null;
-      let browser: Browser | null;
+      let browser: Browser;
+
+      beforeAll(async () => {
+        const tempDir = path.join(os.tmpdir(), "rwsdk-e2e-tests");
+        const wsEndpointFile = path.join(tempDir, "wsEndpoint");
+
+        try {
+          const wsEndpoint = await fs.readFile(wsEndpointFile, "utf-8");
+          browser = await puppeteer.connect({ browserWSEndpoint: wsEndpoint });
+        } catch (error) {
+          console.warn(
+            "Failed to connect to existing browser instance. " +
+              "This might happen if you are running a single test file. " +
+              "Launching a new browser instance instead.",
+          );
+          browser = await launchBrowser();
+        }
+      }, SETUP_WAIT_TIMEOUT);
+
+      afterAll(async () => {
+        if (browser) {
+          await browser.disconnect();
+        }
+      });
 
       beforeEach(async () => {
         const instancePromise =
@@ -516,18 +502,15 @@ function createTestRunner(
             ? globalDevInstancePromise
             : globalDeploymentInstancePromise;
 
-        if (!instancePromise || !globalBrowserPromise) {
+        if (!instancePromise) {
           throw new Error(
             "Test environment promises not initialized. Call setupPlaygroundEnvironment() in your test file.",
           );
         }
 
-        [instance, browser] = await Promise.all([
-          instancePromise,
-          globalBrowserPromise,
-        ]);
+        [instance] = await Promise.all([instancePromise]);
 
-        if (!instance || !browser) {
+        if (!instance) {
           throw new Error(
             `No ${envType} instance found. Make sure to enable it in setupPlaygroundEnvironment.`,
           );
