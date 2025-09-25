@@ -7,19 +7,18 @@ SUCCESS_FLAG=false # Default to failure. This will be checked by the cleanup tra
 DEPENDENCY_NAME="rwsdk"  # Replace with the actual package name
 
 show_help() {
-  echo "Usage: pnpm release <patch|minor|major|prepatch|preminor|premajor|test> [--preid <identifier>] [--dry]"
-  echo ""
-  echo "Automates version bumping, publishing, and dependency updates for $DEPENDENCY_NAME"
-  echo ""
+  echo "Usage: pnpm release <patch|minor|test|explicit> [--version <string>] [--dry]"
+  echo
+  echo "Automates version bumping, publishing, and dependency updates for $DEPENDENCY_NAME."
+  echo "For safety, only 'patch', 'minor', and 'test' bumps can be calculated automatically."
+  echo "To release a major or pre-release version, you MUST use the 'explicit' version_type and provide the exact version string with '--version'."
+  echo
   echo "Arguments:"
-  echo "  patch|minor|major    The type of version bump to perform"
-  echo "  prepatch             Create a prerelease patch (x.y.z -> x.y.(z+1)-<preid>.0)"
-  echo "  preminor             Create a prerelease minor (x.y.z -> x.(y+1).0-<preid>.0)"
-  echo "  premajor             Create a prerelease major (x.y.z -> (x+1).0.0-<preid>.0)"
-  echo "  test                 Create a test release (x.y.z-test.<timestamp>), published under --tag test"
+  echo "  patch|minor|test    Calculates the next version of this type automatically."
+  echo "  explicit            Requires the '--version' flag to specify the exact version to release."
   echo ""
   echo "Process:"
-  echo "  1.  Calculates new version using semver and updates package.json."
+  echo "  1.  Calculates new version (for patch/minor/test) or uses the manual version (for explicit), and updates package.json."
   echo "  2.  Commits the version change."
   echo "  3.  Builds the package with NODE_ENV=production."
   echo "  4.  Bundles the package into a .tgz tarball using \`npm pack\`."
@@ -36,25 +35,23 @@ show_help() {
   echo "      - Temporary files are cleaned up."
   echo ""
   echo "Options:"
-  echo "  --preid <id>  Prerelease identifier (default: alpha). Used with prepatch/preminor/premajor"
-  echo "  --dry         Simulate the release process without making changes"
-  echo "  --help        Show this help message"
+  echo "  --dry               Simulate the release process without making changes"
+  echo "  --version <v>       Manually specify a version string. MUST be used with the 'explicit' version_type."
+  echo "  --skip-smoke-tests  Bypass the smoke testing step. Use with caution."
+  echo "  --help              Show this help message"
   echo ""
   echo "Examples:"
   echo "  pnpm release patch                    # 0.1.0 -> 0.1.1"
   echo "  pnpm release minor                    # 0.1.1 -> 0.2.0"
-  echo "  pnpm release major                    # 0.2.0 -> 1.0.0"
-  echo "  pnpm release preminor                 # 0.0.80 -> 0.1.0-alpha.0 (published as @pre)"
-  echo "  pnpm release preminor --preid beta    # 0.0.80 -> 0.1.0-beta.0 (published as @pre)"
-  echo "  pnpm release prepatch --preid rc      # 0.1.0 -> 0.1.1-rc.0 (published as @pre)"
   echo "  pnpm release test                     # 1.0.0 -> 1.0.0-test.0 (published as @test)"
-  echo "  pnpm release patch --dry              # Show what would happen"
+  echo "  pnpm release explicit --version 1.0.0 # Release a major version"
+  echo "  pnpm release explicit --version 1.0.0-rc.0 # Release a pre-release"
   exit 0
 }
 
 validate_args() {
   for arg in "$@"; do
-    if [[ "$arg" == --* && "$arg" != "--dry" && "$arg" != "--help" && "$arg" != "--preid" ]]; then
+    if [[ "$arg" == --* && "$arg" != "--dry" && "$arg" != "--help" && "$arg" != "--version" && "$arg" != "--skip-smoke-tests" ]]; then
       echo "Error: Unknown flag '$arg'"
       echo "Use --help to see available options"
       echo ""
@@ -69,35 +66,60 @@ validate_args "$@"
 # Initialize variables
 DRY_RUN=false
 VERSION_TYPE=""
-PREID="alpha"
+MANUAL_VERSION=""
+SKIP_SMOKE_TESTS=false
 
 # Process all arguments
 i=1
-for arg in "$@"; do
-  if [[ "$arg" == "--help" ]]; then
-    show_help
-  elif [[ "$arg" == "--dry" ]]; then
-    DRY_RUN=true
-  elif [[ "$arg" == "--preid" ]]; then
-    # Get the next argument as the preid value
-    i=$((i + 1))
-    eval "PREID=\${$i}"
-    if [[ -z "$PREID" ]]; then
-      echo "Error: --preid requires a value"
-      echo ""
+while [[ $i -le $# ]]; do
+  arg="${!i}"
+  case "$arg" in
+    --help)
       show_help
-    fi
-  elif [[ "$arg" == "patch" || "$arg" == "minor" || "$arg" == "major" || "$arg" == "prepatch" || "$arg" == "preminor" || "$arg" == "premajor" || "$arg" == "test" ]]; then
-    VERSION_TYPE=$arg
-  fi
+      ;;
+    --dry)
+      DRY_RUN=true
+      ;;
+    --skip-smoke-tests)
+      SKIP_SMOKE_TESTS=true
+      ;;
+    --version)
+      i=$((i + 1))
+      MANUAL_VERSION="${!i}"
+      if [[ -z "$MANUAL_VERSION" ]]; then
+        echo "Error: --version requires a value"
+        echo ""
+        show_help
+      fi
+      ;;
+    patch|minor|test|explicit)
+      VERSION_TYPE=$arg
+      ;;
+  esac
   i=$((i + 1))
 done
 
 # Validate required arguments
 if [[ -z "$VERSION_TYPE" ]]; then
-  echo "Error: Version type (patch|minor|major|prepatch|preminor|premajor|test) is required"
+  echo "Error: Version type (patch|minor|test|explicit) is required."
   echo ""
   show_help
+fi
+
+# Validate illegal argument combinations
+if [[ "$VERSION_TYPE" == "explicit" && -z "$MANUAL_VERSION" ]]; then
+  echo "Error: The 'explicit' version_type requires the --version flag to be set."
+  exit 1
+fi
+
+if [[ "$VERSION_TYPE" != "explicit" && -n "$MANUAL_VERSION" ]]; then
+  echo "Error: The --version flag can only be used with the 'explicit' version_type."
+  exit 1
+fi
+
+if [[ "$VERSION_TYPE" == "test" && -n "$MANUAL_VERSION" ]]; then
+  echo "Error: Manual version cannot be specified for 'test' releases."
+  exit 1
 fi
 
 # After argument validation and before version calculation
@@ -122,7 +144,10 @@ fi
 NODE_ENV=production pnpm build
 
 CURRENT_VERSION=$(npm pkg get version | tr -d '"')
-if [[ "$VERSION_TYPE" == "test" ]]; then
+
+if [[ "$VERSION_TYPE" == "explicit" ]]; then
+  NEW_VERSION="$MANUAL_VERSION"
+elif [[ "$VERSION_TYPE" == "test" ]]; then
   # Use a timestamp for test versions instead of a counter to avoid conflicts between branches
   # Format: YYYYMMDDHHMMSS
   TIMESTAMP=$(date "+%Y%m%d%H%M%S")
@@ -133,22 +158,6 @@ if [[ "$VERSION_TYPE" == "test" ]]; then
     BASE_VERSION="$CURRENT_VERSION"
   fi
   NEW_VERSION="$BASE_VERSION-test.$TIMESTAMP"
-elif [[ "$VERSION_TYPE" == "prepatch" || "$VERSION_TYPE" == "preminor" || "$VERSION_TYPE" == "premajor" ]]; then
-  # Handle prerelease versions with explicit preid
-  if [[ "$CURRENT_VERSION" =~ ^.*-${PREID}\..*$ ]]; then
-    # Check if this is a test version with the same preid
-    if [[ "$CURRENT_VERSION" =~ ^(.*-${PREID}\.[0-9]+)-test\..*$ ]]; then
-      # Extract base prerelease version and increment it
-      BASE_PRERELEASE_VERSION="${BASH_REMATCH[1]}"
-      NEW_VERSION=$(npx semver -i prerelease "$BASE_PRERELEASE_VERSION")
-    else
-      # If current version is already the same prerelease type, increment it
-      NEW_VERSION=$(npx semver -i prerelease "$CURRENT_VERSION")
-    fi
-  else
-    # Create new prerelease with the specified type and preid
-    NEW_VERSION=$(npx semver -i "$VERSION_TYPE" --preid "$PREID" "$CURRENT_VERSION")
-  fi
 else
   # Handle regular versions (patch, minor, major)
   NEW_VERSION=$(npx semver -i "$VERSION_TYPE" "$CURRENT_VERSION")
@@ -188,94 +197,98 @@ fi
 echo "  ✅ Packed to $TARBALL_PATH"
 
 echo -e "\n🔬 Smoke testing package..."
-# The smoke test runs in both normal and dry-run modes.
-
-# This cleanup function will be called on EXIT.
-# It checks if the script is finishing successfully or not.
-cleanup() {
-  # If the script did not complete successfully, preserve assets for inspection.
-  if [[ "$SUCCESS_FLAG" == false ]]; then
-    echo -e "\n❌ A failure occurred. Preserving temp directory for inspection:"
-    echo "  - Temp directory: $TEMP_DIR"
-  else
-    # Otherwise (on success), clean up the temp dir.
-    if [[ -n "$TEMP_DIR" && -d "$TEMP_DIR" ]]; then
-      echo "  - Cleaning up temp directory..."
-      rm -rf "$TEMP_DIR"
-    fi
-  fi
-  # The tarball is stored in TEMP_DIR and cleaned up with it.
-}
-
-# Set the trap *after* creating the temp dir, so the variable is available.
-trap cleanup EXIT
-
-# Sanitize the version to create a valid directory name, which in turn
-# will be used to generate a valid worker name for the smoke test.
-PROJECT_DIR="$TEMP_DIR/test"
-mkdir -p "$PROJECT_DIR"
-
-if [[ -n "$GITHUB_OUTPUT" ]]; then
-  echo "project-dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
-fi
-
-echo "  - Created temp project dir for testing: $PROJECT_DIR"
-
-echo "  - Copying minimal starter to project dir..."
-# Get the absolute path of the script's directory
-SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
-# The monorepo root is two levels up from the script's directory
-MONOREPO_ROOT="$SCRIPT_DIR/../.."
-cp -a "$MONOREPO_ROOT/starters/minimal/." "$PROJECT_DIR/"
-
-echo "  - Configuring temp project to not use frozen lockfile..."
-echo "frozen-lockfile=false" > "$PROJECT_DIR/.npmrc"
-
-echo "  - Installing packed tarball in project dir..."
-(cd "$PROJECT_DIR" && pnpm add "$TARBALL_PATH")
-
-PACKAGE_NAME=$(npm pkg get name | tr -d '"')
-INSTALLED_DIST_PATH="$PROJECT_DIR/node_modules/$PACKAGE_NAME/dist"
-
-echo "  - Verifying installed package contents..."
-if [ ! -d "$INSTALLED_DIST_PATH" ]; then
-    echo "  ❌ Error: dist/ directory not found in installed package at $INSTALLED_DIST_PATH."
-    exit 1
-fi
-
-# To ensure the package is built and packed correctly, we'll compare
-# a checksum of the file lists from the original `dist` directory and the
-# one installed from the tarball. They must match exactly.
-ORIGINAL_DIST_CHECKSUM=$( (cd dist && find . -type f | sort) | md5sum)
-INSTALLED_DIST_CHECKSUM=$( (cd "$INSTALLED_DIST_PATH" && find . -type f | sort) | md5sum)
-
-echo "    - Original dist checksum: $ORIGINAL_DIST_CHECKSUM"
-echo "    - Installed dist checksum: $INSTALLED_DIST_CHECKSUM"
-
-if [[ "$ORIGINAL_DIST_CHECKSUM" != "$INSTALLED_DIST_CHECKSUM" ]]; then
-  echo "  ❌ Error: File list in installed dist/ does not match original dist/."
-  echo "  This indicates an issue with the build or packaging process."
-  exit 1
+if [[ "$SKIP_SMOKE_TESTS" == true ]]; then
+  echo "  ⏭️  Skipping smoke tests as requested."
 else
-  echo "  ✅ Installed package contents match the local build."
-fi
+  # The smoke test runs in both normal and dry-run modes.
 
-echo "  - Running smoke tests..."
-# The CWD is the package root (sdk/sdk), so we can run pnpm smoke-test directly.
-# We pass the path to the temp project directory where the minimal starter was installed.
-# We also specify an artifact directory *within* the temp directory.
-# todo(justinvdm, 11 Aug 2025): Fix style test flakiness
-if ! pnpm smoke-test --path="$PROJECT_DIR" --no-sync --artifact-dir="$TEMP_DIR/artifacts" --skip-style-tests; then
-  echo "  ❌ Smoke tests failed."
-  exit 1
+  # This cleanup function will be called on EXIT.
+  # It checks if the script is finishing successfully or not.
+  cleanup() {
+    # If the script did not complete successfully, preserve assets for inspection.
+    if [[ "$SUCCESS_FLAG" == false ]]; then
+      echo -e "\n❌ A failure occurred. Preserving temp directory for inspection:"
+      echo "  - Temp directory: $TEMP_DIR"
+    else
+      # Otherwise (on success), clean up the temp dir.
+      if [[ -n "$TEMP_DIR" && -d "$TEMP_DIR" ]]; then
+        echo "  - Cleaning up temp directory..."
+        rm -rf "$TEMP_DIR"
+      fi
+    fi
+    # The tarball is stored in TEMP_DIR and cleaned up with it.
+  }
+
+  # Set the trap *after* creating the temp dir, so the variable is available.
+  trap cleanup EXIT
+
+  # Sanitize the version to create a valid directory name, which in turn
+  # will be used to generate a valid worker name for the smoke test.
+  PROJECT_DIR="$TEMP_DIR/test"
+  mkdir -p "$PROJECT_DIR"
+
+  if [[ -n "$GITHUB_OUTPUT" ]]; then
+    echo "project-dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
+  fi
+
+  echo "  - Created temp project dir for testing: $PROJECT_DIR"
+
+  echo "  - Copying minimal starter to project dir..."
+  # Get the absolute path of the script's directory
+  SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
+  # The monorepo root is two levels up from the script's directory
+  MONOREPO_ROOT="$SCRIPT_DIR/../.."
+  cp -a "$MONOREPO_ROOT/starters/minimal/." "$PROJECT_DIR/"
+
+  echo "  - Configuring temp project to not use frozen lockfile..."
+  echo "frozen-lockfile=false" > "$PROJECT_DIR/.npmrc"
+
+  echo "  - Installing packed tarball in project dir..."
+  (cd "$PROJECT_DIR" && pnpm add "$TARBALL_PATH")
+
+  PACKAGE_NAME=$(npm pkg get name | tr -d '"')
+  INSTALLED_DIST_PATH="$PROJECT_DIR/node_modules/$PACKAGE_NAME/dist"
+
+  echo "  - Verifying installed package contents..."
+  if [ ! -d "$INSTALLED_DIST_PATH" ]; then
+      echo "  ❌ Error: dist/ directory not found in installed package at $INSTALLED_DIST_PATH."
+      exit 1
+  fi
+
+  # To ensure the package is built and packed correctly, we'll compare
+  # a checksum of the file lists from the original `dist` directory and the
+  # one installed from the tarball. They must match exactly.
+  ORIGINAL_DIST_CHECKSUM=$( (cd dist && find . -type f | sort) | md5sum)
+  INSTALLED_DIST_CHECKSUM=$( (cd "$INSTALLED_DIST_PATH" && find . -type f | sort) | md5sum)
+
+  echo "    - Original dist checksum: $ORIGINAL_DIST_CHECKSUM"
+  echo "    - Installed dist checksum: $INSTALLED_DIST_CHECKSUM"
+
+  if [[ "$ORIGINAL_DIST_CHECKSUM" != "$INSTALLED_DIST_CHECKSUM" ]]; then
+    echo "  ❌ Error: File list in installed dist/ does not match original dist/."
+    echo "  This indicates an issue with the build or packaging process."
+    exit 1
+  else
+    echo "  ✅ Installed package contents match the local build."
+  fi
+
+  echo "  - Running smoke tests..."
+  # The CWD is the package root (sdk/sdk), so we can run pnpm smoke-test directly.
+  # We pass the path to the temp project directory where the minimal starter was installed.
+  # We also specify an artifact directory *within* the temp directory.
+  # todo(justinvdm, 11 Aug 2025): Fix style test flakiness
+  if ! pnpm smoke-test --path="$PROJECT_DIR" --no-sync --artifact-dir="$TEMP_DIR/artifacts" --skip-style-tests; then
+    echo "  ❌ Smoke tests failed."
+    exit 1
+  fi
+  echo "  ✅ Smoke tests passed."
 fi
-echo "  ✅ Smoke tests passed."
 
 echo -e "\n🚀 Publishing version $NEW_VERSION..."
 if [[ "$DRY_RUN" == true ]]; then
   if [[ "$VERSION_TYPE" == "test" ]]; then
     echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag test"
-  elif [[ "$VERSION_TYPE" == "prepatch" || "$VERSION_TYPE" == "preminor" || "$VERSION_TYPE" == "premajor" ]]; then
+  elif [[ "$NEW_VERSION" =~ - ]]; then
     echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag pre"
   else
     echo "  [DRY RUN] npm publish '$TARBALL_PATH'"
@@ -284,7 +297,7 @@ else
   PUBLISH_CMD="npm publish \"$TARBALL_PATH\""
   if [[ "$VERSION_TYPE" == "test" ]]; then
     PUBLISH_CMD="$PUBLISH_CMD --tag test"
-  elif [[ "$VERSION_TYPE" == "prepatch" || "$VERSION_TYPE" == "preminor" || "$VERSION_TYPE" == "premajor" ]]; then
+  elif [[ "$NEW_VERSION" =~ - ]]; then
     PUBLISH_CMD="$PUBLISH_CMD --tag pre"
   fi
   if ! eval $PUBLISH_CMD; then
