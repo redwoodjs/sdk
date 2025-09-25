@@ -28,13 +28,7 @@ export const renderDocumentHtmlStream = async ({
   const { node: innerAppNode } = (await rscAppThenable) as {
     node: React.ReactNode;
   };
-  const appNode = (
-    <>
-      {innerAppNode}
-      {/* @ts-ignore */}
-      <rwsdk-app-end />
-    </>
-  );
+
   // todo(justinvdm, 18 Jun 2025): We can build on this later to allow users
   // surface context. e.g:
   // * we assign `user: requestInfo.clientCtx` here
@@ -75,7 +69,7 @@ export const renderDocumentHtmlStream = async ({
   });
 
   const appHtmlStream = await renderHtmlStream({
-    node: appNode,
+    node: innerAppNode,
     requestInfo,
     onError,
   });
@@ -85,7 +79,7 @@ export const renderDocumentHtmlStream = async ({
     outerHtmlStream,
     appHtmlStream,
     "<rwsdk-app-start></rwsdk-app-start>",
-    "<rwsdk-app-end></rwsdk-app-end>",
+    "<template",
   );
 
   return stitchedStream;
