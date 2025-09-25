@@ -153,6 +153,9 @@ importers:
       '@chakra-ui/react':
         specifier: ^3.27.0
         version: 3.27.0(@emotion/react@11.14.0(@types/react@19.1.2)(react@19.2.0-canary-d415fd3e-20250919))(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)
+      '@emotion/react':
+        specifier: ^11.14.0
+        version: 11.14.0(@types/react@19.1.2)(react@19.2.0-canary-d415fd3e-20250919)
       react:
         specifier: 19.2.0-canary-d415fd3e-20250919
         version: 19.2.0-canary-d415fd3e-20250919

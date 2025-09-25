@@ -29,6 +29,14 @@ on:
         required: false
         type: boolean
         default: false
+      dangerously_override_checks:
+        description: "If true, skips the check for CI status and proceeds with the release."
+        required: false
+        type: choice
+        options:
+          - "false"
+          - "true"
+        default: "false"
 
 permissions:
   contents: write
@@ -49,7 +57,13 @@ jobs:
       - name: Check status of all workflows on main
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OVERRIDE: ${{ github.event.inputs.dangerously_override_checks }}
         run: |
+          if [ "$OVERRIDE" = "true" ]; then
+            echo "::warning::'dangerously_override_checks' is true. Skipping CI status check."
+            exit 0
+          fi
+
           # The release is triggered from main, so HEAD is the commit we want to check
           COMMIT_SHA=$(git rev-parse HEAD)
           echo "Checking CI status for commit: $COMMIT_SHA on branch main"
@@ -71,7 +85,7 @@ jobs:
 
   release:
     needs: check-ci-status
-    if: needs.check-ci-status.result == 'success' || needs.check-ci-status.result == 'skipped'
+    if: needs.check-ci-status.result == 'success'
     runs-on: ubuntu-latest
 
     steps:

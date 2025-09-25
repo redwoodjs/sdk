@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@chakra-ui/react": "^3.27.0",
+    "@emotion/react": "^11.14.0",
     "react": "19.2.0-canary-d415fd3e-20250919",
     "react-dom": "19.2.0-canary-d415fd3e-20250919",
     "react-server-dom-webpack": "19.2.0-canary-d415fd3e-20250919",
@@ -39,6 +40,14 @@
     "vite": "7.1.6",
     "vitest": "^3.1.1",
     "wrangler": "4.38.0"
+  },
+  "overrides": {
+    "react": "19.2.0-canary-d415fd3e-20250919",
+    "react-dom": "19.2.0-canary-d415fd3e-20250919"
+  },
+  "resolutions": {
+    "react": "19.2.0-canary-d415fd3e-20250919",
+    "react-dom": "19.2.0-canary-d415fd3e-20250919"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

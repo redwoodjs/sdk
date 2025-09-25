@@ -15,6 +15,8 @@ import { createHash } from "crypto";
 import { $ } from "../../lib/$.mjs";
 import { ROOT_DIR } from "../constants.mjs";
 import path from "node:path";
+import os from "os";
+import { retry } from "./retry.mjs";
 
 const log = debug("rwsdk:e2e:environment");
 
@@ -40,12 +42,12 @@ const createSdkTarball = async (): Promise<{
 
 const setTarballDependency = async (
   targetDir: string,
-  tarballPath: string,
+  tarballName: string,
 ): Promise<void> => {
   const filePath = join(targetDir, "package.json");
   const packageJson = await fs.promises.readFile(filePath, "utf-8");
   const packageJsonContent = JSON.parse(packageJson);
-  packageJsonContent.dependencies.rwsdk = `file:${tarballPath}`;
+  packageJsonContent.dependencies.rwsdk = `file:${tarballName}`;
   await fs.promises.writeFile(
     filePath,
     JSON.stringify(packageJsonContent, null, 2),
@@ -196,6 +198,11 @@ export async function copyProjectToTempDir(
     });
     log("Project copy completed successfully");
 
+    // Copy the SDK tarball into the target directory
+    const tarballFilename = basename(tarballPath);
+    const tempTarballPath = join(targetDir, tarballFilename);
+    await fs.promises.copyFile(tarballPath, tempTarballPath);
+
     if (monorepoRoot) {
       log("⚙️  Configuring monorepo workspace...");
       const rwsdkWsPath = join(tempCopyRoot, "rwsdk-workspace.json");
@@ -234,20 +241,26 @@ export async function copyProjectToTempDir(
     // For yarn, create .yarnrc.yml to disable PnP and allow lockfile changes
     if (packageManager === "yarn") {
       const yarnrcPath = join(targetDir, ".yarnrc.yml");
+      const yarnCacheDir = path.join(os.tmpdir(), "yarn-cache");
+      await fs.promises.mkdir(yarnCacheDir, { recursive: true });
       const yarnConfig = [
         // todo(justinvdm, 23-09-23): Support yarn pnpm
         "nodeLinker: node-modules",
         "enableImmutableInstalls: false",
+        `cacheFolder: "${yarnCacheDir}"`,
       ].join("\n");
       await fs.promises.writeFile(yarnrcPath, yarnConfig);
       log("Created .yarnrc.yml to allow lockfile changes for yarn");
     }
 
-    await setTarballDependency(targetDir, tarballPath);
+    await setTarballDependency(targetDir, tarballFilename);
 
     // Install dependencies in the target directory
     const installDir = monorepoRoot ? tempCopyRoot : targetDir;
-    await installDependencies(installDir, packageManager);
+    await retry(() => installDependencies(installDir, packageManager), {
+      retries: 3,
+      delay: 1000,
+    });
 
     // Return the environment details
     return { tempDir, targetDir, workerName };
@@ -296,9 +309,12 @@ async function installDependencies(
         });
       }
     }
+    const npmCacheDir = path.join(os.tmpdir(), "npm-cache");
+    await fs.promises.mkdir(npmCacheDir, { recursive: true });
+
     const installCommand = {
       pnpm: ["pnpm", "install"],
-      npm: ["npm", "install"],
+      npm: ["npm", "install", "--cache", npmCacheDir],
       yarn: ["yarn", "install"],
       "yarn-classic": ["yarn"],
     }[packageManager];

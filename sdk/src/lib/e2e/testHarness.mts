@@ -26,7 +26,7 @@ import { poll, pollValue } from "./poll.mjs";
 const SETUP_PLAYGROUND_ENV_TIMEOUT = process.env
   .RWSDK_SETUP_PLAYGROUND_ENV_TIMEOUT
   ? parseInt(process.env.RWSDK_SETUP_PLAYGROUND_ENV_TIMEOUT, 10)
-  : 5 * 60 * 1000;
+  : 15 * 60 * 1000;
 
 const DEPLOYMENT_TIMEOUT = process.env.RWSDK_DEPLOYMENT_TIMEOUT
   ? parseInt(process.env.RWSDK_DEPLOYMENT_TIMEOUT, 10)
@@ -58,7 +58,7 @@ const DEV_SERVER_MIN_TRIES = process.env.RWSDK_DEV_SERVER_MIN_TRIES
 
 const SETUP_WAIT_TIMEOUT = process.env.RWSDK_SETUP_WAIT_TIMEOUT
   ? parseInt(process.env.RWSDK_SETUP_WAIT_TIMEOUT, 10)
-  : 6 * 60 * 1000;
+  : 10 * 60 * 1000;
 
 interface PlaygroundEnvironment {
   projectDir: string;
@@ -88,10 +88,8 @@ let globalDeployPlaygroundEnv: PlaygroundEnvironment | null = null;
 let globalDevInstancePromise: Promise<DevServerInstance | null> | null = null;
 let globalDeploymentInstancePromise: Promise<DeploymentInstance | null> | null =
   null;
-let globalBrowserPromise: Promise<Browser | null> | null = null;
 let globalDevInstance: DevServerInstance | null = null;
 let globalDeploymentInstance: DeploymentInstance | null = null;
-let globalBrowser: Browser | null = null;
 
 let hooksRegistered = false;
 
@@ -110,11 +108,6 @@ function ensureHooksRegistered() {
     if (globalDeploymentInstance) {
       cleanupPromises.push(globalDeploymentInstance.cleanup());
     }
-    if (globalBrowser) {
-      // We disconnect instead of closing, because the browser instance is shared
-      // across all test suites and is managed by a global setup/teardown script.
-      cleanupPromises.push(globalBrowser.disconnect());
-    }
     if (globalDevPlaygroundEnv) {
       cleanupPromises.push(globalDevPlaygroundEnv.cleanup());
     }
@@ -125,7 +118,6 @@ function ensureHooksRegistered() {
     await Promise.all(cleanupPromises);
     globalDevInstance = null;
     globalDeploymentInstance = null;
-    globalBrowser = null;
     globalDevPlaygroundEnv = null;
     globalDeployPlaygroundEnv = null;
   });
@@ -238,6 +230,9 @@ export function setupPlaygroundEnvironment(
           return instance;
         },
       );
+      // Prevent unhandled promise rejections. The error will be handled inside
+      // the test's beforeEach hook where this promise is awaited.
+      globalDevInstancePromise.catch(() => {});
     } else {
       globalDevInstancePromise = Promise.resolve(null);
     }
@@ -259,14 +254,11 @@ export function setupPlaygroundEnvironment(
         globalDeploymentInstance = instance;
         return instance;
       });
+      // Prevent unhandled promise rejections
+      globalDeploymentInstancePromise.catch(() => {});
     } else {
       globalDeploymentInstancePromise = Promise.resolve(null);
     }
-
-    globalBrowserPromise = createBrowser().then((browser) => {
-      globalBrowser = browser;
-      return browser;
-    });
   }, SETUP_PLAYGROUND_ENV_TIMEOUT);
 }
 
@@ -400,26 +392,6 @@ export async function createDeployment(
 }
 
 /**
- * Creates a browser instance for testing.
- */
-export async function createBrowser(): Promise<Browser> {
-  const tempDir = path.join(os.tmpdir(), "rwsdk-e2e-tests");
-  const wsEndpointFile = path.join(tempDir, "wsEndpoint");
-
-  try {
-    const wsEndpoint = await fs.readFile(wsEndpointFile, "utf-8");
-    return await puppeteer.connect({ browserWSEndpoint: wsEndpoint });
-  } catch (error) {
-    console.warn(
-      "Failed to connect to existing browser instance. " +
-        "This might happen if you are running a single test file. " +
-        "Launching a new browser instance instead.",
-    );
-    return await launchBrowser();
-  }
-}
-
-/**
  * Executes a test function with a retry mechanism for specific error codes.
  * @param name - The name of the test, used for logging.
  * @param attemptFn - A function that executes one attempt of the test.
@@ -501,7 +473,30 @@ function createTestRunner(
     describe.concurrent(name, () => {
       let page: Page;
       let instance: DevServerInstance | DeploymentInstance | null;
-      let browser: Browser | null;
+      let browser: Browser;
+
+      beforeAll(async () => {
+        const tempDir = path.join(os.tmpdir(), "rwsdk-e2e-tests");
+        const wsEndpointFile = path.join(tempDir, "wsEndpoint");
+
+        try {
+          const wsEndpoint = await fs.readFile(wsEndpointFile, "utf-8");
+          browser = await puppeteer.connect({ browserWSEndpoint: wsEndpoint });
+        } catch (error) {
+          console.warn(
+            "Failed to connect to existing browser instance. " +
+              "This might happen if you are running a single test file. " +
+              "Launching a new browser instance instead.",
+          );
+          browser = await launchBrowser();
+        }
+      }, SETUP_WAIT_TIMEOUT);
+
+      afterAll(async () => {
+        if (browser) {
+          await browser.disconnect();
+        }
+      });
 
       beforeEach(async () => {
         const instancePromise =
@@ -509,18 +504,15 @@ function createTestRunner(
             ? globalDevInstancePromise
             : globalDeploymentInstancePromise;
 
-        if (!instancePromise || !globalBrowserPromise) {
+        if (!instancePromise) {
           throw new Error(
             "Test environment promises not initialized. Call setupPlaygroundEnvironment() in your test file.",
           );
         }
 
-        [instance, browser] = await Promise.all([
-          instancePromise,
-          globalBrowserPromise,
-        ]);
+        [instance] = await Promise.all([instancePromise]);
 
-        if (!instance || !browser) {
+        if (!instance) {
           throw new Error(
             `No ${envType} instance found. Make sure to enable it in setupPlaygroundEnvironment.`,
           );
@@ -532,7 +524,16 @@ function createTestRunner(
 
       afterEach(async () => {
         if (page) {
-          await page.close();
+          try {
+            await page.close();
+          } catch (error) {
+            // Suppress errors during page close, as the browser might already be disconnecting
+            // due to the test suite finishing.
+            console.warn(
+              `Suppressing error during page.close() in test "${name}":`,
+              error,
+            );
+          }
         }
       });
 
