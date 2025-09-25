@@ -44,7 +44,7 @@ env:
 
 jobs:
   check-ci-status:
-    if: github.ref == 'refs/heads/main' && github.event.inputs.dangerously_override_checks == 'false'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -52,6 +52,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Check status of all workflows on main
+        if: github.event.inputs.dangerously_override_checks == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -76,7 +77,7 @@ jobs:
 
   release:
     needs: check-ci-status
-    if: always() && ((needs.check-ci-status.result == 'success' || needs.check-ci-status.result == 'skipped') || github.event.inputs.dangerously_override_checks == 'true')
+    if: needs.check-ci-status.result == 'success'
     runs-on: ubuntu-latest
 
     steps:
