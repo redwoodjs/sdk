@@ -127,8 +127,10 @@ export async function runDevServer(
 
     devProcess.catch((error: any) => {
       if (!isErrorExpected) {
-        // Just throw the error, let the caller handle it.
-        throw error;
+        // Don't re-throw. The error will be handled gracefully by the polling
+        // logic in `waitForUrl`, which will detect that the process has exited.
+        // Re-throwing here would cause an unhandled promise rejection.
+        log("Dev server process exited unexpectedly:", error.shortMessage);
       }
     });
 
