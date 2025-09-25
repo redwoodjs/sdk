@@ -17,3 +17,15 @@ The `baseui` playground is overly comprehensive and its end-to-end tests use inc
     *   Update the `Home` page to render these new components.
 5.  **Cleanup**: Remove any unused files from the old implementation, such as `ClientShowcase.tsx`.
 6.  **Update Tests**: Adjust the end-to-end tests to match the new component structure and styling.
+
+---
+
+## PR Description
+
+This PR refactors the `baseui` playground to align with the conventions used in other examples like `chakra-ui` and `shadcn`.
+
+- **Simplified Showcase:** The component showcase is now simpler, featuring `Accordion`, `Dialog`, and `Switch` components.
+- **Styled Components:** Components are styled using CSS Modules, following Base UI documentation patterns.
+- **Updated Tests:** End-to-end tests have been rewritten using Puppeteer and updated to reflect the new component structure.
+- **CSP Headers:** The Content Security Policy has been updated to allow SVG images.
+- **Cleanup:** Unused files and components have been removed.
