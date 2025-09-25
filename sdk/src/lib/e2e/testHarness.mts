@@ -633,3 +633,26 @@ export async function waitForHydration(page: Page) {
   // This is a pragmatic approach to ensure React has mounted.
   await new Promise((resolve) => setTimeout(resolve, HYDRATION_TIMEOUT));
 }
+
+export function trackPageErrors(page: Page) {
+  const consoleErrors: string[] = [];
+  const failedRequests: string[] = [];
+
+  page.on("requestfailed", (request) => {
+    failedRequests.push(`${request.url()} | ${request.failure()?.errorText}`);
+  });
+
+  page.on("console", (msg) => {
+    if (msg.type() === "error") {
+      consoleErrors.push(msg.text());
+    }
+  });
+
+  return {
+    get: () => ({
+      // context(justinvdm, 25 Sep 2025): Filter out irrelevant 404s (e.g. favicon)
+      consoleErrors: consoleErrors.filter((e) => !e.includes("404")),
+      failedRequests,
+    }),
+  };
+}
