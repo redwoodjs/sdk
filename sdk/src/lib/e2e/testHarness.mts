@@ -110,7 +110,9 @@ function ensureHooksRegistered() {
       cleanupPromises.push(globalDeploymentInstance.cleanup());
     }
     if (globalBrowser) {
-      cleanupPromises.push(globalBrowser.close());
+      // We disconnect instead of closing, because the browser instance is shared
+      // across all test suites and is managed by a global setup/teardown script.
+      cleanupPromises.push(globalBrowser.disconnect());
     }
     await Promise.all(cleanupPromises);
     globalDevInstance = null;
