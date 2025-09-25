@@ -311,29 +311,32 @@ fi
 
 echo -e "\n🔄 Updating dependencies in monorepo..."
 
-# Skip dependency updates for prerelease versions (but allow test releases)
-if [[ "$NEW_VERSION" =~ -.*\. && ! "$NEW_VERSION" =~ -test\. ]]; then
-  echo "  ⏭️  Skipping dependency updates for prerelease version $NEW_VERSION"
-else
-  while IFS= read -r package_json; do
-    if [[ "$package_json" != "./package.json" ]]; then
-      PROJECT_DIR=$(dirname "$package_json")
-      CURRENT_DEP_VERSION=$(cd "$PROJECT_DIR" && npm pkg get dependencies."$DEPENDENCY_NAME" | tr -d '"')
-      
-      # Only process if the dependency exists (not {} or empty) and isn't a workspace dependency
-      if [[ "$CURRENT_DEP_VERSION" != "{}" && -n "$CURRENT_DEP_VERSION" && "$CURRENT_DEP_VERSION" != workspace:* ]]; then
-        # Get relative path for cleaner output
-        REL_PATH=$(echo "$package_json" | sed 's/\.\.\///')
-        echo "  └─ $REL_PATH"
-        if [[ "$DRY_RUN" == true ]]; then
-          echo "     [DRY RUN] Update to $NEW_VERSION"
-        else
-          (cd "$PROJECT_DIR" && sed -i.bak "s/\"$DEPENDENCY_NAME\": \"[^\"]*\"/\"$DEPENDENCY_NAME\": \"$NEW_VERSION\"/" package.json && rm package.json.bak)
-        fi
+# All non-test releases, including pre-releases, will now update dependencies.
+# This fixes the root cause of the unclean working directory issue.
+while IFS= read -r package_json; do
+  if [[ "$package_json" != "./package.json" ]]; then
+    PROJECT_DIR=$(dirname "$package_json")
+    
+    # Check for the literal string "workspace:" to avoid resolving the version.
+    if [[ "$package_json" =~ ^.*\/node_modules\/workspace\/.*\/package\.json$ ]]; then
+      echo "  └─ Skipping dependency update for workspace package: $PROJECT_DIR"
+      continue
+    fi
+
+    # Only process if the dependency exists (not {} or empty) and isn't a workspace dependency
+    if [[ "$CURRENT_DEP_VERSION" != "{}" && -n "$CURRENT_DEP_VERSION" && "$CURRENT_DEP_VERSION" != workspace:* ]]; then
+      # Get relative path for cleaner output
+      REL_PATH=$(echo "$package_json" | sed 's/\.\.\///')
+      echo "  └─ $REL_PATH"
+      if [[ "$DRY_RUN" == true ]]; then
+        echo "     [DRY RUN] Update to $NEW_VERSION"
+      else
+        (cd "$PROJECT_DIR" && sed -i.bak "s/\"$DEPENDENCY_NAME\": \"[^\"]*\"/\"$DEPENDENCY_NAME\": \"$NEW_VERSION\"/" package.json && rm package.json.bak)
       fi
     fi
-  done < <(find .. -path "*/node_modules" -prune -o -name "package.json" -print)
-fi
+  fi
+done < <(find .. -path "*/node_modules" -prune -o -name "package.json" -print)
+
 
 echo -e "\n📥 Installing dependencies..."
 if [[ "$DRY_RUN" == true ]]; then
@@ -384,15 +387,11 @@ if [[ "$DRY_RUN" == true ]]; then
     echo "    - Push: origin with tags"
   fi
 else
-  # For prerelease versions, only add the main package.json since we didn't update dependencies
-  if [[ "$NEW_VERSION" =~ -.*\. && ! "$NEW_VERSION" =~ -test\. ]]; then
-    # Just amend the existing commit (which already has package.json)
-    git commit --amend --no-edit
-  else
-    # Add all changed package.json and pnpm-lock.yaml files in the monorepo
-    (cd .. && git add $(git diff --name-only | grep -E 'package\.json|pnpm-lock\.yaml$'))
-    git commit --amend --no-edit
-  fi
+  # Add all changed package.json and pnpm-lock.yaml files in the monorepo.
+  # This is safe for all cases because `git diff` will only find files that have actually changed.
+  # For a prerelease, this will correctly include the updated pnpm-lock.yaml.
+  (cd .. && git add $(git diff --name-only | grep -E 'package\.json|pnpm-lock\.yaml$'))
+  git commit --amend --no-edit
 
   if [[ "$VERSION_TYPE" == "test" ]]; then
     echo "  - Creating tag for test release..."
@@ -402,10 +401,17 @@ else
     echo "  - Rolling back local commit for test release. The commit is available via the remote tag."
     git reset --hard HEAD~1
   else
-    git pull --rebase
+    # As a final safety measure, check for and discard any remaining unstaged changes
+    # This prevents the rebase/push from failing due to an unexpectedly dirty working directory
+    if ! git diff-index --quiet HEAD --; then
+      echo "::warning::Detected unstaged changes before final push. This should not happen."
+      echo "Stashing changes to ensure a clean push:"
+      git stash --include-untracked
+      git stash drop
+    fi
     git tag "$TAG_NAME"
-    git push
-    git push --tags
+    git push origin main
+    git push origin "$TAG_NAME"
   fi
 fi
 
