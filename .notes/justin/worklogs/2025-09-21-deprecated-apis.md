@@ -48,13 +48,15 @@ After making these changes, I ran the TypeScript compiler to ensure there were n
 
 ## PR Description
 
-This change removes the deprecated `headers` property from the `RequestInfo` interface to simplify the API. All response header modifications should now be done through the `response.headers` object.
+This change removes two APIs to simplify the developer experience:
+1.  The deprecated `headers` property from the `RequestInfo` interface.
+2.  The undocumented `resolveSSRValue` helper function.
 
-### BREAKING CHANGE
+### BREAKING CHANGE: `requestInfo.headers` removal
 
-The `headers` property on the `RequestInfo` object has been removed. Code that previously used `requestInfo.headers` to set response headers will no longer work.
+The `headers` property on the `RequestInfo` object has been removed. All response header modifications should now be done through the `response.headers` object.
 
-### Migration Guide
+#### Migration Guide
 
 To update your code, replace any usage of `requestInfo.headers` with `requestInfo.response.headers`.
 
@@ -72,4 +74,67 @@ const myMiddleware = (requestInfo) => {
 const myMiddleware = (requestInfo) => {
   requestInfo.response.headers.set('X-Custom-Header', 'my-value');
 };
+```
+
+### BREAKING CHANGE: `resolveSSRValue` removal
+
+The `resolveSSRValue` helper function has been removed. SSR-only functions can now be imported and called directly within Server Actions without this wrapper.
+
+#### Migration Guide
+
+Remove the `resolveSSRValue` wrapper and call the SSR function directly.
+
+**Before:**
+
+```typescript
+import { env } from "cloudflare:workers";
+import { ssrSendWelcomeEmail } from "@/app/email/ssrSendWelcomeEmail";
+import { resolveSSRValue } from "rwsdk/worker";
+
+export async function sendWelcomeEmail(formData: FormData) {
+  const doSendWelcomeEmail = await resolveSSRValue(ssrSendWelcomeEmail);
+
+  const email = formData.get("email") as string;
+
+  if (!email) {
+    console.error("❌ Email is required");
+    return { error: "Email is required", success: false };
+  }
+
+  const { data, error } = await doSendWelcomeEmail(env.RESEND_API, email);
+
+  if (error) {
+    console.error("❌ Error sending email", error);
+    return { error: error.message, success: false };
+  }
+
+  console.log("📥 Email sent successfully", data);
+  return { success: true, error: null };
+}
+```
+
+**After:**
+
+```typescript
+import { env } from "cloudflare:workers";
+import { ssrSendWelcomeEmail } from "@/app/email/ssrSendWelcomeEmail";
+
+export async function sendWelcomeEmail(formData: FormData) {
+  const email = formData.get("email") as string;
+
+  if (!email) {
+    console.error("❌ Email is required");
+    return { error: "Email is required", success: false };
+  }
+
+  const { data, error } = await ssrSendWelcomeEmail(env.RESEND_API, email);
+
+  if (error) {
+    console.error("❌ Error sending email", error);
+    return { error: error.message, success: false };
+  }
+
+  console.log("📥 Email sent successfully", data);
+  return { success: true, error: null };
+}
 ```
