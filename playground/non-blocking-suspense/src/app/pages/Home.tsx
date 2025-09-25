@@ -1,7 +1,7 @@
 import { Suspense } from "react";
-import { ExampleButton } from "../components/ExampleButton";
-import { DisplayRequest } from "../components/DisplayRequest";
-import { fetchExampleRemoteRequest } from "../lib/exampleRemoteRequest";
+import { ExampleButton } from "@/app/components/ExampleButton";
+import { DisplayRequest } from "@/app/components/DisplayRequest";
+import { fetchExampleRemoteRequest } from "@/app/lib/remote";
 
 export function Home() {
   const requestPromise = fetchExampleRemoteRequest();

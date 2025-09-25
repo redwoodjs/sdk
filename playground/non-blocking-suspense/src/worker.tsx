@@ -9,9 +9,5 @@ export type AppContext = {};
 
 export default defineApp([
   setCommonHeaders(),
-  ({ ctx }) => {
-    // setup ctx here
-    ctx;
-  },
   render(Document, [route("/", Home)]),
 ]);
