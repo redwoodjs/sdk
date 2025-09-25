@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "description": "E2E test playground for rwsdk",
-  "scripts": {
-    "test:e2e": "vitest --run"
-  },
+  "scripts": {},
   "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "fs-extra": "^11.3.0",
+    "rwsdk": "workspace:*",
     "vitest": "^3.1.1"
   }
 }

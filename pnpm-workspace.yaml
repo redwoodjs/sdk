@@ -3,4 +3,4 @@ packages:
   - "starters/*"
   - "examples/*"
   - "docs"
-  - "playground/*"
+  - "playground/**"
