@@ -15,6 +15,8 @@ import { createHash } from "crypto";
 import { $ } from "../../lib/$.mjs";
 import { ROOT_DIR } from "../constants.mjs";
 import path from "node:path";
+import os from "os";
+import { retry } from "./retry.mjs";
 
 const log = debug("rwsdk:e2e:environment");
 
@@ -252,7 +254,10 @@ export async function copyProjectToTempDir(
 
     // Install dependencies in the target directory
     const installDir = monorepoRoot ? tempCopyRoot : targetDir;
-    await installDependencies(installDir, packageManager);
+    await retry(() => installDependencies(installDir, packageManager), {
+      retries: 3,
+      delay: 1000,
+    });
 
     // Return the environment details
     return { tempDir, targetDir, workerName };
@@ -301,10 +306,15 @@ async function installDependencies(
         });
       }
     }
+    const npmCacheDir = path.join(os.tmpdir(), "npm-cache");
+    await fs.promises.mkdir(npmCacheDir, { recursive: true });
+
+    const yarnCacheDir = path.join(os.tmpdir(), "yarn-cache");
+    await fs.promises.mkdir(yarnCacheDir, { recursive: true });
     const installCommand = {
       pnpm: ["pnpm", "install"],
-      npm: ["npm", "install"],
-      yarn: ["yarn", "install"],
+      npm: ["npm", "install", "--cache", npmCacheDir],
+      yarn: ["yarn", "install", "--cache-folder", yarnCacheDir],
       "yarn-classic": ["yarn"],
     }[packageManager];
 

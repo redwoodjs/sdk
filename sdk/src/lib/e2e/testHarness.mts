@@ -26,7 +26,7 @@ import { poll, pollValue } from "./poll.mjs";
 const SETUP_PLAYGROUND_ENV_TIMEOUT = process.env
   .RWSDK_SETUP_PLAYGROUND_ENV_TIMEOUT
   ? parseInt(process.env.RWSDK_SETUP_PLAYGROUND_ENV_TIMEOUT, 10)
-  : 5 * 60 * 1000;
+  : 15 * 60 * 1000;
 
 const DEPLOYMENT_TIMEOUT = process.env.RWSDK_DEPLOYMENT_TIMEOUT
   ? parseInt(process.env.RWSDK_DEPLOYMENT_TIMEOUT, 10)
@@ -58,7 +58,7 @@ const DEV_SERVER_MIN_TRIES = process.env.RWSDK_DEV_SERVER_MIN_TRIES
 
 const SETUP_WAIT_TIMEOUT = process.env.RWSDK_SETUP_WAIT_TIMEOUT
   ? parseInt(process.env.RWSDK_SETUP_WAIT_TIMEOUT, 10)
-  : 6 * 60 * 1000;
+  : 10 * 60 * 1000;
 
 interface PlaygroundEnvironment {
   projectDir: string;
@@ -632,27 +632,4 @@ export async function waitForHydration(page: Page) {
   // 2. Wait a short, fixed amount of time for client-side hydration to finish.
   // This is a pragmatic approach to ensure React has mounted.
   await new Promise((resolve) => setTimeout(resolve, HYDRATION_TIMEOUT));
-}
-
-export function trackPageErrors(page: Page) {
-  const consoleErrors: string[] = [];
-  const failedRequests: string[] = [];
-
-  page.on("requestfailed", (request) => {
-    failedRequests.push(`${request.url()} | ${request.failure()?.errorText}`);
-  });
-
-  page.on("console", (msg) => {
-    if (msg.type() === "error") {
-      consoleErrors.push(msg.text());
-    }
-  });
-
-  return {
-    get: () => ({
-      // context(justinvdm, 25 Sep 2025): Filter out irrelevant 404s (e.g. favicon)
-      consoleErrors: consoleErrors.filter((e) => !e.includes("404")),
-      failedRequests,
-    }),
-  };
 }
