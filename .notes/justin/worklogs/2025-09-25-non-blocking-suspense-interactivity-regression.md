@@ -63,15 +63,13 @@ The new approach for initial page loads is as follows:
 
 This "Unified RSC Render -> Tee -> Strip" strategy is architecturally cleaner and gives React full control over the streaming process. The primary technical challenge to investigate is the feasibility of creating a streaming transformer that can reliably parse and modify the RSC wire format without full buffering.
 
-## 4. A New Streaming Strategy: Marker-Based Interleaving
+## 4. A New Streaming Strategy: Marker-Based Interleaving (Surgical Implementation)
 
-The "Unified RSC Render" approach was re-evaluated and determined to be overly complex, especially the RSC-stripping requirement. A more surgical and robust stream-stitching strategy has been devised that is aware of how React handles Suspense.
+The "Unified RSC Render" approach was re-evaluated and determined to be overly complex. A more surgical and robust stream-stitching strategy has been devised that is aware of how React handles Suspense. This approach contains all necessary changes within the SSR rendering logic, requiring no modifications to `worker.tsx`.
 
 ### The Core Insight & Flaw in Previous Stitching
 
 The fundamental challenge is that the browser needs the client-side `<script>` tag (from the document shell) to begin hydration, but that tag is located *after* the application content. If the application content stream pauses due to Suspense, the script tag is blocked.
-
-The initial idea to detect this "pause" state and resume the document stream was rejected because streams do not have a reliable, explicit "paused" event to hook into.
 
 ### The New Architecture: Suspense-Aware Stitching
 
@@ -79,13 +77,13 @@ The new approach leverages the fact that React will stream all available, non-su
 
 The implementation will be as follows:
 
-1.  **Inject an End Marker (in `worker.tsx`):** For initial page loads, the `pageElement` passed to the RSC renderer will be wrapped in a `<React.Fragment>`. This fragment will contain two children:
-    1.  The original `pageElement`.
+1.  **Inject an End Marker (in `renderDocumentHtmlStream.tsx`):** For initial page loads, after extracting the `innerAppNode` from the RSC payload stream, it will be wrapped in a `<React.Fragment>`. This fragment will contain two children:
+    1.  The original `innerAppNode`.
     2.  A new, special "end marker" component that renders a unique HTML comment (e.g., `<!-- RWSDK_APP_HTML_END -->`).
 
-    Because this marker is a sibling to the application content and is not suspended, React will render it as part of the initial, non-suspended HTML shell.
+    Because this marker is a sibling to the application content and is not suspended, React will render it as part of the initial, non-suspended HTML shell when `appNode` is rendered to its own stream.
 
-2.  **Implement a New `stitchStreams` Utility:** A new, more specialized utility will replace the generic `injectHtmlAtMarker`. It will orchestrate the two streams with the following logic:
+2.  **Implement a `stitchDocumentAndAppStreams` Utility:** A new, more specialized utility will replace the generic `injectHtmlAtMarker`. It will orchestrate the two streams with the following logic:
     1.  **Stream Document Head:** Read from the document stream and send chunks to the browser until the *start marker* (`<!-- RWSDK_INJECT_APP_HTML -->`) is found.
     2.  **Stream Initial App Shell:** Switch to the app stream. Read from it and send chunks to the browser until the *end marker* (`<!-- RWSDK_APP_HTML_END -->`) is found. This represents the complete, non-suspended part of the application.
     3.  **Stream Document Tail (with script):** Once the app's end marker is found, switch *back* to the document stream. Continue sending its chunks. This is the critical step that sends the remainder of the `<body>`, including the `<script>import("/src/client.tsx")</script>` tag, to the browser, allowing hydration to begin immediately.
