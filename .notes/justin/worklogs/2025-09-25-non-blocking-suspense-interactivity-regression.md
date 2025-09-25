@@ -93,3 +93,29 @@ The implementation will be as follows:
 
 This marker-based interleaving strategy solves the race condition. It ensures the client script is delivered as soon as the initial UI is rendered, without waiting for slow data fetches, restoring the intended non-blocking, early-hydration behavior.
 
+## 5. PR Title and Description
+
+**Title:** `fix(streaming): Ensure Early Hydration with Suspense-Aware Stream Interleaving`
+
+**Description:**
+
+### Context: The Previous Rendering Architecture
+
+Previously, the framework used two separate, isolated rendering passes on the server to produce the initial HTML document: one for the user's `<Document>` shell and one for the application content. The resulting HTML streams were then stitched together. This architecture was implemented to solve a critical `useId` hydration mismatch by ensuring the application's render context was not polluted by the document's render.
+
+### Problem: Blocked Hydration with Suspense
+
+While the isolated render fixed the `useId` issue, it introduced a significant performance regression. The stream stitching logic was naive; it would wait for the *entire* application stream to complete before continuing with the rest of the document stream.
+
+If the application contained a `<Suspense>` boundary, React would pause the stream to wait for data. This pause blocked the document stream from sending the remainder of the `<body>`, which critically contains the `<script>` tag that initiates client-side hydration. As a result, the UI shell would render, but it would remain non-interactive until the slowest data fetch on the page was complete, negating the primary benefit of streaming with Suspense.
+
+### Solution: Suspense-Aware Stream Interleaving
+
+This change replaces the simple stitching mechanism with a more sophisticated, suspense-aware interleaving strategy.
+
+The solution works by strategically injecting a second marker into the application's render stream, signaling the end of the initial, non-suspended content. A new stream orchestration utility uses these markers to intelligently interleave the two streams. It sends the document head, then the initial app shell, then the *rest of the document body* (including the client script), and only then streams the suspended content from the app before finally closing the document.
+
+This ensures the client script is always delivered to the browser as soon as the initial UI is visible, restoring immediate interactivity without re-introducing the original `useId` hydration bug.
+
+For a detailed, step-by-step explanation of this new architecture, please see the updated [Hybrid Rendering documentation](/docs/architecture/hybridRscSsrRendering.md).
+
