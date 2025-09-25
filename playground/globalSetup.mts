@@ -16,7 +16,11 @@ export async function setup() {
 
 export async function teardown() {
   if (browser) {
-    await browser.close();
+    try {
+      await browser.close();
+    } catch (error) {
+      console.warn("Suppressing error during browser.close():", error);
+    }
   }
   await fs.remove(tempDir);
 }

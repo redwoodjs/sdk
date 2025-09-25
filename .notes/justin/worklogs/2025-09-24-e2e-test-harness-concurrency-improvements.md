@@ -103,3 +103,15 @@ To fix this, each test suite (`dev` and `deploy`) will manage its own independen
 3.  **Connect and Disconnect**: This new, suite-scoped `beforeAll` hook will connect to the global browser's WebSocket endpoint. A corresponding `afterAll` hook within the same `describe` block will disconnect it.
 
 This ensures that the `dev` and `deploy` suites each have their own connection lifecycle, preventing them from interfering with each other and resolving the race condition.
+
+## Addendum: Suppress Final Teardown Error
+
+### Problem
+
+Even with all tests passing and browser connections isolated, the test suite was still exiting with an error due to an unhandled `TargetCloseError` rejection. This error occurred at the very end of the test run, after all tests had completed successfully.
+
+The root cause was a race condition in the final teardown step. The `teardown` function in `playground/globalSetup.mts` calls `browser.close()` to terminate the main browser instance. However, this happens *after* all the individual test suites have already run their own `afterAll` hooks and disconnected their respective connections to the browser. By the time `browser.close()` is called, the browser instance is in an intermediate state where it is no longer fully connected but not yet closed, causing the operation to fail sporadically.
+
+### Plan
+
+Since the error occurs during the final cleanup phase after all tests have passed, it can be safely ignored. The `browser.close()` call in `playground/globalSetup.mts` will be wrapped in a `try...catch` block to suppress any potential `TargetCloseError`, ensuring that the test runner exits with a successful status code.
