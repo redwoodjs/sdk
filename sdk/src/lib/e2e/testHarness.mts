@@ -683,15 +683,3 @@ export async function waitForHydration(page: Page) {
   // This is a pragmatic approach to ensure React has mounted.
   await new Promise((resolve) => setTimeout(resolve, HYDRATION_TIMEOUT));
 }
-
-/**
- * Waits for the page to be fully loaded and hydrated.
- * This should be used before any user interaction is simulated.
- */
-export async function waitForHydration(page: Page) {
-  // 1. Wait for the document to be fully loaded.
-  await page.waitForFunction('document.readyState === "complete"');
-  // 2. Wait a short, fixed amount of time for client-side hydration to finish.
-  // This is a pragmatic approach to ensure React has mounted.
-  await new Promise((resolve) => setTimeout(resolve, HYDRATION_TIMEOUT));
-}
