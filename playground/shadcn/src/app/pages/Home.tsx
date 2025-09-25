@@ -116,23 +116,6 @@ export function Home({ ctx }: RequestInfo) {
               <Badge variant="outline">Outline</Badge>
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Avatar</CardTitle>
-              <CardDescription>
-                User profile images and fallbacks
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex gap-2 items-center">
-                <Avatar>
-                  <AvatarImage alt="John Doe" src="/shadcn.png" />
-                  <AvatarFallback>JD</AvatarFallback>
-                </Avatar>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </section>
 

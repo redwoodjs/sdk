@@ -5,3 +5,4 @@ export * from "./dev.mjs";
 export * from "./browser.mjs";
 export * from "./release.mjs";
 export * from "./types.mjs";
+export * from "./poll.mjs";
