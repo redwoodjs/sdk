@@ -100,8 +100,8 @@ export const runDirectivesScan = async ({
   serverFiles: Set<string>;
   entries?: string[];
 }) => {
-  console.log(
-    "(rwsdk) Scanning for 'use client' and 'use server' directives...",
+  deferredLog(
+    "\n… (rwsdk) Scanning for 'use client' and 'use server' directives...",
   );
 
   // Set environment variable to indicate scanning is in progress
@@ -362,7 +362,7 @@ export const runDirectivesScan = async ({
   } finally {
     // Always clear the scanning flag when done
     delete process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE;
-    console.log(
+    deferredLog(
       "✔ (rwsdk) Done scanning for 'use client' and 'use server' directives.",
     );
     process.env.VERBOSE &&
@@ -372,4 +372,10 @@ export const runDirectivesScan = async ({
         Array.from(serverFiles),
       );
   }
+};
+
+const deferredLog = (message: string) => {
+  setTimeout(() => {
+    console.log(message);
+  }, 500);
 };
