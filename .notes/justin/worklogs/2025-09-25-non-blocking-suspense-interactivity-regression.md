@@ -85,6 +85,18 @@ The final, working solution addresses all three issues:
 
 This combination of fixes ensures the DOM structure is correct, the `useId`s are synchronized, and the client script is delivered for early hydration without being blocked by Suspense.
 
+### Subsequent Findings & Final Solution
+
+Further testing revealed that relying on React's internal streaming markers (like `<template>` or `<!--$-->`) was brittle. The specific markers React uses are an implementation detail and not guaranteed to be stable. This approach was abandoned in favor of a more explicit and robust strategy.
+
+The final, successful solution was to inject markers directly into the RSC payload.
+
+1.  **Markers in the RSC Payload:** In `worker.tsx`, the `pageElement` is now wrapped in a fragment that includes a `<div id="rwsdk-app-end" />` as a sibling. This guarantees the marker is part of the component tree for both the server render and the client hydration, ensuring perfect structural integrity.
+2.  **Consistent Marker Structure:** For consistency, the start marker in `renderDocumentHtmlStream.tsx` was also changed to a `<div id="rwsdk-app-start" />`.
+3.  **Updated Stitching Logic:** The `stitchDocumentAndAppStreams` utility was updated to look for these new, explicit `div` markers. It was also corrected to leave the `rwsdk-app-end` marker in the final DOM, ensuring the client and server see the exact same markup.
+
+This combination is the most robust solution, as it doesn't rely on React's internal implementation details and guarantees a consistent DOM between the server and client.
+
 ## 5. PR Title and Description
 
 **Title:** `fix(streaming): Ensure Early Hydration with Suspense-Aware Stream Interleaving`
@@ -101,13 +113,15 @@ While this approach fixed the `useId` issue, it caused a problem with Suspense. 
 
 If the application used `<Suspense>`, React would pause the app stream to wait for data. This pause meant the rest of the document stream, including the `<script>` tag for client-side hydration, was also delayed. The UI shell would appear in the browser, but it would not be interactive until all data fetching was finished.
 
-### Solution: Interleaving Streams
+### Solution: Interleaving Streams via RSC Payload Markers
 
 This change updates the stream stitching to be aware of Suspense boundaries.
 
-It works by injecting a marker into the application's render stream that signals the end of the initial, non-suspended content. A utility then uses this marker to interleave the two streams. It sends the document head, the initial app content (up to the suspense boundary), the rest of the document body (including the client script), and then streams the suspended content as it becomes available.
+The solution works by injecting a marker component (`<div id="rwsdk-app-end" />`) directly into the RSC payload on the server. Because this marker is part of the payload, it is present in both the server-side HTML render and the client-side component tree, which guarantees structural consistency and prevents hydration errors.
 
-This ensures the client script is sent to the browser as soon as the initial UI is ready, making the page interactive right away, without bringing back the original `useId` bug.
+A utility then uses this marker in the HTML stream to intelligently interleave the document and application streams. It sends the document head, then the initial app content (up to the marker), then the *rest of the document body* (including the client script), and only then streams the suspended content from the app before finally closing the document.
+
+This ensures the client script is sent to the browser as soon as the initial UI is ready, making the page interactive right away, without re-introducing `useId` bugs or relying on brittle implementation details of React's streaming format.
 
 For a detailed explanation, see the updated [Hybrid Rendering documentation](/docs/architecture/hybridRscSsrRendering.md).
 

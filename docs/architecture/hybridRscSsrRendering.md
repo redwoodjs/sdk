@@ -49,31 +49,16 @@ In parallel, the document shell is rendered in its own isolated context.
 
 The final and most critical step is to combine the document and application HTML streams into a single response. A simple injection is insufficient because a `<Suspense>` boundary in the application could pause its stream, blocking the rest of the document (including the client script) from being sent.
 
-To solve this, the framework uses a "Suspense-Aware Stream Stitching" strategy that interleaves the two streams based on markers. This ensures the client script is delivered as early as possible without waiting for slow data fetches.
+To solve this, the framework uses a "Suspense-Aware Stream Stitching" strategy that interleaves the two streams based on explicit markers that are guaranteed to be consistent between the server render and the client RSC payload.
 
-1.  **Marker Injection:** At render time, the application content is wrapped with a unique end-marker comment (`<!-- APP_SHELL_END -->`). Because this marker is not suspended, React will always include it as part of the initial, non-suspended HTML chunk.
+1.  **Marker Injection into the RSC Payload:** The key to this strategy is injecting markers into the React Server Component (RSC) payload itself. Before the application is rendered to an RSC stream in the worker, it is wrapped in markers (e.g., `<div id="rwsdk-app-start" />` and `<div id="rwsdk-app-end" />`). Because these markers are now part of the component tree in the RSC payload, they are guaranteed to exist and be identical in both the server-rendered HTML and the client-side render tree, preventing any structural mismatches that would break hydration.
 
 2.  **Stream Interleaving:** A dedicated utility orchestrates the final response stream with the following logic:
-    *   **Step 1: Stream Document Head:** The document stream is sent until the application placeholder is found.
-        ```html
-        <html><head>...</head><body><div id="root">
-        ```
-    *   **Step 2: Stream Initial App Shell:** The process switches to the application stream and sends chunks until it finds the `<!-- APP_SHELL_END -->` marker. This is the complete, non-suspended UI.
-        ```html
-        <nav>...</nav><h1>My Page</h1><div>...</div><!-- APP_SHELL_END -->
-        ```
+    *   **Step 1: Stream Document Head:** The document stream is sent until the start marker (`<div id="rwsdk-app-start"></div>`) is found and discarded.
+    *   **Step 2: Stream Initial App Shell:** The process switches to the application stream and sends chunks until it finds the end marker (`<div id="rwsdk-app-end"></div>`). This represents the complete, non-suspended UI. This marker is left in the stream to ensure the client sees the exact same DOM structure.
     *   **Step 3: Stream Document Body Tail:** The process switches back to the document stream to send the remainder of the body, which critically includes the client-side script tag that initiates hydration.
-        ```html
-        </div><script>import("/src/client.tsx")</script>
-        ```
     *   **Step 4: Stream Suspended Content:** The process switches back to the application stream and sends all remaining chunks. This is the content from any `<Suspense>` boundaries that have now resolved.
-        ```html
-        <template>...</template><script>...update content...</script>
-        ```
     *   **Step 5: Finish Document:** Finally, the process returns to the document stream to send the closing `</body>` and `</html>` tags.
-        ```html
-        </body></html>
-        ```
 
 This interleaving process guarantees that the browser receives the static HTML and the script needed to make it interactive as quickly as possible, fulfilling the promise of a non-blocking, streaming-first architecture.
 
