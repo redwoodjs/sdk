@@ -32,8 +32,11 @@ on:
       dangerously_override_checks:
         description: "If true, skips the check for CI status and proceeds with the release."
         required: false
-        type: boolean
-        default: false
+        type: choice
+        options:
+          - "false"
+          - "true"
+        default: "false"
 
 permissions:
   contents: write
