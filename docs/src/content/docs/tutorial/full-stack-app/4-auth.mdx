@@ -73,7 +73,7 @@ export type AppContext = {
 
 export default defineApp([
   setCommonHeaders(),
-  async ({ ctx, request, headers }) => {
+  async ({ ctx, request, response }) => {
     await setupDb(env);
     setupSessionStore(env);
 
@@ -81,12 +81,12 @@ export default defineApp([
       ctx.session = await sessions.load(request);
     } catch (error) {
       if (error instanceof ErrorResponse && error.code === 401) {
-        await sessions.remove(request, headers);
-        headers.set("Location", "/user/login");
+        await sessions.remove(request, response.headers);
+        response.headers.set("Location", "/user/login");
 
         return new Response(null, {
           status: 302,
-          headers,
+          headers: response.headers,
         });
       }
 
@@ -137,7 +137,7 @@ setCommonHeaders(),
 - On **line 19** we're setting up our common headers. This is a function inside of `app/src/headers.ts`. (Imported on line 5.) It creates the Security Policies, Transport Policy, Referrer Policy, and Permissions Policy. [You can find additional documentation here.](/core/security/#-security-headers)
 
 ```tsx title="src/worker.tsx" startLineNumber=20
-async ({ ctx, request, headers }) => {
+async ({ ctx, request, response }) => {
   await setupDb(env);
   setupSessionStore(env);
 
@@ -145,12 +145,12 @@ async ({ ctx, request, headers }) => {
     ctx.session = await sessions.load(request);
   } catch (error) {
     if (error instanceof ErrorResponse && error.code === 401) {
-      await sessions.remove(request, headers);
-      headers.set("Location", "/user/login");
+      await sessions.remove(request, response.headers);
+      response.headers.set("Location", "/user/login");
 
       return new Response(null, {
         status: 302,
-        headers,
+        headers: response.headers,
       });
     }
 
@@ -263,14 +263,13 @@ import { sessions } from "@/session/store";
 
 export const userRoutes = [
   route("/login", [Login]),
-  route("/logout", async function ({ request }) {
-    const headers = new Headers();
-    await sessions.remove(request, headers);
-    headers.set("Location", "/");
+  route("/logout", async function ({ request, response }) {
+    await sessions.remove(request, response.headers);
+    response.headers.set("Location", "/");
 
     return new Response(null, {
       status: 302,
-      headers,
+      headers: response.headers,
     });
   }),
 ];
@@ -306,14 +305,13 @@ import { sessions } from "@/session/store";
 export const userRoutes = [
   route("/login", [Login]),
   route("/signup", [Signup]),
-  route("/logout", async function ({ request }) {
-    const headers = new Headers();
-    await sessions.remove(request, headers);
-    headers.set("Location", "/");
+  route("/logout", async function ({ request, response }) {
+    await sessions.remove(request, response.headers);
+    response.headers.set("Location", "/");
 
     return new Response(null, {
       status: 302,
-      headers,
+      headers: response.headers,
     });
   }),
 ];
@@ -1098,7 +1096,7 @@ Now, let's style the Apply Wize text.
 
 In our mock-up, we also had a quote in the bottom left corner:
 
-> “Transform the job hunt from a maze into a map.”
+> "Transform the job hunt from a maze into a map."
 
 <figure>
   ![](./images/figma-login.png)
@@ -1121,7 +1119,7 @@ To style the text:
 
 ```tsx title="src/app/layouts/AuthLayout.tsx" startLineNumber=12 {1}
 <div className="text-white text-sm absolute bottom-0 left-0 right-0 p-10">
-  “Transform the job hunt from a maze into a map.”
+  "Transform the job hunt from a maze into a map."
 </div>
 ---
 - We want to it to be white, `text-white` and small (`14px`) `text-sm`
@@ -1685,7 +1683,7 @@ Within our `src/worker.tsx` file, we're exporting `defineApp`. Remember, this in
 ```tsx title="src/worker.tsx" collapse={2-30, 33-43} ins={45-46} showLineNumbers=false startLineNumber=19
 export default defineApp([
   setCommonHeaders(),
-  async ({ ctx, request, headers }) => {
+  async ({ ctx, request, response }) => {
     await setupDb(env);
     setupSessionStore(env);
 
@@ -1693,12 +1691,12 @@ export default defineApp([
       ctx.session = await sessions.load(request);
     } catch (error) {
       if (error instanceof ErrorResponse && error.code === 401) {
-        await sessions.remove(request, headers);
-        headers.set("Location", "/user/login");
+        await sessions.remove(request, response.headers);
+        response.headers.set("Location", "/user/login");
 
         return new Response(null, {
           status: 302,
-          headers,
+          headers: response.headers,
         });
       }
 
@@ -1886,8 +1884,9 @@ Then, right below the button, we can add our legal statement:
 
 ```tsx title="src/app/pages/user/Signup.tsx" startLineNumber=72
 <p>
-  By clicking continue, you agree to our 
-  <a href={link("/legal/terms")}>Terms of Service</a> and 
+  By clicking continue, you agree to our 
+  <a href={link("/legal/terms")}>Terms of Service</a> 
+  and 
   <a href={link("/legal/privacy")}>Privacy Policy</a>.
 </p>
 ```

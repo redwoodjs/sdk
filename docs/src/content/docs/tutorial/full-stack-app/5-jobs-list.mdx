@@ -2133,7 +2133,7 @@ Before we call this done, let's ensure that our Archive filter is working.
 
 ### Using Query Params to Filter Applications
 
-On every page we get an object that contains `ctx`, `request`, and `headers`. In our case, the `request` contains the query parameters that we're looking for.
+On every page we get an object that contains `ctx`, `request`, and `response`. In our case, the request contains the query parameters that we're looking for.
 
 On `List.tsx`, when we define our `List` function, let's accept `request` as a prop:
 

@@ -51,7 +51,6 @@ defineApp([
 ---
 In this example above a request would be processed by the middleware, then the correct route would match and execute the handler.
 ---
-```
 
 ## `ErrorResponse`
 
@@ -61,18 +60,21 @@ The `ErrorResponse` class is used to return an errors that includes a status cod
 import { ErrorResponse } from "rwsdk/worker";
 
 export default defineApp([
-  function middleware({ request, ctx }) {
+  async ({ ctx, request, response }) => {
     try {
       ctx.session = await sessions.load(request);
     } catch (error) {
       if (error instanceof ErrorResponse && error.code === 401) {
-        await sessions.remove(request, headers);
-        headers.set("Location", "/user/login");
+        await sessions.remove(request, response.headers);
+        response.headers.set("Location", "/user/login");
+
         return new Response(null, {
           status: 302,
-          headers,
+          headers: response.headers,
         });
       }
+
+      throw error;
     }
   },
   route("/", () => new ErrorResponse(404, "Not Found")),
