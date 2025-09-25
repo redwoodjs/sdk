@@ -22,10 +22,11 @@ The `baseui` playground is overly comprehensive and its end-to-end tests use inc
 
 ## PR Description
 
-This PR refactors the `baseui` playground to align with the conventions used in other examples like `chakra-ui` and `shadcn`.
+This PR introduces a new playground example for Base UI to demonstrate its integration with RedwoodSDK.
 
-- **Simplified Showcase:** The component showcase is now simpler, featuring `Accordion`, `Dialog`, and `Switch` components.
-- **Styled Components:** Components are styled using CSS Modules, following Base UI documentation patterns.
-- **Updated Tests:** End-to-end tests have been rewritten using Puppeteer and updated to reflect the new component structure.
-- **CSP Headers:** The Content Security Policy has been updated to allow SVG images.
-- **Cleanup:** Unused files and components have been removed.
+The primary goals of this example are to:
+- Showcase support for a popular headless component library.
+- Serve as a reference for users on structuring an application with both server-rendered content and interactive client components.
+- Expand end-to-end test coverage to ensure compatibility with Base UI's styling and hydration patterns, particularly with CSS Modules.
+
+The playground includes styled examples of `Accordion`, `Dialog`, and `Switch` components.

@@ -4,6 +4,7 @@ import {
   testDevAndDeploy,
   poll,
   waitForHydration,
+  trackPageErrors,
 } from "rwsdk/e2e";
 
 setupPlaygroundEnvironment(import.meta.url);
@@ -11,12 +12,7 @@ setupPlaygroundEnvironment(import.meta.url);
 testDevAndDeploy(
   "renders Base UI playground without errors",
   async ({ page, url }) => {
-    const consoleErrors: string[] = [];
-    page.on("console", (msg) => {
-      if (msg.type() === "error") {
-        consoleErrors.push(msg.text());
-      }
-    });
+    const errorTracker = trackPageErrors(page);
 
     await page.goto(url, { waitUntil: "networkidle0" });
 
@@ -32,19 +28,17 @@ testDevAndDeploy(
       return true;
     });
 
-    expect(consoleErrors).toEqual([]);
+    expect(errorTracker.get()).toEqual({
+      consoleErrors: [],
+      failedRequests: [],
+    });
   },
 );
 
 testDevAndDeploy(
   "interactive components work correctly",
   async ({ page, url }) => {
-    const consoleErrors: string[] = [];
-    page.on("console", (msg) => {
-      if (msg.type() === "error") {
-        consoleErrors.push(msg.text());
-      }
-    });
+    const errorTracker = trackPageErrors(page);
 
     await page.goto(url, { waitUntil: "networkidle0" });
     await page.waitForSelector('[data-testid="main-title"]');
@@ -79,6 +73,9 @@ testDevAndDeploy(
     const switchComponent = await page.waitForSelector('[role="switch"]');
     await switchComponent?.click();
 
-    expect(consoleErrors).toEqual([]);
+    expect(errorTracker.get()).toEqual({
+      consoleErrors: [],
+      failedRequests: [],
+    });
   },
 );
