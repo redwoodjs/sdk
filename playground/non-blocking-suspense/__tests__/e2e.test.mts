@@ -20,16 +20,6 @@ testDevAndDeploy(
 
     const getPageContent = async () => await page.content();
 
-    const deferExampleRemoteRequest = async () =>
-      fetch(url + "/defer-response");
-
-    const resolveExampleRemoteRequest = async (result: string) =>
-      fetch(url + "/resolve-response", {
-        method: "POST",
-        body: result,
-      });
-
-    await deferExampleRemoteRequest();
     await page.goto(url);
 
     // Initial state: loading fallback is visible, button is at 0 clicks
@@ -53,24 +43,21 @@ testDevAndDeploy(
 
     await poll(async () => {
       const buttonText = await getButtonText();
-      console.log("############ result", buttonText);
       expect(await getButtonText()).toBe("Clicks: 1");
 
+      console.log("############ buttonText", buttonText);
       const content = await getPageContent();
       expect(content).toContain("Loading...");
-      expect(content).not.toContain("Done!");
+      expect(content).not.toContain("Hello from the remote request!");
       return true;
     });
-
-    await resolveExampleRemoteRequest("Done!");
 
     await poll(async () => {
       expect(await getButtonText()).toBe("Clicks: 1");
 
       const content = await getPageContent();
-      console.log("############ content", content);
       expect(content).not.toContain("Loading...");
-      expect(content).toContain("Done!");
+      expect(content).toContain("Hello from the remote request!");
       return true;
     });
   },
