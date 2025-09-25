@@ -12,7 +12,9 @@ A modern web framework must solve several competing challenges to provide a robu
 
 3.  **Ensuring Deterministic Hydration:** For React's hydration to succeed, the component tree rendered on the server must be identical to the one rendered on the client. A single, nested server render pass can cause the outer document shell to interfere with the rendering context of the inner application. This can "pollute" shared state, like the internal counter for the `React.useId` hook, leading to an unavoidable mismatch between the server-generated HTML and the client's render tree.
 
-4.  **Providing an Intuitive Developer Experience:** High-level abstractions should behave as developers expect. If the framework's API for defining the main `Document` shell looks and feels like a Server Component, it should have the full capabilities of one, including the ability to `await` data and use other server-only APIs. A leaky abstraction that prevents this creates confusion and limits functionality.
+4.  **Enabling Non-Blocking Hydration:** A primary benefit of streaming SSR with Suspense is "early hydration"—making the initial UI shell interactive before all data has been loaded. This requires the client-side JavaScript to be delivered and executed as soon as the initial shell is rendered, without waiting for the server to finish streaming all suspended content. The rendering architecture must be able to interleave the document and application streams to ensure the hydration script is not blocked by slow data fetches.
+
+5.  **Providing an Intuitive Developer Experience:** High-level abstractions should behave as developers expect. If the framework's API for defining the main `Document` shell looks and feels like a Server Component, it should have the full capabilities of one, including the ability to `await` data and use other server-only APIs. A leaky abstraction that prevents this creates confusion and limits functionality.
 
 ## The Build-Time Foundation: Client References
 
@@ -43,9 +45,41 @@ In parallel, the document shell is rendered in its own isolated context.
 1.  **True Server Component `Document`**: The user-defined `<Document>` is rendered as a true Server Component, allowing developers to use `async/await` and other server-only features.
 2.  **RSC and SSR Render**: The `<Document>` component is also rendered through the same two-phase RSC-then-SSR process to produce a complete HTML stream for the document shell, containing a unique placeholder for the application content.
 
-#### Final Composition & Client-Side Hydration
+#### Final Composition: Suspense-Aware Stream Stitching
 
-The outputs are combined to form the final response:
+The final and most critical step is to combine the document and application HTML streams into a single response. A simple injection is insufficient because a `<Suspense>` boundary in the application could pause its stream, blocking the rest of the document (including the client script) from being sent.
+
+To solve this, the framework uses a "Suspense-Aware Stream Stitching" strategy that interleaves the two streams based on markers. This ensures the client script is delivered as early as possible without waiting for slow data fetches.
+
+1.  **Marker Injection:** At render time, the application content is wrapped with a unique end-marker comment (`<!-- APP_SHELL_END -->`). Because this marker is not suspended, React will always include it as part of the initial, non-suspended HTML chunk.
+
+2.  **Stream Interleaving:** A dedicated utility orchestrates the final response stream with the following logic:
+    *   **Step 1: Stream Document Head:** The document stream is sent until the application placeholder is found.
+        ```html
+        <html><head>...</head><body><div id="root">
+        ```
+    *   **Step 2: Stream Initial App Shell:** The process switches to the application stream and sends chunks until it finds the `<!-- APP_SHELL_END -->` marker. This is the complete, non-suspended UI.
+        ```html
+        <nav>...</nav><h1>My Page</h1><div>...</div><!-- APP_SHELL_END -->
+        ```
+    *   **Step 3: Stream Document Body Tail:** The process switches back to the document stream to send the remainder of the body, which critically includes the client-side script tag that initiates hydration.
+        ```html
+        </div><script>import("/src/client.tsx")</script>
+        ```
+    *   **Step 4: Stream Suspended Content:** The process switches back to the application stream and sends all remaining chunks. This is the content from any `<Suspense>` boundaries that have now resolved.
+        ```html
+        <template>...</template><script>...update content...</script>
+        ```
+    *   **Step 5: Finish Document:** Finally, the process returns to the document stream to send the closing `</body>` and `</html>` tags.
+        ```html
+        </body></html>
+        ```
+
+This interleaving process guarantees that the browser receives the static HTML and the script needed to make it interactive as quickly as possible, fulfilling the promise of a non-blocking, streaming-first architecture.
+
+#### Client-Side Hydration
+
+The client-side process remains the same:
 
 1.  **Stream Stitching**: A utility merges the two HTML streams. It streams the document shell until it finds the placeholder, then injects the application's HTML stream. This process is fully streamed, ensuring a fast time-to-first-byte.
 2.  **RSC Payload Injection**: The client's branch of the RSC payload is injected into the final stitched stream inside inline `<script>` tags.
