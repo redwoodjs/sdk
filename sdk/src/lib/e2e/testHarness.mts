@@ -238,6 +238,9 @@ export function setupPlaygroundEnvironment(
           return instance;
         },
       );
+      // Prevent unhandled promise rejections. The error will be handled inside
+      // the test's beforeEach hook where this promise is awaited.
+      globalDevInstancePromise.catch(() => {});
     } else {
       globalDevInstancePromise = Promise.resolve(null);
     }
@@ -259,6 +262,8 @@ export function setupPlaygroundEnvironment(
         globalDeploymentInstance = instance;
         return instance;
       });
+      // Prevent unhandled promise rejections
+      globalDeploymentInstancePromise.catch(() => {});
     } else {
       globalDeploymentInstancePromise = Promise.resolve(null);
     }
@@ -267,6 +272,8 @@ export function setupPlaygroundEnvironment(
       globalBrowser = browser;
       return browser;
     });
+    // Prevent unhandled promise rejections
+    globalBrowserPromise.catch(() => {});
   }, SETUP_PLAYGROUND_ENV_TIMEOUT);
 }
 
