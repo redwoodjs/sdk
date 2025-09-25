@@ -1,6 +1,6 @@
-import { ClientToggleAdd } from "../components/ClientToggleAdd.mjs";
-import { ClientToggleRemove } from "../components/ClientToggleRemove.mjs";
-import { ServerActionForm } from "../components/ServerActionForm.mjs";
+import { ClientToggleAdd } from "../components/ClientToggleAdd.js";
+import { ClientToggleRemove } from "../components/ClientToggleRemove.js";
+import { ServerActionForm } from "../components/ServerActionForm.js";
 
 export function Home() {
   return (

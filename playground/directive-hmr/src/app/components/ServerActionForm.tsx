@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { greet } from "../actions.mjs";
+import { greet } from "../actions.js";
 
 export function ServerActionForm() {
   const [message, setMessage] = useState("");
