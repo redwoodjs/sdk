@@ -43,3 +43,42 @@ The plan is to make the directive scanner self-sufficient by integrating the MDX
 3.  **Targeted Transformation**: In the scanner's `onLoad` hook, detect `.mdx` files, transform their content to TSX using the `compile` function, and return the result to esbuild with the `tsx` loader. Standard file types will be handled by esbuild as before.
 
 This approach ensures that MDX files are processed correctly without coupling the scanner to the user's Vite plugin configuration.
+
+## PR
+
+### feat: Add MDX support to directive scanner and improve E2E tests
+
+#### Problem
+
+This work addresses two separate but related issues:
+
+1.  **MDX Directive Scanning**: The directive scanner, which uses `esbuild` to traverse the dependency graph, could not process `.mdx` files. This caused the build to fail in projects that used MDX, as `esbuild` does not have a native loader for the format.
+2.  **E2E Test Flakiness**: The end-to-end tests were prone to intermittent failures. These failures were caused by race conditions where test interactions (like clicks) would happen before client-side hydration was complete, or where tests would hold onto stale DOM element references that had been replaced by React.
+
+#### Solution
+
+##### 1. Self-Contained MDX Processing in Scanner
+
+After exploring several alternatives, the most robust solution was to make the scanner self-sufficient.
+
+-   The `@mdx-js/mdx` package is now a direct dependency of the SDK.
+-   The scanner's `onLoad` hook in `runDirectivesScan.mts` now detects `.mdx` files and uses the imported `compile` function to transform their content into TSX.
+-   This transformed code is then passed to `esbuild`, which can process it natively.
+
+This approach keeps the scanner decoupled from the user's Vite configuration and ensures that MDX files are handled correctly.
+
+##### 2. E2E Test Harness Improvements and Best Practices
+
+To address test flakiness, the E2E test harness and conventions were updated:
+
+-   **`waitForHydration` Utility**: A new `waitForHydration` function has been added to the test harness. It waits for `document.readyState` to be complete and then adds a short, pragmatic delay to ensure React has fully hydrated the page. This should be used before simulating any user interaction.
+-   **Best Practices Documentation**: The `CONTRIBUTING.md` file has been updated with a new "Best Practices" section for E2E tests. It includes an annotated example that demonstrates:
+    -   Using `waitForHydration` before interactions.
+    -   Re-fetching DOM elements immediately before they are used to avoid stale references.
+    -   Using helper functions to improve test legibility.
+-   **Test Refactoring**: Existing tests in the `mdx` and `useid-test` playgrounds have been refactored to use the new `waitForHydration` utility and follow the updated best practices.
+
+#### Testing
+
+-   The `mdx` playground now passes its E2E tests, confirming that the directive scanner correctly processes `.mdx` files.
+-   The refactored E2E tests are more stable and reliable.
