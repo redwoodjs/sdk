@@ -6,10 +6,6 @@ on:
     - cron: "0 */12 * * *"
   workflow_dispatch:
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
   smoke-test-starters:
     uses: ./.github/workflows/smoke-test-starters.yml
