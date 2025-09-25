@@ -3,7 +3,7 @@
 import React from "react";
 import "@react-email/render";
 import { Resend } from "resend";
-import WelcomeEmail from "./WelcomeEmail";
+import WelcomeEmail from "./WelcomeEmail.js";
 
 export const ssrSendWelcomeEmail = async (apiKey: string, email: string) => {
   const resend = new Resend(apiKey);
@@ -12,7 +12,7 @@ export const ssrSendWelcomeEmail = async (apiKey: string, email: string) => {
     from: "Acme <onboarding@resend.dev>",
     to: email,
     subject: "👋 Welcome",
-    react: React.createElement(WelcomeEmail, { name: email }),
+    react: <WelcomeEmail name={email} />,
   });
 
   return result;
