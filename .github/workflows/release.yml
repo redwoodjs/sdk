@@ -52,10 +52,15 @@ jobs:
         with:
           fetch-depth: 0
       - name: Check status of all workflows on main
-        if: github.event.inputs.dangerously_override_checks == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OVERRIDE: ${{ github.event.inputs.dangerously_override_checks }}
         run: |
+          if [ "$OVERRIDE" = "true" ]; then
+            echo "::warning::'dangerously_override_checks' is true. Skipping CI status check."
+            exit 0
+          fi
+
           # The release is triggered from main, so HEAD is the commit we want to check
           COMMIT_SHA=$(git rev-parse HEAD)
           echo "Checking CI status for commit: $COMMIT_SHA on branch main"
