@@ -4,21 +4,23 @@ on:
   workflow_dispatch:
     inputs:
       version_type:
-        description: "The type of version bump to perform (patch, minor, major, prepatch, preminor, premajor, test)"
+        description: "The type of version bump to perform. Use 'explicit' for major or pre-releases."
         required: true
         type: choice
         options:
+          - explicit
           - patch
-          - test
           - minor
-          - major
-          - prepatch
-          - preminor
-          - premajor
-      preid:
-        description: "Prerelease identifier (e.g., alpha, beta, rc). Used with prepatch/preminor/premajor."
+          - test
+      version:
+        description: "Required when version_type is 'explicit'. The exact version string to release (e.g., '1.0.0' or '1.0.0-alpha.11')."
         required: false
-        default: "alpha"
+        type: string
+      skip_smoke_tests:
+        description: "If true, bypasses the smoke testing step. Use with caution."
+        required: false
+        type: boolean
+        default: false
       create_gh_release:
         description: "If true, creates a GitHub release with auto-generated notes."
         required: false
@@ -126,8 +128,18 @@ jobs:
         working-directory: sdk
         run: |
           COMMAND="./scripts/release.sh ${{ github.event.inputs.version_type }}"
-          if [[ "${{ github.event.inputs.version_type }}" == "pre"* ]]; then
-            COMMAND="$COMMAND --preid ${{ github.event.inputs.preid }}"
+          if [[ "${{ github.event.inputs.version_type }}" == "explicit" ]]; then
+            if [[ -z "${{ github.event.inputs.version }}" ]]; then
+              echo "::error::The 'version' input is required when 'version_type' is 'explicit'."
+              exit 1
+            fi
+            COMMAND="$COMMAND --version ${{ github.event.inputs.version }}"
+          elif [[ -n "${{ github.event.inputs.version }}" ]]; then
+            echo "::error::The 'version' input can only be used when 'version_type' is 'explicit'."
+            exit 1
+          fi
+          if [[ "${{ github.event.inputs.skip_smoke_tests }}" == "true" ]]; then
+            COMMAND="$COMMAND --skip-smoke-tests"
           fi
           echo "Running command: $COMMAND"
           eval $COMMAND
