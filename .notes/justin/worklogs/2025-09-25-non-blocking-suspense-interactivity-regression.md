@@ -97,6 +97,20 @@ The final, successful solution was to inject markers directly into the RSC paylo
 
 This combination is the most robust solution, as it doesn't rely on React's internal implementation details and guarantees a consistent DOM between the server and client.
 
+## 6. Regression in v1.0.0-alpha.17 and Subsequent Fix
+
+Following the release of `v1.0.0-alpha.17`, users reported a regression where the application would remain blank until all `<Suspense>` boundaries were resolved. This was a step backward from `v1.0.0-alpha.16`, where the UI was visible but not interactive.
+
+### Analysis
+
+The regression was traced to the direct usage of the `renderToStream` API. The previous fix, which involved injecting a `<div id="rwsdk-app-end" />` marker into the RSC payload, was implemented within the `defineApp` helper in `worker.tsx`. This meant that projects using the lower-level `renderToStream` API directly did not benefit from the fix, as their rendering path did not include this marker. Without the marker, the stream-stitching logic could not correctly interleave the document and application streams, leading to the observed blocking behavior.
+
+### Solution: Centralizing the Marker Injection
+
+To resolve this, the marker injection logic was moved from `worker.tsx` into `renderToRscStream.tsx`. By placing the logic at this lower level, any part of the system that generates an RSC stream-whether through the high-level `defineApp` or direct calls to `renderToStream`-will now automatically include the necessary marker. This ensures consistent behavior across all rendering paths.
+
+To prevent future regressions, a new end-to-end test was added to the `non-blocking-suspense` playground specifically to validate early hydration when using `renderToStream` with a suspended component.
+
 ## 5. PR Title and Description
 
 **Title:** `fix(streaming): Ensure Early Hydration with Suspense-Aware Stream Interleaving`
