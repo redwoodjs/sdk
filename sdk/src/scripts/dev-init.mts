@@ -5,17 +5,32 @@ export const initDev = async () => {
   console.log("Initializing development environment...");
   const projectRootDir = process.cwd();
 
-  if (await hasPkgScript(projectRootDir, "generate")) {
-    console.log("Generating...");
+  const hasGenerate = await hasPkgScript(projectRootDir, "generate");
+  const hasMigrateDev = await hasPkgScript(projectRootDir, "migrate:dev");
+  const hasSeed = await hasPkgScript(projectRootDir, "seed");
+  const needsDBCommands = hasMigrateDev || hasSeed;
+
+  if (hasGenerate) {
+    if (needsDBCommands) {
+      console.log("Generating...");
+    } else {
+      console.log("Generating types in background...");
+    }
+
     await $`npm run generate`;
+
+    if (!needsDBCommands) {
+      process.exit(0);
+      return;
+    }
   }
 
-  if (await hasPkgScript(projectRootDir, "migrate:dev")) {
+  if (hasMigrateDev) {
     console.log("Running migrations...");
     await $`npm run migrate:dev`;
   }
 
-  if (await hasPkgScript(projectRootDir, "seed")) {
+  if (hasSeed) {
     console.log("Seeding database...");
     await $`npm run seed`;
   }
