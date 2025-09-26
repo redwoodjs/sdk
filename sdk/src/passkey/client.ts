@@ -7,7 +7,7 @@ import {
   finishPasskeyRegistration,
   startPasskeyLogin,
   finishPasskeyLogin,
-} from "./worker.js";
+} from "./functions.js";
 
 export function usePasskey() {
   const register = async (username: string) => {

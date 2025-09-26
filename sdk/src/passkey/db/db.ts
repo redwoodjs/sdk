@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
-import debug from "../../../runtime/lib/debug.mjs";
-import { type Database, createDb } from "../../../runtime/lib/db/index.mjs";
-import { type migrations } from "./migrations.mjs";
+import debug from "../../runtime/lib/debug.js";
+import { type Database, createDb } from "../../runtime/lib/db";
+import { type migrations } from "./migrations.js";
 
 const log = debug("passkey:db");
 

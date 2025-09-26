@@ -1,4 +1,4 @@
-import { type Migrations } from "../../runtime/lib/db/types.mjs";
+import { type Migrations } from "../../runtime/lib/db";
 
 export const migrations = {
   "001_initial_schema": {
