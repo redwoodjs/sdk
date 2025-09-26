@@ -139,3 +139,27 @@ This ensures the client script is sent to the browser as soon as the initial UI 
 
 For a detailed explanation, see the updated [Hybrid Rendering documentation](/docs/architecture/hybridRscSsrRendering.md).
 
+## 7. PR Title and Description
+
+**Title:** `fix(streaming): Extend early hydration fix to renderToStream API`
+
+**Description:**
+
+### Context: The Previous Fix in `v1.0.0-alpha.17`
+
+In a recent change ([#786](https://github.com/redwoodjs/sdk/pull/786)), we fixed a regression where client-side components would not become interactive until all server-side `<Suspense>` boundaries had resolved. The solution involved injecting a marker component into the RSC payload, allowing our stream-stitching logic to send the client hydration script before the full application stream had completed.
+
+### Problem: Regression for `renderToStream` Users
+
+That fix was implemented within our high-level `defineApp` helper. This meant that users who bypassed this helper and used the lower-level `renderToStream` API directly did not receive the marker in their RSC payload.
+
+As a result, they experienced a worse regression: the entire UI would remain blank until the suspended data was ready, as the stream-stitching logic had no marker to guide its interleaving process and would wait for the entire app stream to finish.
+
+### Solution: Centralizing the Marker Injection
+
+This change moves the marker-injection logic from the `defineApp` helper in `worker.tsx` down into the `renderToRscStream.tsx` utility.
+
+Because `renderToRscStream` is used by both the high-level helper and direct API calls, this change ensures that the marker is present in the RSC payload regardless of which rendering path is taken. This restores correct, non-blocking hydration behavior for all users.
+
+A new end-to-end test has also been added to specifically cover the `renderToStream` use case with `<Suspense>`, ensuring this behavior is protected against future regressions.
+
