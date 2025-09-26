@@ -22,10 +22,10 @@
     "types": "tsc"
   },
   "dependencies": {
-    "rwsdk": "workspace:*",
     "react": "19.2.0-canary-d415fd3e-20250919",
     "react-dom": "19.2.0-canary-d415fd3e-20250919",
-    "react-server-dom-webpack": "19.2.0-canary-d415fd3e-20250919"
+    "react-server-dom-webpack": "19.2.0-canary-d415fd3e-20250919",
+    "rwsdk": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.13.3",
@@ -34,6 +34,7 @@
     "@types/react": "19.1.2",
     "@types/react-dom": "19.1.2",
     "typescript": "5.8.3",
+    "unique-names-generator": "~4.7.1",
     "vite": "7.1.6",
     "vitest": "^3.1.1",
     "wrangler": "4.38.0"
