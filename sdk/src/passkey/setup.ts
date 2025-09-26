@@ -1,29 +1,30 @@
-import { sessions } from "@/session/store";
-import { RouteMiddleware } from "rwsdk/router";
-import { requestInfo } from "rwsdk/worker";
-import { ErrorResponse } from "rwsdk/worker";
+import { sessions } from "../../runtime/lib/auth/session.mjs";
+import { RouteMiddleware } from "../../router/index.mjs";
+import { requestInfo } from "../../runtime/worker.mjs";
+import { ErrorResponse } from "../../runtime/worker.mjs";
 
 export function setupPasskeyAuth() {
   const setupPasskeyAuthMiddleware: RouteMiddleware = async () => {
-    const { ctx, request, headers } = requestInfo;
+    const { ctx, request } = requestInfo;
+    const {
+      response: { headers },
+    } = requestInfo;
 
-    // Get session
-    const session = await sessions.get(request, headers);
+    try {
+      ctx.session = await sessions.load(request);
+    } catch (error) {
+      if (error instanceof ErrorResponse && error.code === 401) {
+        await sessions.remove(request, headers);
+        headers.set("Location", "/auth/login");
 
-    // If the user has a session, attach them to the context
-    // and continue.
-    // If the user does not have a session, redirect them to the
-    // login page.
-    if (session.userId) {
-      ctx.user = await getUserById(session.userId);
-    } else {
-      await sessions.remove(request, headers);
-      headers.set("Location", "/auth/login");
-      return new Response(null, { status: 302, headers });
+        throw new Response(null, {
+          status: 302,
+          headers,
+        });
+      }
+
+      throw error;
     }
-
-    // Attach the session to the context
-    ctx.session = session;
   };
 
   return setupPasskeyAuthMiddleware;

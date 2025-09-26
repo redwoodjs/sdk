@@ -8,8 +8,8 @@ import {
   AuthenticationResponseJSON,
 } from "@simplewebauthn/server";
 
-import { sessions } from "@/session/store";
-import { requestInfo } from "rwsdk/worker";
+import { sessions } from "../../runtime/lib/auth/session.mjs";
+import { requestInfo } from "../../runtime/worker.mjs";
 import { env } from "cloudflare:workers";
 import {
   createCredential,
@@ -17,7 +17,7 @@ import {
   getCredentialById,
   updateCredentialCounter,
   getUserById,
-} from "./db";
+} from "./db/index.mjs";
 
 const IS_DEV = process.env.NODE_ENV === "development";
 
@@ -31,9 +31,10 @@ function getWebAuthnConfig(request: Request) {
 }
 
 export async function startPasskeyRegistration(username: string) {
-  const { headers } = requestInfo;
-
-  const user = await createUser(username);
+  const { rpName, rpID } = getWebAuthnConfig(requestInfo.request);
+  const {
+    response: { headers },
+  } = requestInfo;
 
   const options = await generateRegistrationOptions({
     rpName,
@@ -53,27 +54,36 @@ export async function startPasskeyRegistration(username: string) {
 }
 
 export async function startPasskeyLogin() {
-  const { headers } = requestInfo;
+  const { rpID } = getWebAuthnConfig(requestInfo.request);
+  const {
+    response: { headers },
+  } = requestInfo;
 
-  // Get all credentials for the user
   const options = await generateAuthenticationOptions({
     rpID,
     userVerification: "preferred",
     allowCredentials: [],
   });
+
   await sessions.save(headers, { challenge: options.challenge });
+
   return options;
 }
 
 export async function finishPasskeyRegistration(
   username: string,
-  registration: RegistrationResponseJSON
+  registration: RegistrationResponseJSON,
 ) {
-  "use server";
-  const { request, headers } = requestInfo;
-  const session = await sessions.get(request, headers);
+  const { request } = requestInfo;
+  const {
+    response: { headers },
+  } = requestInfo;
+  const { origin } = new URL(request.url);
 
-  if (!session.challenge) {
+  const session = await sessions.get(request, headers);
+  const challenge = session?.challenge;
+
+  if (!challenge) {
     return false;
   }
 
@@ -94,29 +104,31 @@ export async function finishPasskeyRegistration(
 
   await createCredential({
     userId: user.id,
-    credentialId: verification.registrationInfo.credential.id,
-    publicKey: verification.registrationInfo.credential.publicKey,
-    counter: verification.registrationInfo.credential.counter,
+    credentialId: verification.registrationInfo.credentialID,
+    publicKey: verification.registrationInfo.credentialPublicKey,
+    counter: verification.registrationInfo.counter,
   });
 
   return true;
 }
 
 export async function finishPasskeyLogin(login: AuthenticationResponseJSON) {
-  "use server";
+  const { request } = requestInfo;
+  const {
+    response: { headers },
+  } = requestInfo;
+  const { origin } = new URL(request.url);
 
-  if (!login.rawId) {
-    throw new Error("Login failed: rawId is missing");
-  }
-
-  const credential = await getCredentialById(login.rawId);
-  if (!credential) {
-    throw new Error("Login failed: credential not found");
-  }
-  const { request, headers } = requestInfo;
   const session = await sessions.get(request, headers);
+  const challenge = session?.challenge;
 
-  if (!session.challenge) {
+  if (!challenge) {
+    return false;
+  }
+
+  const credential = await getCredentialById(login.id);
+
+  if (!credential) {
     return false;
   }
 
@@ -126,9 +138,9 @@ export async function finishPasskeyLogin(login: AuthenticationResponseJSON) {
     expectedOrigin: origin,
     expectedRPID: env.WEBAUTHN_RP_ID || new URL(request.url).hostname,
     requireUserVerification: false,
-    credential: {
-      id: credential.credentialId,
-      publicKey: credential.publicKey,
+    authenticator: {
+      credentialID: credential.credentialId,
+      credentialPublicKey: credential.publicKey,
       counter: credential.counter,
     },
   });
@@ -139,7 +151,7 @@ export async function finishPasskeyLogin(login: AuthenticationResponseJSON) {
 
   await updateCredentialCounter(
     login.id,
-    verification.authenticationInfo.newCounter
+    verification.authenticationInfo.newCounter,
   );
 
   const user = await getUserById(credential.userId);
@@ -149,7 +161,7 @@ export async function finishPasskeyLogin(login: AuthenticationResponseJSON) {
   }
 
   await sessions.save(headers, {
-    userId: credential.userId,
+    userId: user.id,
     challenge: null,
   });
 

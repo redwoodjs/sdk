@@ -16,7 +16,9 @@ export function Login() {
       const success = await register(username);
       setResult(success ? "Registration successful!" : "Registration failed");
     } catch (error: unknown) {
-      setResult(error instanceof Error ? error.message : "An unknown error occurred");
+      setResult(
+        error instanceof Error ? error.message : "An unknown error occurred",
+      );
     }
   };
 
@@ -25,7 +27,9 @@ export function Login() {
       const success = await login(username);
       setResult(success ? "Login successful!" : "Login failed");
     } catch (error: unknown) {
-      setResult(error instanceof Error ? error.message : "An unknown error occurred");
+      setResult(
+        error instanceof Error ? error.message : "An unknown error occurred",
+      );
     }
   };
 
