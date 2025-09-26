@@ -3,12 +3,14 @@ import { RouteMiddleware } from "../../router/index.mjs";
 import { requestInfo } from "../../runtime/worker.mjs";
 import { ErrorResponse } from "../../runtime/worker.mjs";
 
-export function setupPasskeyAuth() {
+export function setupPasskeyAuth(passkeyDb: any) {
   const setupPasskeyAuthMiddleware: RouteMiddleware = async () => {
     const { ctx, request } = requestInfo;
     const {
       response: { headers },
     } = requestInfo;
+
+    requestInfo.rw = { ...requestInfo.rw, passkeyDb };
 
     try {
       ctx.session = await sessions.load(request);

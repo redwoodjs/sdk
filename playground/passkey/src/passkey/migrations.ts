@@ -1,4 +1,4 @@
-import { type Migrations } from "../../runtime/lib/db";
+import { type Migrations } from "rwsdk/db";
 
 export const migrations = {
   "001_initial_schema": {

@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
-import debug from "../../runtime/lib/debug.js";
-import { type Database, createDb } from "../../runtime/lib/db";
+import debug from "rwsdk/debug";
+import { type Database, createDb } from "rwsdk/db";
 import { type migrations } from "./migrations.js";
 
 const log = debug("passkey:db");

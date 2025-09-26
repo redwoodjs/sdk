@@ -11,13 +11,6 @@ import {
 import { sessions } from "../../runtime/lib/auth/session.mjs";
 import { requestInfo } from "../../runtime/worker.mjs";
 import { env } from "cloudflare:workers";
-import {
-  createCredential,
-  createUser,
-  getCredentialById,
-  updateCredentialCounter,
-  getUserById,
-} from "./db/index.mjs";
 
 const IS_DEV = process.env.NODE_ENV === "development";
 
@@ -100,9 +93,9 @@ export async function finishPasskeyRegistration(
 
   await sessions.save(headers, { challenge: null });
 
-  const user = await createUser(username);
+  const user = await requestInfo.rw.passkeyDb.createUser(username);
 
-  await createCredential({
+  await requestInfo.rw.passkeyDb.createCredential({
     userId: user.id,
     credentialId: verification.registrationInfo.credentialID,
     publicKey: verification.registrationInfo.credentialPublicKey,
@@ -126,7 +119,7 @@ export async function finishPasskeyLogin(login: AuthenticationResponseJSON) {
     return false;
   }
 
-  const credential = await getCredentialById(login.id);
+  const credential = await requestInfo.rw.passkeyDb.getCredentialById(login.id);
 
   if (!credential) {
     return false;
@@ -149,12 +142,12 @@ export async function finishPasskeyLogin(login: AuthenticationResponseJSON) {
     return false;
   }
 
-  await updateCredentialCounter(
+  await requestInfo.rw.passkeyDb.updateCredentialCounter(
     login.id,
     verification.authenticationInfo.newCounter,
   );
 
-  const user = await getUserById(credential.userId);
+  const user = await requestInfo.rw.passkeyDb.getUserById(credential.userId);
 
   if (!user) {
     return false;
