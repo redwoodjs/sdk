@@ -8,7 +8,7 @@ import {
   renderHtmlStream,
   createThenableFromReadableStream,
 } from "rwsdk/__ssr_bridge";
-import { injectHtmlAtMarker } from "../lib/injectHtmlAtMarker.js";
+import { stitchDocumentAndAppStreams } from "../lib/stitchDocumentAndAppStreams.js";
 
 export const renderDocumentHtmlStream = async ({
   rscPayloadStream,
@@ -25,7 +25,9 @@ export const renderDocumentHtmlStream = async ({
 }) => {
   // Extract the app node from the RSC payload
   const rscAppThenable = createThenableFromReadableStream(rscPayloadStream);
-  const { node: appNode } = (await rscAppThenable) as { node: React.ReactNode };
+  const { node: innerAppNode } = (await rscAppThenable) as {
+    node: React.ReactNode;
+  };
 
   // todo(justinvdm, 18 Jun 2025): We can build on this later to allow users
   // surface context. e.g:
@@ -52,10 +54,9 @@ export const renderDocumentHtmlStream = async ({
       />
       <Stylesheets requestInfo={requestInfo} />
       <Preloads requestInfo={requestInfo} />
-      <div
-        id="hydrate-root"
-        dangerouslySetInnerHTML={{ __html: "<!-- RWSDK_INJECT_APP_HTML -->" }}
-      />
+      <div id="hydrate-root">
+        <div id="rwsdk-app-start" />
+      </div>
     </Document>
   );
 
@@ -67,16 +68,17 @@ export const renderDocumentHtmlStream = async ({
   });
 
   const appHtmlStream = await renderHtmlStream({
-    node: appNode,
+    node: innerAppNode,
     requestInfo,
     onError,
   });
 
   // Stitch the streams together
-  const stitchedStream = injectHtmlAtMarker(
+  const stitchedStream = stitchDocumentAndAppStreams(
     outerHtmlStream,
     appHtmlStream,
-    "<!-- RWSDK_INJECT_APP_HTML -->",
+    '<div id="rwsdk-app-start"></div>',
+    '<div id="rwsdk-app-end"></div>',
   );
 
   return stitchedStream;
