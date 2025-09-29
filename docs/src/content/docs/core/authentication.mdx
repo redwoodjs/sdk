@@ -58,29 +58,29 @@ interface SessionData {
 
 export class UserSession implements DurableObject {
   private storage: DurableObjectStorage;
-  private session: SessionData = { userId: null };
+  private session: SessionData | undefined = undefined;
 
   constructor(state: DurableObjectState) {
     this.storage = state.storage;
-    state.blockConcurrencyWhile(async () => {
-      const stored = await this.storage.get<SessionData>("session");
-      this.session = stored ?? { userId: null };
-    });
   }
 
   async getSession() {
+    if (!this.session) {
+      this.session = (await this.storage.get<SessionData>("session")) ?? { userId: null };
+    }
     return { value: this.session };
   }
 
   async saveSession(data: Partial<SessionData>) {
-    this.session = { ...this.session, ...data };
+    // In a real app, you would likely merge the new data with existing session data
+    this.session = { userId: data.userId ?? null };
     await this.storage.put("session", this.session);
     return this.session;
   }
 
   async revokeSession() {
     await this.storage.delete("session");
-    this.session = { userId: null };
+    this.session = undefined;
   }
 }
 ```
