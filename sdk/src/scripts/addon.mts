@@ -9,29 +9,26 @@ import { pipeline } from "node:stream/promises";
 import type { ReadableStream } from "node:stream/web";
 
 async function getRwSdkProjectRootDir(cwd: string) {
-  const pnpmWorkspaceYamlPath = await findUp("pnpm-workspace.yaml", { cwd });
-  if (pnpmWorkspaceYamlPath) {
-    return path.dirname(pnpmWorkspaceYamlPath);
-  }
-
   const packageJsonPath = await findUp("package.json", { cwd });
+
   if (packageJsonPath) {
-    const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
-    const packageJson = JSON.parse(packageJsonContent);
-    if (packageJson.workspaces) {
-      return path.dirname(packageJsonPath);
-    }
+    return path.dirname(packageJsonPath);
   }
 
-  // If not in a monorepo, assume the current directory is the project root
   return cwd;
 }
 
 export const addon = async () => {
-  const addonName = process.argv[3];
-  if (!addonName) {
+  const addonName = process.argv[2];
+  console.log(process.argv);
+
+  if (
+    !addonName ||
+    process.argv.find((arg) => arg === "-h") ||
+    process.argv.find((arg) => arg === "--help")
+  ) {
     console.error("Please specify the addon name.");
-    console.error("Usage: rw-scripts addon <addon-name>");
+    console.error(`Usage: npx rwsdk addon <addon-name>`);
     process.exit(1);
   }
 
@@ -41,7 +38,14 @@ export const addon = async () => {
     const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
     const { dependencies, devDependencies } = JSON.parse(packageJsonContent);
 
-    const rwsdkVersion = dependencies?.rwsdk || devDependencies?.rwsdk;
+    let rwsdkVersion = dependencies?.rwsdk || devDependencies?.rwsdk;
+
+    if (rwsdkVersion === "workspace:*") {
+      throw new Error(
+        'The "rwsdk" dependency is set to "workspace:*". Please use a specific version of the SDK.',
+      );
+    }
+
     if (!rwsdkVersion) {
       console.error(
         'Could not find "rwsdk" in your dependencies or devDependencies.',
