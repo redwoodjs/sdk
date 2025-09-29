@@ -1,9 +1,5 @@
 import { setupTarballEnvironment } from "../../lib/e2e/tarball.mjs";
-import {
-  SmokeTestOptions as E2ESmokeTestOptions,
-  TestResources,
-  PackageManager as E2EPackageManager,
-} from "../../lib/e2e/types.mjs";
+import { TestResources } from "../../lib/e2e/types.mjs";
 import { SmokeTestOptions } from "./types.mjs";
 import { createSmokeTestComponents } from "./codeUpdates.mjs";
 import { log } from "./constants.mjs";
