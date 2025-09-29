@@ -52,9 +52,8 @@ export const addon = async () => {
       process.exit(1);
     }
 
-    const tmpDir = path.resolve(projectRootDir, ".tmp", "addons", addonName);
-    await fs.rm(tmpDir, { recursive: true, force: true });
-    await fs.mkdir(tmpDir, { recursive: true });
+    const tmpDirPrefix = path.join(os.tmpdir(), `rwsdk-addon-${addonName}-`);
+    const tmpDir = await fs.mkdtemp(tmpDirPrefix);
 
     const downloadUrl = `https://github.com/redwoodjs/sdk/releases/download/${rwsdkVersion}/${addonName}-${rwsdkVersion}.tar.gz`;
     console.log(`Downloading addon "${addonName}" version ${rwsdkVersion}...`);
@@ -86,9 +85,7 @@ export const addon = async () => {
 
     console.log();
     console.log("Download complete!");
-    console.log(
-      `The addon files are located in: ${path.relative(projectRootDir, tmpDir)}`,
-    );
+    console.log(`The addon files are located in: ${tmpDir}`);
     console.log();
     console.log("To continue, open the step-by-step instructions:");
 
