@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "noEmit": true
+  },
+  "references": [{ "path": "../../sdk" }],
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["node_modules"]
+}
