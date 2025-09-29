@@ -1,7 +1,12 @@
 {
   "compilerOptions": {
     "composite": true,
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "module": "es2022",
+    "moduleResolution": "bundler"
   },
   "references": [{ "path": "../../sdk" }],
   "include": ["src/**/*.ts", "src/**/*.tsx"],
