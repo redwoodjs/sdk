@@ -4,20 +4,22 @@ description: Secure your application with sessions and passwordless login.
 ---
 import { Aside } from "@astrojs/starlight/components";
 
-RedwoodSDK enables secure, passwordless authentication using **passkeys ([WebAuthn](https://webauthn.guide/))** via a bundled addon.
+RedwoodSDK provides two approaches for handling user sessions and authentication. The recommended method for user logins is the bundled Passkey Addon. For developers who need to build a custom solution or manage non-authentication session data, the SDK also exposes the underlying Session Management API.
 
-## The Bundled Addon Approach
+This guide covers the high-level addon first, followed by the low-level API.
 
-Instead of providing a rigid, black-box authentication API, RedwoodSDK ships the complete source code for a passkey implementation as a **bundled addon**. This addon lives inside the `rwsdk` package and is versioned along with it.
+## Passkey Authentication (Bundled Addon)
 
-When you want to add authentication, you copy the addon's source code directly into your own project. This gives you:
-- **Full Ownership:** The code is yours. You can inspect it, modify it, and extend it to fit your exact needs.
-- **Guaranteed Compatibility:** The addon code is always compatible with the version of the SDK you have installed.
-- **Transparency:** You can see exactly how the authentication is implemented, with no hidden magic.
+For a complete user authentication system, RedwoodSDK provides a bundled addon for passkey (WebAuthn) logins.
 
-## Applying the Passkey Addon
+The addon is a complete set of source code that you copy into your project. This approach has several effects:
+- **User Ownership:** The code is part of the user's application, available for inspection or modification.
+- **Compatibility:** The addon is versioned with the SDK, so it is always compatible.
+- **Transparency:** The authentication implementation is not obscured.
 
-The instructions for copying and configuring the passkey addon are included in the `README.md` file within the addon itself.
+### Applying the Passkey Addon
+
+The instructions for copying and configuring the passkey addon are included in its `README.md` file.
 
 To view the instructions, run the following command in your project's root directory:
 
@@ -25,25 +27,181 @@ To view the instructions, run the following command in your project's root direc
 npx rw-scripts addon passkey
 ```
 
-This command will print the step-by-step guide to your console. Follow the guide to get passkey authentication running in your application. The process will involve:
-1. Copying the addon's source files into your project's `src` directory.
-2. Updating your `wrangler.jsonc` file with the required D1 database and Durable Object bindings.
-3. Updating your `package.json` with required dependencies.
-4. Setting the necessary environment variables for session secrets and WebAuthn configuration.
+<Aside>
+The command above prints a `README.md` file from within your project's `node_modules`. You will need to adjust the file paths in its instructions. For example, a command like `cp -R src/passkey ../../src/` should be interpreted as copying the `src/passkey` directory from `node_modules/rwsdk/addons/passkey/` into your own project's `src/` directory.
+</Aside>
 
-## How it Works
+The setup guide will walk you through:
+1. Copying the addon's source files into your `src` directory.
+2. Updating `wrangler.jsonc` with the required D1 and Durable Object bindings.
+3. Adding the required dependencies to your `package.json`.
+4. Setting environment variables for session secrets and WebAuthn configuration.
 
-Once applied, the addon provides a complete passkey system that uses **[Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/)** for session persistence and **[Cloudflare D1](https://developers.cloudflare.com/d1/)** for the database layer.
+## Session Management
 
-### Session Management
-Sessions are handled using a combination of secure, signed cookies for session IDs and Durable Objects for storing session data. When a request is made, middleware verifies the `session_id` cookie, retrieves the session data from the corresponding Durable Object, and fetches the user from the D1 database.
+The SDK includes an API for managing session data, which the Passkey Addon is built upon. This system uses Cloudflare Durable Objects for session data persistence. It can be used directly to manage any kind of session state, such as shopping carts, user preferences, or anonymous analytics.
 
-Using a single Durable Object per session ensures data consistency and simplifies session revocation. Active sessions are kept in memory, which reduces database lookups.
+The main entry point is the `defineDurableSession` function, which creates a `sessionStore` object tied to a specific Durable Object. This store handles the creation of secure, signed session cookies and provides methods for interacting with the session data.
 
-### Passkey Authentication (WebAuthn)
-The login and registration processes follow the standard WebAuthn ceremony.
-1. The client requests a challenge from the server.
-2. The server generates a challenge and stores it in the session Durable Object.
-3. The browser's WebAuthn API prompts the user to use their passkey (e.g., via Face ID, Touch ID, or a hardware key) to sign the challenge.
-4. The signed challenge is sent back to the server.
-5. The server verifies the signature. If it is valid, the user's ID is associated with the session, completing the login.
+### Example: A Simple User Session
+
+Here is how you could build a basic user session store using the Session Management API.
+
+**1. Define the Session Durable Object**
+
+First, create a Durable Object that will store and manage the session data. This object must implement the `getSession`, `saveSession`, and `revokeSession` methods.
+
+```typescript title="src/sessions/UserSession.ts"
+interface SessionData {
+  userId: string | null;
+}
+
+export class UserSession implements DurableObject {
+  private storage: DurableObjectStorage;
+  private session: SessionData = { userId: null };
+
+  constructor(state: DurableObjectState) {
+    this.storage = state.storage;
+    state.blockConcurrencyWhile(async () => {
+      const stored = await this.storage.get<SessionData>("session");
+      this.session = stored ?? { userId: null };
+    });
+  }
+
+  async getSession() {
+    return { value: this.session };
+  }
+
+  async saveSession(data: Partial<SessionData>) {
+    this.session = { ...this.session, ...data };
+    await this.storage.put("session", this.session);
+    return this.session;
+  }
+
+  async revokeSession() {
+    await this.storage.delete("session");
+    this.session = { userId: null };
+  }
+}
+```
+
+**2. Configure `wrangler.jsonc`**
+
+Add the Durable Object binding to your `wrangler.jsonc`.
+
+```jsonc title="wrangler.jsonc"
+{
+  // ...
+  "durable_objects": {
+    "bindings": [
+      // ... other bindings
+      { "name": "USER_SESSION_DO", "class_name": "UserSession" }
+    ]
+  }
+}
+```
+
+**3. Set up the Session Store in the Worker**
+
+In your `src/worker.tsx`, use `defineDurableSession` to create a `sessionStore`, then export the Durable Object class.
+
+```typescript title="src/worker.tsx"
+import { defineDurableSession } from "rwsdk/runtime/lib/auth/session.mjs";
+import { UserSession } from "./sessions/UserSession.js";
+
+// ... other imports
+
+export const sessionStore = defineDurableSession({
+  sessionDurableObject: env.USER_SESSION_DO,
+});
+
+export { UserSession };
+
+// ... rest of your worker setup
+```
+
+**4. Use the Session in an RSC Action**
+
+Now you can use the `sessionStore` in your application. The recommended pattern is to create a "Server Action" module that contains all the logic for interacting with the session, and a separate "Client Component" for the UI.
+
+The `sessionStore` has three primary methods:
+- `load(request)`: Loads the session data based on the incoming request's cookie.
+- `save(responseHeaders, data)`: Saves new session data and sets the session cookie on the outgoing response.
+- `remove(request, responseHeaders)`: Destroys the session data and removes the cookie.
+
+**a. Create Server Actions**
+
+Create a file with a `"use server"` directive at the top. This file will export functions that can be called from client components.
+
+```typescript title="src/app/actions/auth.ts"
+'use server';
+
+import { sessionStore } from '../../worker.js';
+import { requestInfo } from 'rwsdk/worker';
+
+export async function getCurrentUser() {
+  const session = await sessionStore.load(requestInfo.request);
+  return session?.userId ?? null;
+}
+
+export async function loginAction(userId: string) {
+  // In a real app, you would have already verified the user's credentials
+  await sessionStore.save(requestInfo.response.headers, { userId });
+}
+
+export async function logoutAction() {
+  await sessionStore.remove(requestInfo.request, requestInfo.response.headers);
+}
+```
+
+**b. Create a Client Component**
+
+Create a client component with a `"use client"` directive. This component can then import and call the server actions.
+
+```tsx title="src/app/components/AuthComponent.tsx"
+'use client';
+
+import { useState, useEffect, useTransition } from 'react';
+import { loginAction, logoutAction, getCurrentUser } from '../actions/auth.js';
+
+export function AuthComponent() {
+  const [userId, setUserId] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  // Fetch the initial user state when the component mounts
+  useEffect(() => {
+    getCurrentUser().then(setUserId);
+  }, []);
+
+  const handleLogin = () => {
+    startTransition(async () => {
+      const mockUserId = 'user-123';
+      await loginAction(mockUserId);
+      setUserId(mockUserId);
+    });
+  };
+
+  const handleLogout = () => {
+    startTransition(async () => {
+      await logoutAction();
+      setUserId(null);
+    });
+  };
+
+  return (
+    <div>
+      {userId ? (
+        <p>Logged in as: {userId}</p>
+      ) : (
+        <p>Not logged in</p>
+      )}
+      <button onClick={handleLogin} disabled={isPending}>
+        Login as Mock User
+      </button>
+      <button onClick={handleLogout} disabled={isPending}>
+        Logout
+      </button>
+    </div>
+  );
+}
+```

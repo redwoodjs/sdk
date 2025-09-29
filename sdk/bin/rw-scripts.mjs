@@ -22,6 +22,12 @@ if (SCRIPT_NAME === "addon") {
   try {
     const readmePath = path.resolve(ROOT_DIR, "addons", addonName, "README.md");
     const readmeContent = await fs.readFile(readmePath, "utf-8");
+    console.log(`
+NOTE: The following instructions are for the addon's README.md, located inside your project's node_modules.
+You will need to adjust file paths accordingly. For example, a command like 'cp -R src/passkey ../../src/' should be
+interpreted as copying the 'src/passkey' directory from 'node_modules/rwsdk/addons/passkey/' into your project's 'src/' directory.
+---
+`);
     console.log(readmeContent);
     process.exit(0);
   } catch (e) {
