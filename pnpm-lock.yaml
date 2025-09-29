@@ -438,52 +438,6 @@ importers:
         specifier: 4.38.0
         version: 4.38.0(@cloudflare/workers-types@4.20250921.0)
 
-  playground/passkey:
-    dependencies:
-      react:
-        specifier: 19.2.0-canary-d415fd3e-20250919
-        version: 19.2.0-canary-d415fd3e-20250919
-      react-dom:
-        specifier: 19.2.0-canary-d415fd3e-20250919
-        version: 19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919)
-      react-server-dom-webpack:
-        specifier: 19.2.0-canary-d415fd3e-20250919
-        version: 19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1)
-      rwsdk:
-        specifier: workspace:*
-        version: link:../../sdk
-    devDependencies:
-      '@cloudflare/vite-plugin':
-        specifier: 1.13.3
-        version: 1.13.3(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))
-      '@cloudflare/workers-types':
-        specifier: 4.20250921.0
-        version: 4.20250921.0
-      '@types/node':
-        specifier: 22.14.0
-        version: 22.14.0
-      '@types/react':
-        specifier: 19.1.2
-        version: 19.1.2
-      '@types/react-dom':
-        specifier: 19.1.2
-        version: 19.1.2(@types/react@19.1.2)
-      typescript:
-        specifier: 5.8.3
-        version: 5.8.3
-      unique-names-generator:
-        specifier: ~4.7.1
-        version: 4.7.1
-      vite:
-        specifier: 7.1.6
-        version: 7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0)
-      vitest:
-        specifier: ^3.1.1
-        version: 3.1.1(@types/debug@4.1.12)(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(msw@2.11.3(@types/node@22.14.0)(typescript@5.8.3))(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0)
-      wrangler:
-        specifier: 4.38.0
-        version: 4.38.0(@cloudflare/workers-types@4.20250921.0)
-
   playground/render-apis:
     dependencies:
       react:
@@ -866,6 +820,9 @@ importers:
       '@puppeteer/browsers':
         specifier: ~2.8.0
         version: 2.8.0
+      '@types/decompress':
+        specifier: ~4.2.7
+        version: 4.2.7
       '@types/fs-extra':
         specifier: ~11.0.4
         version: 11.0.4
@@ -988,7 +945,7 @@ importers:
         specifier: ~4.1.4
         version: 4.1.4
       decompress:
-        specifier: ^4.2.1
+        specifier: ~4.2.1
         version: 4.2.1
       js-beautify:
         specifier: ~1.15.4
@@ -3652,6 +3609,9 @@ packages:
 
   '@types/debug@4.1.12':
     resolution: {integrity: sha512-vIChWdVG3LG1SMxEvI/AK+FWJthlrqlTu7fbrlywTkkaONwk/UAGaULXRlf8vkzFBLVm0zkMdCquhL5aOjhXPQ==}
+
+  '@types/decompress@4.2.7':
+    resolution: {integrity: sha512-9z+8yjKr5Wn73Pt17/ldnmQToaFHZxK0N1GHysuk/JIPT8RIdQeoInM01wWPgypRcvb6VH1drjuFpQ4zmY437g==}
 
   '@types/eslint-scope@3.7.7':
     resolution: {integrity: sha512-MzMFlSLBqNF2gcHWO0G1vP/YQyfvrxZ0bF+u7mzUdZ1/xK4A4sru+nraZz5i3iEIk1l1uyicaDVTB4QbbEkAYg==}
@@ -11719,6 +11679,10 @@ snapshots:
     dependencies:
       '@types/ms': 2.1.0
 
+  '@types/decompress@4.2.7':
+    dependencies:
+      '@types/node': 24.5.2
+
   '@types/eslint-scope@3.7.7':
     dependencies:
       '@types/eslint': 9.6.1
@@ -12051,14 +12015,14 @@ snapshots:
       msw: 2.11.3(@types/node@22.14.0)(typescript@5.8.3)
       vite: 6.3.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0)
 
-  '@vitest/mocker@3.1.1(msw@2.11.3(@types/node@24.5.2)(typescript@5.8.3))(vite@6.3.6(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))':
+  '@vitest/mocker@3.1.1(msw@2.11.3(@types/node@24.5.2)(typescript@5.8.3))(vite@6.3.6(@types/node@20.19.17)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))':
     dependencies:
       '@vitest/spy': 3.1.1
       estree-walker: 3.0.3
       magic-string: 0.30.19
     optionalDependencies:
       msw: 2.11.3(@types/node@24.5.2)(typescript@5.8.3)
-      vite: 6.3.6(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0)
+      vite: 6.3.6(@types/node@20.19.17)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0)
 
   '@vitest/pretty-format@3.1.1':
     dependencies:
@@ -18162,7 +18126,7 @@ snapshots:
   vitest@3.1.1(@types/debug@4.1.12)(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(msw@2.11.3(@types/node@24.5.2)(typescript@5.8.3))(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0):
     dependencies:
       '@vitest/expect': 3.1.1
-      '@vitest/mocker': 3.1.1(msw@2.11.3(@types/node@24.5.2)(typescript@5.8.3))(vite@6.3.6(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))
+      '@vitest/mocker': 3.1.1(msw@2.11.3(@types/node@24.5.2)(typescript@5.8.3))(vite@6.3.6(@types/node@20.19.17)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))
       '@vitest/pretty-format': 3.1.1
       '@vitest/runner': 3.1.1
       '@vitest/snapshot': 3.1.1

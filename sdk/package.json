@@ -137,6 +137,7 @@
     "@cloudflare/workers-types": "~4.20250906.0",
     "@mdx-js/mdx": "~3.1.1",
     "@puppeteer/browsers": "~2.8.0",
+    "@types/decompress": "~4.2.7",
     "@types/fs-extra": "~11.0.4",
     "@types/react": "~19.1.2",
     "@types/react-dom": "~19.1.2",
@@ -183,11 +184,11 @@
     "@types/lodash": "~4.17.16",
     "@types/node": "~24.5.2",
     "@types/proper-lockfile": "~4.1.4",
+    "decompress": "~4.2.1",
     "js-beautify": "~1.15.4",
     "semver": "~7.7.1",
     "tsx": "~4.19.4",
     "typescript": "~5.8.3",
-    "vitest": "~3.1.1",
-    "decompress": "^4.2.1"
+    "vitest": "~3.1.1"
   }
 }
