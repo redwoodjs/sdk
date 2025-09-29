@@ -77,3 +77,21 @@ The final, chosen approach combines the best of both worlds.
     3.  **Total User Ownership:** The workflow remains the same: the user copies the source code into their project. It becomes *their* code. They are free to modify the schema, change the function signatures, and customize the UI. There is no black box and no rigid API contract.
     4.  **Enables Robust End-to-End Testing:** Because the addon lives in the same repository, we can create a playground example that applies the addon and run our full E2E test suite against it, ensuring this critical feature is always compatible with the core SDK.
     5.  **Keeps the Core SDK Clean:** The SDK's public API surface remains minimal and un-opinionated about authentication. It provides the generic primitives, and the addon provides a complete, but fully user-owned, implementation.
+
+This is because it is both versioned and testable.
+
+### Attempt 4: A Docs-First Approach with a CLI Helper
+
+Upon reflection, creating a robust E2E test that programmatically uses an AI agent to apply the addon feels like a potential rabbit hole that could derail the immediate goal. While it remains a good long-term objective, a more pragmatic approach is needed now.
+
+The decision is to pivot to a docs-first strategy. The primary way a user will add passkey authentication is by following the official documentation. The `playground/passkey` example will be removed in favor of this approach, with the functionality being manually tested for now.
+
+To solve the critical issue of ensuring users get the correct, version-locked instructions for the addon, a CLI helper will be created. A command like `npx rw-scripts addon passkey` will be added. This command will read the `README.md` from within the installed `rwsdk` package (`node_modules/rwsdk/addons/passkey/README.md`) and print its contents directly to the console.
+
+This approach has several advantages:
+- It provides a single, reliable source of truth for instructions.
+- The instructions are guaranteed to be in sync with the user's installed SDK version.
+- The command is simple for both human users and AI agents to execute, fulfilling the goal of having an AI-friendly workflow.
+- It avoids the complexity and non-determinism of building an AI-driven E2E test at this stage.
+
+The authentication documentation will be completely overhauled to guide users to this new command.

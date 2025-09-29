@@ -12,6 +12,24 @@ const BIN_DIR = path.resolve(ROOT_DIR, "node_modules", ".bin");
 const ARGS = process.argv.slice(2);
 const SCRIPT_NAME = ARGS[0];
 
+if (SCRIPT_NAME === "addon") {
+  const fs = await import("node:fs/promises");
+  const addonName = ARGS[1];
+  if (!addonName) {
+    console.error("Please provide an addon name.");
+    process.exit(1);
+  }
+  try {
+    const readmePath = path.resolve(ROOT_DIR, "addons", addonName, "README.md");
+    const readmeContent = await fs.readFile(readmePath, "utf-8");
+    console.log(readmeContent);
+    process.exit(0);
+  } catch (e) {
+    console.error(`Could not find README.md for addon "${addonName}".`);
+    process.exit(1);
+  }
+}
+
 const $ = $base({
   shell: true,
   stdio: "inherit",

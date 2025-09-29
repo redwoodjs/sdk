@@ -2,266 +2,48 @@
 title: Authentication
 description: Secure your application with sessions and passwordless login.
 ---
+import { Aside } from "@astrojs/starlight/components";
 
-import {
-  Aside,
-  Tabs,
-  TabItem,
-  LinkCard,
-  Code,
-  Badge,
-} from "@astrojs/starlight/components";
+RedwoodSDK enables secure, passwordless authentication using **passkeys ([WebAuthn](https://webauthn.guide/))** via a bundled addon.
 
-RedwoodSDK provides built-in utilities for adding secure, passwordless authentication to your application using **passkeys ([WebAuthn](https://webauthn.guide/))**. The system uses **[Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/)** for session persistence, ensuring that session data is consistent and easy to manage, and **[Cloudflare D1](https://developers.cloudflare.com/d1/)** for the database layer.
+## The Bundled Addon Approach
 
-This guide walks through the steps to integrate passkey authentication into your project.
+Instead of providing a rigid, black-box authentication API, RedwoodSDK ships the complete source code for a passkey implementation as a **bundled addon**. This addon lives inside the `rwsdk` package and is versioned along with it.
 
-## Setup
+When you want to add authentication, you copy the addon's source code directly into your own project. This gives you:
+- **Full Ownership:** The code is yours. You can inspect it, modify it, and extend it to fit your exact needs.
+- **Guaranteed Compatibility:** The addon code is always compatible with the version of the SDK you have installed.
+- **Transparency:** You can see exactly how the authentication is implemented, with no hidden magic.
 
-Adding passkey authentication involves configuring your `wrangler.jsonc`, setting up a Durable Object for sessions, integrating the authentication middleware into your worker, and creating a user interface for login and registration.
+## Applying the Passkey Addon
 
-### 1. `wrangler.jsonc` Configuration
+The instructions for copying and configuring the passkey addon are included in the `README.md` file within the addon itself.
 
-First, you need to configure a D1 database for storing user data and a Durable Object for managing sessions.
-
-1.  Create a D1 database for your project if you haven't already:
-    ```bash showLineNumbers=false
-    npx wrangler d1 create your-project-name-db
-    ```
-2.  Add the following `d1_databases` and `durable_objects` configurations to your `wrangler.jsonc` file, replacing the placeholders with your own project's details.
-
-    ```jsonc title="wrangler.jsonc"
-    {
-      "d1_databases": [
-        {
-          "binding": "DB",
-          "database_name": "your-project-name-db",
-          "database_id": "your-database-id"
-        }
-      ],
-      "durable_objects": {
-        "bindings": [
-          { "name": "PASSKEY_DO", "class_name": "PasskeyDurableObject" },
-          { "name": "SESSION_DO", "class_name": "SessionDurableObject" }
-        ]
-      }
-    }
-    ```
-
-### 2. Database Migrations and Durable Object
-
-The SDK provides the necessary database migrations for passkeys out of the box. You'll need to create a small file to export a `PasskeyDurableObject` class that uses them.
-
-Create a new file, for example at `src/passkey/durableObject.ts`, and add the following:
-
-```typescript title="src/passkey/durableObject.ts"
-import { PasskeyDurableObject as RwSdkPasskeyDurableObject, passkeyMigrations } from 'rwsdk/passkey/worker';
-
-export class PasskeyDurableObject extends RwSdkPasskeyDurableObject {
-  migrations = passkeyMigrations;
-}
-```
-
-This class will be automatically discovered by the SDK.
-
-#### Customizing Migrations
-
-If you need to add your own tables or modify the schema, you can extend the default migrations. The `passkeyMigrations` object can be spread into your own custom migrations object.
-
-```typescript title="src/passkey/durableObject.ts"
-import { PasskeyDurableObject as RwSdkPasskeyDurableObject, passkeyMigrations } from 'rwsdk/passkey/worker';
-
-const myCustomMigrations = {
-  '002_add_user_roles': {
-    async up(db) {
-      // Add your custom migration logic here
-    },
-    async down(db) {
-      // Add your custom rollback logic here
-    },
-  },
-};
-
-export class PasskeyDurableObject extends RwSdkPasskeyDurableObject {
-  migrations = {
-    ...passkeyMigrations,
-    ...myCustomMigrations,
-  };
-}
-```
-
-### 3. Worker Setup
-
-Next, integrate the passkey authentication middleware into your application's worker. This middleware handles session management and user authentication for incoming requests.
-
-In your `src/worker.tsx` file, import `setupPasskeyAuth` and add it to your middleware array:
-
-```typescript title="src/worker.tsx"
-import { rwsdk } from "rwsdk/worker";
-import { setupPasskeyAuth } from "rwsdk/passkey/worker";
-import { routes } from "./app/pages/routes.js";
-
-// Initialize the passkey authentication middleware
-const passkeyAuth = setupPasskeyAuth();
-
-export default {
-  async fetch(request, env, ctx) {
-    return rwsdk(request, env, ctx, {
-      routes,
-      middleware: [
-        passkeyAuth,
-        // ... any other middleware
-      ],
-    });
-  },
-};
-```
-
-### 4. UI Implementation with `usePasskey`
-
-The SDK provides a client-side hook, `usePasskey`, to simplify the WebAuthn flow for login and registration. You will need to build your own UI components and use this hook to trigger the authentication process.
-
-The `usePasskey` hook returns two functions:
-- `login(username: string): Promise<boolean>`
-- `register(username: string): Promise<boolean>`
-
-Here is an example of a `Login.tsx` component:
-
-```tsx title="src/app/pages/Login.tsx"
-import { useState, useTransition } from "react";
-import { usePasskey } from "rwsdk/passkey/client";
-
-export function Login() {
-  const [username, setUsername] = useState("");
-  const [result, setResult] = useState("");
-  const [isPending, startTransition] = useTransition();
-  const { login, register } = usePasskey();
-
-  const handleRegister = async () => {
-    if (!username.trim()) {
-      setResult("Please enter a username");
-      return;
-    }
-    try {
-      const success = await register(username);
-      setResult(success ? "Registration successful!" : "Registration failed");
-    } catch (error: unknown) {
-      setResult(error instanceof Error ? error.message : "An unknown error occurred");
-    }
-  };
-
-  const handleLogin = async () => {
-    try {
-      const success = await login(username);
-      setResult(success ? "Login successful!" : "Login failed");
-    } catch (error: unknown) {
-      setResult(error instanceof Error ? error.message : "An unknown error occurred");
-    }
-  };
-
-  const handlePerformRegister = () => {
-    startTransition(() => void handleRegister());
-  };
-
-  const handlePerformLogin = () => {
-    startTransition(() => void handleLogin());
-  };
-
-  return (
-    <div>
-      <input
-        type="text"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-        placeholder="Username"
-        disabled={isPending}
-      />
-      <button onClick={handlePerformLogin} disabled={isPending}>
-        {isPending ? "Logging in..." : "Login with Passkey"}
-      </button>
-      <button onClick={handlePerformRegister} disabled={isPending}>
-        {isPending ? "Registering..." : "Register with Passkey"}
-      </button>
-      {result && <p>{result}</p>}
-    </div>
-  );
-}
-```
-
-### 5. Setting Up Routes
-
-Finally, create a route for your login page. For example, in `src/app/pages/routes.ts`:
-
-```typescript title="src/app/pages/routes.ts"
-import { route } from 'rwsdk/router';
-import { Login } from './Login.js';
-import { Home } from './Home.js';
-
-export const routes = [
-  route('/', [Home]),
-  route('/login', [Login]),
-  // ... other routes
-];
-```
-
-## Environment Variables
-
-The authentication system uses the following environment variables:
-
-- `WEBAUTHN_APP_NAME`: The application name shown in WebAuthn prompts (defaults to your application name from `wrangler.jsonc`).
-- `WEBAUTHN_RP_ID`: The relying party ID for WebAuthn (defaults to the request hostname).
-- `AUTH_SECRET_KEY`: A secret key for signing session tokens.
-
-For production deployments, you must set a strong `AUTH_SECRET_KEY`.
-
-### Setting the Session Secret Key
-
-Generate a secure secret key:
+To view the instructions, run the following command in your project's root directory:
 
 ```bash showLineNumbers=false
-# Generate a 32-byte random key and encode it as base64
-openssl rand -base64 32
+npx rw-scripts addon passkey
 ```
 
-Set this key as a Cloudflare secret for your production environment:
-
-```bash showLineNumbers=false
-npx wrangler secret put AUTH_SECRET_KEY
-```
-
-<Aside type="caution">
-Never use the same secret key for development and production, and never commit secret keys to version control.
-</Aside>
-
-### Customizing WebAuthn Relying Party ID
-
-By default, the `WEBAUTHN_RP_ID` is dynamically set to the hostname of each request. For production, it is recommended to lock this down to your application's domain.
-
-```shell showLineNumbers=false
-npx wrangler secret put WEBAUTHN_RP_ID
-```
-
-When prompted, enter your production domain (e.g., `my-app.example.com`).
-
-## Security Considerations
-
-- **Username vs. Email**: The authentication system uses usernames instead of emails to prevent user enumeration attacks.
-- **Authentication Flow**: The login flow uses credential IDs generated by the authenticator, which mitigates enumeration risks.
+This command will print the step-by-step guide to your console. Follow the guide to get passkey authentication running in your application. The process will involve:
+1. Copying the addon's source files into your project's `src` directory.
+2. Updating your `wrangler.jsonc` file with the required D1 database and Durable Object bindings.
+3. Updating your `package.json` with required dependencies.
+4. Setting the necessary environment variables for session secrets and WebAuthn configuration.
 
 ## How it Works
 
+Once applied, the addon provides a complete passkey system that uses **[Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/)** for session persistence and **[Cloudflare D1](https://developers.cloudflare.com/d1/)** for the database layer.
+
 ### Session Management
+Sessions are handled using a combination of secure, signed cookies for session IDs and Durable Objects for storing session data. When a request is made, middleware verifies the `session_id` cookie, retrieves the session data from the corresponding Durable Object, and fetches the user from the D1 database.
 
-Sessions are handled using a combination of secure, signed cookies for session IDs and Durable Objects for storing session data. When a request is made, the middleware verifies the `session_id` cookie, retrieves the session data from the corresponding Durable Object, and fetches the user from the D1 database.
-
-Using a single Durable Object per session ensures data consistency and simplifies session revocation. Active sessions are kept in memory, which reduces database lookups and improves performance.
+Using a single Durable Object per session ensures data consistency and simplifies session revocation. Active sessions are kept in memory, which reduces database lookups.
 
 ### Passkey Authentication (WebAuthn)
-
 The login and registration processes follow the standard WebAuthn ceremony.
-
-1.  The client requests a challenge from the server.
-2.  The server generates a challenge and stores it in the session Durable Object.
-3.  The browser's WebAuthn API prompts the user to use their passkey (e.g., via Face ID, Touch ID, or a hardware key) to sign the challenge.
-4.  The signed challenge is sent back to the server.
-5.  The server verifies the signature. If it is valid, the user's ID is associated with the session, completing the login.
+1. The client requests a challenge from the server.
+2. The server generates a challenge and stores it in the session Durable Object.
+3. The browser's WebAuthn API prompts the user to use their passkey (e.g., via Face ID, Touch ID, or a hardware key) to sign the challenge.
+4. The signed challenge is sent back to the server.
+5. The server verifies the signature. If it is valid, the user's ID is associated with the session, completing the login.
