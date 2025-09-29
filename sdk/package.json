@@ -147,6 +147,7 @@
     "enhanced-resolve": "~5.18.1",
     "eventsource-parser": "~3.0.0",
     "execa": "~9.5.2",
+    "find-up": "~8.0.0",
     "fs-extra": "~11.3.0",
     "glob": "~11.0.1",
     "ignore": "~7.0.4",
