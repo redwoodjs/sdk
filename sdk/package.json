@@ -157,7 +157,6 @@
     "kysely-do": "~0.0.1-rc.1",
     "lodash": "~4.17.21",
     "magic-string": "~0.30.17",
-    "miniflare": "~4.20250924.0",
     "picocolors": "~1.1.1",
     "proper-lockfile": "~4.1.2",
     "puppeteer-core": "~24.22.0",
