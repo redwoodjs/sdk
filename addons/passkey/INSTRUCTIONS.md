@@ -123,7 +123,6 @@ The first time you run the development server, it will generate the `.wrangler` 
 pnpm dev
 ```
 
-
 This will ensure that all the environmental types needed for the Passkey Auth are generated
 
 You should now have a working passkey authentication flow in your RedwoodSDK application!
