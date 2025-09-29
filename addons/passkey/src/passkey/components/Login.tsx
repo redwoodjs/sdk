@@ -80,7 +80,7 @@ export function Login() {
   };
 
   const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newUsername = e.target.value;
+    const newUsername = e.currentTarget.value;
     setUsername(newUsername);
   };
 
