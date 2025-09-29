@@ -20,7 +20,6 @@ async function getRwSdkProjectRootDir(cwd: string) {
 
 export const addon = async () => {
   const addonName = process.argv[2];
-  console.log(process.argv);
 
   if (
     !addonName ||
