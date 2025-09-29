@@ -25,7 +25,7 @@ export const Welcome = () => {
             <li>
               Read the{" "}
               <a
-                href="https://rwsdk.com/docs/quick-start"
+                href="https://docs.rwsdk.com/getting-started/quick-start/"
                 target="_blank"
                 rel="noreferrer"
                 className={styles.link}
@@ -37,7 +37,7 @@ export const Welcome = () => {
             <li>
               Explore React Server Components and Server Functions in the{" "}
               <a
-                href="https://rwsdk.com/docs"
+                href="https://docs.rwsdk.com/"
                 target="_blank"
                 rel="noreferrer"
                 className={styles.link}
@@ -67,7 +67,7 @@ export const Welcome = () => {
           <p>
             Need more detail? Read the{" "}
             <a
-              href="https://rwsdk.com/docs/core/hosting"
+              href="https://docs.rwsdk.com/core/hosting/"
               target="_blank"
               rel="noreferrer"
               className={styles.link}

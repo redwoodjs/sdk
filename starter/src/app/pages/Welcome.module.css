@@ -16,6 +16,12 @@
   --code-bg: #1b1b1b;
 }
 
+body {
+  background-color: var(--color-baige);
+  margin: 0;
+  padding: 0;
+}
+
 .container {
   max-width: 1100px;
   margin: 0 auto;
