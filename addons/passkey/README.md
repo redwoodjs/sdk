@@ -15,12 +15,12 @@ Copy the `src` directory from this addon into your project's `src` directory. Th
 
 ### 2. Update `package.json`
 
-Add the following dependencies to your `package.json` file:
+Copy the `dependencies` in the addon's `package.json` to your own application's `package.json`:
 
 ```json
 "dependencies": {
-  "@simplewebauthn/browser": "^13.1.0",
-  "@simplewebauthn/server": "^13.1.1"
+  "@simplewebauthn/browser": "...",
+  "@simplewebauthn/server": "..."
 }
 ```
 
