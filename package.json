@@ -4,11 +4,9 @@
   "private": true,
   "description": "Redwood SDK monorepo",
   "scripts": {
-    "link-sdk": "(cd sdk && pnpm build) && (cd starter && npm pkg set dependencies.rwsdk='workspace:*') && pnpm install --ignore-scripts --no-frozen-lockfile",
-    "check-starter:dev": "./scripts/check-app.sh dev starter",
-    "check-starter:preview": "./scripts/check-app.sh preview starter",
     "format": "prettier --write ./sdk/src starter/src",
-    "typecheck:addons": "pnpm exec tsc --project addons/passkey/tsconfig.json",
+    "typecheck:addons": "for d in addons/*/; do if [ -f \"$d/tsconfig.json\" ]; then pnpm exec tsc --project \"$d/tsconfig.json\"; fi; done",
+    "typecheck:starter": "pnpm exec tsc --project starter/tsconfig.json",
     "test:e2e": "(cd sdk && pnpm build) && cd playground && vitest run",
     "setup:e2e": "pnpm setup:wrangler",
     "setup:wrangler": "./scripts/setup-wrangler-auth.sh"

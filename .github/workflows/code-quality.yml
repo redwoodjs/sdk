@@ -41,3 +41,6 @@ jobs:
 
       - name: Typecheck Addons
         run: pnpm typecheck:addons
+
+      - name: Typecheck Starter
+        run: pnpm typecheck:starter
