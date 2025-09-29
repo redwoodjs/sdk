@@ -31,7 +31,9 @@ This is the primary, manually-triggered event that kicks off a release. It deter
 4.  **Smoke Test**: A comprehensive smoke test is performed against the packed tarball to ensure it works correctly in a fresh project.
 5.  **Publish to npm**: If tests pass, the tarball is published to npm with the appropriate tag.
 6.  **Commit & Git Tag**: A release commit and a git tag (e.g., `v1.2.3`) are created and pushed.
-7.  **Create GitHub Release**: A GitHub Release is created from the tag. Crucially, a `--latest` flag is added for stable and beta releases, signaling to GitHub that this is the primary release. Other pre-releases and test releases are created without this flag.
+7.  **Create GitHub Release**: A GitHub Release is created from the tag with specific flags based on the version type:
+    -   **Stable & Beta versions** get the `--latest` flag, making them the primary release.
+    -   **Pre-releases (alphas, etc.) and Test versions** get the `--prerelease` flag, marking them as such on GitHub.
 
 ### Stage 3: Artifact Release (`release-artifacts.yml`)
 
@@ -40,7 +42,7 @@ The push of any new git tag automatically triggers this final stage, which prepa
 1.  **Trigger**: The workflow is triggered by any new `v*.*.*` tag.
 2.  **Update Dependencies**: The workflow checks out the repository at the tag and updates the `starter/package.json` and all `addons/*/package.json` files, replacing `"rwsdk": "workspace:*"` with the exact release version (e.g., `"rwsdk": "1.2.3"`).
 3.  **Package Artifacts**: The workflow creates `.tar.gz` and `.zip` archives for the `starter` project and each addon.
-4.  **Upload to Release**: The generated artifacts are uploaded to the GitHub Release created in Stage 2. This action also updates the release's metadata: if the version string contains a hyphen (`-`) but *not* `-beta.`, the release is marked as a `Pre-release` on GitHub. This ensures that alphas, release candidates, and test versions are clearly identified as pre-releases, while beta releases are treated as stable "latest" releases.
+4.  **Upload to Release**: The generated artifacts are uploaded to the GitHub Release that was created in Stage 2.
 
 ### Consumption: How `create-rwsdk` Selects a Version
 
