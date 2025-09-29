@@ -26,7 +26,8 @@ npx create-rwsdk [project-name] [options]
 #### Options
 
 - `-f, --force`: Force overwrite if directory exists
-- `--legacy`: Use the latest stable `0.x` release instead of the latest pre-release
+- `--release <version>`: Use a specific release version (e.g., `v1.0.0-alpha.1`)
+- `--pre`: Use the latest pre-release (e.g., alpha, beta, rc)
 - `-h, --help`: Display help information
 - `-V, --version`: Display version number
 
@@ -49,6 +50,18 @@ Force overwrite an existing directory:
 
 ```bash
 npx create-rwsdk my-awesome-app --force
+```
+
+Create a project from the latest pre-release:
+
+```bash
+npx create-rwsdk my-awesome-app --pre
+```
+
+Create a project from a specific release version:
+
+```bash
+npx create-rwsdk my-awesome-app --release v1.0.0-alpha.10
 ```
 
 ## Next steps after creating a project
