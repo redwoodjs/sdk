@@ -1,6 +1,7 @@
 {
   "extends": "../sdk/tsconfig.json",
   "compilerOptions": {
+    "composite": true,
     "noEmit": true,
     "baseUrl": ".",
     "rootDir": ".",
@@ -9,5 +10,5 @@
     },
     "types": ["node", "@cloudflare/workers-types"]
   },
-  "include": ["./*/src/**/*.ts", "./*/src/**/*.tsx"]
+  "include": ["./passkey/src/**/*.ts", "./passkey/src/**/*.tsx"]
 }

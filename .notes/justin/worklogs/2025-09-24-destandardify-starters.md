@@ -128,9 +128,131 @@ The following files in the `docs` directory contain references to the "standard"
   - [x] Updated `docs/src/content/docs/core/database.mdx`, `guides/frontend/storybook.mdx`, `guides/frontend/documents.mdx`, and `core/security.mdx` to remove references to the "standard" starter and provide generic, starter-agnostic examples.
   - [x] Reviewed all other identified documentation files and confirmed no changes were needed.
 
+### Architectural Journey: Integrating Passkey Authentication
+
+This section details the evolution of the architectural decisions made for the passkey integration.
+
+#### Architectural Shift: Passkey DB Ownership
+
+A key challenge was identified in the passkey integration: **database ownership**.
+
+**The Problem:** The initial implementation placed the passkey database schema (`migrations.ts`) and data access functions (`createUser`, `getCredentialById`, etc.) inside the SDK. This is a flawed approach because it forces a specific data model onto the user and assumes we can own their database schema. A user's data model is their own concern; they may have different fields, existing user tables, or different database technologies entirely.
+
+**The Solution: Dependency Injection**
+
+To solve this, we will refactor the passkey feature to use a dependency injection pattern. This creates a clear contract between the SDK and the user's code, establishing the correct "split point":
+
+1.  **User Owns the DB:** The entire database layer—including migrations, the `db.ts` file, and all data access functions—will be moved out of the SDK and into user-land (in this case, the `playground/passkey` example). The user is responsible for implementing a "DB API" that provides a set of required functions (e.g., `createUser`, `createCredential`).
+
+2.  **SDK Consumes the DB API:**
+    *   The SDK's `setupPasskeyAuth` function will be modified to accept the user's DB API object as an argument: `setupPasskeyAuth(passkeyDb)`.
+    *   This setup function will attach the user's `passkeyDb` object to the globally available `requestInfo` context, making it accessible throughout the request.
+
+3.  **SDK Functions Use the Injected API:** The SDK's core passkey functions (`finishPasskeyRegistration`, etc.) will no longer import database functions directly. Instead, they will call them from the context: `requestInfo.rw.passkeyDb.createUser(...)`.
+
+This approach gives the user full control over their database implementation while still benefiting from the complex WebAuthn logic provided by the SDK. It's a more flexible and robust architecture.
+
+#### Strategy: Providing Defaults for Common Patterns
+
+**Problem:** While the dependency injection pattern is flexible, it requires users to copy and maintain a significant amount of boilerplate for the database and session management, even for a standard setup. This creates friction for users who just want a working passkey implementation without writing custom persistence logic.
+
+**Solution: Default Factory Functions**
+
+To solve this, I will introduce "factory functions" within the SDK that create default, production-ready implementations for the passkey database and session store. Users can use these defaults out-of-the-box with zero configuration, or provide options to customize them. This preserves the flexibility of the architecture while drastically improving the developer experience for common use cases.
+
+1.  **`createDefaultPasskeyDb(options)`:**
+    *   This function will be exported from the SDK and will return a complete passkey DB API object (`createUser`, `getCredential`, etc.), backed by a SQLite Durable Object.
+    *   It will accept an `options` object:
+        *   `durableObject`: The Durable Object namespace binding. (Defaults to `env.PASSKEY_DURABLE_OBJECT`)
+        *   `name`: The name for the singleton DO instance. (Defaults to `"passkey-main"`)
+
+2.  **`createDefaultSessionStore(options)`:**
+    *   This function will return a session store instance, also backed by a Durable Object.
+    *   It will accept an `options` object:
+        *   `durableObject`: The Durable Object namespace binding. (Defaults to `env.SESSION_DURABLE_OBJECT`)
+
+3.  **Updated `setupPasskeyAuth(options)`:**
+    *   The primary `setupPasskeyAuth` function will be updated to orchestrate these defaults.
+    *   It will accept an `options` object:
+        *   `passkeyDb`: A user-provided DB API. (If not provided, it will default to calling `createDefaultPasskeyDb()`).
+        *   `sessions`: A user-provided session store. (If not provided, it will default to calling `createDefaultSessionStore()`).
+
+This design allows for a simple, zero-config setup for most users (`setupPasskeyAuth()`), while still enabling advanced users to override any part of the implementation (`setupPasskeyAuth({ passkeyDb: myCustomDb })`).
+
+#### Decision: The Co-Located Addon (aka "Bundled Addon")
+
+After extensive back-and-forth, we have landed on a final architecture that we believe correctly balances developer experience, flexibility, and long-term maintainability. The core challenge was providing a first-class, "batteries-included" authentication solution without creating a "black box" that users couldn't customize, and without creating a versioning nightmare.
+
+Here is a summary of the approaches we considered and why we ultimately chose the "Co-located Addon" model.
+
+##### Attempt 1: In-SDK Defaults with Dependency Injection
+
+- **The Idea:** Provide `createDefaultPasskeyDb` and `createDefaultSessionStore` functions within the SDK. The main `setupPasskeyAuth` function would use these by default, but allow advanced users to pass in their own custom implementations.
+- **Why we rejected it:** This created a rigid API contract. The user's database logic would have to conform to *our* specific interface (e.g., a function named `createUser` with a specific signature). This is inflexible and often creates more work for the user (writing adapters) than it saves. More importantly, the default implementation was a "black box"—the schema and logic were hidden inside the SDK's compiled code, making it impossible for a user to inspect or modify.
+
+##### Attempt 2: External Addon (The Original Approach)
+
+- **The Idea:** Keep the entire passkey implementation in a separate repository. The user (or an AI agent) would follow a `README` to copy the files into their project.
+- **Why we rejected it:** While this model correctly gives the user full ownership of the code, it creates a critical **versioning and stability crisis**. There is no way to guarantee that the `main` branch of the addon is compatible with the version of the SDK a user has installed. A breaking change in a core SDK API could silently break every project using the addon. It also feels disconnected and less "official," undermining the goal of making auth a first-class feature.
+
+---
+
+##### The Solution: A Co-located, Version-Locked Addon
+
+The final, chosen approach combines the best of both worlds.
+
+- **What it is:** The entire passkey implementation (database, server functions, UI, etc.) will live as source code boilerplate inside an `sdk/addons/passkey` directory within the SDK monorepo. This directory is **not** part of the SDK's compiled code, but it is **published with the package** to NPM.
+
+- **Why it's the right choice:**
+    1.  **Atomic Versioning (The Most Important Point):** The addon is versioned and published *with* the SDK. The boilerplate in `rwsdk@1.2.0` is guaranteed to work with the `rwsdk@1.2.0` core library because they are from the same commit and tested together. This completely solves the stability problem.
+    2.  **A Cohesive Documentation Story:** We can now officially document the auth solution. The docs for a specific SDK version can point to a **permanent, version-locked URL** for the addon's instructions: `.../sdk/v1.2.0/addons/passkey/README.md`. This makes it feel like an official, bundled feature, not a "jutting out thing."
+    3.  **Total User Ownership:** The workflow remains the same: the user copies the source code into their project. It becomes *their* code. They are free to modify the schema, change the function signatures, and customize the UI. There is no black box and no rigid API contract.
+    4.  **Enables Robust End-to-End Testing:** Because the addon lives in the same repository, we can create a playground example that applies the addon and run our full E2E test suite against it, ensuring this critical feature is always compatible with the core SDK.
+    5.  **Keeps the Core SDK Clean:** The SDK's public API surface remains minimal and un-opinionated about authentication. It provides the generic primitives, and the addon provides a complete, but fully user-owned, implementation.
+
+This is because it is both versioned and testable.
+
+##### Attempt 4: A Docs-First Approach with a CLI Helper
+
+Upon reflection, creating a robust E2E test that programmatically uses an AI agent to apply the addon feels like a potential rabbit hole that could derail the immediate goal. While it remains a good long-term objective, a more pragmatic approach is needed now.
+
+The decision is to pivot to a docs-first strategy. The primary way a user will add passkey authentication is by following the official documentation. The `playground/passkey` example will be removed in favor of this approach, with the functionality being manually tested for now.
+
+To solve the critical issue of ensuring users get the correct, version-locked instructions for the addon, a CLI helper will be created. A command like `npx rw-scripts addon passkey` will be added. This command will read the `README.md` from within the installed `rwsdk` package (`node_modules/rwsdk/addons/passkey/README.md`) and print its contents directly to the console.
+
+This approach has several advantages:
+- It provides a single, reliable source of truth for instructions.
+- The instructions are guaranteed to be in sync with the user's installed SDK version.
+- The command is simple for both human users and AI agents to execute, fulfilling the goal of having an AI-friendly workflow.
+- It avoids the complexity and non-determinism of building an AI-driven E2E test at this stage.
+
+The authentication documentation will be completely overhauled to guide users to this new command.
+
+##### Attempt 5: Decoupling the Addon from the NPM Package
+
+A refinement to the docs-first approach is to avoid shipping the addon source code within the published `rwsdk` npm package. This keeps the package lean for all users, especially those not using the passkey feature.
+
+The new plan is as follows:
+1. The `sdk/addons` directory will not be included in the files published to npm. It will exist only in the GitHub repository, versioned with git tags.
+2. The `rw-scripts addon passkey` command will be modified. Instead of reading a local file, it will determine the currently installed version of `rwsdk`. It will then use this version to construct and print the exact GitHub URL for the addon's `README.md` at that specific git tag.
+3. The documentation will be updated to reflect this. It will instruct users to run the command to get a version-locked URL. It will also provide a static link to the `README.md` on the `main` branch for users who wish to browse the latest version.
+
+This approach maintains the key benefit of version-locking the instructions to the user's installed SDK version while significantly reducing the size of the installed package. The workflow remains simple for both users and AI agents, who can be instructed to fetch content from the provided URL.
+
+##### Attempt 6: Per-Addon Dependency Management
+
+A further refinement is how to handle addon-specific dependencies. A single `package.json` at the `addons` root is insufficient for managing the unique dependencies of multiple addons.
+
+The decision is to adopt a per-addon configuration:
+1. Each addon directory (e.g., `addons/passkey/`) will contain its own minimal `package.json` file.
+2. The purpose of this `package.json` is solely to declare the addon's specific npm dependencies. It will not be used for publishing the addon itself.
+3. The addon's `README.md` will be updated to instruct users to check this `package.json` and install the listed dependencies into their own project.
+
+This makes each addon's requirements explicit and self-contained, which is a more robust and scalable pattern.
+
 ## Release and Migration Strategy
 
-With the core refactoring complete, the next challenge is to devise a release strategy that safely rolls out these significant changes to both new and existing users without causing disruption.
+The following sections have been consolidated from previous entries to form the final, agreed-upon strategy.
 
 ### The Problem: Coordinating a Multi-Part Release
 
@@ -158,7 +280,7 @@ The key insight is that the code generated by the old starter is now **the user'
 
 This led to a refined, more user-centric strategy that respects their existing codebase while still informing them of the project's new direction.
 
-### Final Agreed-Upon Strategy
+### Agreed-Upon Strategy
 
 The final plan combines the "implicit pre-release" path for new users with a clear, supportive path for existing users, centered around a new migration guide and an escape-hatch flag in the CLI.
 
@@ -339,67 +461,7 @@ My thought process evolved through several stages:
 
 6.  **Addressing Time Constraints and "Big Bang" Releases**: Given my limited availability over the upcoming weekend, a "big bang" release on Monday felt risky. I wanted to merge the code now for peace of mind but delay the public-facing "launch" until I was fully available.
 
-7.  **Final Strategy - "Code-First, Docs-Later"**: After considering various ways to handle the documentation (a `docs-next` folder, separate branches), the best path forward seems to be a hybrid "Isolate and Stage" approach. This provides the best of both worlds:
+7.  **Strategy - "Code-First, Docs-Later"**: After considering various ways to handle the documentation (a `docs-next` folder, separate branches), the best path forward seems to be a hybrid "Isolate and Stage" approach. This provides the best of both worlds:
     *   **Code Merge First**: All functional code changes will be merged into `main` first, but in a "dark" state. `create-rwsdk` will default to the `--legacy` behavior, so no users are affected.
     *   **Isolate Docs**: The documentation changes will be temporarily removed from the main PR and staged for a separate, atomic merge.
     *   **Controlled Launch**: The launch on Monday will consist of two small, low-risk actions: updating the default behavior of `create-rwsdk` and merging the prepared documentation PR.
-
-This final, agreed-upon strategy allows me to merge the code now, protects my time, and ensures a smooth, controlled, and well-supported launch for users when the time is right.
-
-### Next Steps for This Branch
-
-Based on this, here is the plan for moving forward:
-
-1.  **Review and Validation**: I will now review all the code and documentation changes that have been made in this branch to validate them.
-
-2.  **E2E Test for Passkey**: I need to address the challenge with the passkey end-to-end test.
-    *   **The Challenge**: The test currently simulates the full registration and login flow. However, the WebAuthn API triggers a native browser/OS authenticator prompt (like a fingerprint scan or hardware key), which Puppeteer cannot interact with.
-    *   **The Concern**: This will likely cause the E2E test to hang and fail in CI.
-    *   **Potential Solution**: As I considered, I may need to scope this test down. Instead of verifying the full end-to-end flow, the test could be modified to confirm that the correct UI elements (e.g., "Register with Passkey" button) render on the page. The full flow would then be marked for manual testing for the time being.
-
-3.  **Finalizing This PR (My Task, Upon Your Request)**: Once your review is complete and we've decided on the E2E test strategy, I will prepare this branch for the "Code-First" merge. The agreed-upon technical steps are:
-    *   Copy the current `docs/` directory to a temporary location (e.g., `/tmp/docs-pre`).
-    *   Revert the `docs/` directory in this branch back to its state on `main` using `git checkout main -- docs/`.
-    *   This will leave the PR with only code changes, ready for you to merge. The new documentation will be safely stored, ready to be moved into a new branch for the final release.
-*   **Update `create-rwsdk`**: The CLI will be updated with `--legacy` and `--pre` flags to control which version of the starter is downloaded. For the initial merge, the default behavior will be `legacy` to avoid impacting current users.
-
-## Review Plan
-
-This plan provides a structured approach to efficiently review the comprehensive changes in this branch.
-
-### 1. High-Level Refresher (The Goal)
-
-The primary objective of this branch is twofold:
-
-*   **Destandardize**: Simplify the project by removing the `standard` starter, promoting `minimal` to the single default `starter`, and updating all tooling and documentation to reflect this.
-*   **Integrate Passkey**: Move the passkey authentication logic from the old `standard` starter into the SDK itself (`rwsdk/passkey`), making it an officially supported, optional feature.
-
-### 2. Core Changes & Key Decisions (The "What" & "Why")
-
-*   **Code**: The main functional additions are the `sdk/src/passkey` directory (the core logic) and the corresponding `playground/passkey` example. The main structural changes are the removal of `starters/standard` and the renaming of `starters/minimal` to `starter`, which touched many CI and script files.
-*   **Strategy**: We landed on a **"Code-First, Docs-Later"** release plan. This means this PR, once approved, will be prepared to merge *without* the documentation changes to avoid a "big bang" release. The `create-rwsdk` tool defaults to `--legacy` for now to prevent impacting existing users.
-
-### 3. Suggested Review Flow (The "How")
-
-A recommended path for an efficient review:
-
-*   **Step 1: Skim the Work Log (5 mins)**
-    *   Quickly read through the **"Status Update"** and **"Release Strategy and Next Steps"** sections in this work log for the full narrative.
-
-*   **Step 2: Review the Passkey Feature (15 mins)**
-    *   Start with `sdk/src/passkey/`, focusing on `client.ts` (`usePasskey` hook) and `worker.ts` (server-side exports).
-    *   Then, review the `playground/passkey/` example, which demonstrates the API in a practical implementation.
-
-*   **Step 3: Review the Tooling & CI Changes (10 mins)**
-    *   Look at `sdk/scripts/release.sh` and `.github/workflows/smoke-test-starters.yml`. The key change is the simplification to a single `starter`.
-
-*   **Step 4: Review `create-rwsdk` (5 mins)**
-    *   Check `create-rwsdk/index.js` for the removal of template selection logic and the addition of the `--pre`/`--legacy` flags.
-
-*   **Step 5: Review the Documentation (10 mins)**
-    *   Focus on the two most important documents: `docs/src/content/docs/migrating.mdx` and `docs/src/content/docs/core/authentication.mdx`.
-
-### 4. Suggested Validation (Optional)
-
-*   **Test `create-rwsdk`**: Run `npx create-rwsdk my-test-app --pre` to confirm it pulls the latest pre-release.
-*   **Run Passkey E2E Tests**: Run `pnpm test:e2e -- playground/passkey` to validate the test setup and initial interactions.
