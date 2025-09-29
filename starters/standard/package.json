@@ -27,24 +27,24 @@
     "prepare": "vibe-rules install cursor"
   },
   "dependencies": {
-    "@prisma/adapter-d1": "6.8.2",
-    "@prisma/client": "6.8.2",
-    "@simplewebauthn/browser": "13.1.0",
-    "@simplewebauthn/server": "13.1.1",
+    "@prisma/adapter-d1": "6.16.2",
+    "@prisma/client": "6.16.2",
+    "@simplewebauthn/browser": "13.2.0",
+    "@simplewebauthn/server": "13.2.1",
     "react": "19.2.0-canary-d415fd3e-20250919",
     "react-dom": "19.2.0-canary-d415fd3e-20250919",
     "react-server-dom-webpack": "19.2.0-canary-d415fd3e-20250919",
-    "rwsdk": "1.0.0-alpha.9"
+    "rwsdk": "1.0.0-alpha.20-test.20250929191955"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.13.3",
     "@cloudflare/workers-types": "4.20250921.0",
-    "@types/node": "22.14.0",
+    "@types/node": "22.18.7",
     "@types/react": "19.1.2",
     "@types/react-dom": "19.1.2",
-    "prisma": "6.8.2",
-    "typescript": "5.8.3",
-    "vibe-rules": "0.2.31",
+    "prisma": "6.16.2",
+    "typescript": "5.9.2",
+    "vibe-rules": "0.3.91",
     "vite": "7.1.6",
     "wrangler": "4.38.0"
   },
