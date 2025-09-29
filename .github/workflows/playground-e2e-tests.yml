@@ -82,7 +82,7 @@ jobs:
 
   playground-e2e:
     needs: setup-matrix
-    name: Playground E2E - ${{ matrix.os }} - ${{ matrix.package-manager }}
+    name: Playground E2E Test
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -101,7 +101,11 @@ jobs:
     # context(justinvdm, 2025-09-20):
     # Only run this job for PRs from the same repository and pushes to main
     # For security, GH won't expose secrets for fork PRs
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.head.repo.full_name == github.repository)
 
     steps:
       - name: Checkout repository
