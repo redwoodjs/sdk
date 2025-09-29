@@ -1,10 +1,12 @@
 import path from "node:path";
 import fs from "node:fs/promises";
+import { createWriteStream } from "node:fs";
 import { findUp } from "find-up";
 import decompress from "decompress";
 import os from "node:os";
-import stream from "node:stream";
-import { promisify } from "node:util";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import type { ReadableStream } from "node:stream/web";
 
 async function getRwSdkProjectRootDir(cwd: string) {
   const pnpmWorkspaceYamlPath = await findUp("pnpm-workspace.yaml", { cwd });
@@ -65,8 +67,17 @@ export const addon = async () => {
       process.exit(1);
     }
 
-    const pipeline = promisify(stream.pipeline);
-    await pipeline(response.body, fs.createWriteStream(filePath));
+    if (!response.body) {
+      console.error(
+        `\nError: Failed to download addon "${addonName}". The response contained no data.`,
+      );
+      process.exit(1);
+    }
+
+    await pipeline(
+      Readable.fromWeb(response.body as ReadableStream),
+      createWriteStream(filePath),
+    );
 
     await decompress(filePath, tmpDir);
 
