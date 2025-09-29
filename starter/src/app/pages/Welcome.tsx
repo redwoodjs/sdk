@@ -1,5 +1,7 @@
 "use client";
 /**
+ * This is a minimal welcome page for the starter.
+ *
  * _Feel free to delete this file_
  **/
 
