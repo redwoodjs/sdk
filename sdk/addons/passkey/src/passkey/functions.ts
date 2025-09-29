@@ -8,8 +8,16 @@ import {
   AuthenticationResponseJSON,
 } from "@simplewebauthn/server";
 
-import { requestInfo } from "../../runtime/worker.mjs";
+import { sessions } from "@/session/store";
+import { requestInfo } from "rwsdk/worker";
 import { env } from "cloudflare:workers";
+import {
+  createCredential,
+  createUser,
+  getCredentialById,
+  updateCredentialCounter,
+  getUserById,
+} from "./db";
 
 const IS_DEV = process.env.NODE_ENV === "development";
 
@@ -24,9 +32,7 @@ function getWebAuthnConfig(request: Request) {
 
 export async function startPasskeyRegistration(username: string) {
   const { rpName, rpID } = getWebAuthnConfig(requestInfo.request);
-  const {
-    response: { headers },
-  } = requestInfo;
+  const { headers } = requestInfo;
 
   const options = await generateRegistrationOptions({
     rpName,
@@ -40,16 +46,14 @@ export async function startPasskeyRegistration(username: string) {
     },
   });
 
-  await requestInfo.rw.sessions.save(headers, { challenge: options.challenge });
+  await sessions.save(headers, { challenge: options.challenge });
 
   return options;
 }
 
 export async function startPasskeyLogin() {
   const { rpID } = getWebAuthnConfig(requestInfo.request);
-  const {
-    response: { headers },
-  } = requestInfo;
+  const { headers } = requestInfo;
 
   const options = await generateAuthenticationOptions({
     rpID,
@@ -57,22 +61,19 @@ export async function startPasskeyLogin() {
     allowCredentials: [],
   });
 
-  await requestInfo.rw.sessions.save(headers, { challenge: options.challenge });
+  await sessions.save(headers, { challenge: options.challenge });
 
   return options;
 }
 
 export async function finishPasskeyRegistration(
   username: string,
-  registration: RegistrationResponseJSON,
+  registration: RegistrationResponseJSON
 ) {
-  const { request } = requestInfo;
-  const {
-    response: { headers },
-  } = requestInfo;
+  const { request, headers } = requestInfo;
   const { origin } = new URL(request.url);
 
-  const session = await requestInfo.rw.sessions.get(request, headers);
+  const session = await sessions.load(request);
   const challenge = session?.challenge;
 
   if (!challenge) {
@@ -90,35 +91,32 @@ export async function finishPasskeyRegistration(
     return false;
   }
 
-  await requestInfo.rw.sessions.save(headers, { challenge: null });
+  await sessions.save(headers, { challenge: null });
 
-  const user = await requestInfo.rw.passkeyDb.createUser(username);
+  const user = await createUser(username);
 
-  await requestInfo.rw.passkeyDb.createCredential({
+  await createCredential({
     userId: user.id,
-    credentialId: verification.registrationInfo.credentialID,
-    publicKey: verification.registrationInfo.credentialPublicKey,
-    counter: verification.registrationInfo.counter,
+    credentialId: verification.registrationInfo.credential.id,
+    publicKey: verification.registrationInfo.credential.publicKey,
+    counter: verification.registrationInfo.credential.counter,
   });
 
   return true;
 }
 
 export async function finishPasskeyLogin(login: AuthenticationResponseJSON) {
-  const { request } = requestInfo;
-  const {
-    response: { headers },
-  } = requestInfo;
+  const { request, headers } = requestInfo;
   const { origin } = new URL(request.url);
 
-  const session = await requestInfo.rw.sessions.get(request, headers);
+  const session = await sessions.load(request);
   const challenge = session?.challenge;
 
   if (!challenge) {
     return false;
   }
 
-  const credential = await requestInfo.rw.passkeyDb.getCredentialById(login.id);
+  const credential = await getCredentialById(login.id);
 
   if (!credential) {
     return false;
@@ -130,9 +128,9 @@ export async function finishPasskeyLogin(login: AuthenticationResponseJSON) {
     expectedOrigin: origin,
     expectedRPID: env.WEBAUTHN_RP_ID || new URL(request.url).hostname,
     requireUserVerification: false,
-    authenticator: {
-      credentialID: credential.credentialId,
-      credentialPublicKey: credential.publicKey,
+    credential: {
+      id: credential.credentialId,
+      publicKey: credential.publicKey,
       counter: credential.counter,
     },
   });
@@ -141,18 +139,18 @@ export async function finishPasskeyLogin(login: AuthenticationResponseJSON) {
     return false;
   }
 
-  await requestInfo.rw.passkeyDb.updateCredentialCounter(
+  await updateCredentialCounter(
     login.id,
-    verification.authenticationInfo.newCounter,
+    verification.authenticationInfo.newCounter
   );
 
-  const user = await requestInfo.rw.passkeyDb.getUserById(credential.userId);
+  const user = await getUserById(credential.userId);
 
   if (!user) {
     return false;
   }
 
-  await requestInfo.rw.sessions.save(headers, {
+  await sessions.save(headers, {
     userId: user.id,
     challenge: null,
   });

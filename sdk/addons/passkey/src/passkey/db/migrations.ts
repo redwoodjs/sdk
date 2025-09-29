@@ -15,7 +15,7 @@ export const migrations = {
           .createTable("credentials")
           .addColumn("id", "text", (col) => col.primaryKey())
           .addColumn("userId", "text", (col) =>
-            col.notNull().references("users.id").onDelete("cascade"),
+            col.notNull().references("users.id").onDelete("cascade")
           )
           .addColumn("createdAt", "text", (col) => col.notNull())
           .addColumn("credentialId", "text", (col) => col.notNull().unique())
