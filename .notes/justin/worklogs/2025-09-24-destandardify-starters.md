@@ -529,3 +529,20 @@ This final architecture provides a clean, consistent, and robust model for the e
     - [ ] Correct source code errors in the addon caught by `tsc`.
 - [ ] **Perform Test Release**:
     - [ ] Run the release script with `test` to validate the entire CI/CD and packaging pipeline.
+
+## PR Description
+
+### Title: `refactor: Destructure starters and integrate passkey addon`
+
+### Description
+
+This PR introduces a significant restructuring of the RedwoodSDK starter ecosystem and integrates passkey authentication as a first-class, co-located addon. The primary motivation is to simplify the new user experience, provide a robust and version-locked authentication solution, and establish a more scalable pattern for future addons.
+
+#### Key Changes
+
+*   **Unified Starter Template**: The `standard` and `minimal` starters have been consolidated into a single `starter` template located at the monorepo root. This simplifies the `create-rwsdk` tool, which no longer requires a `--template` flag.
+*   **Co-located Passkey Addon**: The passkey authentication functionality, previously part of the `standard` starter, has been moved into a co-located addon at `sdk/addons/passkey`. This ensures the addon is versioned and tested alongside the core SDK, solving critical stability issues.
+*   **Simplified `create-rwsdk`**: The CLI tool has been updated to fetch the single `starter` from the latest GitHub pre-release by default. A `--legacy` flag was added to provide a supported path for users who need the older `0.x` version.
+*   **Unified Release Artifacts**: The CI/CD pipeline has been refactored to package both the `starter` and all addons as `.tar.gz` artifacts attached to each GitHub Release. This creates a consistent distribution mechanism for all non-npm assets.
+*   **Addon CLI Helper**: A new `rw-scripts addon` command has been created to download and extract version-locked addon boilerplate from the GitHub release artifacts, providing a simple and reliable installation experience.
+*   **Documentation Overhaul**: The documentation has been extensively updated to reflect these changes. This includes a new migration guide for `0.x` users, a comprehensive guide for the passkey addon, and updated references throughout the docs to the single starter.
