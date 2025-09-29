@@ -1,0 +1,115 @@
+/**
+ * _Feel free to delete this file_
+ **/
+
+:root {
+  --orange: #ff8a00;
+  --light-orange: #ffb800;
+  --bg-color: #f0f0f0;
+  --text-color: #333;
+  --card-bg: #fff;
+  --code-bg: #1e1e1e;
+  --code-text: #d4d4d4;
+  --font-serif: "Playfair Display", serif;
+  --font-sans: "Noto Sans", sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+  max-width: 900px;
+  margin: 4rem auto;
+  padding: 2rem;
+  background-color: var(--card-bg);
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.header {
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 2rem;
+  margin-bottom: 2rem;
+}
+
+.title {
+  font-family: var(--font-serif);
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 1.25rem;
+  margin-top: 0.5rem;
+  color: #666;
+}
+
+.section {
+  margin-bottom: 2.5rem;
+}
+
+.sectionTitle {
+  font-family: var(--font-serif);
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.list {
+  list-style: decimal;
+  padding-left: 1.5rem;
+  line-height: 1.6;
+}
+
+.link {
+  color: var(--orange);
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.link:hover {
+  text-decoration: underline;
+  color: var(--light-orange);
+}
+
+.codeBlock {
+  background-color: var(--code-bg);
+  color: var(--code-text);
+  padding: 1rem;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.codePrompt {
+  color: var(--orange);
+}
+
+.code {
+  flex-grow: 1;
+}
+
+.copyButton {
+  background-color: #444;
+  color: #fff;
+  border: 1px solid #666;
+  border-radius: 4px;
+  padding: 0.25rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.copyButton:hover {
+  background-color: #555;
+}

@@ -530,23 +530,6 @@ This final architecture provides a clean, consistent, and robust model for the e
 - [ ] **Perform Test Release**:
     - [ ] Run the release script with `test` to validate the entire CI/CD and packaging pipeline.
 
-## PR Description
-
-### Title: `refactor: Destructure starters and integrate passkey addon`
-
-### Description
-
-This PR restructures the starter templates and moves the passkey authentication functionality into a co-located addon. The `standard` and `minimal` starters are replaced by a single `starter`, and the passkey addon is now included in the SDK repository to ensure it is versioned and tested with the core package.
-
-#### Changes
-
-*   **Unified Starter Template**: The `/starters/standard` and `/starters/minimal` directories are removed and replaced by a single `/starter` directory at the monorepo root.
-*   **Co-located Passkey Addon**: The passkey authentication code has been moved from the former `standard` starter into `sdk/addons/passkey`. It is now versioned and published with the SDK.
-*   **`create-rwsdk` Updates**: The `create-rwsdk` tool is updated to download the new single `starter` from the latest pre-release. The `--template` flag is removed, and a `--legacy` flag is added to download the latest stable `0.x` release.
-*   **Unified Release Artifacts**: The `release-artifacts.yml` workflow now packages the `starter` and all directories within `addons/` as `.tar.gz` files and attaches them to the GitHub Release.
-*   **Addon CLI Helper**: A `rw-scripts addon` command is added. It downloads and extracts the corresponding versioned addon `.tar.gz` from the GitHub release assets.
-*   **Documentation Updates**: The documentation is updated to reflect these changes, including a migration guide for `0.x` users and instructions for the passkey addon.
-
 ## Post-PR Implementation Issues and Fixes
 
 After the main PR work was completed, several technical issues emerged that required resolution:
@@ -710,3 +693,21 @@ All identified issues have been resolved:
 - `create-rwsdk` supports specific version selection and defaults to pre-releases
 
 The destandardification work is now technically complete and the release infrastructure is prepared for coordinated testing and deployment.
+
+## PR Description
+
+### Title: `refactor: Destructure starters and integrate passkey addon`
+
+### Description
+
+This PR restructures the starter templates and moves the passkey authentication functionality into a co-located addon. The `standard` and `minimal` starters are replaced by a single `starter`, and the passkey addon is now included in the SDK repository to ensure it is versioned and tested with the core package.
+
+#### Changes
+
+*   **Unified Starter Template**: The `/starters/standard` and `/starters/minimal` directories are removed and replaced by a single `/starter` directory at the monorepo root.
+*   **Co-located Passkey Addon**: The passkey authentication code has been moved from the former `standard` starter into `sdk/addons/passkey`. It is now versioned and published with the SDK.
+*   **`create-rwsdk` Updates**: The `create-rwsdk` tool is updated to download the new single `starter` from the latest pre-release. The `--template` flag is removed, and a `--legacy` flag is added to download the latest stable `0.x` release.
+*   **Unified Release Artifacts**: The `release-artifacts.yml` workflow now packages the `starter` and all directories within `addons/` as `.tar.gz` files and attaches them to the GitHub Release.
+*   **Addon CLI Helper**: A `rw-scripts addon` command is added. It downloads and extracts the corresponding versioned addon `.tar.gz` from the GitHub release assets.
+*   **Documentation Updates**: The documentation is updated to reflect these changes, including a migration guide for `0.x` users and instructions for the passkey addon.
+*   **New Welcome Page**: The development-mode iframe has been replaced with a self-contained `<Welcome />` React component. This component uses CSS modules for styling, has no external dependencies, and is designed to be easily deleted by the user.

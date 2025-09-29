@@ -1,14 +1,6 @@
-import { RequestInfo } from "rwsdk/worker";
+import { Welcome } from "./Welcome.js";
 
-export function Home({ ctx }: RequestInfo) {
-  if (!import.meta.env.VITE_IS_DEV_SERVER) {
-    return <div>Hello World</div>;
-  }
-
-  return (
-    <iframe
-      style={{ width: "100%", height: "100%", border: "none" }}
-      src="https://rwsdk.com/start"
-    />
-  );
-}
+export const Home = () => {
+  // _Feel free to delete this element and its import_
+  return <Welcome />;
+};
