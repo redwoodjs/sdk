@@ -1,0 +1,13 @@
+@everyone
+
+We've just published the first beta release for RedwoodSDK v1.0.0.
+
+You can get started with the beta by running:
+`npx create-rwsdk@beta my-app`
+
+This release is the result of many alpha versions and includes significant updates to the framework's architecture and features.
+
+For existing users on a `0.x` version, please consult the migration guide for instructions on how to upgrade:
+https://docs.rwsdk.com/getting-started/migrating
+
+Some of the notable changes include a shift to a peer dependency model, unified middleware handling for RSC Actions, and improvements to streaming and hydration.
