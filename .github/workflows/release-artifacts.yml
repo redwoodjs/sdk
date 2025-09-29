@@ -20,6 +20,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Get tag or input version
         id: vars
         run: |
@@ -31,6 +36,7 @@ jobs:
 
       - name: Update starter package.json
         run: |
+          corepack enable
           (cd starter && npm pkg set dependencies.rwsdk=${{ steps.vars.outputs.version }})
           pnpm install --ignore-scripts --no-frozen-lockfile
 
