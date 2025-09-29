@@ -1,8 +1,8 @@
-import { Plugin } from "vite";
 import { resolve } from "node:path";
-import { invalidateCacheIfPrismaClientChanged } from "./invalidateCacheIfPrismaClientChanged.mjs";
+import { Plugin } from "vite";
 import { checkPrismaStatus } from "./checkIsUsingPrisma.mjs";
 import { ensureAliasArray } from "./ensureAliasArray.mjs";
+import { invalidateCacheIfPrismaClientChanged } from "./invalidateCacheIfPrismaClientChanged.mjs";
 
 export const prismaPlugin = async ({
   projectRootDir,

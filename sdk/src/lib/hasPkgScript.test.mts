@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { hasPkgScript, _resetPkgCache } from "./hasPkgScript.mjs";
+import { beforeEach, describe, expect, it } from "vitest";
+import { _resetPkgCache, hasPkgScript } from "./hasPkgScript.mjs";
 
 // Manually reset the cache before each test
 beforeEach(() => {

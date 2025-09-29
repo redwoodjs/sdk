@@ -1,15 +1,13 @@
-import { setTimeout } from "node:timers/promises";
 import { join } from "path";
-import debug from "debug";
-import { SmokeTestOptions, SmokeTestResult, TestResources } from "./types.mjs";
-import { getBrowserPath } from "./browser.mjs";
 import { setupArtifactsDirectory } from "./artifacts.mjs";
-import { setupTestEnvironment } from "./environment.mjs";
+import { getBrowserPath } from "./browser.mjs";
 import { runDevServer, runDevTest } from "./development.mjs";
+import { setupTestEnvironment } from "./environment.mjs";
 import { runReleaseTest } from "./release.mjs";
-import { fail, teardown, log } from "./utils.mjs";
-import { state, updateTestStatus } from "./state.mjs";
 import { initializeTestStatus } from "./reporting.mjs";
+import { state, updateTestStatus } from "./state.mjs";
+import { SmokeTestOptions } from "./types.mjs";
+import { fail, log, teardown } from "./utils.mjs";
 
 /**
  * Main function that orchestrates the smoke test flow

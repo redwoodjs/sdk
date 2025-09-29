@@ -1,4 +1,4 @@
-import { Kysely, Migration, Migrator, MigrationProvider } from "kysely";
+import { Kysely, Migration, MigrationProvider, Migrator } from "kysely";
 
 /**
  * A custom MigrationProvider that works with in-memory migrations

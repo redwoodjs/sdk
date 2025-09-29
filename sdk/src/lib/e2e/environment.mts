@@ -1,22 +1,15 @@
-import { join } from "path";
 import debug from "debug";
-import { pathExists, copy, existsSync } from "fs-extra";
-import * as fs from "node:fs";
-import tmp from "tmp-promise";
+import { copy, pathExists } from "fs-extra";
 import ignore from "ignore";
-import { relative, basename, resolve } from "path";
-import {
-  uniqueNamesGenerator,
-  adjectives,
-  animals,
-} from "unique-names-generator";
-import { SmokeTestOptions, TestResources, PackageManager } from "./types.mjs";
-import { createHash } from "crypto";
-import { $ } from "../../lib/$.mjs";
-import { ROOT_DIR } from "../constants.mjs";
+import * as fs from "node:fs";
 import path from "node:path";
 import os from "os";
+import { basename, join, relative, resolve } from "path";
+import tmp from "tmp-promise";
+import { $ } from "../../lib/$.mjs";
+import { ROOT_DIR } from "../constants.mjs";
 import { retry } from "./retry.mjs";
+import { PackageManager } from "./types.mjs";
 
 const log = debug("rwsdk:e2e:environment");
 

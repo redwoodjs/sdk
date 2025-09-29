@@ -1,8 +1,8 @@
 import {
-  ColumnDefinitionBuilder as KyselyColumnDefinitionBuilder,
-  Expression,
-  sql,
   ColumnDefinitionNode,
+  Expression,
+  ColumnDefinitionBuilder as KyselyColumnDefinitionBuilder,
+  sql,
 } from "kysely";
 import type { Assert, AssertStillImplements } from "../assert";
 

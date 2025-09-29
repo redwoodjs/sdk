@@ -1,20 +1,18 @@
-import * as os from "os";
-import { join } from "path";
-import { pathExists } from "fs-extra";
-import debug from "debug";
-import { mkdirp } from "fs-extra";
-import { SmokeTestOptions } from "./types.mjs";
 import {
-  install,
-  canDownload,
-  resolveBuildId,
   computeExecutablePath,
   detectBrowserPlatform,
+  install,
   Browser as PuppeteerBrowser,
+  resolveBuildId,
   type InstallOptions,
 } from "@puppeteer/browsers";
-import type { Page, Browser } from "puppeteer-core";
+import debug from "debug";
+import { mkdirp, pathExists } from "fs-extra";
+import * as os from "os";
+import { join } from "path";
+import type { Browser } from "puppeteer-core";
 import puppeteer from "puppeteer-core";
+import { SmokeTestOptions } from "./types.mjs";
 
 const log = debug("rwsdk:e2e:browser");
 

@@ -1,4 +1,4 @@
 export {
-  type RedwoodPluginOptions,
   redwoodPlugin as redwood,
+  type RedwoodPluginOptions,
 } from "./redwoodPlugin.mjs";

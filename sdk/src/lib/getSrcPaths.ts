@@ -1,6 +1,6 @@
-import ts from "typescript";
-import path from "path";
 import { glob } from "glob";
+import path from "path";
+import ts from "typescript";
 
 /**
  * Gets all source file paths by parsing tsconfig.json using TypeScript's compiler API.

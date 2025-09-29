@@ -1,8 +1,7 @@
-import * as fs from "fs/promises";
-import { join, basename } from "path";
+import { createWriteStream, existsSync, mkdirSync } from "fs";
 import { mkdirp, pathExists } from "fs-extra";
-import { createWriteStream, WriteStream, existsSync, mkdirSync } from "fs";
-import puppeteer from "puppeteer-core";
+import * as fs from "fs/promises";
+import { join } from "path";
 import { log } from "./constants.mjs";
 import { SmokeTestOptions, StreamCapturer } from "./types.mjs";
 

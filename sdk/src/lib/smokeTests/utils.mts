@@ -1,10 +1,10 @@
+import { mkdirp } from "fs-extra";
 import { setTimeout } from "node:timers/promises";
 import { join } from "path";
-import { log } from "./constants.mjs";
-import { mkdirp, pathExists } from "fs-extra";
-import { state } from "./state.mjs";
-import { generateFinalReport } from "./reporting.mjs";
 import { cleanupResources } from "./cleanup.mjs";
+import { log } from "./constants.mjs";
+import { generateFinalReport } from "./reporting.mjs";
+import { state } from "./state.mjs";
 
 // Re-export log from constants
 export { log };

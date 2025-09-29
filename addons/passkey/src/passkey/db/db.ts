@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 
-import debug from "rwsdk/debug";
 import { type Database, createDb } from "rwsdk/db";
+import debug from "rwsdk/debug";
 import { type migrations } from "./migrations";
 
 const log = debug("passkey:db");
@@ -12,7 +12,7 @@ export type Credential = PasskeyDatabase["credentials"];
 
 export const db = createDb<PasskeyDatabase>(
   env.PASSKEY_DURABLE_OBJECT,
-  "passkey-main"
+  "passkey-main",
 );
 
 export async function createUser(username: string): Promise<User> {
@@ -34,7 +34,7 @@ export async function getUserById(id: string): Promise<User | undefined> {
 }
 
 export async function createCredential(
-  credential: Omit<Credential, "id" | "createdAt">
+  credential: Omit<Credential, "id" | "createdAt">,
 ): Promise<Credential> {
   log("Creating credential for user: %s", credential.userId);
 
@@ -50,7 +50,7 @@ export async function createCredential(
 }
 
 export async function getCredentialById(
-  credentialId: string
+  credentialId: string,
 ): Promise<Credential | undefined> {
   return await db
     .selectFrom("credentials")
@@ -61,7 +61,7 @@ export async function getCredentialById(
 
 export async function updateCredentialCounter(
   credentialId: string,
-  counter: number
+  counter: number,
 ): Promise<void> {
   await db
     .updateTable("credentials")
@@ -71,7 +71,7 @@ export async function updateCredentialCounter(
 }
 
 export async function getUserCredentials(
-  userId: string
+  userId: string,
 ): Promise<Credential[]> {
   return await db
     .selectFrom("credentials")

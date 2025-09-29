@@ -1,11 +1,11 @@
-import { Plugin } from "vite";
-import path from "node:path";
-import fs from "node:fs/promises";
 import debug from "debug";
+import fs from "node:fs/promises";
+import path from "node:path";
+import type { ViteDevServer } from "vite";
+import { Plugin } from "vite";
+import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { transformClientComponents } from "./transformClientComponents.mjs";
 import { transformServerFunctions } from "./transformServerFunctions.mjs";
-import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
-import type { ViteDevServer } from "vite";
 
 const log = debug("rwsdk:vite:rsc-directives-plugin");
 

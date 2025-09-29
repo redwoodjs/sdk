@@ -1,10 +1,9 @@
+import createDebug from "debug";
 import resolve, { ResolveOptions } from "enhanced-resolve";
-import { Alias, ResolvedConfig } from "vite";
 import fs from "fs";
 import path from "path";
-import createDebug from "debug";
+import { Alias, Environment, ResolvedConfig } from "vite";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
-import { Environment } from "vite";
 const debug = createDebug("rwsdk:vite:enhanced-resolve-plugin");
 
 // Enhanced-resolve plugin that wraps Vite plugin resolution

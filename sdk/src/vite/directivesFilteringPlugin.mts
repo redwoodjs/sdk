@@ -1,5 +1,5 @@
-import { Plugin } from "vite";
 import debug from "debug";
+import { Plugin } from "vite";
 
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 

@@ -1,9 +1,9 @@
-import path from "node:path";
-import fs from "node:fs/promises";
-import { createWriteStream } from "node:fs";
-import { findUp } from "find-up";
 import decompress from "decompress";
+import { findUp } from "find-up";
+import { createWriteStream } from "node:fs";
+import fs from "node:fs/promises";
 import os from "node:os";
+import path from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream } from "node:stream/web";

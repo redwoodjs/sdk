@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { determineWorkerEntryPathname } from "./redwoodPlugin.mjs";
 import path from "node:path";
+import { describe, expect, it } from "vitest";
+import { determineWorkerEntryPathname } from "./redwoodPlugin.mjs";
 
 describe("determineWorkerEntryPathname", () => {
   const projectRootDir = "/test/project";

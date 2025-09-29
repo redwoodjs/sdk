@@ -1,9 +1,9 @@
-import { describe, it, expect } from "vitest";
-import { generateLookupMap } from "./createDirectiveLookupPlugin.mjs";
+import { describe, expect, it } from "vitest";
 import {
   VENDOR_CLIENT_BARREL_EXPORT_PATH,
   VENDOR_SERVER_BARREL_EXPORT_PATH,
 } from "../lib/constants.mjs";
+import { generateLookupMap } from "./createDirectiveLookupPlugin.mjs";
 
 describe("generateLookupMap", () => {
   const files = new Set([

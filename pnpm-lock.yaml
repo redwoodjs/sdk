@@ -29,6 +29,9 @@ importers:
       prettier:
         specifier: ^3.3.2
         version: 3.5.3
+      prettier-plugin-organize-imports:
+        specifier: ^4.3.0
+        version: 4.3.0(prettier@3.5.3)(typescript@5.8.3)
       tsx:
         specifier: ^4.15.7
         version: 4.19.4
@@ -144,7 +147,7 @@ importers:
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.13.3
-        version: 1.13.3(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))
+        version: 1.13.3(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.7.0))(workerd@1.20250924.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))
       '@cloudflare/workers-types':
         specifier: 4.20250921.0
         version: 4.20250921.0
@@ -931,7 +934,7 @@ importers:
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.13.3
-        version: 1.13.3(vite@7.1.6(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.7.0))(workerd@1.20250924.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250924.0))
+        version: 1.13.3(vite@7.1.6(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250924.0))
       '@types/debug':
         specifier: ~4.1.12
         version: 4.1.12
@@ -7222,6 +7225,16 @@ packages:
     resolution: {integrity: sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==}
     engines: {node: '>= 0.8.0'}
 
+  prettier-plugin-organize-imports@4.3.0:
+    resolution: {integrity: sha512-FxFz0qFhyBsGdIsb697f/EkvHzi5SZOhWAjxcx2dLt+Q532bAlhswcXGYB1yzjZ69kW8UoadFBw7TyNwlq96Iw==}
+    peerDependencies:
+      prettier: '>=2.0'
+      typescript: '>=2.9'
+      vue-tsc: ^2.1.0 || 3
+    peerDependenciesMeta:
+      vue-tsc:
+        optional: true
+
   prettier@3.5.3:
     resolution: {integrity: sha512-QQtaxnoDJeAkDvDKWCLiwIXkTgRhwYDEQCghU9Z6q03iyek/rxRh/2lC3HB7P8sWT2xC/y5JDctPLBIGzHKbhw==}
     engines: {node: '>=14'}
@@ -9584,23 +9597,6 @@ snapshots:
     optionalDependencies:
       workerd: 1.20250924.0
 
-  '@cloudflare/vite-plugin@1.13.3(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))':
-    dependencies:
-      '@cloudflare/unenv-preset': 2.7.4(unenv@2.0.0-rc.21)(workerd@1.20250917.0)
-      '@remix-run/node-fetch-server': 0.8.0
-      get-port: 7.1.0
-      miniflare: 4.20250917.0
-      picocolors: 1.1.1
-      tinyglobby: 0.2.15
-      unenv: 2.0.0-rc.21
-      vite: 7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.7.0)
-      wrangler: 4.38.0(@cloudflare/workers-types@4.20250921.0)
-      ws: 8.18.0
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-      - workerd
-
   '@cloudflare/vite-plugin@1.13.3(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.7.0))(workerd@1.20250924.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))':
     dependencies:
       '@cloudflare/unenv-preset': 2.7.4(unenv@2.0.0-rc.21)(workerd@1.20250924.0)
@@ -9618,6 +9614,23 @@ snapshots:
       - utf-8-validate
       - workerd
 
+  '@cloudflare/vite-plugin@1.13.3(vite@7.1.6(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.7.0))(workerd@1.20250917.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250924.0))':
+    dependencies:
+      '@cloudflare/unenv-preset': 2.7.4(unenv@2.0.0-rc.21)(workerd@1.20250917.0)
+      '@remix-run/node-fetch-server': 0.8.0
+      get-port: 7.1.0
+      miniflare: 4.20250917.0
+      picocolors: 1.1.1
+      tinyglobby: 0.2.15
+      unenv: 2.0.0-rc.21
+      vite: 7.1.6(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.7.0)
+      wrangler: 4.38.0(@cloudflare/workers-types@4.20250924.0)
+      ws: 8.18.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+      - workerd
+
   '@cloudflare/vite-plugin@1.13.3(vite@7.1.6(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.7.0))(workerd@1.20250924.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))':
     dependencies:
       '@cloudflare/unenv-preset': 2.7.4(unenv@2.0.0-rc.21)(workerd@1.20250924.0)
@@ -9629,23 +9642,6 @@ snapshots:
       unenv: 2.0.0-rc.21
       vite: 7.1.6(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.7.0)
       wrangler: 4.38.0(@cloudflare/workers-types@4.20250921.0)
-      ws: 8.18.0
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-      - workerd
-
-  '@cloudflare/vite-plugin@1.13.3(vite@7.1.6(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.7.0))(workerd@1.20250924.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250924.0))':
-    dependencies:
-      '@cloudflare/unenv-preset': 2.7.4(unenv@2.0.0-rc.21)(workerd@1.20250924.0)
-      '@remix-run/node-fetch-server': 0.8.0
-      get-port: 7.1.0
-      miniflare: 4.20250917.0
-      picocolors: 1.1.1
-      tinyglobby: 0.2.15
-      unenv: 2.0.0-rc.21
-      vite: 7.1.6(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.7.0)
-      wrangler: 4.38.0(@cloudflare/workers-types@4.20250924.0)
       ws: 8.18.0
     transitivePeerDependencies:
       - bufferutil
@@ -16388,6 +16384,11 @@ snapshots:
       tunnel-agent: 0.6.0
 
   prelude-ls@1.2.1: {}
+
+  prettier-plugin-organize-imports@4.3.0(prettier@3.5.3)(typescript@5.8.3):
+    dependencies:
+      prettier: 3.5.3
+      typescript: 5.8.3
 
   prettier@3.5.3: {}
 

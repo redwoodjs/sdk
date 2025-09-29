@@ -1,9 +1,9 @@
+import chokidar from "chokidar";
+import { $ } from "execa";
+import { existsSync } from "node:fs";
+import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { $ } from "execa";
-import fs from "node:fs/promises";
-import { existsSync } from "node:fs";
-import chokidar from "chokidar";
 import { lock } from "proper-lockfile";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

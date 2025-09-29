@@ -1,5 +1,4 @@
 import { renderToReadableStream } from "react-dom/server.edge";
-import { type DocumentProps } from "../lib/router.js";
 import { type RequestInfo } from "../requestInfo/types.js";
 
 export const renderHtmlStream = async ({

@@ -1,21 +1,21 @@
 import { setTimeout } from "node:timers/promises";
-import { log } from "./constants.mjs";
-import { checkUrl, checkServerUp } from "./browser.mjs";
-import { TestResources } from "./types.mjs";
 import {
-  runRelease as runE2ERelease,
-  deleteWorker,
-  deleteD1Database,
-  isRelatedToTest,
   $expect,
+  deleteD1Database,
+  deleteWorker,
+  isRelatedToTest,
   listD1Databases,
+  runRelease as runE2ERelease,
 } from "../../lib/e2e/release.mjs";
+import { checkServerUp, checkUrl } from "./browser.mjs";
+import { log } from "./constants.mjs";
+import { TestResources } from "./types.mjs";
 
 export {
-  deleteWorker,
-  deleteD1Database,
-  isRelatedToTest,
   $expect,
+  deleteD1Database,
+  deleteWorker,
+  isRelatedToTest,
   listD1Databases,
 };
 

@@ -1,7 +1,7 @@
+import type { Kysely } from "kysely";
 import React from "react";
 import { isValidElementType } from "react-is";
 import { RequestInfo } from "../requestInfo/types";
-import type { Kysely } from "kysely";
 
 export type DocumentProps<T extends RequestInfo = RequestInfo> = T & {
   children: React.ReactNode;

@@ -1,8 +1,8 @@
 import { setupTarballEnvironment } from "../../lib/e2e/tarball.mjs";
 import { TestResources } from "../../lib/e2e/types.mjs";
-import { SmokeTestOptions } from "./types.mjs";
 import { createSmokeTestComponents } from "./codeUpdates.mjs";
 import { log } from "./constants.mjs";
+import { SmokeTestOptions } from "./types.mjs";
 
 /**
  * Sets up the test environment for smoke tests, preparing any resources needed for testing

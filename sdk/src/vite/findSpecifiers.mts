@@ -1,4 +1,4 @@
-import { parse as sgParse, Lang as SgLang, Lang } from "@ast-grep/napi";
+import { Lang, Lang as SgLang, parse as sgParse } from "@ast-grep/napi";
 import path from "path";
 
 // These patterns are used to match import statements in code for SSR transformations.

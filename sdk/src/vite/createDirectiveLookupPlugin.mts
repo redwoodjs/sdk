@@ -1,7 +1,7 @@
+import debug from "debug";
 import MagicString from "magic-string";
 import path from "path";
 import { Plugin, ViteDevServer } from "vite";
-import debug from "debug";
 import {
   VENDOR_CLIENT_BARREL_EXPORT_PATH,
   VENDOR_SERVER_BARREL_EXPORT_PATH,

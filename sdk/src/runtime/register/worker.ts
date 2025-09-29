@@ -1,9 +1,9 @@
+import { isValidElementType } from "react-is";
 import {
-  registerServerReference as baseRegisterServerReference,
   registerClientReference as baseRegisterClientReference,
+  registerServerReference as baseRegisterServerReference,
   decodeReply,
 } from "react-server-dom-webpack/server.edge";
-import { isValidElementType } from "react-is";
 import { getServerModuleExport } from "../imports/worker.js";
 import { requestInfo } from "../requestInfo/worker.js";
 

@@ -1,9 +1,8 @@
-import type { Plugin, ViteDevServer } from "vite";
-import { readFile } from "fs/promises";
 import debug from "debug";
-import { findSsrImportCallSites } from "./findSsrSpecifiers.mjs";
-import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import MagicString from "magic-string";
+import type { Plugin, ViteDevServer } from "vite";
+import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
+import { findSsrImportCallSites } from "./findSsrSpecifiers.mjs";
 
 const log = debug("rwsdk:vite:ssr-bridge-plugin");
 

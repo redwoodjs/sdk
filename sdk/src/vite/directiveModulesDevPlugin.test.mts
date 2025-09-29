@@ -1,9 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  generateVendorBarrelContent,
   generateAppBarrelContent,
+  generateVendorBarrelContent,
 } from "./directiveModulesDevPlugin.mjs";
-import path from "path";
 
 describe("directiveModulesDevPlugin helpers", () => {
   const projectRootDir = "/Users/test/project";

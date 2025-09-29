@@ -1,6 +1,6 @@
-import type { RequestInfo } from "../requestInfo/types.js";
-import { getManifest } from "../lib/manifest.js";
 import type { Manifest, ManifestChunk } from "../lib/manifest.js";
+import { getManifest } from "../lib/manifest.js";
+import type { RequestInfo } from "../requestInfo/types.js";
 
 export function findScriptForModule(
   id: string,

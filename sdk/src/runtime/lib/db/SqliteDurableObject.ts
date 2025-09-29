@@ -1,14 +1,14 @@
-import { DODialect } from "kysely-do";
 import { DurableObject } from "cloudflare:workers";
+import { DODialect } from "kysely-do";
 
 import {
-  Kysely,
   CompiledQuery,
-  QueryResult,
+  Kysely,
   ParseJSONResultsPlugin,
+  QueryResult,
 } from "kysely";
-import { createMigrator } from "./index.js";
 import debug from "../debug.js";
+import { createMigrator } from "./index.js";
 
 const log = debug("sdk:do-db");
 

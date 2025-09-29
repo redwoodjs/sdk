@@ -1,6 +1,6 @@
-import { resolve } from "node:path";
-import { remove, pathExists } from "fs-extra";
+import { pathExists, remove } from "fs-extra";
 import { stat } from "node:fs/promises";
+import { resolve } from "node:path";
 
 export const invalidateCacheIfPrismaClientChanged = async ({
   projectRootDir,

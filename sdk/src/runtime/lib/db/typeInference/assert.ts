@@ -1,5 +1,3 @@
-import type { AlterTableBuilder as KyselyAlterTableBuilder } from "kysely";
-
 // The following type assertion will fail if our AlterTableBuilder is missing
 // any methods from Kysely's AlterTableBuilder.
 export type AssertStillImplements<OurBuilder, KyselyBuilder> =

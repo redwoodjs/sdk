@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from "async_hooks";
-import { RequestInfo, DefaultAppContext } from "./types";
+import { DefaultAppContext, RequestInfo } from "./types";
 
 type DefaultRequestInfo = RequestInfo<DefaultAppContext>;
 

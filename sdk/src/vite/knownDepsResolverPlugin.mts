@@ -1,7 +1,7 @@
-import { Plugin } from "vite";
 import debug from "debug";
-import { ROOT_DIR } from "../lib/constants.mjs";
 import enhancedResolve from "enhanced-resolve";
+import { Plugin } from "vite";
+import { ROOT_DIR } from "../lib/constants.mjs";
 import { ensureAliasArray } from "./ensureAliasArray.mjs";
 
 const log = debug("rwsdk:vite:known-deps-resolver-plugin");

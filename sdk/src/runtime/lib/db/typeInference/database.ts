@@ -1,15 +1,14 @@
 import { Kysely } from "kysely";
+import { AlterTableBuilder } from "./builders/alterTable";
+import { CreateTableBuilder } from "./builders/createTable";
+import { DropTableBuilder } from "./builders/dropTable";
+import { SchemaBuilder } from "./builders/schema";
 import {
   ExecutedBuilder,
   Prettify,
   ProcessAlteredTable,
   UnionToTuple,
 } from "./utils";
-import { CreateTableBuilder } from "./builders/createTable";
-import { AlterTableBuilder } from "./builders/alterTable";
-import { DropTableBuilder } from "./builders/dropTable";
-import { DropViewBuilder } from "./builders/dropView.js";
-import { SchemaBuilder } from "./builders/schema";
 
 export interface InferenceBuilder {
   schema: SchemaBuilder;

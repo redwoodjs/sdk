@@ -1,5 +1,5 @@
-import { Plugin } from "vite";
 import debug from "debug";
+import { Plugin } from "vite";
 
 const log = debug("rwsdk:vite:dev-server-timing-plugin");
 

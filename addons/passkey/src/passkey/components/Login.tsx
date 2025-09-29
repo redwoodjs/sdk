@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
 import {
   startAuthentication,
   startRegistration,
 } from "@simplewebauthn/browser";
+import { useState, useTransition } from "react";
 import {
   finishPasskeyLogin,
   finishPasskeyRegistration,

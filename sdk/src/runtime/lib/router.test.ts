@@ -1,16 +1,16 @@
-import { describe, it, expect } from "vitest";
 import React from "react";
+import { describe, expect, it } from "vitest";
 
-import {
-  matchPath,
-  defineRoutes,
-  route,
-  render,
-  layout,
-  prefix,
-} from "./router";
-import type { RwContext } from "./router";
 import type { RequestInfo } from "../requestInfo/types";
+import type { RwContext } from "./router";
+import {
+  defineRoutes,
+  layout,
+  matchPath,
+  prefix,
+  render,
+  route,
+} from "./router";
 
 describe("matchPath", () => {
   // Test case 1: Static paths

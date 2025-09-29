@@ -1,10 +1,10 @@
-import { ExecutedBuilder } from "../utils";
 import {
-  DropTableBuilder as KyselyDropTableBuilder,
-  DropTableNode,
   CompiledQuery,
+  DropTableNode,
+  DropTableBuilder as KyselyDropTableBuilder,
 } from "kysely";
 import type { Assert, AssertStillImplements } from "../assert";
+import { ExecutedBuilder } from "../utils";
 
 export interface DropTableBuilder<TName extends string> {
   readonly __tableName: TName;

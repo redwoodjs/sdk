@@ -1,17 +1,14 @@
-import { join } from "path";
-import { setTimeout } from "node:timers/promises";
-import { pathExists } from "fs-extra";
-import { mkdirp } from "fs-extra";
+import { copy, mkdirp, pathExists } from "fs-extra";
 import * as fs from "fs/promises";
-import { copy } from "fs-extra";
-import { relative } from "path";
 import ignore from "ignore";
-import { log } from "./constants.mjs";
-import { deleteWorker, listD1Databases, deleteD1Database } from "./release.mjs";
-import { isRunningInCI } from "./utils.mjs";
-import { SmokeTestOptions, TestResources } from "./types.mjs";
+import { setTimeout } from "node:timers/promises";
+import { join, relative } from "path";
 import { capturer } from "./artifacts.mjs";
+import { log } from "./constants.mjs";
+import { deleteD1Database, deleteWorker, listD1Databases } from "./release.mjs";
 import { state } from "./state.mjs";
+import { SmokeTestOptions, TestResources } from "./types.mjs";
+import { isRunningInCI } from "./utils.mjs";
 
 /**
  * Cleans up any resources used during testing

@@ -1,12 +1,12 @@
-import { ExecutedBuilder } from "../utils";
 import {
-  CreateViewBuilder as KyselyCreateViewBuilder,
-  CreateViewNode,
   CompiledQuery,
-  SelectQueryBuilder,
+  CreateViewNode,
+  CreateViewBuilder as KyselyCreateViewBuilder,
   RawBuilder,
+  SelectQueryBuilder,
 } from "kysely";
 import type { Assert, AssertStillImplements } from "../assert";
+import { ExecutedBuilder } from "../utils";
 
 export interface CreateViewBuilder<
   TName extends string,

@@ -1,5 +1,5 @@
-import { type Plugin } from "vite";
 import debug from "debug";
+import { type Plugin } from "vite";
 
 const log = debug("rwsdk:vite:manifest-plugin");
 

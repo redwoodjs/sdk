@@ -1,7 +1,6 @@
 import { sessions } from "@/session/store";
 import { RouteMiddleware } from "rwsdk/router";
-import { requestInfo } from "rwsdk/worker";
-import { ErrorResponse } from "rwsdk/worker";
+import { ErrorResponse, requestInfo } from "rwsdk/worker";
 
 export function setupPasskeyAuth() {
   const setupPasskeyAuthMiddleware: RouteMiddleware = async () => {

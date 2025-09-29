@@ -1,22 +1,22 @@
 "use server";
 import {
-  generateRegistrationOptions,
-  generateAuthenticationOptions,
-  verifyRegistrationResponse,
-  verifyAuthenticationResponse,
-  RegistrationResponseJSON,
   AuthenticationResponseJSON,
+  generateAuthenticationOptions,
+  generateRegistrationOptions,
+  RegistrationResponseJSON,
+  verifyAuthenticationResponse,
+  verifyRegistrationResponse,
 } from "@simplewebauthn/server";
 
 import { sessions } from "@/session/store";
-import { requestInfo } from "rwsdk/worker";
 import { env } from "cloudflare:workers";
+import { requestInfo } from "rwsdk/worker";
 import {
   createCredential,
   createUser,
   getCredentialById,
-  updateCredentialCounter,
   getUserById,
+  updateCredentialCounter,
 } from "./db";
 
 function getWebAuthnConfig(request: Request) {

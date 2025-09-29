@@ -8,11 +8,11 @@
 // `rwsdk/__ssr_bridge`. We have bundler logic (ssrBridgePlugin) that looks out
 // for imports to it.
 
-export { renderHtmlStream } from "./render/renderHtmlStream";
 export { createThenableFromReadableStream } from "./render/createThenableFromReadableStream";
+export { renderHtmlStream } from "./render/renderHtmlStream";
 
 export {
-  ssrLoadModule,
   ssrGetModuleExport,
+  ssrLoadModule,
   ssrWebpackRequire,
 } from "./imports/ssr";

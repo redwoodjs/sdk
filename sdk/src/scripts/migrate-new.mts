@@ -1,9 +1,8 @@
-import snakeCase from "lodash/snakeCase.js";
-import { $ } from "../lib/$.mjs";
-import { readdir } from "fs/promises";
-import { resolve } from "path";
 import { mkdirp } from "fs-extra";
-import { writeFile } from "fs/promises";
+import { readdir, writeFile } from "fs/promises";
+import snakeCase from "lodash/snakeCase.js";
+import { resolve } from "path";
+import { $ } from "../lib/$.mjs";
 
 const getNextMigrationNumber = async (): Promise<string> => {
   await mkdirp(resolve(process.cwd(), "./migrations"));

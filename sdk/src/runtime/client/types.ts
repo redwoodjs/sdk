@@ -1,7 +1,7 @@
 import type { CallServerCallback } from "react-server-dom-webpack/client.browser";
 
-export type { CallServerCallback } from "react-server-dom-webpack/client.browser";
 export type { HydrationOptions } from "react-dom/client";
+export type { CallServerCallback } from "react-server-dom-webpack/client.browser";
 
 export type ActionResponse<Result> = {
   node: React.ReactNode;

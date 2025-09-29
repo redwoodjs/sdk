@@ -1,7 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
-  resolveModuleWithEnvironment,
   classifyModule,
+  resolveModuleWithEnvironment,
 } from "./runDirectivesScan.mjs";
 
 describe("runDirectivesScan helpers", () => {

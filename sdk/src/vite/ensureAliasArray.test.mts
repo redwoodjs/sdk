@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { ensureAliasArray } from "./ensureAliasArray.mjs";
 import type { UserConfig } from "vite";
+import { describe, expect, it } from "vitest";
+import { ensureAliasArray } from "./ensureAliasArray.mjs";
 
 describe("ensureAliasArray", () => {
   it("should create resolve and alias array if resolve is undefined", () => {

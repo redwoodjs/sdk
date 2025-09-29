@@ -1,34 +1,19 @@
-import * as os from "os";
-import { join } from "path";
-import { pathExists } from "fs-extra";
-import { log } from "./constants.mjs";
-import { mkdirp } from "fs-extra";
-import { SmokeTestOptions, SmokeTestResult } from "./types.mjs";
-import {
-  install,
-  canDownload,
-  resolveBuildId,
-  computeExecutablePath,
-  detectBrowserPlatform,
-  Browser as PuppeteerBrowser,
-  type InstallOptions,
-} from "@puppeteer/browsers";
-import type { Page, Browser } from "puppeteer-core";
-import puppeteer from "puppeteer-core";
-import { takeScreenshot } from "./artifacts.mjs";
-import { RETRIES } from "./constants.mjs";
-import { $ } from "../$.mjs";
-import { fail, withRetries } from "./utils.mjs";
-import { reportSmokeTestResult } from "./reporting.mjs";
-import { updateTestStatus } from "./state.mjs";
-import { TestStatus } from "./state.mjs";
 import * as fs from "fs/promises";
-import { template as urlStylesTemplate } from "./templates/smokeTestUrlStyles.css.template";
-import { template as clientStylesTemplate } from "./templates/smokeTestClientStyles.module.css.template";
+import { join } from "path";
+import type { Browser, Page } from "puppeteer-core";
+import { $ } from "../$.mjs";
 import {
-  launchBrowser as launchE2EBrowser,
   getBrowserPath as getE2EBrowserPath,
+  launchBrowser as launchE2EBrowser,
 } from "../../lib/e2e/browser.mjs";
+import { takeScreenshot } from "./artifacts.mjs";
+import { log, RETRIES } from "./constants.mjs";
+import { reportSmokeTestResult } from "./reporting.mjs";
+import { TestStatus, updateTestStatus } from "./state.mjs";
+import { template as clientStylesTemplate } from "./templates/smokeTestClientStyles.module.css.template";
+import { template as urlStylesTemplate } from "./templates/smokeTestUrlStyles.css.template";
+import { SmokeTestOptions, SmokeTestResult } from "./types.mjs";
+import { fail, withRetries } from "./utils.mjs";
 
 export async function checkUrlStyles(
   page: Page,

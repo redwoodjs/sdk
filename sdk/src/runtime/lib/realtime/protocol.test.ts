@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { packMessage, unpackMessage, Message } from "./protocol";
+import { describe, expect, it } from "vitest";
+import { Message, packMessage, unpackMessage } from "./protocol";
 import { MESSAGE_TYPE } from "./shared";
 
 describe("Realtime Protocol pack/unpack", () => {

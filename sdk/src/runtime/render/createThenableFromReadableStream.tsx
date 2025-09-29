@@ -1,5 +1,5 @@
-import { createModuleMap } from "./createModuleMap.js";
 import ReactServerDom from "react-server-dom-webpack/client.edge";
+import { createModuleMap } from "./createModuleMap.js";
 
 const { createFromReadableStream } = ReactServerDom;
 

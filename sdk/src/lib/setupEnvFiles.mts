@@ -1,6 +1,6 @@
-import { resolve } from "node:path";
-import { symlink, copyFile } from "node:fs/promises";
 import { pathExists } from "fs-extra";
+import { copyFile, symlink } from "node:fs/promises";
+import { resolve } from "node:path";
 
 export type EnvSetupOptions = {
   rootDir: string;
