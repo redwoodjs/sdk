@@ -1,166 +1,159 @@
 "use server";
 import {
   generateRegistrationOptions,
-  verifyRegistrationResponse,
   generateAuthenticationOptions,
+  verifyRegistrationResponse,
   verifyAuthenticationResponse,
-  type Authenticator,
+  RegistrationResponseJSON,
+  AuthenticationResponseJSON,
 } from "@simplewebauthn/server";
-import { sessionStore } from "../session/store.js";
+
+import { sessions } from "@/session/store";
 import { requestInfo } from "rwsdk/worker";
 import { env } from "cloudflare:workers";
-import type { PasskeyDurableObject } from "./durableObject.js";
-import { CloudflareEnv } from "@/types/cloudflare";
+import {
+  createCredential,
+  createUser,
+  getCredentialById,
+  updateCredentialCounter,
+  getUserById,
+} from "./db";
 
-const getPasskeyDO = () => {
-  const passkeyDO = (env as CloudflareEnv)
-    .PASSKEY_DURABLE_OBJECT as DurableObjectNamespace<PasskeyDurableObject>;
-  // We use a fixed ID to ensure we always hit the same DO instance.
-  const singletonId = passkeyDO.idFromName("passkey-singleton");
-  return passkeyDO.get(singletonId);
-};
+const IS_DEV = process.env.NODE_ENV === "development";
 
-const getWebAuthnConfig = (req: Request) => {
-  const url = new URL(req.url);
-  const origin = url.origin;
-  const isDev = url.hostname === "localhost";
-  const rpID = isDev ? "localhost" : (env as CloudflareEnv).WEBAUTHN_RP_ID;
-  const rpName = (env as CloudflareEnv).WEBAUTHN_APP_NAME;
-  return { rpName, rpID, origin };
-};
+function getWebAuthnConfig(request: Request) {
+  const rpID = env.WEBAUTHN_RP_ID ?? new URL(request.url).hostname;
+  const rpName = IS_DEV ? "Development App" : env.WEBAUTHN_APP_NAME;
+  return {
+    rpName,
+    rpID,
+  };
+}
 
 export async function startPasskeyRegistration(username: string) {
-  const passkeyDO = getPasskeyDO();
-  let user = await passkeyDO.getUser(username);
-
-  if (!user) {
-    user = await passkeyDO.createUser(username);
-  }
-
-  const { rpName, rpID, origin } = getWebAuthnConfig(requestInfo.request);
+  const { rpName, rpID } = getWebAuthnConfig(requestInfo.request);
+  const { headers } = requestInfo;
 
   const options = await generateRegistrationOptions({
     rpName,
     rpID,
-    userID: user.id,
-    userName: user.username,
-    attestationType: "none",
-    excludeCredentials: user.authenticators.map((auth) => ({
-      id: auth.credentialID,
-      type: "public-key",
-      transports: auth.transports,
-    })),
+    userName: username,
+    authenticatorSelection: {
+      // Require the authenticator to store the credential, enabling a username-less login experience
+      residentKey: "required",
+      // Prefer user verification (biometric, PIN, etc.), but allow authentication even if it's not available
+      userVerification: "preferred",
+    },
   });
 
-  await sessionStore.save(requestInfo.response.headers, {
-    challenge: options.challenge,
-    username,
-  });
+  await sessions.save(headers, { challenge: options.challenge });
 
   return options;
 }
 
-export async function startPasskeyLogin(username: string) {
-  const passkeyDO = getPasskeyDO();
-  const user = await passkeyDO.getUser(username);
-
-  if (!user) {
-    throw new Error("User not found");
-  }
-
-  const { rpName, rpID } = getWebAuthnConfig(requestInfo.request);
+export async function startPasskeyLogin() {
+  const { rpID } = getWebAuthnConfig(requestInfo.request);
+  const { headers } = requestInfo;
 
   const options = await generateAuthenticationOptions({
     rpID,
-    allowCredentials: user.authenticators.map((auth) => ({
-      id: auth.credentialID,
-      type: "public-key",
-      transports: auth.transports,
-    })),
+    userVerification: "preferred",
+    allowCredentials: [],
   });
 
-  await sessionStore.save(requestInfo.response.headers, {
-    challenge: options.challenge,
-    username,
-  });
+  await sessions.save(headers, { challenge: options.challenge });
 
   return options;
 }
 
 export async function finishPasskeyRegistration(
-  registration: RegistrationResponseJSON,
+  username: string,
+  registration: RegistrationResponseJSON
 ) {
-  const { rpID, origin } = getWebAuthnConfig(requestInfo.request);
-  const session = await sessionStore.load(requestInfo.request);
+  const { request, headers } = requestInfo;
+  const { origin } = new URL(request.url);
 
-  if (!session?.challenge || !session.username) {
-    throw new Error("Challenge or username not found in session");
+  const session = await sessions.load(request);
+  const challenge = session?.challenge;
+
+  if (!challenge) {
+    return false;
   }
 
   const verification = await verifyRegistrationResponse({
     response: registration,
-    expectedChallenge: session.challenge,
+    expectedChallenge: challenge,
     expectedOrigin: origin,
-    expectedRPID: rpID,
-    requireUserVerification: false,
+    expectedRPID: (env as any).WEBAUTHN_RP_ID || new URL(request.url).hostname,
   });
 
-  if (verification.verified && verification.registrationInfo) {
-    const passkeyDO = getPasskeyDO();
-    await passkeyDO.addAuthenticator(
-      session.username,
-      verification.registrationInfo,
-    );
-    await sessionStore.save(requestInfo.response.headers, {
-      challenge: null,
-      username: null,
-    });
-    return true;
+  if (!verification.verified || !verification.registrationInfo) {
+    return false;
   }
 
-  return false;
+  await sessions.save(headers, { challenge: null });
+
+  const user = await createUser(username);
+
+  await createCredential({
+    userId: user.id,
+    credentialId: verification.registrationInfo.credential.id,
+    publicKey: verification.registrationInfo.credential.publicKey,
+    counter: verification.registrationInfo.credential.counter,
+  });
+
+  return true;
 }
 
 export async function finishPasskeyLogin(login: AuthenticationResponseJSON) {
-  const { rpID, origin } = getWebAuthnConfig(requestInfo.request);
-  const session = await sessionStore.load(requestInfo.request);
-  const passkeyDO = getPasskeyDO();
+  const { request, headers } = requestInfo;
+  const { origin } = new URL(request.url);
 
-  if (!session?.challenge) {
-    throw new Error("Challenge not found in session");
+  const session = await sessions.load(request);
+  const challenge = session?.challenge;
+
+  if (!challenge) {
+    return false;
   }
 
-  const result = await passkeyDO.getAuthenticator(login.id);
+  const credential = await getCredentialById(login.id);
 
-  if (!result) {
-    throw new Error("Authenticator not found");
+  if (!credential) {
+    return false;
   }
-
-  const { user, authenticator } = result;
 
   const verification = await verifyAuthenticationResponse({
     response: login,
-    expectedChallenge: session.challenge,
+    expectedChallenge: challenge,
     expectedOrigin: origin,
-    expectedRPID: rpID,
-    authenticator,
+    expectedRPID: env.WEBAUTHN_RP_ID || new URL(request.url).hostname,
     requireUserVerification: false,
+    credential: {
+      id: credential.credentialId,
+      publicKey: credential.publicKey,
+      counter: credential.counter,
+    },
   });
 
-  if (verification.verified) {
-    await passkeyDO.updateAuthenticatorCounter(
-      login.id,
-      verification.authenticationInfo.newCounter,
-    );
-
-    await sessionStore.save(requestInfo.response.headers, {
-      userId: user.id,
-      challenge: null,
-      username: null,
-    });
-
-    return true;
+  if (!verification.verified) {
+    return false;
   }
 
-  return false;
+  await updateCredentialCounter(
+    login.id,
+    verification.authenticationInfo.newCounter
+  );
+
+  const user = await getUserById(credential.userId);
+
+  if (!user) {
+    return false;
+  }
+
+  await sessions.save(headers, {
+    userId: user.id,
+    challenge: null,
+  });
+
+  return true;
 }

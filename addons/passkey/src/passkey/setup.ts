@@ -1,10 +1,28 @@
-import { PasskeyDurableObject } from "./passkey/durableObject";
-import { sessionStore } from "./session/store";
-import { type AppContext } from "rwsdk/worker";
+import { sessions } from "@/session/store";
+import { RouteMiddleware } from "rwsdk/router";
+import { requestInfo } from "rwsdk/worker";
+import { ErrorResponse } from "rwsdk/worker";
 
-export const setup = (app: AppContext) => {
-  app.use(async (c, next) => {
-    c.set("session", await sessionStore.load(c.req.raw as unknown as Request));
-    await next();
-  });
-};
+export function setupPasskeyAuth() {
+  const setupPasskeyAuthMiddleware: RouteMiddleware = async () => {
+    const { ctx, request, headers } = requestInfo;
+
+    try {
+      ctx.session = await sessions.load(request);
+    } catch (error) {
+      if (error instanceof ErrorResponse && error.code === 401) {
+        await sessions.remove(request, headers);
+        headers.set("Location", "/auth/login");
+
+        throw new Response(null, {
+          status: 302,
+          headers,
+        });
+      }
+
+      throw error;
+    }
+  };
+
+  return setupPasskeyAuthMiddleware;
+}
