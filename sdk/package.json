@@ -5,6 +5,7 @@
   "type": "module",
   "bin": {
     "rw-scripts": "./bin/rw-scripts.mjs",
+    "rwsdk": "./bin/rw-scripts.mjs",
     "rwsync": "./bin/rwsync"
   },
   "files": [
