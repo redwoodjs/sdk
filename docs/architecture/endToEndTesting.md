@@ -55,6 +55,7 @@ To provide a clean and simple API for writing tests, a generic `createTestRunner
 
 - **Pre-Test Resolution**: The test runner uses `describe.concurrent` with a `beforeEach` hook. This hook is responsible for awaiting the specific promise (or promises) required for the test (e.g., it awaits the dev server and browser promises before a `dev` test). This ensures that a test only runs once its required resources are ready, allowing dev and deploy tests to start independently.
 - **Unified Logic**: It contains the core logic for running a test against a specific environment (`dev` or `deploy`), including handling skipped tests, managing retries, and creating and cleaning up browser pages.
+- **Automatic Retries**: To handle transient failures, the runner automatically retries failed tests. This is governed by a general attempt limit and a stricter, per-error-code limit to prevent endless retries on persistent issues. For nightly builds, these limits are increased to more aggressively detect and report flaky tests.
 - **Simple API**: It is used to generate the `testDev`, `testDeploy`, and `testDevAndDeploy` functions, which provide a simple, declarative way to write tests that run concurrently against one or both environments.
 
 ### Q: Why not use a more integrated E2E testing framework like Playwright?

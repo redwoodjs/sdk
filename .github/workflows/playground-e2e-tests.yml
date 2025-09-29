@@ -105,6 +105,8 @@ jobs:
       RWSDK_PUPPETEER_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '300000' || '' }} # 5 mins
       RWSDK_HYDRATION_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '10000' || '' }} # 10s
       RWSDK_DEV_SERVER_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '900000' || '' }} # 15 mins
+      RWSDK_TEST_MAX_RETRIES: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '12' || '' }}
+      RWSDK_TEST_MAX_RETRIES_PER_CODE: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '20' || '' }}
 
     # context(justinvdm, 2025-09-20):
     # Only run this job for PRs from the same repository and pushes to main
@@ -141,7 +143,7 @@ jobs:
         shell: bash
         run: |
           pnpm install
-          ./scripts/retry.sh pnpm test:e2e
+          pnpm test:e2e
         env:
           CI: 1
           PACKAGE_MANAGER: ${{ matrix.package-manager }}
