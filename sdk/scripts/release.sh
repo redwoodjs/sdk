@@ -297,7 +297,11 @@ else
   PUBLISH_CMD="npm publish \"$TARBALL_PATH\""
   if [[ "$VERSION_TYPE" == "test" ]]; then
     PUBLISH_CMD="$PUBLISH_CMD --tag test"
-  elif [[ "$NEW_VERSION" =~ - ]]; then
+  elif [[ "$NEW_VERSION" == *"-beta."* ]]; then
+    # Publish betas as the default 'latest' tag (no explicit tag)
+    PUBLISH_CMD="$PUBLISH_CMD"
+  elif [[ "$NEW_VERSION" == *"-"* ]]; then
+    # Other pre-releases should use the 'pre' dist-tag
     PUBLISH_CMD="$PUBLISH_CMD --tag pre"
   fi
   if ! eval $PUBLISH_CMD; then

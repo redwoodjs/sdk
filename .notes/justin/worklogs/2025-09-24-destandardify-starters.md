@@ -538,7 +538,7 @@ This final architecture provides a clean, consistent, and robust model for the e
 
 This PR restructures the starter templates and moves the passkey authentication functionality into a co-located addon. The `standard` and `minimal` starters are replaced by a single `starter`, and the passkey addon is now included in the SDK repository to ensure it is versioned and tested with the core package.
 
-#### Key Changes
+#### Changes
 
 *   **Unified Starter Template**: The `/starters/standard` and `/starters/minimal` directories are removed and replaced by a single `/starter` directory at the monorepo root.
 *   **Co-located Passkey Addon**: The passkey authentication code has been moved from the former `standard` starter into `sdk/addons/passkey`. It is now versioned and published with the SDK.
