@@ -1,9 +1,16 @@
-import { sessions } from "../../runtime/lib/auth/session.mjs";
-import { RouteMiddleware } from "../../router/index.mjs";
-import { requestInfo } from "../../runtime/worker.mjs";
-import { ErrorResponse } from "../../runtime/worker.mjs";
+import { RouteMiddleware } from "../runtime/lib/router.js";
+import { requestInfo } from "../runtime/requestInfo/worker.js";
+import { ErrorResponse } from "../runtime/error.js";
 
-export function setupPasskeyAuth(passkeyDb: any) {
+interface SetupPasskeyAuthOptions {
+  passkeyDb: any;
+  sessionStore?: any;
+}
+
+export function setupPasskeyAuth({
+  db,
+  sessionStore,
+}: SetupPasskeyAuthOptions) {
   const setupPasskeyAuthMiddleware: RouteMiddleware = async () => {
     const { ctx, request } = requestInfo;
     const {
