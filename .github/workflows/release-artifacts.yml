@@ -3,8 +3,8 @@ name: Release Artifacts
 on:
   push:
     tags:
-      - "v*.*.*" # Trigger on any tag push
-      - "!v*.*.*-*" # Exclude pre-release tags (e.g., v1.2.3-alpha)
+      # Trigger on any tag push (including pre-releases - create-rwsdk will by default not choose pre-releases)
+      - "v*.*.*"
   workflow_dispatch:
     inputs:
       version:

@@ -546,3 +546,155 @@ This PR restructures the starter templates and moves the passkey authentication 
 *   **Unified Release Artifacts**: The `release-artifacts.yml` workflow now packages the `starter` and all directories within `addons/` as `.tar.gz` files and attaches them to the GitHub Release.
 *   **Addon CLI Helper**: A `rw-scripts addon` command is added. It downloads and extracts the corresponding versioned addon `.tar.gz` from the GitHub release assets.
 *   **Documentation Updates**: The documentation is updated to reflect these changes, including a migration guide for `0.x` users and instructions for the passkey addon.
+
+## Post-PR Implementation Issues and Fixes
+
+After the main PR work was completed, several technical issues emerged that required resolution:
+
+### Issue 1: Documentation Build Failures
+
+**Problem**: The documentation build was failing due to broken image links and missing content after the tutorial removal.
+
+**Resolution**:
+- Removed broken image references from `docs/src/content/docs/core/hosting.mdx` and `docs/src/content/docs/guides/frontend/shadcn.mdx`
+- Later restored the images by copying them from the old tutorial location to appropriate directories (`docs/src/content/docs/core/images/` and `docs/src/content/docs/guides/frontend/images/`)
+- Updated image paths to use relative references (e.g., `./images/cloudflare-visit-website.png`)
+- Fixed sidebar configuration in `docs/astro.config.mjs` by removing obsolete `core/database` entry and updating `core/database-do` to be labeled "Database"
+- Deleted the old `docs/src/content/docs/core/database.mdx` page as requested
+
+### Issue 2: Vite Version Compatibility Problems
+
+**Problem**: Type compatibility issues between the SDK and starter due to different Vite versions. The SDK was built against Vite 6 while the starter used Vite 7, causing plugin type mismatches.
+
+**Root Cause**: The error showed two different Vite versions in dependency paths:
+- `vite@6.3.6_@types+node@24.5.2_...` (from SDK build)
+- `vite@7.1.6_@types+node@22.14.0_...` (from starter)
+
+**Resolution**:
+- Added Vite 7.1.6 and `@cloudflare/vite-plugin@1.13.3` as dev dependencies in the SDK
+- Aligned `@types/node` versions to use `~24.5.2` consistently across SDK and starter
+- Rebuilt the SDK to ensure all plugins are compiled against the same Vite version
+
+### Issue 3: E2E Test Import Errors
+
+**Problem**: Playground e2e tests were failing with `Cannot find module 'rwsdk/e2e'` errors.
+
+**Root Cause**: The SDK build was incomplete - the `dist/lib/e2e/` directory existed but was empty.
+
+**Resolution**: Rebuilt the SDK after fixing the Vite compatibility issues, which resolved the missing e2e exports.
+
+### Issue 4: CI Build Failure - Duplicate Function Export
+
+**Problem**: CI was failing with duplicate `waitForHydration` function exports in `sdk/src/lib/e2e/testHarness.mts`.
+
+**Resolution**: Removed the duplicate function definition to resolve the TypeScript compilation error.
+
+### Issue 5: Passkey Addon Type Errors
+
+**Problem**: Multiple TypeScript errors in the passkey addon code:
+- Missing environment variable types
+- `import.meta` usage with incorrect module setting
+- Type mismatches in WebAuthn credential handling
+- React event handling type issues
+- Missing DOM type definitions
+
+**Resolution**:
+- Fixed `tsconfig.json` module setting from `es22` to `es2022`
+- Updated `include` array to correctly reference `types/**/*.d.ts`
+- Added `"DOM"` and `"DOM.Iterable"` to the `lib` array
+- Fixed `publicKey` type handling with `credential.publicKey.slice()` to ensure proper `ArrayBuffer` backing
+- Fixed React event handling by using `(e.currentTarget as HTMLInputElement).value`
+- Re-added missing Durable Object namespace types to `env.d.ts`
+
+### Issue 6: Smoke Test Workspace Dependency Error
+
+**Problem**: Smoke tests were failing with `ERR_PNPM_WORKSPACE_PKG_NOT_FOUND` when trying to resolve `rwsdk@workspace:*`.
+
+**Root Cause Analysis**: After extensive investigation, discovered that `ci-smoke-test.sh` was performing duplicate project setup:
+1. The script was creating its own temp directory, copying starter files, and attempting to install the SDK
+2. Then it called `pnpm smoke-test` which used `setupTarballEnvironment()` to do the same setup again
+3. The first installation attempt failed because it was trying to install `rwsdk@workspace:*` from the copied starter in a temp directory with no workspace configuration
+
+**Resolution**: 
+- Simplified `ci-smoke-test.sh` to be a thin wrapper that only builds the SDK and calls `pnpm smoke-test`
+- Removed all duplicate project setup, tarball creation, and installation logic from the script
+- Updated smoke tests to use `setupTarballEnvironment()` consistently with e2e tests
+- Added `yarn-classic` support back to e2e types to maintain compatibility
+
+### Issue 7: Yarn Classic Type Compatibility
+
+**Problem**: Type conflicts between smoke tests and e2e tests due to different `PackageManager` type definitions.
+
+**Resolution**: Added `yarn-classic` support back to the e2e types to unify the type definitions across both test systems.
+
+## Release Infrastructure Updates
+
+### Test Release Branch Support
+
+**Problem**: The release workflow was restricted to only run on the `main` branch, preventing test releases from feature branches.
+
+**Solution**: Modified `.github/workflows/release.yml` to allow test releases from any branch while maintaining the restriction for production releases:
+- Updated the job condition from `if: github.ref == 'refs/heads/main'` to `if: github.ref == 'refs/heads/main' || github.event.inputs.version_type == 'test'`
+- This allows test releases to run from any branch while keeping patch, minor, and explicit releases restricted to `main`
+
+### Artifact Upload for All Releases
+
+**Problem**: The `release-artifacts.yml` workflow was excluding pre-release tags, preventing test releases and alpha versions from uploading starter and addon artifacts.
+
+**Solution**: Removed the exclusion pattern `- "!v*.*.*-*"` from the workflow trigger, ensuring all tagged releases (including pre-releases and test releases) upload their artifacts to GitHub Releases.
+
+## Create-RWSDK CLI Enhancements
+
+### Version Selection and Default Behavior Changes
+
+**Problem**: The `create-rwsdk` CLI needed to support specific version selection for testing and should default to pre-releases rather than stable releases to align with the project's direction toward 1.0.0.
+
+**Implementation**:
+- Added `--release <version>` option to allow specifying exact versions (e.g., `v1.0.0-alpha.1`)
+- Removed the `--legacy` flag (no backwards compatibility needed since this is a breaking change)
+- Changed `--version` to `--release` to avoid conflict with the standard version display flag
+- Modified the release selection logic to handle three modes:
+  - `--release v1.0.0-alpha.1` → uses that specific version
+  - `--pre` → uses latest pre-release from GitHub  
+  - Default → uses GitHub's "latest" release (which respects our beta-as-latest tagging strategy)
+
+### Pre-release Versioning
+
+**Decision**: Rather than releasing breaking changes as `3.0.0` immediately, we opted for a pre-release approach to allow testing and gradual adoption.
+
+**Implementation**:
+- Updated `create-rwsdk` to version `3.0.0-alpha.1`
+- Updated the changelog to reflect this as an alpha release
+- Moved the breaking changes from a released `3.0.0` section to the alpha release section
+
+This approach allows us to:
+1. Test the CLI changes with real SDK test releases
+2. Publish to npm under the `@pre` tag for controlled distribution
+3. Gather feedback before committing to the breaking changes in a stable release
+
+### GitHub Release Integration Strategy
+
+**Key Insight**: The default behavior leverages GitHub's `/releases/latest` API endpoint, which automatically respects the `--latest` flag we set in our release workflow. This creates a seamless integration:
+
+1. **Beta Releases**: When we release `v1.0.0-beta.x`, our release workflow marks it with `--latest`, making it the "latest" release on GitHub
+2. **CLI Default Behavior**: `create-rwsdk` (without flags) calls `/releases/latest`, automatically getting the beta release
+3. **Pre-release Access**: Users can still access true pre-releases (alphas, etc.) with `--pre`
+4. **Specific Versions**: Users can target exact versions for testing with `--release v1.0.0-alpha.20`
+
+This eliminates the need for complex version detection logic in the CLI - GitHub's release system handles the "what is latest" decision based on our tagging strategy.
+
+## Current Status
+
+All identified issues have been resolved:
+- Documentation builds successfully with restored images
+- Vite compatibility issues are resolved with aligned versions
+- E2E tests can import `rwsdk/e2e` successfully  
+- CI builds pass without duplicate function errors
+- Passkey addon compiles without TypeScript errors
+- Smoke tests use the same proven infrastructure as e2e tests
+- Both test systems use unified type definitions
+- Release workflows support test releases from any branch
+- All releases (including pre-releases) upload artifacts
+- `create-rwsdk` supports specific version selection and defaults to pre-releases
+
+The destandardification work is now technically complete and the release infrastructure is prepared for coordinated testing and deployment.
