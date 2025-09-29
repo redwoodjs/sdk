@@ -41,7 +41,7 @@ env:
 
 jobs:
   release:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.event.inputs.version_type == 'test'
     runs-on: ubuntu-latest
 
     steps:
