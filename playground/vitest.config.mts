@@ -1,5 +1,5 @@
-import { defineConfig } from "vitest/config";
 import os from "os";
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
@@ -21,6 +21,6 @@ export default defineConfig({
     // context(justinvdm, 24 Sep 2025): Use 4x the number of logical CPUs. The tests
     // are heavily network-bound (e.g. deploying workers), so a high degree of
     // concurrency is beneficial as most workers will be idle waiting on I/O.
-    maxWorkers: Math.ceil(os.cpus().length * 4),
+    maxWorkers: Math.ceil(os.cpus().length * 2),
   },
 });
