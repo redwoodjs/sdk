@@ -5,6 +5,7 @@
   "description": "Redwood SDK monorepo",
   "scripts": {
     "format": "prettier --write ./sdk/src starter/src",
+    "knip": "knip",
     "typecheck:addons": "for d in addons/*/; do if [ -f \"$d/tsconfig.json\" ]; then pnpm exec tsc --project \"$d/tsconfig.json\"; fi; done",
     "typecheck:starter": "pnpm exec tsc --project starter/tsconfig.json",
     "test:e2e": "(cd sdk && pnpm build) && cd playground && vitest run",
@@ -21,6 +22,7 @@
     "@manypkg/cli": "^0.21.4",
     "@types/node": "^20.14.2",
     "eslint": "^9.5.0",
+    "knip": "~5.26.0",
     "pnpm": "^10.0.0",
     "prettier": "^3.3.2",
     "tsx": "^4.15.7",
