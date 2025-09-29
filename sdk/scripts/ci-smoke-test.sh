@@ -54,7 +54,7 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 SDK_ROOT="$SCRIPT_DIR/.."
 # The monorepo root is two levels up from the script's directory
 MONOREPO_ROOT="$SDK_ROOT/.."
-STARTER_PATH="$MONOREPO_ROOT/starters/$STARTER"
+STARTER_PATH="$MONOREPO_ROOT/$STARTER"
 
 if [ ! -d "$STARTER_PATH" ]; then
   echo "❌ Starter directory not found at $STARTER_PATH"
