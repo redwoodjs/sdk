@@ -8,7 +8,6 @@
     "lib": ["DOM", "DOM.Iterable", "ESNext", "ES2022"],
     /* Specify what JSX code is generated. */
     "jsx": "react-jsx",
-    "composite": true,
 
     /* Specify what module code is generated. */
     "module": "es2022",
@@ -52,6 +51,5 @@
     ]
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"],
-  "references": [{ "path": "../../addons" }]
+  "exclude": ["node_modules", "dist"]
 }
