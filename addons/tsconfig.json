@@ -1,5 +1,13 @@
 {
   "extends": "../sdk/tsconfig.json",
-  "compilerOptions": {},
+  "compilerOptions": {
+    "noEmit": true,
+    "baseUrl": ".",
+    "rootDir": ".",
+    "paths": {
+      "rwsdk/*": ["../sdk/src/*"]
+    },
+    "types": ["node", "@cloudflare/workers-types"]
+  },
   "include": ["./*/src/**/*.ts", "./*/src/**/*.tsx"]
 }
