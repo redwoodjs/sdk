@@ -40,7 +40,6 @@
 
     /* Enable all strict type-checking options. */
     "strict": true,
-    "noUnusedLocals": true,
 
     /* Skip type checking all .d.ts files. */
     "skipLibCheck": true
