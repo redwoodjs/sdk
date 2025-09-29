@@ -187,6 +187,7 @@
     "semver": "~7.7.1",
     "tsx": "~4.19.4",
     "typescript": "~5.8.3",
-    "vitest": "~3.1.1"
+    "vitest": "~3.1.1",
+    "decompress": "^4.2.1"
   }
 }

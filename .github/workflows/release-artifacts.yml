@@ -1,4 +1,4 @@
-name: Release Starters
+name: Release Artifacts
 
 on:
   push:
@@ -34,13 +34,20 @@ jobs:
           (cd starter && npm pkg set dependencies.rwsdk=${{ steps.vars.outputs.version }})
           pnpm install --ignore-scripts --no-frozen-lockfile
 
-      - name: Package starter folder
+      - name: Package starter and addon folders
         run: |
           mkdir -p output
+          # Package starter
           tar -czvf output/starter-${{ steps.vars.outputs.version }}.tar.gz -C starter .
           zip -r output/starter-${{ steps.vars.outputs.version }}.zip starter
+          # Package addons
+          for dir in ./addons/*/ ; do
+            folder_name=$(basename "$dir")
+            tar -czvf output/${folder_name}-${{ steps.vars.outputs.version }}.tar.gz -C "$dir" .
+            zip -r output/${folder_name}-${{ steps.vars.outputs.version }}.zip "$dir"
+          done
 
-      - name: Upload packaged starter to GitHub Release
+      - name: Upload packaged artifacts to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: output/*

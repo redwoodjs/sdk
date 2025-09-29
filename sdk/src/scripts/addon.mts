@@ -2,6 +2,10 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import { execSync } from "node:child_process";
 import { findUp } from "find-up";
+import decompress from "decompress";
+import os from "node:os";
+import stream from "node:stream";
+import { promisify } from "node:util";
 
 async function getRwSdkProjectRootDir(cwd: string) {
   const pnpmWorkspaceYamlPath = await findUp("pnpm-workspace.yaml", { cwd });
@@ -48,9 +52,24 @@ export const addon = async () => {
     await fs.rm(tmpDir, { recursive: true, force: true });
     await fs.mkdir(tmpDir, { recursive: true });
 
-    const degitUrl = `redwoodjs/sdk/addons/${addonName}#${rwsdkVersion}`;
+    const downloadUrl = `https://github.com/redwoodjs/sdk/releases/download/${rwsdkVersion}/${addonName}-${rwsdkVersion}.tar.gz`;
     console.log(`Downloading addon "${addonName}" version ${rwsdkVersion}...`);
-    execSync(`npx tiged ${degitUrl} ${tmpDir}`, { stdio: "inherit" });
+
+    const filePath = path.join(
+      os.tmpdir(),
+      `rwsdk-addon-${addonName}-${rwsdkVersion}.tar.gz`,
+    );
+
+    const response = await fetch(downloadUrl);
+    if (!response.ok) {
+      console.error(`Error downloading addon: ${response.statusText}`);
+      process.exit(1);
+    }
+
+    const pipeline = promisify(stream.pipeline);
+    await pipeline(response.body, fs.createWriteStream(filePath));
+
+    await decompress(filePath, tmpDir);
 
     console.log();
     console.log("Download complete!");

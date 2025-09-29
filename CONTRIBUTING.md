@@ -520,21 +520,21 @@ npx rwsync --watch "npm run dev"
 
 ## Releasing (for Core Contributors)
 
-Releases are managed by a GitHub Actions workflow that automates versioning, publishing, and dependency updates.
+Releases are managed by a series of automated GitHub Actions workflows that handle versioning, smoke testing, publishing to npm, and packaging of release artifacts for the SDK, starter, and addons.
+
+For a complete, in-depth explanation of the entire end-to-end release process, please refer to the architecture document: [`docs/architecture/sdkStarterAndAddonReleaseProcess.md`](./docs/architecture/sdkStarterAndAddonReleaseProcess.md).
 
 ### How to Create a Release
 
 1.  Navigate to the [Release workflow](.github/workflows/release.yml) in the repository's "Actions" tab.
 2.  Click the "Run workflow" dropdown.
-3.  Choose the `version_type` for the release. The options are:
-    *   `patch`, `minor`: For standard incremental releases where the next version is calculated automatically.
-    *   `test`: For internal test releases.
-    *   `explicit`: This is **required** for all major and pre-releases. When you select this, you must also provide the full version string in the `version` field below.
-4.  The `version` field is only used when the `version_type` is `explicit`. It allows you to specify the exact version to release.
-    *   **Example for a major release:** Select `explicit` as the `version_type` and enter `2.0.0` in the `version` field.
-    *   **Example for a pre-release:** Select `explicit` as the `version_type` and enter `1.2.3-beta.0` in the `version` field.
-5.  Optionally, you can check `skip_smoke_tests` to bypass the smoke testing phase. This is useful for speeding up dry runs or when you are certain the tests are not needed, but should be used with caution for actual releases.
-6.  Click the "Run workflow" button.
+3.  Choose the `version_type` for the release:
+    *   `patch` or `minor` for standard releases.
+    *   `test` for internal test builds.
+    *   `explicit` for major or pre-releases (requires filling in the `version` field).
+4.  Click the "Run workflow" button.
+
+This action triggers the entire release pipeline as described in the architecture document.
 
 ### How to Unrelease a Version
 
