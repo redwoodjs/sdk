@@ -1,14 +1,21 @@
 {
   "compilerOptions": {
     "composite": true,
+    "strict": true,
+    "jsx": "react-jsx",
+    "target": "ES2022",
+    "lib": ["ESNext"],
     "noEmit": true,
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["src/*"],
+      "rwsdk/*": ["../../sdk/src/*"]
     },
     "module": "es2022",
-    "moduleResolution": "bundler"
+    "moduleResolution": "bundler",
+    "types": ["@cloudflare/workers-types", "@types/react"]
   },
   "references": [{ "path": "../../sdk" }],
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/types.d.ts"],
   "exclude": ["node_modules"]
 }

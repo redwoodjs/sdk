@@ -523,3 +523,9 @@ This final architecture provides a clean, consistent, and robust model for the e
     - [x] Add a step to update `rwsdk` dependency in addon `package.json` files before packaging.
 - [ ] **Verify Type-Checking Scripts**:
     - [ ] Run `pnpm typecheck:addons` and `pnpm typecheck:starter` to confirm they execute successfully.
+- [ ] **Fix Addon Type Errors**:
+    - [ ] Update addon `tsconfig.json` to include `jsx`, a modern `target`, and correct `types` for Cloudflare workers.
+    - [ ] Add missing dependencies like `@types/react` to addon `package.json`.
+    - [ ] Correct source code errors in the addon caught by `tsc`.
+- [ ] **Perform Test Release**:
+    - [ ] Run the release script with `test` to validate the entire CI/CD and packaging pipeline.
