@@ -64,9 +64,9 @@ jobs:
       - id: set-matrix
         run: |
           if [[ "${{ inputs.run_full_matrix }}" == "true" ]]; then
-            echo 'matrix={"include":[{"starter":"starter","os":"ubuntu-latest","package-manager":"pnpm"},{"starter":"starter","os":"ubuntu-latest","package-manager":"npm"},{"starter":"starter","os":"ubuntu-latest","package-manager":"yarn"},{"starter":"starter","os":"ubuntu-latest","package-manager":"yarn-classic"},{"starter":"starter","os":"macos-latest","package-manager":"pnpm"},{"starter":"starter","os":"macos-latest","package-manager":"npm"},{"starter":"starter","os":"macos-latest","package-manager":"yarn"},{"starter":"starter","os":"macos-latest","package-manager":"yarn-classic"}]}' >> $GITHUB_OUTPUT
+            echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"},{"os":"ubuntu-latest","package-manager":"npm"},{"os":"ubuntu-latest","package-manager":"yarn"},{"os":"ubuntu-latest","package-manager":"yarn-classic"},{"os":"macos-latest","package-manager":"pnpm"},{"os":"macos-latest","package-manager":"npm"},{"os":"macos-latest","package-manager":"yarn"},{"os":"macos-latest","package-manager":"yarn-classic"}]}' >> $GITHUB_OUTPUT
           elif [[ "${{ github.event_name }}" == "pull_request" || "${{ github.event_name }}" == "push" ]]; then
-            echo 'matrix={"include":[{"starter":"starter","os":"ubuntu-latest","package-manager":"pnpm"}]}' >> $GITHUB_OUTPUT
+            echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"}]}' >> $GITHUB_OUTPUT
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             OS_INPUT=${{ github.event.inputs.os }}
             PM_INPUT=${{ github.event.inputs.package-manager }}
@@ -75,16 +75,16 @@ jobs:
             JSON_ARRAY="[]"
             for o in $OS_LIST; do
               for p in $PM_LIST; do
-                JSON_ARRAY=$(echo "$JSON_ARRAY" | jq ". + [{\"starter\":\"starter\",\"os\":\"$o\",\"package-manager\":\"$p\"}]")
+                JSON_ARRAY=$(echo "$JSON_ARRAY" | jq ". + [{\"os\":\"$o\",\"package-manager\":\"$p\"}]")
               done
             done
             echo "matrix={\"include\":${JSON_ARRAY}}" >> $GITHUB_OUTPUT
           else
-            echo 'matrix={"include":[{"starter":"starter","os":"ubuntu-latest","package-manager":"npm"}]}' >> $GITHUB_OUTPUT
+            echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"npm"}]}' >> $GITHUB_OUTPUT
           fi
   smoke-test:
     needs: setup-matrix
-    name: ${{ matrix.starter }} starter - ${{ matrix.os }} - ${{ matrix.package-manager }}
+    name: Starter Smoke Test
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -134,6 +134,6 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: smoke-test-artifacts-${{ matrix.starter }}-${{ matrix.os }}-${{ matrix.package-manager }}
-          path: smoke-test-artifacts/${{ matrix.starter }}
+          name: smoke-test-artifacts-starter-${{ matrix.os }}-${{ matrix.package-manager }}
+          path: smoke-test-artifacts/starter
           retention-days: 7

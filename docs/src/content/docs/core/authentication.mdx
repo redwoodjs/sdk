@@ -3,14 +3,19 @@ title: Authentication
 description: Secure your application with sessions and passwordless login.
 ---
 import { Aside } from "@astrojs/starlight/components";
+import { Badge } from "@astrojs/starlight/components";
 
-RedwoodSDK provides two approaches for handling user sessions and authentication. The recommended method for user logins is the Passkey Addon. For developers who need to build a custom solution or manage non-authentication session data, the SDK also exposes the underlying Session Management API.
+RedwoodSDK provides two paths for handling user authentication and sessions.
+
+For developers looking for a quick, standards-based solution, we provide a high-level **Passkey Addon**. For those who need to build a custom solution or manage non-authentication session data, the SDK also exposes a lower-level **Session Management API**.
 
 This guide covers the high-level addon first, followed by the low-level API.
 
-## Passkey Authentication (WebAuthn)
+## Passkey Authentication (WebAuthn) <Badge text="Experimental" type="caution" />
 
-The SDK ships with a bundled Passkey addon that can be easily added to your project. It provides a complete, production-ready implementation of passkey authentication using WebAuthn, including server-side logic and client-side UI components.
+Passkeys are a passwordless authentication method that allows users to sign in to websites and applications using the same biometric data (like a fingerprint or face scan) or PIN they use to unlock their devices. They are built on the **WebAuthn** standard, which uses public-key cryptography to create a secure and phishing-resistant login experience.
+
+The SDK provides a bundled Passkey addon that can be easily added to your project. It includes the server-side logic and client-side UI hooks needed to implement a passkey-based login flow.
 
 ### Adding the Passkey Addon
 

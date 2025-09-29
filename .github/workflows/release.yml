@@ -114,7 +114,9 @@ jobs:
             FLAGS="$FLAGS --latest"
           elif [[ "$VERSION_TYPE" == "explicit" ]]; then
             # For explicit versions, we check the version string to determine if it's a pre-release
-            if [[ "$VERSION" == *"-"* ]]; then
+            if [[ "$VERSION" == *"-beta."* ]]; then
+              FLAGS="$FLAGS --latest"
+            elif [[ "$VERSION" == *"-"* ]]; then
               FLAGS="$FLAGS --prerelease"
             else
               FLAGS="$FLAGS --latest"

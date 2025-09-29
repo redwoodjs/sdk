@@ -496,3 +496,30 @@ The decision was to standardize on a single distribution method and simplify the
     - `CONTRIBUTING.md` was updated to remove the detailed procedural steps and instead link directly to the new architecture document.
 
 This final architecture provides a clean, consistent, and robust model for the entire ecosystem. It simplifies maintenance and makes the process of how users receive code—whether for a new project or an addon—predictable and reliable.
+
+## Things to Address (Final Review)
+
+- [x] **Update `migrating.mdx`**:
+    - [x] Change hardcoded dependency versions to dynamic ones (`@rc`, `@latest`).
+    - [x] Add `@cloudflare/workers-types` to dev dependencies.
+    - [x] Clarify the D1-to-Durable-Object migration complexity in the passkey refactoring guide.
+    - [x] Correct the description of passkey delivery (addon vs. direct SDK export).
+- [x] **Update `authentication.mdx`**:
+    - [x] Reframe introduction to high-level (addon) vs. low-level (session API) paths.
+    - [x] Add an "Experimental" badge to the Passkey Authentication section.
+    - [x] Add a brief explanation of what Passkeys/WebAuthn are.
+    - [x] Remove/tone down "bold claims".
+
+## Final Review (Part 2)
+
+- [x] **Fix `smoke-test.yml`**:
+    - [x] Reinstate the `setup-matrix` job for dynamic matrix generation.
+    - [x] Change the job name to a static string to fix interpolation in `workflow_call`.
+- [x] **Update `ci-smoke-test.sh`**:
+    - [x] Correct the outdated help comment to remove the `--starter` argument.
+- [x] **Update `release.yml`**:
+    - [x] Modify release logic to mark `beta` releases as `--latest`.
+- [x] **Update `release-artifacts.yml`**:
+    - [x] Add a step to update `rwsdk` dependency in addon `package.json` files before packaging.
+- [ ] **Verify Type-Checking Scripts**:
+    - [ ] Run `pnpm typecheck:addons` and `pnpm typecheck:starter` to confirm they execute successfully.

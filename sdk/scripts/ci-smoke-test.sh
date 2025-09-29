@@ -7,8 +7,20 @@ set -euo pipefail
 # tarball and installing it in a fresh starter project.
 
 # It accepts the following arguments:
-# --starter: The name of the starter to test (e.g., "minimal", "standard").
 # --package-manager: The package manager to use (e.g., "pnpm", "npm", "yarn", "yarn-classic").
+# --path: The path to the project to test. Defaults to a new temporary directory.
+# --no-sync: Disables syncing of the local SDK build to the test project.
+# --artifact-dir: The directory to store test artifacts. Defaults to "smoke-test-artifacts/<starter>".
+# --skip-style-tests: Skips the style-related tests.
+#
+# The script will create a temporary project, install the specified starter,
+# install the SDK from a local tarball, and run a series of checks.
+# It requires `wrangler` and the specified package manager to be installed.
+#
+# Environment variables can be used to override default timeouts and retries.
+# See the script for details.
+#
+################################################################################
 
 # --- Argument parsing ---
 STARTER="starter"

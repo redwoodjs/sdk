@@ -5,7 +5,7 @@ description: A guide for upgrading your RedwoodSDK project.
 
 This guide is for users who have an existing RedwoodSDK project and wish to upgrade from a `0.x` version to `1.x`.
 
-The `1.x` release line includes significant improvements, including a simplified starter template, integrated passkey authentication, and numerous bug fixes and performance enhancements.
+The `1.x` release line includes significant improvements, including a simplified starter template, an officially supported passkey addon, and numerous bug fixes and performance enhancements.
 
 ## Required Migration Steps
 
@@ -15,25 +15,14 @@ To upgrade your project, you must first take the following steps to avoid breaki
 
 In version `1.x`, several core packages like `react` and `wrangler` have been moved to `peerDependencies`. You must now explicitly add them to your project's `package.json`.
 
-Update your `dependencies` and `devDependencies` to include the following:
+You can add the required packages by running the following commands in your project root:
 
-```jsonc title="package.json"
-{
-  "dependencies": {
-    "react": "19.2.0-canary-3fb190f7-20250908",
-    "react-dom": "19.2.0-canary-3fb190f7-20250908",
-    "react-server-dom-webpack": "19.2.0-canary-3fb190f7-20250908",
-    // ... your other dependencies
-  },
-  "devDependencies": {
-    "@cloudflare/vite-plugin": "1.12.4",
-    "wrangler": "4.35.0",
-    // ... your other devDependencies
-  }
-}
+```sh
+pnpm add react@rc react-dom@rc react-server-dom-webpack@rc
+pnpm add -D @cloudflare/vite-plugin@latest wrangler@latest @cloudflare/workers-types@latest
 ```
 
-After updating, run your package manager's install command (e.g., `pnpm install`) to apply the updates.
+After updating, run `pnpm install` to apply the updates.
 
 ### 2. Update `wrangler.jsonc`
 
@@ -80,35 +69,24 @@ export default defineApp([
 ]);
 ```
 
-## Optional Refactoring Guide: Adopting the New Passkey Auth
+## Optional Refactoring Guide: Adopting the Passkey Addon
 
-The most significant change in `1.x` is the removal of the `standard` starter in favor of a single, unified `starter` project with passkey authentication features baked directly into the SDK.
+The most significant change in `1.x` is the removal of the `standard` starter in favor of a single, unified `starter` project and the introduction of the officially supported passkey addon.
 
-**Your existing authentication code, which was generated from the old `standard` starter, is now your own code and will continue to work.** You are not required to change it.
+**Your existing authentication code, which was generated from the old `standard` starter, is your own code and will continue to work.** You are not required to change it. The SDK remains backwards-compatible with that implementation.
 
-However, if you wish to adopt the new, officially supported passkey utilities for better maintenance and future updates, this guide will walk you through the process.
+The passkey addon is recommended for **new projects** or projects that have **not yet launched to production**.
+
+### Important Considerations for Migration
+
+The passkey addon uses a **SQLite-based Durable Object** for session and user storage, whereas the old `standard` starter used a **D1 database with Prisma**. Migrating from one to the other is a complex task that requires manually moving data between systems.
+
+Because of this complexity, we recommend that existing applications with live user data continue to use their D1/Prisma-based implementation.
 
 ### What's Changed?
 
 -   The `standard` starter and its associated tutorial have been removed.
--   Passkey (WebAuthn) functionality, previously part of the `standard` starter, is now available directly from the `rwsdk` package via the `rwsdk/passkey/worker` and `rwsdk/passkey/client` entry points.
--   The new implementation uses a lightweight, SQLite-based Durable Object for session and user storage, removing the need for Prisma in the starter.
+-   Passkey (WebAuthn) functionality is now provided via a version-locked, downloadable **addon**. This gives you full ownership of the code.
+-   The new implementation uses a lightweight, SQLite-based Durable Object, removing the need for Prisma in the starter.
 
-### Refactoring Steps
-
-To refactor your existing project to use the new passkey implementation, you will essentially be replacing your current auth-related files with the new SDK primitives.
-
-1.  **Remove Old Auth Files**: Delete the user-related pages, functions, and database files that were part of the old `standard` starter. This may include:
-    *   `src/app/pages/user/`
-    *   `src/app/db/` (if you were only using it for authentication)
-    *   The user-related routes from your `worker.tsx`.
-
-2.  **Follow the New Authentication Guide**: The new, comprehensive guide provides step-by-step instructions for setting up the integrated passkey authentication.
-
-    Please follow the new [**Authentication Guide**](./authentication) to:
-    *   Configure your `wrangler.jsonc` with the required D1 database and Durable Objects.
-    *   Set up the `PasskeyDurableObject`.
-    *   Integrate the `setupPasskeyAuth` middleware into your `worker.tsx`.
-    *   Build a new login/registration UI using the `usePasskey` hook.
-
-By following the new guide, you will be able to fully transition your project to the new, streamlined authentication system.
+If you decide to migrate, you can follow the [**Authentication Guide**](./authentication) to install the passkey addon and adapt it to your existing data models.
