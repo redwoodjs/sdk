@@ -95,3 +95,14 @@ This approach has several advantages:
 - It avoids the complexity and non-determinism of building an AI-driven E2E test at this stage.
 
 The authentication documentation will be completely overhauled to guide users to this new command.
+
+### Attempt 5: Decoupling the Addon from the NPM Package
+
+A refinement to the docs-first approach is to avoid shipping the addon source code within the published `rwsdk` npm package. This keeps the package lean for all users, especially those not using the passkey feature.
+
+The new plan is as follows:
+1. The `sdk/addons` directory will not be included in the files published to npm. It will exist only in the GitHub repository, versioned with git tags.
+2. The `rw-scripts addon passkey` command will be modified. Instead of reading a local file, it will determine the currently installed version of `rwsdk`. It will then use this version to construct and print the exact GitHub URL for the addon's `README.md` at that specific git tag.
+3. The documentation will be updated to reflect this. It will instruct users to run the command to get a version-locked URL. It will also provide a static link to the `README.md` on the `main` branch for users who wish to browse the latest version.
+
+This approach maintains the key benefit of version-locking the instructions to the user's installed SDK version while significantly reducing the size of the installed package. The workflow remains simple for both users and AI agents, who can be instructed to fetch content from the provided URL.

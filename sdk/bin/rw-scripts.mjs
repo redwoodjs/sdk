@@ -20,18 +20,19 @@ if (SCRIPT_NAME === "addon") {
     process.exit(1);
   }
   try {
-    const readmePath = path.resolve(ROOT_DIR, "addons", addonName, "README.md");
-    const readmeContent = await fs.readFile(readmePath, "utf-8");
-    console.log(`
-NOTE: The following instructions are for the addon's README.md, located inside your project's node_modules.
-You will need to adjust file paths accordingly. For example, a command like 'cp -R src/passkey ../../src/' should be
-interpreted as copying the 'src/passkey' directory from 'node_modules/rwsdk/addons/passkey/' into your project's 'src/' directory.
----
-`);
-    console.log(readmeContent);
+    const packageJsonPath = path.resolve(ROOT_DIR, "package.json");
+    const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
+    const { version } = JSON.parse(packageJsonContent);
+
+    const url = `https://github.com/redwoodjs/sdk/blob/v${version}/sdk/addons/${addonName}/README.md`;
+
+    console.log(
+      `Find the instructions for the "${addonName}" addon for your installed version (${version}) at the following URL:`,
+    );
+    console.log(url);
     process.exit(0);
   } catch (e) {
-    console.error(`Could not find README.md for addon "${addonName}".`);
+    console.error(`Could not generate URL for addon "${addonName}".`);
     process.exit(1);
   }
 }
