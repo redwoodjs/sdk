@@ -40,6 +40,12 @@ on:
           - yarn
           - yarn-classic
   workflow_call:
+    inputs:
+      run_full_matrix:
+        description: "Run the full test matrix"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -50,22 +56,39 @@ env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
 jobs:
+  setup-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          if [[ "${{ inputs.run_full_matrix }}" == "true" ]]; then
+            echo 'matrix={"include":[{"starter":"starter","os":"ubuntu-latest","package-manager":"pnpm"},{"starter":"starter","os":"ubuntu-latest","package-manager":"npm"},{"starter":"starter","os":"ubuntu-latest","package-manager":"yarn"},{"starter":"starter","os":"ubuntu-latest","package-manager":"yarn-classic"},{"starter":"starter","os":"macos-latest","package-manager":"pnpm"},{"starter":"starter","os":"macos-latest","package-manager":"npm"},{"starter":"starter","os":"macos-latest","package-manager":"yarn"},{"starter":"starter","os":"macos-latest","package-manager":"yarn-classic"}]}' >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "pull_request" || "${{ github.event_name }}" == "push" ]]; then
+            echo 'matrix={"include":[{"starter":"starter","os":"ubuntu-latest","package-manager":"pnpm"}]}' >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            OS_INPUT=${{ github.event.inputs.os }}
+            PM_INPUT=${{ github.event.inputs.package-manager }}
+            [ "$OS_INPUT" == "all" ] && OS_LIST='ubuntu-latest macos-latest' || OS_LIST=$OS_INPUT
+            [ "$PM_INPUT" == "all" ] && PM_LIST='pnpm npm yarn yarn-classic' || PM_LIST=$PM_INPUT
+            JSON_ARRAY="[]"
+            for o in $OS_LIST; do
+              for p in $PM_LIST; do
+                JSON_ARRAY=$(echo "$JSON_ARRAY" | jq ". + [{\"starter\":\"starter\",\"os\":\"$o\",\"package-manager\":\"$p\"}]")
+              done
+            done
+            echo "matrix={\"include\":${JSON_ARRAY}}" >> $GITHUB_OUTPUT
+          else
+            echo 'matrix={"include":[{"starter":"starter","os":"ubuntu-latest","package-manager":"npm"}]}' >> $GITHUB_OUTPUT
+          fi
   smoke-test:
+    needs: setup-matrix
     name: ${{ matrix.starter }} starter - ${{ matrix.os }} - ${{ matrix.package-manager }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
-      matrix:
-        starter:
-          - starter
-        os:
-          - ubuntu-latest
-          - macos-latest
-        package-manager:
-          - pnpm
-          - npm
-          - yarn
-          - yarn-classic
+      matrix: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
     timeout-minutes: 60
     env:
       MAX_RETRIES: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '10' || '3' }}
@@ -80,7 +103,11 @@ jobs:
     # context(justinvdm, 2025-05-12):
     # Only run this job for PRs from the same repository and pushes to main
     # For security, GH won't expose secrets for fork PRs
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.head.repo.full_name == github.repository)
 
     steps:
       - name: Checkout repository
@@ -102,8 +129,6 @@ jobs:
         shell: bash
         run: |
           ./scripts/retry.sh ./sdk/scripts/ci-smoke-test.sh --package-manager "${{ matrix.package-manager }}"
-        env:
-          CHROME_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
 
       - name: Upload starter artifacts
         uses: actions/upload-artifact@v4

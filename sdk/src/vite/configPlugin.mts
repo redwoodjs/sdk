@@ -56,7 +56,6 @@ export const configPlugin = ({
           "rwsdk/constants",
           "rwsdk/db",
           "rwsdk/debug",
-          "rwsdk/llms",
           "rwsdk/realtime/durableObject",
           "rwsdk/realtime/worker",
           "rwsdk/router",
@@ -149,6 +148,10 @@ export const configPlugin = ({
               "rwsdk/constants",
               "rwsdk/debug",
               "rwsdk/realtime/client",
+              "rwsdk/router",
+              "rwsdk/worker",
+              "rwsdk/realtime/durableObject",
+              "rwsdk/realtime/worker",
             ],
             esbuildOptions: {
               jsx: "automatic",
