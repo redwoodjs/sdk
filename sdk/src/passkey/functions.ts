@@ -8,7 +8,6 @@ import {
   AuthenticationResponseJSON,
 } from "@simplewebauthn/server";
 
-import { sessions } from "../../runtime/lib/auth/session.mjs";
 import { requestInfo } from "../../runtime/worker.mjs";
 import { env } from "cloudflare:workers";
 
@@ -41,7 +40,7 @@ export async function startPasskeyRegistration(username: string) {
     },
   });
 
-  await sessions.save(headers, { challenge: options.challenge });
+  await requestInfo.rw.sessions.save(headers, { challenge: options.challenge });
 
   return options;
 }
@@ -58,7 +57,7 @@ export async function startPasskeyLogin() {
     allowCredentials: [],
   });
 
-  await sessions.save(headers, { challenge: options.challenge });
+  await requestInfo.rw.sessions.save(headers, { challenge: options.challenge });
 
   return options;
 }
@@ -73,7 +72,7 @@ export async function finishPasskeyRegistration(
   } = requestInfo;
   const { origin } = new URL(request.url);
 
-  const session = await sessions.get(request, headers);
+  const session = await requestInfo.rw.sessions.get(request, headers);
   const challenge = session?.challenge;
 
   if (!challenge) {
@@ -91,7 +90,7 @@ export async function finishPasskeyRegistration(
     return false;
   }
 
-  await sessions.save(headers, { challenge: null });
+  await requestInfo.rw.sessions.save(headers, { challenge: null });
 
   const user = await requestInfo.rw.passkeyDb.createUser(username);
 
@@ -112,7 +111,7 @@ export async function finishPasskeyLogin(login: AuthenticationResponseJSON) {
   } = requestInfo;
   const { origin } = new URL(request.url);
 
-  const session = await sessions.get(request, headers);
+  const session = await requestInfo.rw.sessions.get(request, headers);
   const challenge = session?.challenge;
 
   if (!challenge) {
@@ -153,7 +152,7 @@ export async function finishPasskeyLogin(login: AuthenticationResponseJSON) {
     return false;
   }
 
-  await sessions.save(headers, {
+  await requestInfo.rw.sessions.save(headers, {
     userId: user.id,
     challenge: null,
   });

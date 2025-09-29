@@ -1,25 +1,22 @@
-import { defineApp } from "rwsdk/worker";
-import { render } from "rwsdk/router";
+import { defineApp, render } from "rwsdk/app";
+import { setupPasskeyAuth } from "rwsdk/passkey/worker";
 import {
-  setupPasskeyAuth,
   PasskeyDurableObject,
   SessionDurableObject,
-} from "rwsdk/passkey/worker.js";
-import type { Session, User } from "rwsdk/passkey/worker.js";
+} from "rwsdk/passkey/worker";
+import { type Session } from "rwsdk/auth";
 
 import { Document } from "./app/Document.js";
 import { routes } from "./app/pages/routes.js";
 import { setCommonHeaders } from "./app/headers.js";
-import * as passkeyDb from "./passkey/index.js";
 
 export { PasskeyDurableObject, SessionDurableObject };
 
 export interface AppContext {
-  user?: User;
   session?: Session;
 }
 
-const passkeyAuth = setupPasskeyAuth(passkeyDb);
+const passkeyAuth = setupPasskeyAuth();
 
 export default defineApp([
   setCommonHeaders(),
