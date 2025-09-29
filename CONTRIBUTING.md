@@ -73,12 +73,13 @@ This project employs a multi-layered testing strategy to ensure code quality and
 
 #### CI/CD Testing Pipeline
 
-Our GitHub Actions workflows are configured to provide two different levels of testing:
+Our GitHub Actions workflows are configured to provide a tiered testing strategy to balance rapid feedback with comprehensive coverage.
 
-*   **On Pull Requests**: To provide fast feedback, we run a lightweight but representative subset of our test suite. This includes all **unit tests**, plus a minimal configuration of our **smoke tests** and **E2E tests** (running on Ubuntu with pnpm). This quick sanity check is designed to catch most common regressions without the long wait times of the full test matrix.
-*   **On Pushes to `main`**: Before any code is considered for a release, it must pass the full, comprehensive test suite. This includes all **unit tests**, and the complete matrix for **smoke tests** and **E2E tests**, covering all supported operating systems (Ubuntu, macOS) and package managers (pnpm, npm, yarn, yarn-classic). A failure in any part of this matrix will block a release, ensuring that the `main` branch is always stable.
+*   **On Pull Requests and Pushes to `main`**: To provide fast feedback, we run a lightweight but representative subset of our test suite. This includes all **unit tests**, plus a minimal configuration of our **smoke tests** and **E2E tests** (running on `ubuntu-latest` with `npm`). This serves as a quick health check to catch common regressions.
 
-All tests can also be run manually on any branch using the `workflow_dispatch` trigger in GitHub Actions, giving contributors the power to run the full suite on their changes when needed.
+*   **Nightly Runs**: To ensure broad compatibility, the full test matrix is run on a schedule (every 12 hours). This includes **smoke tests** and **E2E tests** across all supported operating systems (Ubuntu, macOS) and package managers (pnpm, npm, yarn, yarn-classic). This process catches environment-specific issues without blocking development on `main`.
+
+All test suites can also be run manually on any branch using the `workflow_dispatch` trigger in GitHub Actions, giving contributors the power to run the full suite on their changes when needed.
 
 ### Smoke Testing
 

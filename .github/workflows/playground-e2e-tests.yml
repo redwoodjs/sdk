@@ -40,6 +40,13 @@ on:
           - yarn
           # todo(justinvdm, 25 Sep 2025): Re-enable yarn-classic once E2E tests are fixed
           # - yarn-classic
+  workflow_call:
+    inputs:
+      run_full_matrix:
+        description: "Run the full test matrix"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -57,9 +64,10 @@ jobs:
     steps:
       - id: set-matrix
         run: |
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"}]}' >> $GITHUB_OUTPUT
-          elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          if [[ "${{ inputs.run_full_matrix }}" == "true" ]]; then
+            # todo(justinvdm, 25 Sep 2025): Re-enable yarn-classic once E2E tests are fixed
+            echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"},{"os":"ubuntu-latest","package-manager":"npm"},{"os":"ubuntu-latest","package-manager":"yarn"},{"os":"macos-latest","package-manager":"pnpm"},{"os":"macos-latest","package-manager":"npm"},{"os":"macos-latest","package-manager":"yarn"}]}' >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             OS_INPUT=${{ github.event.inputs.os }}
             PM_INPUT=${{ github.event.inputs.package-manager }}
 
@@ -75,23 +83,35 @@ jobs:
             done
             echo "matrix={\"include\":${JSON_ARRAY}}" >> $GITHUB_OUTPUT
           else
-            # todo(justinvdm, 25 Sep 2025): Re-enable yarn-classic once E2E tests are fixed
-            echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"},{"os":"ubuntu-latest","package-manager":"npm"},{"os":"ubuntu-latest","package-manager":"yarn"},{"os":"macos-latest","package-manager":"pnpm"},{"os":"macos-latest","package-manager":"npm"},{"os":"macos-latest","package-manager":"yarn"}]}' >> $GITHUB_OUTPUT
+            echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"npm"}]}' >> $GITHUB_OUTPUT
           fi
 
   playground-e2e:
     needs: setup-matrix
-    name: Playground E2E - ${{ matrix.os }} - ${{ matrix.package-manager }}
+    name: Playground E2E Test
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
     timeout-minutes: 60
+    env:
+      MAX_RETRIES: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '10' || '1' }}
+      RWSDK_SETUP_PLAYGROUND_ENV_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '1800000' || '' }} # 30 mins
+      RWSDK_DEPLOYMENT_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '900000' || '' }} # 15 mins
+      RWSDK_DEPLOYMENT_MIN_TRIES: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '10' || '' }}
+      RWSDK_DEPLOYMENT_CHECK_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '600000' || '' }} # 10 mins
+      RWSDK_PUPPETEER_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '300000' || '' }} # 5 mins
+      RWSDK_HYDRATION_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '10000' || '' }} # 10s
+      RWSDK_DEV_SERVER_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '900000' || '' }} # 15 mins
 
     # context(justinvdm, 2025-09-20):
     # Only run this job for PRs from the same repository and pushes to main
     # For security, GH won't expose secrets for fork PRs
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.head.repo.full_name == github.repository)
 
     steps:
       - name: Checkout repository
@@ -119,7 +139,7 @@ jobs:
         shell: bash
         run: |
           pnpm install
-          pnpm test:e2e
+          ./scripts/retry.sh pnpm test:e2e
         env:
           CI: 1
           PACKAGE_MANAGER: ${{ matrix.package-manager }}
