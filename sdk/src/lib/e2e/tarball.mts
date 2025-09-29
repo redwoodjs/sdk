@@ -15,7 +15,7 @@ const log = (message: string) => console.log(message);
 interface SetupTarballOptions {
   projectDir: string;
   monorepoRoot?: string;
-  packageManager?: "pnpm" | "npm" | "yarn";
+  packageManager?: "pnpm" | "npm" | "yarn" | "yarn-classic";
 }
 
 interface TarballEnvironment {
