@@ -9,9 +9,9 @@ Managing dependencies and ensuring compatibility between a core framework, a sta
 2.  Guarantees that downloadable starters and addons use a specific, published version of the SDK.
 3.  Automates as much of the release process as possible to ensure consistency and reduce manual error.
 
-## The Solution: A Three-Stage Automated Release
+## The Solution: A Tiered, Automated Release Strategy
 
-The entire process is orchestrated through a series of GitHub Actions workflows, creating a clear, multi-stage pipeline from development to consumption.
+The entire process is orchestrated through a series of GitHub Actions workflows, creating a clear, multi-stage pipeline from development to consumption. The strategy is built on three release tiers: **Stable/Beta**, **Pre-release**, and **Test**.
 
 ### Stage 1: Local Development & CI
 
@@ -20,32 +20,34 @@ The entire process is orchestrated through a series of GitHub Actions workflows,
 
 ### Stage 2: The SDK Release (`release.yml`)
 
-This is the primary, manually-triggered event that kicks off a release.
+This is the primary, manually-triggered event that kicks off a release. It determines the release's *intent* and publishes the package to npm.
 
-1.  **Trigger**: A core contributor triggers the `release.yml` workflow via the GitHub Actions UI, specifying the version type (e.g., `patch`, `minor`, `explicit`).
-2.  **Version Calculation**: The `sdk/scripts/release.sh` script calculates the new version number (or uses the one provided) and updates `sdk/package.json`.
-3.  **Commit**: A `chore(release): <version>` commit is created with this change.
-4.  **Build**: The SDK is built with `NODE_ENV=production`.
-5.  **Pack**: The built SDK is packed into a `.tgz` tarball.
-6.  **Smoke Test**: A comprehensive smoke test is performed against the packed tarball. A temporary project is created from the `starter`, and the tarball is installed and tested to ensure the packaged code works as expected.
-7.  **Publish to npm**: If the smoke tests pass, the `.tgz` tarball is published to the npm registry.
-8.  **Tag and Push**: The release commit is tagged (e.g., `v1.2.3`), and the commit and tag are pushed to the `main` branch.
+1.  **Trigger**: A core contributor triggers the `release.yml` workflow via the GitHub Actions UI, specifying the version type (e.g., `patch`, `minor`, `explicit`, `test`). Test releases can be run from any branch, while others run from `main`.
+2.  **Version & npm Tag**: The `sdk/scripts/release.sh` script calculates the new version and determines the correct npm tag:
+    -   **Stable & Beta versions** (e.g., `v1.2.3`, `v1.3.0-beta.0`) get the `latest` npm tag.
+    -   **Pre-releases** (e.g., `v1.3.0-alpha.0`) get the `pre` npm tag.
+    -   **Test releases** (e.g., `v1.3.0-alpha.0-test.12345`) get the `test` npm tag.
+3.  **Build & Pack**: The SDK is built and packed into a `.tgz` tarball.
+4.  **Smoke Test**: A comprehensive smoke test is performed against the packed tarball to ensure it works correctly in a fresh project.
+5.  **Publish to npm**: If tests pass, the tarball is published to npm with the appropriate tag.
+6.  **Commit & Git Tag**: A release commit and a git tag (e.g., `v1.2.3`) are created and pushed.
+7.  **Create GitHub Release**: A GitHub Release is created from the tag. Crucially, a `--latest` flag is added for stable and beta releases, signaling to GitHub that this is the primary release. Other pre-releases and test releases are created without this flag.
 
 ### Stage 3: Artifact Release (`release-artifacts.yml`)
 
-The push of the new git tag from Stage 2 automatically triggers this final stage.
+The push of any new git tag automatically triggers this final stage, which prepares the starter and addon artifacts.
 
-1.  **Trigger**: The `release-artifacts.yml` workflow is triggered by the new `v*.*.*` tag.
-2.  **Checkout at Tag**: The workflow checks out the repository at the exact commit associated with the tag.
-3.  **Update Starter Version**: It modifies the `starter/package.json`, replacing `"rwsdk": "workspace:*"` with the exact release version (e.g., `"rwsdk": "1.2.3"`).
-4.  **Package Artifacts**: The workflow creates `.tar.gz` and `.zip` archives for:
-    -   The single `starter` project.
-    -   *Each* official addon located in the `addons/` directory.
-5.  **Upload to Release**: All generated tarballs (for the starter and all addons) are uploaded to the GitHub Release corresponding to the tag.
+1.  **Trigger**: The workflow is triggered by any new `v*.*.*` tag.
+2.  **Update Dependencies**: The workflow checks out the repository at the tag and updates the `starter/package.json` and all `addons/*/package.json` files, replacing `"rwsdk": "workspace:*"` with the exact release version (e.g., `"rwsdk": "1.2.3"`).
+3.  **Package Artifacts**: The workflow creates `.tar.gz` and `.zip` archives for the `starter` project and each addon.
+4.  **Upload to Release**: The generated artifacts are uploaded to the GitHub Release created in Stage 2. This action also updates the release's metadata: if the version string contains a hyphen (`-`) but *not* `-beta.`, the release is marked as a `Pre-release` on GitHub. This ensures that alphas, release candidates, and test versions are clearly identified as pre-releases, while beta releases are treated as stable "latest" releases.
 
-### Consumption: How Users Get the Code
+### Consumption: How `create-rwsdk` Selects a Version
 
--   **`create-rwsdk`**: When a user runs `npx create-rwsdk my-app`, the CLI queries GitHub for the latest release, downloads the correct `starter-<version>.tar.gz` artifact, and decompresses it.
--   **`rwsdk addon`**: When a user with `rwsdk` version `1.2.3` installed runs `npx rwsdk addon passkey`, the script downloads the `passkey-v1.2.3.tar.gz` artifact from the corresponding GitHub Release and decompresses it into their project.
+The `create-rwsdk` CLI is designed to intelligently consume these releases, providing clear pathways for users.
 
-This end-to-end process ensures a high degree of automation and guarantees that all distributed code—whether a new project or an added feature—is version-locked and compatible.
+-   **Default (`npx create-rwsdk my-app`)**: The CLI queries GitHub's `/releases/latest` API endpoint. Because our `release.yml` workflow correctly uses the `--latest` flag, this endpoint returns the most recent stable or beta release.
+-   **Pre-release (`--pre` flag)**: The CLI queries the `/releases` API to get a list of all releases. It then filters out any release containing `-test.` in its tag name and selects the most recent remaining pre-release. This gives users access to the latest alphas and release candidates without including internal test builds.
+-   **Specific Version (`--release` flag)**: The CLI downloads the artifacts for a specific tag (e.g., `v1.3.0-alpha.0-test.12345`), allowing developers to test any version, including test builds.
+
+This end-to-end process ensures a high degree of automation and guarantees that all distributed code—whether a new project or an added feature—is version-locked and compatible, with clear channels for stable, pre-release, and internal testing tracks.

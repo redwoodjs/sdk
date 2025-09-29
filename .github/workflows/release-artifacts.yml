@@ -67,5 +67,6 @@ jobs:
         with:
           files: output/*
           tag_name: ${{ steps.vars.outputs.version }}
+          prerelease: ${{ contains(steps.vars.outputs.version, '-') && !contains(steps.vars.outputs.version, '-beta.') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

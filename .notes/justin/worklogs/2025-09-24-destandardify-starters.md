@@ -683,6 +683,18 @@ This approach allows us to:
 
 This eliminates the need for complex version detection logic in the CLI - GitHub's release system handles the "what is latest" decision based on our tagging strategy.
 
+### Clarification on Beta Release Handling
+
+A key clarification was made to the release process: `beta` releases, while technically pre-releases, must be treated as "latest" releases across the entire toolchain. This ensures that users on the stable track can receive beta updates seamlessly.
+
+**Rationale**: Beta versions are considered feature-complete and are intended for wider testing before a general availability release. Marking them as `latest` encourages adoption and feedback from the main user base, which is critical for stabilizing a `1.0` release. Alphas, release candidates, and test builds, on the other hand, are for more targeted, internal, or opt-in testing and should not be presented as the default latest version.
+
+**Implementation**:
+- The `release.yml` workflow was confirmed to correctly apply the `--latest` flag to GitHub Releases for versions containing `-beta.`.
+- The `sdk/scripts/release.sh` script was confirmed to correctly apply the `latest` npm tag to beta releases.
+- The `release-artifacts.yml` workflow was updated to mark a release as a "pre-release" **only if** the version string contains a hyphen (`-`) and does **not** contain `-beta.`. This prevents beta releases from being visually tagged as pre-releases on the GitHub UI, avoiding user confusion.
+- The architecture documentation was updated to reflect this specific rule, clarifying the distinction between beta and other pre-release types.
+
 ## Current Status
 
 All identified issues have been resolved:
