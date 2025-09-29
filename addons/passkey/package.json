@@ -4,9 +4,7 @@
   "version": "0.0.0",
   "dependencies": {
     "@simplewebauthn/browser": "^13.2.0",
-    "@simplewebauthn/server": "^13.2.0",
-    "kysely": "~0.28.2",
-    "kysely-do": "~0.0.1-rc.1"
+    "@simplewebauthn/server": "^13.2.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250927.0"

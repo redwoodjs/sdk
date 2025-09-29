@@ -26,3 +26,5 @@ export function setupPasskeyAuth() {
 
   return setupPasskeyAuthMiddleware;
 }
+
+setupPasskeyAuth();
