@@ -30,7 +30,7 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.13.3",
     "@cloudflare/workers-types": "4.20250921.0",
-    "@types/node": "22.14.0",
+    "@types/node": "~24.5.2",
     "@types/react": "19.1.2",
     "@types/react-dom": "19.1.2",
     "typescript": "5.8.3",
