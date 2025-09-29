@@ -1,6 +1,5 @@
 import path from "node:path";
 import fs from "node:fs/promises";
-import { execSync } from "node:child_process";
 import { findUp } from "find-up";
 import decompress from "decompress";
 import os from "node:os";
