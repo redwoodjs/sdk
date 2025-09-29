@@ -37,7 +37,7 @@ export function Login() {
       setResult(
         `Login error: ${
           error instanceof Error ? error.message : "Unknown error"
-        }`
+        }`,
       );
     }
   };
@@ -66,7 +66,7 @@ export function Login() {
       setResult(
         `Registration error: ${
           error instanceof Error ? error.message : "Unknown error"
-        }`
+        }`,
       );
     }
   };

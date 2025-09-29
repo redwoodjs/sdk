@@ -5,18 +5,18 @@ import { ErrorResponse } from "rwsdk/worker";
 
 export function setupPasskeyAuth() {
   const setupPasskeyAuthMiddleware: RouteMiddleware = async () => {
-    const { ctx, request, headers } = requestInfo;
+    const { ctx, request, response } = requestInfo;
 
     try {
       ctx.session = await sessions.load(request);
     } catch (error) {
       if (error instanceof ErrorResponse && error.code === 401) {
-        await sessions.remove(request, headers);
-        headers.set("Location", "/auth/login");
+        await sessions.remove(request, response.headers);
+        response.headers.set("Location", "/auth/login");
 
         throw new Response(null, {
           status: 302,
-          headers,
+          headers: response.headers,
         });
       }
 

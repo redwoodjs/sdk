@@ -9,7 +9,7 @@ export interface Session {
 
 export class SessionDurableObject extends DurableObject {
   private session: Session | undefined = undefined;
-  constructor(state: DurableObjectState, env: Env) {
+  constructor(state: DurableObjectState, env: Cloudflare.Env) {
     super(state, env);
     this.session = undefined;
   }
