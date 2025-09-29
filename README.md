@@ -161,17 +161,6 @@ If this project saves you time or sparks ideas, please [⭐ star the repo](https
 
 ---
 
-## ✅ CI Status
-
-This table shows the status of our comprehensive test suite running on the `main` branch. A green checkmark means that the SDK is stable across the corresponding operating system and package manager combination.
-
-| OS | pnpm | npm | yarn | yarn-classic |
-| --- | --- | --- | --- | --- |
-| `ubuntu-latest` | [![starter starter - ubuntu-latest - pnpm](https://github.com/redwoodjs/sdk/actions/workflows/smoke-test-starters.yml/badge.svg?branch=main&event=push)](https://github.com/redwoodjs/sdk/actions/workflows/smoke-test-starters.yml) | [![starter starter - ubuntu-latest - npm](https://github.com/redwoodjs/sdk/actions/workflows/smoke-test-starters.yml/badge.svg?branch=main&event=push)](https://github.com/redwoodjs/sdk/actions/workflows/smoke-test-starters.yml) | [![starter starter - ubuntu-latest - yarn](https://github.com/redwoodjs/sdk/actions/workflows/smoke-test-starters.yml/badge.svg?branch=main&event=push)](https://github.com/redwoodjs/sdk/actions/workflows/smoke-test-starters.yml) | [![starter starter - ubuntu-latest - yarn-classic](https://github.com/redwoodjs/sdk/actions/workflows/smoke-test-starters.yml/badge.svg?branch=main&event=push)](https://github.com/redwoodjs/sdk/actions/workflows/smoke-test-starters.yml) |
-| `macos-latest` | [![starter starter - macos-latest - pnpm](https://github.com/redwoodjs/sdk/actions/workflows/smoke-test-starters.yml/badge.svg?branch=main&event=push)](https://github.com/redwoodjs/sdk/actions/workflows/smoke-test-starters.yml) | [![starter starter - macos-latest - npm](https://github.com/redwoodjs/sdk/actions/workflows/smoke-test-starters.yml/badge.svg?branch=main&event=push)](https://github.com/redwoodjs/sdk/actions/workflows/smoke-test-starters.yml) | [![starter starter - macos-latest - yarn](https://github.com/redwoodjs/sdk/actions/workflows/smoke-test-starters.yml/badge.svg?branch=main&event=push)](https://github.com/redwoodjs/sdk/actions/workflows/smoke-test-starters.yml) | [![starter starter - macos-latest - yarn-classic](https://github.com/redwoodjs/sdk/actions/workflows/smoke-test-starters.yml/badge.svg?branch=main&event=push)](https://github.com/redwoodjs/sdk/actions/workflows/smoke-test-starters.yml) |
-
----
-
 ## 🛠 Contributing
 
 This is a monorepo. To contribute or explore packages:
