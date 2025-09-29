@@ -1,6 +1,7 @@
 // @ts-ignore
 import { compile } from "@mdx-js/mdx";
 import debug from "debug";
+// @ts-ignore
 import { OnLoadArgs, OnResolveArgs, Plugin, PluginBuild } from "esbuild";
 import fsp from "node:fs/promises";
 import path from "node:path";
