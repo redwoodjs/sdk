@@ -1,4 +1,4 @@
-name: SDK Checks
+name: Code Quality
 
 on:
   push:
@@ -6,9 +6,13 @@ on:
       - main
     paths:
       - "sdk/**"
+      - "starter/**"
+      - "addons/**"
   pull_request:
     paths:
       - "sdk/**"
+      - "starter/**"
+      - "addons/**"
 
 jobs:
   check-sdk:
@@ -34,3 +38,6 @@ jobs:
       - name: Run tests
         run: pnpm test
         working-directory: sdk
+
+      - name: Typecheck Addons
+        run: pnpm typecheck:addons
