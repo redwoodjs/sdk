@@ -16,6 +16,6 @@
     "types": ["@cloudflare/workers-types", "@types/react"]
   },
   "references": [{ "path": "../../sdk" }],
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/types.d.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "types/**/*.d.ts"],
   "exclude": ["node_modules"]
 }
