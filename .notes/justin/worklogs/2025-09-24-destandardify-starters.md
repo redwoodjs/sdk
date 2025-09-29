@@ -465,3 +465,34 @@ My thought process evolved through several stages:
     *   **Code Merge First**: All functional code changes will be merged into `main` first, but in a "dark" state. `create-rwsdk` will default to the `--legacy` behavior, so no users are affected.
     *   **Isolate Docs**: The documentation changes will be temporarily removed from the main PR and staged for a separate, atomic merge.
     *   **Controlled Launch**: The launch on Monday will consist of two small, low-risk actions: updating the default behavior of `create-rwsdk` and merging the prepared documentation PR.
+
+##### Attempt 7: Unifying and Simplifying the Release Process
+
+The final series of refinements focused on creating a single, cohesive release process for all parts of the ecosystem (SDK, starter, and addons) and simplifying the underlying scripts and CI workflows.
+
+**The Problem:** The release process, while functional, contained legacy complexity and inconsistencies.
+- The `sdk/scripts/release.sh` script had logic to amend its own release commit to update dependencies across the monorepo, which was a brittle and confusing pattern.
+- The distribution mechanism for addons (`tiged` from a git tag) was fundamentally different from the distribution for the starter (`.tar.gz` artifact attached to a GitHub Release).
+- Documentation for the release process was scattered between `CONTRIBUTING.md` and the `release.sh` script's help text.
+
+**The Solution: A Unified Tarball-Based Strategy**
+
+The decision was to standardize on a single distribution method and simplify the CI/CD pipeline accordingly.
+
+1.  **Tarball Artifacts for Everything**: The core principle is that all distributable, non-npm assets (the starter and all addons) are packaged into versioned `.tar.gz` files and attached to the corresponding GitHub Release.
+    - The `.github/workflows/release-starters.yml` workflow was renamed to `release-artifacts.yml`.
+    - This workflow was updated to package not only the `starter` but also to loop through and package each individual addon in the `addons/` directory.
+
+2.  **Simplified Addon CLI**: The `rw-scripts addon` command was completely refactored.
+    - The dependency on `tiged` was removed.
+    - The script now behaves like `create-rwsdk`: it determines the user's installed `rwsdk` version, constructs the URL to the appropriate `addon-name-<version>.tar.gz` file on the GitHub Release page, downloads it, and decompresses it.
+
+3.  **Simplified SDK Release Script**: With the starter and addon packaging handled by a separate, downstream workflow, the main `sdk/scripts/release.sh` was significantly simplified.
+    - All logic for updating monorepo dependencies and amending the release commit was removed.
+    - The script's sole responsibility is now to version, commit, build, smoke test, publish, tag, and push the `rwsdk` package. This makes the commit history linear and much easier to understand.
+
+4.  **Consolidated Documentation**:
+    - A new, comprehensive architecture document, `docs/architecture/releaseProcess.md`, was created to be the single source of truth for the entire end-to-end release process.
+    - `CONTRIBUTING.md` was updated to remove the detailed procedural steps and instead link directly to the new architecture document.
+
+This final architecture provides a clean, consistent, and robust model for the entire ecosystem. It simplifies maintenance and makes the process of how users receive code—whether for a new project or an addon—predictable and reliable.
