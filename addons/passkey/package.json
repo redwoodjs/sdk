@@ -3,11 +3,11 @@
   "private": true,
   "version": "0.0.0",
   "dependencies": {
-    "@simplewebauthn/browser": "^13.2.0",
-    "@simplewebauthn/server": "^13.2.0",
+    "@simplewebauthn/browser": "13.2.0",
+    "@simplewebauthn/server": "13.2.0",
     "rwsdk": "workspace:*"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250927.0"
+    "@cloudflare/workers-types": "4.20250921.0"
   }
 }

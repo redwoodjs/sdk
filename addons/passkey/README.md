@@ -21,6 +21,7 @@ Copy the `dependencies` in the addon's `package.json` to your own application's 
 "dependencies": {
   "@simplewebauthn/browser": "...",
   "@simplewebauthn/server": "..."
+  ...
 }
 ```
 
