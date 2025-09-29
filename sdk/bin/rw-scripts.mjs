@@ -24,7 +24,7 @@ if (SCRIPT_NAME === "addon") {
     const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
     const { version } = JSON.parse(packageJsonContent);
 
-    const url = `https://github.com/redwoodjs/sdk/blob/v${version}/sdk/addons/${addonName}/README.md`;
+    const url = `https://github.com/redwoodjs/sdk/blob/v${version}/addons/${addonName}/README.md`;
 
     console.log(
       `Find the instructions for the "${addonName}" addon for your installed version (${version}) at the following URL:`,
