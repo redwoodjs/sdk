@@ -38,8 +38,7 @@ on:
           - pnpm
           - npm
           - yarn
-          # todo(justinvdm, 25 Sep 2025): Re-enable yarn-classic once E2E tests are fixed
-          # - yarn-classic
+          - yarn-classic
   workflow_call:
     inputs:
       run_full_matrix:
@@ -65,8 +64,7 @@ jobs:
       - id: set-matrix
         run: |
           if [[ "${{ inputs.run_full_matrix }}" == "true" ]]; then
-            # todo(justinvdm, 25 Sep 2025): Re-enable yarn-classic once E2E tests are fixed
-            echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"},{"os":"ubuntu-latest","package-manager":"npm"},{"os":"ubuntu-latest","package-manager":"yarn"},{"os":"macos-latest","package-manager":"pnpm"},{"os":"macos-latest","package-manager":"npm"},{"os":"macos-latest","package-manager":"yarn"}]}' >> $GITHUB_OUTPUT
+            echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"},{"os":"ubuntu-latest","package-manager":"npm"},{"os":"ubuntu-latest","package-manager":"yarn"},{"os":"ubuntu-latest","package-manager":"yarn-classic"},{"os":"macos-latest","package-manager":"pnpm"},{"os":"macos-latest","package-manager":"npm"},{"os":"macos-latest","package-manager":"yarn"},{"os":"macos-latest","package-manager":"yarn-classic"}]}' >> $GITHUB_OUTPUT
           elif [[ "${{ github.event_name }}" == "pull_request" || "${{ github.event_name }}" == "push" ]]; then
             echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"}]}' >> $GITHUB_OUTPUT
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
@@ -74,8 +72,7 @@ jobs:
             PM_INPUT=${{ github.event.inputs.package-manager }}
 
             [ "$OS_INPUT" == "all" ] && OS_LIST='ubuntu-latest macos-latest' || OS_LIST=$OS_INPUT
-            # todo(justinvdm, 25 Sep 2025): Re-enable yarn-classic once E2E tests are fixed
-            [ "$PM_INPUT" == "all" ] && PM_LIST='pnpm npm yarn' || PM_LIST=$PM_INPUT
+            [ "$PM_INPUT" == "all" ] && PM_LIST='pnpm npm yarn yarn-classic' || PM_LIST=$PM_INPUT
 
             JSON_ARRAY="[]"
             for o in $OS_LIST; do
