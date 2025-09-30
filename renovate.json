@@ -24,7 +24,7 @@
     },
     {
       "description": "Group all starter application dependencies into a single weekly PR.",
-      "matchFileNames": ["starters/**/package.json"],
+      "matchFileNames": ["starter/package.json"],
       "excludePackageNames": [
         "@cloudflare/vite-plugin",
         "@cloudflare/workers-types",
@@ -41,10 +41,7 @@
     },
     {
       "description": "Update non-React SDK peer dependencies in starter and playground projects as soon as they are available.",
-      "matchFileNames": [
-        "starters/**/package.json",
-        "playground/**/package.json"
-      ],
+      "matchFileNames": ["starter/package.json", "playground/**/package.json"],
       "matchPackageNames": [
         "@cloudflare/vite-plugin",
         "@cloudflare/workers-types",
@@ -57,10 +54,7 @@
     },
     {
       "description": "Update React peer dependencies in starter and playground projects, tracking the 'next' tag.",
-      "matchFileNames": [
-        "starters/**/package.json",
-        "playground/**/package.json"
-      ],
+      "matchFileNames": ["starter/package.json", "playground/**/package.json"],
       "matchPackageNames": [
         "react",
         "react-dom",
