@@ -1,10 +1,10 @@
-import { expect } from "vitest";
 import {
+  poll,
   setupPlaygroundEnvironment,
   testDevAndDeploy,
-  poll,
   waitForHydration,
 } from "rwsdk/e2e";
+import { expect } from "vitest";
 
 setupPlaygroundEnvironment(import.meta.url);
 
@@ -39,18 +39,10 @@ testDevAndDeploy(
       return true;
     });
 
-    // Verify no console errors occurred on render
-    // expect(errorTracker.get().consoleErrors).toEqual([]); // This line is removed
-
-    // await waitForHydration(page); // This line is removed
-
     const getButton = () =>
       page.waitForSelector('[data-testid="button-solid"]');
 
     // Test button is clickable
     (await getButton())?.click();
-
-    // Verify no console errors occurred during interactions
-    // expect(errorTracker.get().consoleErrors).toEqual([]); // This line is removed
   },
 );
