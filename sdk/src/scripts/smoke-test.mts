@@ -68,10 +68,6 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
       options.headless = false;
     } else if (arg === "--copy-project") {
       options.copyProject = true;
-    } else if (arg === "--no-sync") {
-      syncExplicit = false;
-    } else if (arg === "--sync") {
-      syncExplicit = true;
     } else if (arg === "--ci") {
       // Already handled above, just skip
     } else if (arg === "--bail") {
@@ -96,7 +92,6 @@ Options:
   --keep                  Keep temporary test directory after tests complete
   --no-headless           Run browser tests with GUI (not headless)
   --sync                  Force syncing SDK code to test project
-  --no-sync               Disable syncing SDK code to test project
   --ci                    Run in CI mode (keeps temp dirs, sets headless)
   --bail                  Stop on first test failure
   --copy-project          Copy the project to the artifacts directory

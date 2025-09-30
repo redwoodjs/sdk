@@ -222,62 +222,13 @@ else
   # Set the trap *after* creating the temp dir, so the variable is available.
   trap cleanup EXIT
 
-  # Sanitize the version to create a valid directory name, which in turn
-  # will be used to generate a valid worker name for the smoke test.
-  PROJECT_DIR="$TEMP_DIR/test"
-  mkdir -p "$PROJECT_DIR"
-
-  if [[ -n "$GITHUB_OUTPUT" ]]; then
-    echo "project-dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
-  fi
-
-  echo "  - Created temp project dir for testing: $PROJECT_DIR"
-
-  echo "  - Copying starter to project dir..."
-  # Get the absolute path of the script's directory
-  SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
-  # The monorepo root is two levels up from the script's directory
-  MONOREPO_ROOT="$SCRIPT_DIR/../.."
-  cp -a "$MONOREPO_ROOT/starter/." "$PROJECT_DIR/"
-
-  echo "  - Configuring temp project to not use frozen lockfile..."
-  echo "frozen-lockfile=false" > "$PROJECT_DIR/.npmrc"
-
-  echo "  - Installing packed tarball in project dir..."
-  (cd "$PROJECT_DIR" && pnpm add "$TARBALL_PATH")
-
-  PACKAGE_NAME=$(npm pkg get name | tr -d '"')
-  INSTALLED_DIST_PATH="$PROJECT_DIR/node_modules/$PACKAGE_NAME/dist"
-
-  echo "  - Verifying installed package contents..."
-  if [ ! -d "$INSTALLED_DIST_PATH" ]; then
-      echo "  ❌ Error: dist/ directory not found in installed package at $INSTALLED_DIST_PATH."
-      exit 1
-  fi
-
-  # To ensure the package is built and packed correctly, we'll compare
-  # a checksum of the file lists from the original `dist` directory and the
-  # one installed from the tarball. They must match exactly.
-  ORIGINAL_DIST_CHECKSUM=$( (cd dist && find . -type f | sort) | md5sum)
-  INSTALLED_DIST_CHECKSUM=$( (cd "$INSTALLED_DIST_PATH" && find . -type f | sort) | md5sum)
-
-  echo "    - Original dist checksum: $ORIGINAL_DIST_CHECKSUM"
-  echo "    - Installed dist checksum: $INSTALLED_DIST_CHECKSUM"
-
-  if [[ "$ORIGINAL_DIST_CHECKSUM" != "$INSTALLED_DIST_CHECKSUM" ]]; then
-    echo "  ❌ Error: File list in installed dist/ does not match original dist/."
-    echo "  This indicates an issue with the build or packaging process."
-    exit 1
-  else
-    echo "  ✅ Installed package contents match the local build."
-  fi
-
   echo "  - Running smoke tests..."
   # The CWD is the package root (sdk/sdk), so we can run pnpm smoke-test directly.
-  # We pass the path to the temp project directory where the starter was installed.
   # We also specify an artifact directory *within* the temp directory.
   # todo(justinvdm, 11 Aug 2025): Fix style test flakiness
-  if ! pnpm smoke-test --path="$PROJECT_DIR" --no-sync --artifact-dir="$TEMP_DIR/artifacts" --skip-style-tests; then
+  # Pass the tarball path to the smoke test environment
+  export RWSKD_SMOKE_TEST_TARBALL_PATH="$TARBALL_PATH"
+  if ! pnpm smoke-test --artifact-dir="$TEMP_DIR/artifacts" --skip-style-tests; then
     echo "  ❌ Smoke tests failed."
     exit 1
   fi

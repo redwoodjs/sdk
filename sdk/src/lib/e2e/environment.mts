@@ -17,6 +17,22 @@ const createSdkTarball = async (): Promise<{
   tarballPath: string;
   cleanupTarball: () => Promise<void>;
 }> => {
+  const existingTarballPath = process.env.RWSKD_SMOKE_TEST_TARBALL_PATH;
+
+  if (existingTarballPath) {
+    if (!fs.existsSync(existingTarballPath)) {
+      throw new Error(
+        `Provided tarball path does not exist: ${existingTarballPath}`,
+      );
+    }
+    log(`📦 Using existing tarball: ${existingTarballPath}`);
+    return {
+      tarballPath: existingTarballPath,
+      cleanupTarball: async () => {
+        /* no-op */
+      }, // No-op cleanup
+    };
+  }
   const packResult = await $({ cwd: ROOT_DIR, stdio: "pipe" })`npm pack`;
   const tarballName = packResult.stdout?.trim()!;
   const tarballPath = path.join(ROOT_DIR, tarballName);
