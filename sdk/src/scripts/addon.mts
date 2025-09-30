@@ -52,7 +52,7 @@ export const addon = async () => {
       process.exit(1);
     }
 
-    if (/^\\d/.test(rwsdkVersion)) {
+    if (/^\d/.test(rwsdkVersion)) {
       rwsdkVersion = `v${rwsdkVersion}`;
     }
 
