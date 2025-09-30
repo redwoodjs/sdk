@@ -34,7 +34,7 @@
     "@types/react": "19.1.2",
     "@types/react-dom": "19.1.2",
     "typescript": "5.8.3",
-    "vite": "7.1.6",
+    "vite": "7.1.7",
     "wrangler": "4.38.0"
   },
   "pnpm": {
