@@ -9,9 +9,14 @@ import tmp from "tmp-promise";
 import { $ } from "../../lib/$.mjs";
 import { ROOT_DIR } from "../constants.mjs";
 import { retry } from "./retry.mjs";
+import { INSTALL_DEPENDENCIES_RETRIES } from "./testHarness.mjs";
 import { PackageManager } from "./types.mjs";
 
 const log = debug("rwsdk:e2e:environment");
+
+const getTempDir = async (): Promise<tmp.DirectoryResult> => {
+  return tmp.dir({ unsafeCleanup: true });
+};
 
 const createSdkTarball = async (): Promise<{
   tarballPath: string;
@@ -71,6 +76,7 @@ export async function copyProjectToTempDir(
   resourceUniqueKey: string,
   packageManager?: PackageManager,
   monorepoRoot?: string,
+  installDependenciesRetries?: number,
 ): Promise<{
   tempDir: tmp.DirectoryResult;
   targetDir: string;
@@ -79,8 +85,7 @@ export async function copyProjectToTempDir(
   const { tarballPath, cleanupTarball } = await createSdkTarball();
   try {
     log("Creating temporary directory for project");
-    // Create a temporary directory
-    const tempDir = await tmp.dir({ unsafeCleanup: true });
+    const tempDir = await getTempDir();
 
     // Determine the source directory to copy from
     const sourceDir = monorepoRoot || projectDir;
@@ -181,7 +186,6 @@ export async function copyProjectToTempDir(
     const npmrcPath = join(targetDir, ".npmrc");
     await fs.promises.writeFile(npmrcPath, "frozen-lockfile=false\n");
 
-    // For yarn, create .yarnrc.yml to disable PnP and allow lockfile changes
     if (packageManager === "yarn") {
       const yarnrcPath = join(targetDir, ".yarnrc.yml");
       const yarnCacheDir = path.join(os.tmpdir(), "yarn-cache");
@@ -196,12 +200,21 @@ export async function copyProjectToTempDir(
       log("Created .yarnrc.yml to allow lockfile changes for yarn");
     }
 
+    if (packageManager === "yarn-classic") {
+      const yarnrcPath = join(targetDir, ".yarnrc");
+      const yarnCacheDir = path.join(os.tmpdir(), "yarn-classic-cache");
+      await fs.promises.mkdir(yarnCacheDir, { recursive: true });
+      const yarnConfig = `cache-folder "${yarnCacheDir}"`;
+      await fs.promises.writeFile(yarnrcPath, yarnConfig);
+      log("Created .yarnrc with cache-folder for yarn-classic");
+    }
+
     await setTarballDependency(targetDir, tarballFilename);
 
     // Install dependencies in the target directory
     const installDir = monorepoRoot ? tempCopyRoot : targetDir;
     await retry(() => installDependencies(installDir, packageManager), {
-      retries: 3,
+      retries: INSTALL_DEPENDENCIES_RETRIES,
       delay: 1000,
     });
 
@@ -246,7 +259,7 @@ async function installDependencies(
         });
       } else if (packageManager === "yarn-classic") {
         log(`Preparing yarn@1.22.19 with corepack...`);
-        await $("corepack", ["prepare", "yarn@1.22.19", "--activate"], {
+        await $("corepack", ["prepare", "yarn@1.x", "--activate"], {
           cwd: targetDir,
           stdio: "pipe",
         });

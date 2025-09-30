@@ -67,6 +67,11 @@ const TEST_MAX_RETRIES_PER_CODE = process.env.RWSDK_TEST_MAX_RETRIES_PER_CODE
   ? parseInt(process.env.RWSDK_TEST_MAX_RETRIES_PER_CODE, 10)
   : 6;
 
+export const INSTALL_DEPENDENCIES_RETRIES = process.env
+  .RWSDK_INSTALL_DEPENDENCIES_RETRIES
+  ? parseInt(process.env.RWSDK_INSTALL_DEPENDENCIES_RETRIES, 10)
+  : 10;
+
 interface PlaygroundEnvironment {
   projectDir: string;
   cleanup: () => Promise<void>;

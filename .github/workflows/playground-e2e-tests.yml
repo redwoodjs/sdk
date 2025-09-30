@@ -77,7 +77,7 @@ jobs:
             JSON_ARRAY="[]"
             for o in $OS_LIST; do
               for p in $PM_LIST; do
-                JSON_ARRAY=$(echo "$JSON_ARRAY" | jq ". + [{\"os\":\"$o\",\"package-manager\":\"$p\"}]")
+                JSON_ARRAY=$(echo "$JSON_ARRAY" | jq -c ". + [{\"os\":\"$o\",\"package-manager\":\"$p\"}]")
               done
             done
             echo "matrix={\"include\":${JSON_ARRAY}}" >> $GITHUB_OUTPUT
