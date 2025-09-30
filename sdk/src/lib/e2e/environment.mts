@@ -9,6 +9,7 @@ import tmp from "tmp-promise";
 import { $ } from "../../lib/$.mjs";
 import { ROOT_DIR } from "../constants.mjs";
 import { retry } from "./retry.mjs";
+import { INSTALL_DEPENDENCIES_RETRIES } from "./testHarness.mjs";
 import { PackageManager } from "./types.mjs";
 
 const log = debug("rwsdk:e2e:environment");
@@ -75,6 +76,7 @@ export async function copyProjectToTempDir(
   resourceUniqueKey: string,
   packageManager?: PackageManager,
   monorepoRoot?: string,
+  installDependenciesRetries?: number,
 ): Promise<{
   tempDir: tmp.DirectoryResult;
   targetDir: string;
@@ -212,7 +214,7 @@ export async function copyProjectToTempDir(
     // Install dependencies in the target directory
     const installDir = monorepoRoot ? tempCopyRoot : targetDir;
     await retry(() => installDependencies(installDir, packageManager), {
-      retries: 3,
+      retries: INSTALL_DEPENDENCIES_RETRIES,
       delay: 1000,
     });
 
