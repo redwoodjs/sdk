@@ -16,4 +16,4 @@ for arg in "$@"; do
   fi
 done
 
-exec vitest run -- "${args[@]}"
+vitest run "${args[@]}"
