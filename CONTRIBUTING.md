@@ -403,7 +403,7 @@ This section outlines the strategy for managing dependencies to maintain stabili
 
 #### 1. Peer Dependencies (`starter-peer-deps`)
 
--   **What**: The most critical dependencies (`wrangler`, `react`, `vite`, etc.) that are defined as `peerDependencies` in the SDK and tested in both the `starters/*` projects and `playground/*` projects.
+-   **What**: The most critical dependencies (`wrangler`, `react`, `vite`, etc.) that are defined as `peerDependencies` in the SDK and tested in the `starters/*`, `playground/*`, and `addons/*` projects.
 -   **When**: As Soon As Possible (ASAP). Renovate creates a PR immediately when a new version is available.
 -   **Why**: To provide an immediate early-warning signal if a new peer dependency version introduces a regression that could affect users. The playground E2E tests provide an additional validation layer beyond the starter smoke tests.
 
@@ -426,7 +426,7 @@ To manage these potentially unstable versions, Renovate is specifically configur
 
 #### 4. Repository, Docs, and Infrastructure Dependencies (`docs-and-infra-deps`)
 
--   **What**: A consolidated group for all remaining repository maintenance dependencies. This includes dependencies from the root `package.json`, the `docs/package.json`, non-peer dependencies from `playground/*` projects (such as `vitest`), GitHub Actions, Docker images, and the `.node-version` file.
+-   **What**: A consolidated group for all remaining repository maintenance dependencies. This includes dependencies from the root `package.json`, `docs/package.json`, non-peer dependencies from `playground/*` and `addons/*` projects (such as `vitest`), GitHub Actions, Docker images, and the `.node-version` file.
 -   **When**: Weekly, in a single grouped pull request.
 -   **Why**: To bundle all miscellaneous tooling, documentation, and infrastructure updates into one convenient PR to reduce noise.
 
