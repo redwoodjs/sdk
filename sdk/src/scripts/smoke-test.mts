@@ -1,5 +1,5 @@
 import debug from "debug";
-import { join } from "path";
+import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { runSmokeTests } from "../lib/smokeTests/runSmokeTests.mjs";
 import { PackageManager, SmokeTestOptions } from "../lib/smokeTests/types.mjs";
@@ -22,11 +22,14 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
   const ciFlag = args.includes("--ci");
 
   // Set initial default values (sync will be determined below)
+  const __dirname = dirname(fileURLToPath(import.meta.url));
+  const starterPath = join(__dirname, "..", "..", "..", "starter");
+
   const options: SmokeTestOptions = {
     skipDev: false,
     skipRelease: false,
     skipClient: false,
-    projectDir: undefined,
+    projectDir: starterPath,
     artifactDir: join(process.cwd(), ".artifacts"), // Default to .artifacts in current directory
     keep: isRunningInCI(ciFlag), // Default to true in CI environments
     headless: true,

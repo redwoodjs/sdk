@@ -52,6 +52,10 @@ export const addon = async () => {
       process.exit(1);
     }
 
+    if (/^\d/.test(rwsdkVersion)) {
+      rwsdkVersion = `v${rwsdkVersion}`;
+    }
+
     const tmpDirPrefix = path.join(os.tmpdir(), `rwsdk-addon-${addonName}-`);
     const tmpDir = await fs.mkdtemp(tmpDirPrefix);
 
