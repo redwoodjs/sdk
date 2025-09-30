@@ -13,14 +13,8 @@ import { PackageManager } from "./types.mjs";
 
 const log = debug("rwsdk:e2e:environment");
 
-const getTestPath = (...subdirs: string[]): string => {
-  return path.join(os.homedir(), ".rwsdk", "tests", ...subdirs);
-};
-
-const getTempDir = async (subdir: string): Promise<tmp.DirectoryResult> => {
-  const basePath = getTestPath(subdir);
-  await fs.promises.mkdir(basePath, { recursive: true });
-  return tmp.dir({ tmpdir: basePath, unsafeCleanup: true });
+const getTempDir = async (): Promise<tmp.DirectoryResult> => {
+  return tmp.dir({ unsafeCleanup: true });
 };
 
 const createSdkTarball = async (): Promise<{
@@ -89,7 +83,7 @@ export async function copyProjectToTempDir(
   const { tarballPath, cleanupTarball } = await createSdkTarball();
   try {
     log("Creating temporary directory for project");
-    const tempDir = await getTempDir("projects");
+    const tempDir = await getTempDir();
 
     // Determine the source directory to copy from
     const sourceDir = monorepoRoot || projectDir;
@@ -190,10 +184,9 @@ export async function copyProjectToTempDir(
     const npmrcPath = join(targetDir, ".npmrc");
     await fs.promises.writeFile(npmrcPath, "frozen-lockfile=false\n");
 
-    // For yarn, create .yarnrc.yml to disable PnP and allow lockfile changes
     if (packageManager === "yarn") {
       const yarnrcPath = join(targetDir, ".yarnrc.yml");
-      const yarnCacheDir = getTestPath("yarn-cache");
+      const yarnCacheDir = path.join(os.tmpdir(), "yarn-cache");
       await fs.promises.mkdir(yarnCacheDir, { recursive: true });
       const yarnConfig = [
         // todo(justinvdm, 23-09-23): Support yarn pnpm
@@ -203,6 +196,15 @@ export async function copyProjectToTempDir(
       ].join("\n");
       await fs.promises.writeFile(yarnrcPath, yarnConfig);
       log("Created .yarnrc.yml to allow lockfile changes for yarn");
+    }
+
+    if (packageManager === "yarn-classic") {
+      const yarnrcPath = join(targetDir, ".yarnrc");
+      const yarnCacheDir = path.join(os.tmpdir(), "yarn-classic-cache");
+      await fs.promises.mkdir(yarnCacheDir, { recursive: true });
+      const yarnConfig = `cache-folder "${yarnCacheDir}"`;
+      await fs.promises.writeFile(yarnrcPath, yarnConfig);
+      log("Created .yarnrc with cache-folder for yarn-classic");
     }
 
     await setTarballDependency(targetDir, tarballFilename);
@@ -261,7 +263,7 @@ async function installDependencies(
         });
       }
     }
-    const npmCacheDir = getTestPath("npm-cache");
+    const npmCacheDir = path.join(os.tmpdir(), "npm-cache");
     await fs.promises.mkdir(npmCacheDir, { recursive: true });
 
     const installCommand = {
