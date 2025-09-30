@@ -246,7 +246,7 @@ async function installDependencies(
         });
       } else if (packageManager === "yarn-classic") {
         log(`Preparing yarn@1.22.19 with corepack...`);
-        await $("corepack", ["prepare", "yarn@1.22.19", "--activate"], {
+        await $("corepack", ["prepare", "yarn@1.x", "--activate"], {
           cwd: targetDir,
           stdio: "pipe",
         });
