@@ -13,6 +13,16 @@ import { PackageManager } from "./types.mjs";
 
 const log = debug("rwsdk:e2e:environment");
 
+const getTestPath = (...subdirs: string[]): string => {
+  return path.join(os.homedir(), ".rwsdk", "tests", ...subdirs);
+};
+
+const getTempDir = async (subdir: string): Promise<tmp.DirectoryResult> => {
+  const basePath = getTestPath(subdir);
+  await fs.promises.mkdir(basePath, { recursive: true });
+  return tmp.dir({ tmpdir: basePath, unsafeCleanup: true });
+};
+
 const createSdkTarball = async (): Promise<{
   tarballPath: string;
   cleanupTarball: () => Promise<void>;
@@ -79,8 +89,7 @@ export async function copyProjectToTempDir(
   const { tarballPath, cleanupTarball } = await createSdkTarball();
   try {
     log("Creating temporary directory for project");
-    // Create a temporary directory
-    const tempDir = await tmp.dir({ unsafeCleanup: true });
+    const tempDir = await getTempDir("projects");
 
     // Determine the source directory to copy from
     const sourceDir = monorepoRoot || projectDir;
@@ -184,7 +193,7 @@ export async function copyProjectToTempDir(
     // For yarn, create .yarnrc.yml to disable PnP and allow lockfile changes
     if (packageManager === "yarn") {
       const yarnrcPath = join(targetDir, ".yarnrc.yml");
-      const yarnCacheDir = path.join(os.tmpdir(), "yarn-cache");
+      const yarnCacheDir = getTestPath("yarn-cache");
       await fs.promises.mkdir(yarnCacheDir, { recursive: true });
       const yarnConfig = [
         // todo(justinvdm, 23-09-23): Support yarn pnpm
@@ -252,7 +261,7 @@ async function installDependencies(
         });
       }
     }
-    const npmCacheDir = path.join(os.tmpdir(), "npm-cache");
+    const npmCacheDir = getTestPath("npm-cache");
     await fs.promises.mkdir(npmCacheDir, { recursive: true });
 
     const installCommand = {
