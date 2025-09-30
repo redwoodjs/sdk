@@ -45,6 +45,8 @@ The fix was to add the `-c` (compact output) flag to the `jq` command in `.githu
 
 ## PR Description
 
+### fix(ci): Stabilize Yarn Classic E2E Tests
+
 This change resolves a consistent `esbuild` failure (exit code 88) that occurred in end-to-end tests when using Yarn Classic on macOS CI runners.
 
 The primary issue was traced back to Yarn Classic's default cache handling on macOS. This PR fixes the problem by explicitly configuring the cache location. During the test setup, a `.yarnrc` file is now created to direct Yarn Classic to use a specific cache folder, which prevents the `esbuild` error.
