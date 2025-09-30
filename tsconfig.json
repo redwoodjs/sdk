@@ -1,9 +1,4 @@
 {
-  "compilerOptions": {
-    "paths": {
-      "@/*": ["./src/*"]
-    },
-    "typeRoots": ["./types", "./node_modules/@types"]
-  },
-  "include": ["src", "types"]
+  "files": [],
+  "references": [{ "path": "sdk" }, { "path": "addons/passkey" }]
 }

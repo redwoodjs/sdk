@@ -1,9 +1,9 @@
-import { ReactElement, FC } from "react";
-import { DocumentProps } from "../lib/router";
-import { renderToRscStream } from "./renderToRscStream";
-import { requestInfo } from "../requestInfo/worker";
+import { FC, ReactElement } from "react";
 import { injectRSCPayload } from "rsc-html-stream/server";
+import { DocumentProps } from "../lib/router";
+import { requestInfo } from "../requestInfo/worker";
 import { renderDocumentHtmlStream } from "./renderDocumentHtmlStream";
+import { renderToRscStream } from "./renderToRscStream";
 
 export interface RenderToStreamOptions {
   Document?: FC<DocumentProps>;

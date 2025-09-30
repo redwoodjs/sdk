@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { MESSAGE_TYPE } from "./shared";
 
 describe("Realtime Shared Constants", () => {

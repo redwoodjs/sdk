@@ -1,5 +1,5 @@
-import { type RequestInfo } from "../requestInfo/types.js";
 import { getManifest } from "../lib/manifest.js";
+import { type RequestInfo } from "../requestInfo/types.js";
 
 const findCssForModule = (
   scriptId: string,

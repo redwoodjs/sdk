@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  smoke-test-starters:
-    uses: ./.github/workflows/smoke-test-starters.yml
+  smoke-test:
+    uses: ./.github/workflows/smoke-test.yml
     secrets: inherit
     with:
       run_full_matrix: true

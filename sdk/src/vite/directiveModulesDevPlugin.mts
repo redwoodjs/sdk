@@ -1,14 +1,14 @@
-import path from "path";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import os from "os";
+import path from "path";
 import { Plugin } from "vite";
-import { writeFileSync, mkdirSync, promises as fs, mkdtempSync } from "node:fs";
-import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import {
-  VENDOR_CLIENT_BARREL_PATH,
-  VENDOR_SERVER_BARREL_PATH,
   VENDOR_CLIENT_BARREL_EXPORT_PATH,
+  VENDOR_CLIENT_BARREL_PATH,
   VENDOR_SERVER_BARREL_EXPORT_PATH,
+  VENDOR_SERVER_BARREL_PATH,
 } from "../lib/constants.mjs";
+import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { runDirectivesScan } from "./runDirectivesScan.mjs";
 
 export const generateVendorBarrelContent = (

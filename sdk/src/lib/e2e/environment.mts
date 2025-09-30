@@ -1,22 +1,15 @@
-import { join } from "path";
 import debug from "debug";
-import { pathExists, copy, existsSync } from "fs-extra";
-import * as fs from "node:fs";
-import tmp from "tmp-promise";
+import { copy, pathExists } from "fs-extra";
 import ignore from "ignore";
-import { relative, basename, resolve } from "path";
-import {
-  uniqueNamesGenerator,
-  adjectives,
-  animals,
-} from "unique-names-generator";
-import { SmokeTestOptions, TestResources, PackageManager } from "./types.mjs";
-import { createHash } from "crypto";
-import { $ } from "../../lib/$.mjs";
-import { ROOT_DIR } from "../constants.mjs";
+import * as fs from "node:fs";
 import path from "node:path";
 import os from "os";
+import { basename, join, relative, resolve } from "path";
+import tmp from "tmp-promise";
+import { $ } from "../../lib/$.mjs";
+import { ROOT_DIR } from "../constants.mjs";
 import { retry } from "./retry.mjs";
+import { PackageManager } from "./types.mjs";
 
 const log = debug("rwsdk:e2e:environment");
 
@@ -53,72 +46,6 @@ const setTarballDependency = async (
     JSON.stringify(packageJsonContent, null, 2),
   );
 };
-
-/**
- * Sets up the test environment, preparing any resources needed for testing
- */
-export async function setupTestEnvironment(
-  options: SmokeTestOptions = {},
-): Promise<TestResources> {
-  log("Setting up test environment with options: %O", options);
-
-  // Generate a resource unique key for this test run right at the start
-  const uniqueNameSuffix = uniqueNamesGenerator({
-    dictionaries: [adjectives, animals],
-    separator: "-",
-    length: 2,
-    style: "lowerCase",
-  });
-
-  // Create a short unique hash based on the timestamp
-  const hash = createHash("md5")
-    .update(Date.now().toString())
-    .digest("hex")
-    .substring(0, 8);
-
-  // Create a resource unique key even if we're not copying a project
-  const resourceUniqueKey = `${uniqueNameSuffix}-${hash}`;
-
-  const resources: TestResources = {
-    tempDirCleanup: undefined,
-    workerName: undefined,
-    originalCwd: process.cwd(),
-    targetDir: undefined,
-    workerCreatedDuringTest: false,
-    stopDev: undefined,
-    resourceUniqueKey, // Set at initialization
-  };
-
-  log("Current working directory: %s", resources.originalCwd);
-
-  try {
-    // If a project dir is specified, copy it to a temp dir with a unique name
-    if (options.projectDir) {
-      log("Project directory specified: %s", options.projectDir);
-      const { tempDir, targetDir, workerName } = await copyProjectToTempDir(
-        options.projectDir,
-        resourceUniqueKey, // Pass in the existing resourceUniqueKey
-        options.packageManager,
-      );
-
-      // Store cleanup function
-      resources.tempDirCleanup = tempDir.cleanup;
-      resources.workerName = workerName;
-      resources.targetDir = targetDir;
-
-      log("Target directory: %s", targetDir);
-    } else {
-      log("No project directory specified, using current directory");
-      // When no project dir is specified, we'll use the current directory
-      resources.targetDir = resources.originalCwd;
-    }
-
-    return resources;
-  } catch (error) {
-    log("Error during test environment setup: %O", error);
-    throw error;
-  }
-}
 
 /**
  * Copy project to a temporary directory with a unique name

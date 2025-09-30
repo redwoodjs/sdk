@@ -1,5 +1,5 @@
-import { type Plugin } from "vite";
 import MagicString from "magic-string";
+import { type Plugin } from "vite";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 
 export const injectVitePreamble = ({

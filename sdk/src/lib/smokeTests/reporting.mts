@@ -1,8 +1,8 @@
-import { join, basename } from "path";
-import { writeFile } from "fs/promises";
 import { mkdirp } from "fs-extra";
+import { writeFile } from "fs/promises";
+import { basename, join } from "path";
 import { log } from "./constants.mjs";
-import { state, TestStatusValue, TestStatus } from "./state.mjs";
+import { state, TestStatusValue } from "./state.mjs";
 import { SmokeTestResult } from "./types.mjs";
 
 /**

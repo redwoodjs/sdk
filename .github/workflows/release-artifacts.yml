@@ -1,0 +1,72 @@
+name: Release Artifacts
+
+on:
+  push:
+    tags:
+      # Trigger on any tag push (including pre-releases - create-rwsdk will by default not choose pre-releases)
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version name (optional, used for filenames)"
+        required: false
+        default: ""
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Get tag or input version
+        id: vars
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update starter package.json
+        run: |
+          corepack enable
+          (cd starter && npm pkg set dependencies.rwsdk=${{ steps.vars.outputs.version }})
+          pnpm install --ignore-scripts --no-frozen-lockfile
+
+      - name: Update addon package.json files
+        run: |
+          for dir in ./addons/*/ ; do
+            if [ -f "${dir}package.json" ]; then
+              echo "Updating package.json in ${dir}"
+              (cd "$dir" && npm pkg set dependencies.rwsdk=${{ steps.vars.outputs.version }})
+            fi
+          done
+
+      - name: Package starter and addon folders
+        run: |
+          mkdir -p output
+          # Package starter
+          tar -czvf output/starter-${{ steps.vars.outputs.version }}.tar.gz -C starter .
+          zip -r output/starter-${{ steps.vars.outputs.version }}.zip starter
+          # Package addons
+          for dir in ./addons/*/ ; do
+            folder_name=$(basename "$dir")
+            tar -czvf output/${folder_name}-${{ steps.vars.outputs.version }}.tar.gz -C "$dir" .
+            zip -r output/${folder_name}-${{ steps.vars.outputs.version }}.zip "$dir"
+          done
+
+      - name: Upload packaged artifacts to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: output/*
+          tag_name: ${{ steps.vars.outputs.version }}
+          prerelease: ${{ contains(steps.vars.outputs.version, '-') && !contains(steps.vars.outputs.version, '-beta.') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

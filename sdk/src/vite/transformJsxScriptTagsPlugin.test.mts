@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { transformJsxScriptTagsCode } from "./transformJsxScriptTagsPlugin.mjs";
 import jsBeautify from "js-beautify";
+import { beforeEach, describe, expect, it } from "vitest";
 import stubEnvVars from "../lib/testUtils/stubEnvVars.mjs";
+import { transformJsxScriptTagsCode } from "./transformJsxScriptTagsPlugin.mjs";
 
 // Helper function to normalize code formatting for test comparisons
 function normalizeCode(code: string): string {

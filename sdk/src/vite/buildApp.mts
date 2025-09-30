@@ -1,9 +1,7 @@
-import { resolve } from "node:path";
 import debug from "debug";
-import path from "path";
+import { resolve } from "node:path";
 import type { ViteBuilder } from "vite";
 import { runDirectivesScan } from "./runDirectivesScan.mjs";
-import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 
 const log = debug("rwsdk:vite:build-app");
 

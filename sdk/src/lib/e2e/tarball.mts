@@ -1,21 +1,21 @@
+import { createHash } from "crypto";
 import { $ } from "execa";
 import fs from "node:fs";
 import path from "node:path";
-import { copyProjectToTempDir } from "./environment.mjs";
 import {
-  uniqueNamesGenerator,
   adjectives,
   animals,
+  uniqueNamesGenerator,
 } from "unique-names-generator";
-import { createHash } from "crypto";
 import { ROOT_DIR } from "../constants.mjs";
+import { copyProjectToTempDir } from "./environment.mjs";
 
 const log = (message: string) => console.log(message);
 
 interface SetupTarballOptions {
   projectDir: string;
   monorepoRoot?: string;
-  packageManager?: "pnpm" | "npm" | "yarn";
+  packageManager?: "pnpm" | "npm" | "yarn" | "yarn-classic";
 }
 
 interface TarballEnvironment {

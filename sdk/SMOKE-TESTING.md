@@ -14,10 +14,7 @@ The smoke tests checks that the critical paths of the sdk work for a project.
 To run smoke tests for a project:
 
 ```sh
-pnpm smoke-test /user/login --path=<path_to_project> --sync --keep
-
-# example
-pnpm smoke-test /user/login --path=../starters/standard --sync --keep
+pnpm smoke-test / --path=<path_to_project> --sync --keep
 ```
 
 Or if you do not have a checkout of the sdk

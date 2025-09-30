@@ -1,5 +1,5 @@
-import { ErrorResponse } from "../../error";
 import { env } from "cloudflare:workers";
+import { ErrorResponse } from "../../error";
 
 const AUTH_SECRET_KEY =
   (env as { AUTH_SECRET_KEY?: string }).AUTH_SECRET_KEY ??

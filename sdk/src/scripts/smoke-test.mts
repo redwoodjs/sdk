@@ -1,9 +1,8 @@
-import { fileURLToPath } from "url";
-import { join } from "path";
-import { setTimeout } from "node:timers/promises";
 import debug from "debug";
+import { join } from "path";
+import { fileURLToPath } from "url";
 import { runSmokeTests } from "../lib/smokeTests/runSmokeTests.mjs";
-import { SmokeTestOptions, PackageManager } from "../lib/smokeTests/types.mjs";
+import { PackageManager, SmokeTestOptions } from "../lib/smokeTests/types.mjs";
 import { isRunningInCI } from "../lib/smokeTests/utils.mjs";
 
 // Set up debug logging

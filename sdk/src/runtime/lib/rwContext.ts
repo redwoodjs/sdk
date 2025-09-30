@@ -1,5 +1,5 @@
-import { type RequestInfo } from "../requestInfo/types.js";
 import { type Kysely } from "kysely";
+import { type RequestInfo } from "../requestInfo/types.js";
 
 export type RwContext = {
   nonce: string;

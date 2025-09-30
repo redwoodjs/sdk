@@ -67,6 +67,8 @@ jobs:
           if [[ "${{ inputs.run_full_matrix }}" == "true" ]]; then
             # todo(justinvdm, 25 Sep 2025): Re-enable yarn-classic once E2E tests are fixed
             echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"},{"os":"ubuntu-latest","package-manager":"npm"},{"os":"ubuntu-latest","package-manager":"yarn"},{"os":"macos-latest","package-manager":"pnpm"},{"os":"macos-latest","package-manager":"npm"},{"os":"macos-latest","package-manager":"yarn"}]}' >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "pull_request" || "${{ github.event_name }}" == "push" ]]; then
+            echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"}]}' >> $GITHUB_OUTPUT
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             OS_INPUT=${{ github.event.inputs.os }}
             PM_INPUT=${{ github.event.inputs.package-manager }}
@@ -103,6 +105,8 @@ jobs:
       RWSDK_PUPPETEER_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '300000' || '' }} # 5 mins
       RWSDK_HYDRATION_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '10000' || '' }} # 10s
       RWSDK_DEV_SERVER_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '900000' || '' }} # 15 mins
+      RWSDK_TEST_MAX_RETRIES: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '12' || '' }}
+      RWSDK_TEST_MAX_RETRIES_PER_CODE: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '20' || '' }}
 
     # context(justinvdm, 2025-09-20):
     # Only run this job for PRs from the same repository and pushes to main
@@ -139,7 +143,7 @@ jobs:
         shell: bash
         run: |
           pnpm install
-          ./scripts/retry.sh pnpm test:e2e
+          pnpm test:e2e
         env:
           CI: 1
           PACKAGE_MANAGER: ${{ matrix.package-manager }}

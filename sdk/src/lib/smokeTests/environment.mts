@@ -1,14 +1,8 @@
-import {
-  setupTestEnvironment as setupE2ETestEnvironment,
-  copyProjectToTempDir,
-} from "../../lib/e2e/environment.mjs";
-import {
-  SmokeTestOptions,
-  TestResources,
-  PackageManager,
-} from "../../lib/e2e/types.mjs";
+import { setupTarballEnvironment } from "../../lib/e2e/tarball.mjs";
+import { TestResources } from "../../lib/e2e/types.mjs";
 import { createSmokeTestComponents } from "./codeUpdates.mjs";
 import { log } from "./constants.mjs";
+import { SmokeTestOptions } from "./types.mjs";
 
 /**
  * Sets up the test environment for smoke tests, preparing any resources needed for testing
@@ -16,7 +10,24 @@ import { log } from "./constants.mjs";
 export async function setupTestEnvironment(
   options: SmokeTestOptions = {},
 ): Promise<TestResources> {
-  const resources = await setupE2ETestEnvironment(options);
+  if (!options.projectDir) {
+    throw new Error("projectDir is required for smoke tests");
+  }
+
+  const tarballEnv = await setupTarballEnvironment({
+    projectDir: options.projectDir,
+    packageManager: options.packageManager,
+  });
+
+  const resources: TestResources = {
+    tempDirCleanup: tarballEnv.cleanup,
+    workerName: undefined,
+    originalCwd: process.cwd(),
+    targetDir: tarballEnv.targetDir,
+    workerCreatedDuringTest: false,
+    stopDev: undefined,
+    resourceUniqueKey: `smoke-test-${Date.now()}`,
+  };
 
   if (resources.targetDir) {
     // Create the smoke test components in the user's project
@@ -26,5 +37,3 @@ export async function setupTestEnvironment(
 
   return resources;
 }
-
-export { copyProjectToTempDir };

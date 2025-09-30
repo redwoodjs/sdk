@@ -1,5 +1,5 @@
-import { setTimeout as sleep } from "node:timers/promises";
 import debug from "debug";
+import { setTimeout as sleep } from "node:timers/promises";
 import { $ } from "../../lib/$.mjs";
 import { poll } from "./poll.mjs";
 import { PackageManager } from "./types.mjs";

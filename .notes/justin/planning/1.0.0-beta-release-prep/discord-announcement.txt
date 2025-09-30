@@ -1,0 +1,19 @@
+@everyone
+
+We're excited to announce that we've just published the first beta release for RedwoodSDK v1.0.0!
+
+You can get started now by running:
+```
+npx create-rwsdk my-app
+```
+
+For existing users on a `0.x` version, we've prepared a detailed migration guide to walk you through the upgrade process:
+https://docs.rwsdk.com/getting-started/migrating
+
+Here are a few of the notable changes:
+* **Simpler Project Scaffolding**: We've replaced the `standard` and `minimal` templates with a single, unified `starter`. This provides a clean foundation for all projects, with authentication now available as an optional, version-locked Passkey addon.
+* **Improved Hydration and Streaming**: We've re-architected our server-side rendering to fix `useId` hydration mismatches
+* **UI Library Examples**: We've added a `playground` with end-to-end tested examples, includes ones for key features and popular libraries, showcasing our support for shadcn/ui (Radix), Base UI, and Chakra UI.
+* **Consistent Middleware**: RSC Actions now run through the same global middleware pipeline as page requests, allowing for consistent authentication and session logic.
+
+We look forward to your feedback as we move towards the full 1.0 release.

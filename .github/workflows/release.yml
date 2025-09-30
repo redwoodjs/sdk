@@ -4,30 +4,21 @@ on:
   workflow_dispatch:
     inputs:
       version_type:
-        description: "The type of version bump to perform. Use 'explicit' for major or pre-releases."
+        description: "The type of version bump (patch, minor, explicit, test)"
         required: true
-        type: choice
-        options:
-          - explicit
-          - patch
-          - minor
-          - test
+        type: string
+        default: "patch"
       version:
-        description: "Required when version_type is 'explicit'. The exact version string to release (e.g., '1.0.0' or '1.0.0-alpha.11')."
+        description: "The explicit version to use (for 'explicit' type)"
         required: false
         type: string
-      skip_smoke_tests:
-        description: "If true, bypasses the smoke testing step. Use with caution."
-        required: false
-        type: boolean
-        default: false
       create_gh_release:
-        description: "If true, creates a GitHub release with auto-generated notes."
+        description: "If false, skips creating a GitHub release."
         required: false
         type: boolean
         default: true
-      force_gh_release_for_test:
-        description: "If true, forces creation of a GitHub release even for a 'test' version."
+      skip_smoke_tests:
+        description: "If true, bypasses the smoke testing step. Use with caution."
         required: false
         type: boolean
         default: false
@@ -41,7 +32,7 @@ env:
 
 jobs:
   release:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.event.inputs.version_type == 'test'
     runs-on: ubuntu-latest
 
     steps:
@@ -99,10 +90,7 @@ jobs:
           eval $COMMAND
 
       - name: Create GitHub Release
-        if: >
-          success() &&
-          (github.event.inputs.version_type != 'test' || github.event.inputs.force_gh_release_for_test == 'true') &&
-          github.event.inputs.create_gh_release == 'true'
+        if: success() && github.event.inputs.create_gh_release == 'true'
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_RELEASES }}
         run: |
@@ -114,11 +102,15 @@ jobs:
             FLAGS="$FLAGS --latest"
           elif [[ "$VERSION_TYPE" == "explicit" ]]; then
             # For explicit versions, we check the version string to determine if it's a pre-release
-            if [[ "$VERSION" == *"-"* ]]; then
+            if [[ "$VERSION" == *"-beta."* ]]; then
+              FLAGS="$FLAGS --latest"
+            elif [[ "$VERSION" == *"-"* ]]; then
               FLAGS="$FLAGS --prerelease"
             else
               FLAGS="$FLAGS --latest"
             fi
+          elif [[ "$VERSION_TYPE" == "test" ]]; then
+            FLAGS="$FLAGS --prerelease"
           fi
 
           echo "Creating GitHub release for tag ${{ env.TAG_NAME }} with flags: $FLAGS"

@@ -1,6 +1,6 @@
-import { requestInfo } from "../requestInfo/worker";
 import { ssrWebpackRequire as baseSsrWebpackRequire } from "rwsdk/__ssr_bridge";
 import { memoizeOnId } from "../lib/memoizeOnId";
+import { requestInfo } from "../requestInfo/worker";
 
 // @ts-ignore
 import { useServerLookup } from "virtual:use-server-lookup.js";

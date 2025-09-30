@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { getShortName } from "./getShortName.mjs";
 import path from "node:path";
+import { describe, expect, it } from "vitest";
+import { getShortName } from "./getShortName.mjs";
 
 describe("getShortName", () => {
   it("should return the relative path if the file is inside the root", () => {

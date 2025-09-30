@@ -1,5 +1,5 @@
 import type { Database, Migrations } from "../database";
-import type { Expect, Equal } from "./testUtils";
+import type { Equal, Expect } from "./testUtils";
 
 (_it = "addColumn with default value") => {
   const migrations = {

@@ -1,0 +1,140 @@
+---
+title: Migrating from 0.x to 1.x
+description: A guide for upgrading your RedwoodSDK project.
+---
+
+This guide is for users who have an existing RedwoodSDK project and wish to upgrade from a `0.x` version to `1.x`.
+
+## Required Migration Steps
+
+To upgrade your project, you must first take the following steps to avoid breaking changes.
+
+### 1. Update `package.json` Dependencies
+
+In version `1.x`, several core packages like `react` and `wrangler` have been moved to `peerDependencies`. You must now explicitly add them to your project's `package.json`.
+
+You can add the required packages by running the following commands in your project root:
+
+```sh
+pnpm add react@rc react-dom@rc react-server-dom-webpack@rc
+pnpm add -D @cloudflare/vite-plugin@latest wrangler@latest @cloudflare/workers-types@latest
+```
+
+After updating, run `pnpm install` to apply the updates.
+
+### 2. Update `wrangler.jsonc`
+
+The Cloudflare Workers runtime now requires a newer compatibility date to support the features used by modern React.
+
+-   Set the `compatibility_date` in your `wrangler.jsonc` to `2025-08-21` or later.
+
+```jsonc title="wrangler.jsonc"
+{
+  // ...
+  "compatibility_date": "2025-08-21"
+  // ...
+}
+```
+
+### 3. Review Middleware for RSC Action Compatibility
+
+React Server Component (RSC) actions now run through the global middleware pipeline. Previously, action requests bypassed all middleware.
+
+This change allows logic for authentication and session handling to apply consistently. However, if you have existing middleware, it will now execute for RSC actions, which may introduce unintended side effects.
+
+You must review your existing global middleware to ensure it is compatible. A new `isAction` boolean flag is now available on the `requestInfo` object passed to middleware, making it easy to conditionally apply logic.
+
+**Example:**
+
+If you have middleware that should only run for page requests (e.g., logging), you must add a condition to bypass it for action requests:
+
+```typescript title="src/worker.tsx"
+const loggingMiddleware = ({ isAction, request }) => {
+  // Check if the request is for an RSC action.
+  if (isAction) {
+    // It's an action, so we skip the logging logic.
+    return;
+  }
+
+  // Otherwise, it's a page request, so we log it.
+  const url = new URL(request.url);
+  console.log('Page requested:', url.pathname);
+};
+
+export default defineApp([
+  loggingMiddleware,
+  // ... your other middleware and routes
+]);
+```
+
+### 4. Update response header usage
+
+The `headers` property on the request context was removed. Set response headers using `response.headers`.
+
+Before:
+
+```typescript
+const myMiddleware = (requestInfo) => {
+  requestInfo.headers.set('X-Custom-Header', 'my-value');
+};
+```
+
+After:
+
+```typescript
+const myMiddleware = (requestInfo) => {
+  requestInfo.response.headers.set('X-Custom-Header', 'my-value');
+};
+```
+
+### 5. Remove `resolveSSRValue` wrapper
+
+The `resolveSSRValue` helper was removed. Call SSR-only functions directly from worker code.
+
+Before:
+
+```typescript
+import { env } from 'cloudflare:workers';
+import { resolveSSRValue } from 'rwsdk/worker';
+import { ssrSendWelcomeEmail } from '@/app/email/ssrSendWelcomeEmail';
+
+export async function sendWelcomeEmail(formData: FormData) {
+  const doSendWelcomeEmail = await resolveSSRValue(ssrSendWelcomeEmail);
+  const email = formData.get('email') as string;
+  const { data, error } = await doSendWelcomeEmail(env.RESEND_API, email);
+}
+```
+
+After:
+
+```typescript
+import { env } from 'cloudflare:workers';
+import { ssrSendWelcomeEmail } from '@/app/email/ssrSendWelcomeEmail';
+
+export async function sendWelcomeEmail(formData: FormData) {
+  const email = formData.get('email') as string;
+  const { data, error } = await ssrSendWelcomeEmail(env.RESEND_API, email);
+}
+```
+
+## Optional Refactoring Guide: Adopting the Passkey Addon
+
+The most significant change in `1.x` is the removal of the `standard` starter in favor of a single, unified `starter` project and the introduction of the officially supported passkey addon.
+
+**Your existing authentication code, which was generated from the old `standard` starter, is your own code and will continue to work.** You are not required to change it. The SDK remains backwards-compatible with that implementation.
+
+The passkey addon is recommended for **new projects** or projects that have **not yet launched to production**.
+
+### Important Considerations for Migration
+
+The passkey addon uses a **SQLite-based Durable Object** for session and user storage, whereas the old `standard` starter used a **D1 database with Prisma**. Migrating from one to the other is a complex task that requires manually moving data between systems.
+
+Because of this complexity, we recommend that existing applications with live user data continue to use their D1/Prisma-based implementation.
+
+### What's Changed?
+
+-   The `standard` starter and its associated tutorial have been removed.
+-   Passkey (WebAuthn) functionality is now provided via a version-locked, downloadable **addon**. This gives you full ownership of the code.
+-   The new implementation uses a lightweight, SQLite-based Durable Object, removing the need for Prisma in the starter.
+
+If you decide to migrate, you can follow the [**Authentication Guide**](../authentication) to install the passkey addon and adapt it to your existing data models.

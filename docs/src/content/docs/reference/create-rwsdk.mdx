@@ -19,11 +19,6 @@ At it's core, the `create-rwsdk` command looks at the most recent GitHub release
 npx create-rwsdk [project-name] [options]
 ```
 
-#### Commands
-
-- `create`: Create a new project (default command when no command is specified)
-- `list`: List and interactively select from available templates
-
 #### Arguments
 
 - `[project-name]`: Name of the project directory to create (optional, will prompt if not provided)
@@ -31,13 +26,14 @@ npx create-rwsdk [project-name] [options]
 #### Options
 
 - `-f, --force`: Force overwrite if directory exists
-- `-t, --template <template>`: Starter template to use (standard, minimal) [default: "standard"]
+- `--release <version>`: Use a specific release version (e.g., `v1.0.0-alpha.1`)
+- `--pre`: Use the latest pre-release (e.g., alpha, beta, rc)
 - `-h, --help`: Display help information
 - `-V, --version`: Display version number
 
 ### Examples
 
-Create a new project with the default (standard) template:
+Create a new project:
 
 ```bash
 npx create-rwsdk my-awesome-app
@@ -50,23 +46,22 @@ npx create-rwsdk
 # You will be prompted: What is the name of your project?
 ```
 
-List and interactively select from available templates:
-
-```bash
-npx create-rwsdk list
-# You will see a list of templates to choose from and then be prompted for a project name
-```
-
-Create a project with the minimal template:
-
-```bash
-npx create-rwsdk my-awesome-app --template minimal
-```
-
 Force overwrite an existing directory:
 
 ```bash
 npx create-rwsdk my-awesome-app --force
+```
+
+Create a project from the latest pre-release:
+
+```bash
+npx create-rwsdk my-awesome-app --pre
+```
+
+Create a project from a specific release version:
+
+```bash
+npx create-rwsdk my-awesome-app --release v1.0.0-alpha.10
 ```
 
 ## Next steps after creating a project

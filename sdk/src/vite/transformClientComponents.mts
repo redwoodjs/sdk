@@ -1,8 +1,7 @@
-import MagicString from "magic-string";
 import debug from "debug";
+import MagicString from "magic-string";
+import { findExports } from "./findSpecifiers.mjs";
 import { hasDirective } from "./hasDirective.mjs";
-import { findExports, type ExportInfo } from "./findSpecifiers.mjs";
-import { VENDOR_CLIENT_BARREL_EXPORT_PATH } from "../lib/constants.mjs";
 
 interface TransformContext {
   environmentName: string;

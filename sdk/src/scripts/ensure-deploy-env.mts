@@ -1,18 +1,17 @@
-import { $ } from "../lib/$.mjs";
-import { readFile, writeFile } from "fs/promises";
-import { resolve, basename, join } from "path";
 import { randomBytes } from "crypto";
+import { pathExists } from "fs-extra";
+import { readFile, writeFile } from "fs/promises";
 import { glob } from "glob";
 import { parse as parseJsonc } from "jsonc-parser";
+import { basename, join, resolve } from "path";
+import * as readline from "readline";
 import {
-  uniqueNamesGenerator,
-  Config,
   adjectives,
   animals,
+  uniqueNamesGenerator,
 } from "unique-names-generator";
-import * as readline from "readline";
-import { pathExists } from "fs-extra";
-import { parseJson, extractAllJson } from "../lib/jsonUtils.mjs";
+import { $ } from "../lib/$.mjs";
+import { extractAllJson, parseJson } from "../lib/jsonUtils.mjs";
 // Define interface for the database info returned by wrangler
 interface D1DatabaseInfo {
   uuid?: string;

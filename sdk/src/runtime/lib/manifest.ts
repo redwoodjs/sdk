@@ -1,5 +1,3 @@
-import { type RequestInfo } from "../requestInfo/types";
-
 export type Manifest = Record<string, ManifestChunk>;
 
 export interface ManifestChunk {
