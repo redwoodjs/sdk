@@ -10,7 +10,7 @@
     "build:sdk": "(cd sdk && pnpm build)",
     "typecheck:addons": "for d in addons/*/; do if [ -f \"$d/tsconfig.json\" ]; then pnpm exec tsc --project \"$d/tsconfig.json\"; fi; done",
     "typecheck:starter": "pnpm exec tsc --project starter/tsconfig.json",
-    "test:e2e": "(cd sdk && pnpm build) && cd playground && vitest run",
+    "test:e2e": "./scripts/test-e2e.sh",
     "setup:e2e": "pnpm setup:wrangler",
     "setup:wrangler": "./scripts/setup-wrangler-auth.sh"
   },
