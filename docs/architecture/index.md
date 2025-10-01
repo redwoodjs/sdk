@@ -43,3 +43,6 @@ This collection of documents provides a high-level overview of the core architec
 
 - [**SDK, Starter, and Addon Release Process**](./releaseProcess.md)
   Outlines the comprehensive versioning, testing, and release strategy for the SDK ecosystem, detailing the automated process for publishing `rwsdk`, `starter`, and `addon` artifacts.
+
+- [**Client-Side Navigation**](./clientSideNavigation.md)
+  An explanation of how client-side navigation works in RedwoodSDK, providing a Single Page App (SPA) like experience.
