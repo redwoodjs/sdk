@@ -36,3 +36,49 @@ RedwoodSDK's client-side navigation intercepts clicks on internal links and fetc
 7.  **Back/Forward Navigation**: An event listener for the `popstate` event is also set up to handle browser back and forward button clicks. When a `popstate` event occurs, it triggers a fetch for the corresponding page's RSC payload.
 
 This approach provides a faster, smoother navigation experience, characteristic of a SPA, while leveraging server-side rendering with RSCs for content. It avoids the need for a complex client-side router, allowing developers to use standard `<a>` tags for navigation.
+
+## Programmatic Navigation
+
+While intercepting link clicks covers a significant portion of navigation needs, it does not address cases where navigation must be triggered programmatically, such as after a form submission or login event. To support this, a `navigate` function is exported from `@redwoodjs/sdk/client`.
+
+The API for this function is modeled after the emerging `Navigation API` web standard to ensure a familiar and forward-compatible interface.
+
+### `navigate(href, options)`
+
+The `navigate` function allows for programmatic client-side navigation.
+
+- **`href`**: A string representing the path to navigate to.
+- **`options`**: An optional object with the following properties:
+  - **`history`**: A string that determines how the history stack is updated. Can be `'push'` (default) or `'replace'`.
+  - **`info`**: An object for passing custom information. The following properties are recognized for controlling scroll behavior:
+    - **`scrollToTop`**: A boolean indicating whether to scroll to the top of the page after navigation. Defaults to `true`.
+    - **`scrollBehavior`**: A string specifying the scroll animation. Can be `'auto'`, `'smooth'`, or `'instant'` (default).
+
+#### Example Usage
+
+```javascript
+import { navigate } from '@redwoodjs/sdk/client';
+
+// Navigate to a new page
+document.getElementById('my-button').addEventListener('click', () => {
+  navigate('/dashboard');
+});
+
+// Redirect after a login, replacing the current history entry
+function handleLogin() {
+  // ... login logic ...
+  navigate('/account', { history: 'replace' });
+}
+
+// Navigate with custom scroll behavior
+function handleSpecialNavigation() {
+  navigate('/long-page', {
+    info: {
+      scrollToTop: true,
+      scrollBehavior: 'smooth'
+    }
+  });
+}
+```
+
+This function encapsulates the logic for updating the browser's history, requesting the next page from the server, and updating the DOM, providing a simple interface for a complex process.

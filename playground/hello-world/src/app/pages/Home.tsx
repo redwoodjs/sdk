@@ -1,5 +1,33 @@
-import { RequestInfo } from "rwsdk/worker";
+"use client";
+
+import { navigate } from "@redwoodjs/sdk/client";
+import { RequestInfo } from "rwood/worker";
 
 export function Home({ ctx }: RequestInfo) {
-  return <div>Hello World</div>;
+  return (
+    <div>
+      <h1>Hello World</h1>
+      <button
+        id="navigate-to-about"
+        onClick={() => {
+          navigate("/about");
+        }}
+      >
+        Go to About Page
+      </button>
+
+      <button
+        id="navigate-with-smooth-scroll"
+        onClick={() => {
+          navigate("/about", {
+            info: {
+              scrollBehavior: "smooth",
+            },
+          });
+        }}
+      >
+        Go to About Page with Smooth Scroll
+      </button>
+    </div>
+  );
 }
