@@ -9,6 +9,12 @@ In traditional web applications, every navigation to a new page triggers a full-
 
 RedwoodSDK aims to provide the benefits of SPA-like navigation-no full page reloads-without the added complexity of a full-blown client-side routing framework. The goal is to enhance the user experience by making navigations faster and smoother, while keeping the programming model simple and familiar.
 
+## Progressive Enhancement
+
+A core tenet of RedwoodSDK is progressive enhancement. This means that features are built in layers, starting with a baseline that works for everyone, and then adding enhancements for more capable browsers.
+
+Client-side navigation is a prime example of this principle. The baseline is a standard, multi-page application using HTML `<a>` tags. This works universally, even with JavaScript disabled. The client-side navigation feature is an enhancement layer. When JavaScript is enabled, `initClientNavigation` upgrades the user experience to that of a Single Page App, without changing the underlying semantics of the application. The application remains fully functional and accessible without this enhancement.
+
 ## Solution
 
 RedwoodSDK's client-side navigation intercepts clicks on internal links and fetches page content asynchronously, updating the DOM without a full page reload. This is achieved through a function, `initClientNavigation`, which is called in the client-side entry point of the application.
