@@ -222,62 +222,13 @@ else
   # Set the trap *after* creating the temp dir, so the variable is available.
   trap cleanup EXIT
 
-  # Sanitize the version to create a valid directory name, which in turn
-  # will be used to generate a valid worker name for the smoke test.
-  PROJECT_DIR="$TEMP_DIR/test"
-  mkdir -p "$PROJECT_DIR"
-
-  if [[ -n "$GITHUB_OUTPUT" ]]; then
-    echo "project-dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
-  fi
-
-  echo "  - Created temp project dir for testing: $PROJECT_DIR"
-
-  echo "  - Copying minimal starter to project dir..."
-  # Get the absolute path of the script's directory
-  SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
-  # The monorepo root is two levels up from the script's directory
-  MONOREPO_ROOT="$SCRIPT_DIR/../.."
-  cp -a "$MONOREPO_ROOT/starters/minimal/." "$PROJECT_DIR/"
-
-  echo "  - Configuring temp project to not use frozen lockfile..."
-  echo "frozen-lockfile=false" > "$PROJECT_DIR/.npmrc"
-
-  echo "  - Installing packed tarball in project dir..."
-  (cd "$PROJECT_DIR" && pnpm add "$TARBALL_PATH")
-
-  PACKAGE_NAME=$(npm pkg get name | tr -d '"')
-  INSTALLED_DIST_PATH="$PROJECT_DIR/node_modules/$PACKAGE_NAME/dist"
-
-  echo "  - Verifying installed package contents..."
-  if [ ! -d "$INSTALLED_DIST_PATH" ]; then
-      echo "  ❌ Error: dist/ directory not found in installed package at $INSTALLED_DIST_PATH."
-      exit 1
-  fi
-
-  # To ensure the package is built and packed correctly, we'll compare
-  # a checksum of the file lists from the original `dist` directory and the
-  # one installed from the tarball. They must match exactly.
-  ORIGINAL_DIST_CHECKSUM=$( (cd dist && find . -type f | sort) | md5sum)
-  INSTALLED_DIST_CHECKSUM=$( (cd "$INSTALLED_DIST_PATH" && find . -type f | sort) | md5sum)
-
-  echo "    - Original dist checksum: $ORIGINAL_DIST_CHECKSUM"
-  echo "    - Installed dist checksum: $INSTALLED_DIST_CHECKSUM"
-
-  if [[ "$ORIGINAL_DIST_CHECKSUM" != "$INSTALLED_DIST_CHECKSUM" ]]; then
-    echo "  ❌ Error: File list in installed dist/ does not match original dist/."
-    echo "  This indicates an issue with the build or packaging process."
-    exit 1
-  else
-    echo "  ✅ Installed package contents match the local build."
-  fi
-
   echo "  - Running smoke tests..."
   # The CWD is the package root (sdk/sdk), so we can run pnpm smoke-test directly.
-  # We pass the path to the temp project directory where the minimal starter was installed.
   # We also specify an artifact directory *within* the temp directory.
   # todo(justinvdm, 11 Aug 2025): Fix style test flakiness
-  if ! pnpm smoke-test --path="$PROJECT_DIR" --no-sync --artifact-dir="$TEMP_DIR/artifacts" --skip-style-tests; then
+  # Pass the tarball path to the smoke test environment
+  export RWSKD_SMOKE_TEST_TARBALL_PATH="$TARBALL_PATH"
+  if ! pnpm smoke-test --artifact-dir="$TEMP_DIR/artifacts" --skip-style-tests; then
     echo "  ❌ Smoke tests failed."
     exit 1
   fi
@@ -297,7 +248,11 @@ else
   PUBLISH_CMD="npm publish \"$TARBALL_PATH\""
   if [[ "$VERSION_TYPE" == "test" ]]; then
     PUBLISH_CMD="$PUBLISH_CMD --tag test"
-  elif [[ "$NEW_VERSION" =~ - ]]; then
+  elif [[ "$NEW_VERSION" == *"-beta."* ]]; then
+    # Publish betas as the default 'latest' tag (no explicit tag)
+    PUBLISH_CMD="$PUBLISH_CMD"
+  elif [[ "$NEW_VERSION" == *"-"* ]]; then
+    # Other pre-releases should use the 'pre' dist-tag
     PUBLISH_CMD="$PUBLISH_CMD --tag pre"
   fi
   if ! eval $PUBLISH_CMD; then
@@ -309,74 +264,9 @@ else
   echo "  ✅ Published successfully."
 fi
 
-echo -e "\n🔄 Updating dependencies in monorepo..."
-
-# All non-test releases, including pre-releases, will now update dependencies.
-# This fixes the root cause of the unclean working directory issue.
-while IFS= read -r package_json; do
-  if [[ "$package_json" != "./package.json" ]]; then
-    PROJECT_DIR=$(dirname "$package_json")
-    
-    # Check for the literal string "workspace:" to avoid resolving the version.
-    if [[ "$package_json" =~ ^.*\/node_modules\/workspace\/.*\/package\.json$ ]]; then
-      echo "  └─ Skipping dependency update for workspace package: $PROJECT_DIR"
-      continue
-    fi
-
-    # Only process if the dependency exists (not {} or empty) and isn't a workspace dependency
-    if [[ "$CURRENT_DEP_VERSION" != "{}" && -n "$CURRENT_DEP_VERSION" && "$CURRENT_DEP_VERSION" != workspace:* ]]; then
-      # Get relative path for cleaner output
-      REL_PATH=$(echo "$package_json" | sed 's/\.\.\///')
-      echo "  └─ $REL_PATH"
-      if [[ "$DRY_RUN" == true ]]; then
-        echo "     [DRY RUN] Update to $NEW_VERSION"
-      else
-        (cd "$PROJECT_DIR" && sed -i.bak "s/\"$DEPENDENCY_NAME\": \"[^\"]*\"/\"$DEPENDENCY_NAME\": \"$NEW_VERSION\"/" package.json && rm package.json.bak)
-      fi
-    fi
-  fi
-done < <(find .. -path "*/node_modules" -prune -o -name "package.json" -print)
-
-
-echo -e "\n📥 Installing dependencies..."
-if [[ "$DRY_RUN" == true ]]; then
-  echo "  [DRY RUN] pnpm install --no-frozen-lockfile --ignore-scripts"
-else
-  # context(justinvdm, 2025-07-16): Sometimes the rwsdk package we just released has not yet become available on the registry, so we retry a few times.
-  for i in {1..10}; do
-    echo "Attempt $i of 10: Running pnpm install"
-    if pnpm install --no-frozen-lockfile --ignore-scripts; then
-      break # Success
-    fi
-
-    if [ $i -eq 10 ]; then
-      echo "pnpm install failed after 10 attempts, exiting"
-      exit 1
-    fi
-
-    sleep_time=0
-    if [ $i -le 3 ]; then
-      sleep_time=3
-    elif [ $i -le 7 ]; then
-      sleep_time=5
-    else
-      sleep_time=10
-    fi
-
-    echo "pnpm install failed, retrying in ${sleep_time}s..."
-    sleep $sleep_time
-  done
-fi
-
-echo -e "\n💾 Committing changes..."
+echo -e "\n💾 Pushing commit and tag..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] Git operations:"
-  if [[ "$NEW_VERSION" =~ -.*\. && ! "$NEW_VERSION" =~ -test\. ]]; then
-    echo "    - Add: package.json only (prerelease - no dependency updates)"
-  else
-    echo "    - Add: all package.json and pnpm-lock.yaml files"
-  fi
-  echo "    - Amend commit: release $NEW_VERSION"
   if [[ "$VERSION_TYPE" == "test" ]]; then
     echo "    - Tag: $TAG_NAME"
     echo "    - Push tag $TAG_NAME to remote"
@@ -387,12 +277,6 @@ if [[ "$DRY_RUN" == true ]]; then
     echo "    - Push: origin with tags"
   fi
 else
-  # Add all changed package.json and pnpm-lock.yaml files in the monorepo.
-  # This is safe for all cases because `git diff` will only find files that have actually changed.
-  # For a prerelease, this will correctly include the updated pnpm-lock.yaml.
-  (cd .. && git add $(git diff --name-only | grep -E 'package\.json|pnpm-lock\.yaml$'))
-  git commit --amend --no-edit
-
   if [[ "$VERSION_TYPE" == "test" ]]; then
     echo "  - Creating tag for test release..."
     git tag "$TAG_NAME"

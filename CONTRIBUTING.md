@@ -22,7 +22,7 @@ pnpm install
 This repository is a monorepo containing several key parts:
 
 -   `sdk/`: This is the heart of the project. It contains the source code for the `rwsdk` npm package. When you're working on the core SDK functionality, this is where you'll spend most of your time. **All commands for building, testing, or formatting the SDK should be run from within this directory.**
--   `starters/`: This directory holds the template projects, like `minimal` and `standard`, that users can create with `create-rwsdk`. These are used for testing and demonstrating features.
+-   `starter/`: This directory holds the template project that users can create with `create-rwsdk`. It is used for testing and demonstrating features.
 -   `docs/`: Contains the user-facing documentation for the SDK, which is published as a website.
 -   `docs/architecture/`: A special section within the docs that contains in-depth architecture documents. These explain the "why" behind key design decisions and provide context on how the system works under the hood. If you're making a significant change, you should read these. If you're changing the system in a significant way, check whether these docs need revising to account for the update.
 
@@ -68,7 +68,7 @@ This project employs a multi-layered testing strategy to ensure code quality and
 #### Overview of Testing Layers
 
 1.  **Unit Tests**: These are the foundation of our testing pyramid. They verify the correctness of individual functions, modules, and components in isolation. They are fast, focused, and should cover as much of the core logic as possible.
-2.  **Smoke Tests**: These tests verify the critical user paths and core functionalities of our starter applications (`minimal` and `standard`). A smoke test ensures that a user can successfully install the SDK, start the dev server, build a production version, and see the application render correctly. They are designed to catch major regressions in the end-to-end user experience.
+2.  **Smoke Tests**: These tests verify the critical user paths and core functionalities of our starter application. A smoke test ensures that a user can successfully install the SDK, start the dev server, build a production version, and see the application render correctly. They are designed to catch major regressions in the end-to-end user experience.
 3.  **End-to-End (E2E) Tests**: Running in the `playground`, these tests cover more nuanced, real-world user scenarios. They validate compatibility with other libraries (like UI frameworks), test specific features in a realistic application context, and confirm compatibility across different environments.
 
 #### CI/CD Testing Pipeline
@@ -77,7 +77,7 @@ Our GitHub Actions workflows are configured to provide a tiered testing strategy
 
 *   **On Pull Requests and Pushes to `main`**: To provide fast feedback, we run a lightweight but representative subset of our test suite. This includes all **unit tests**, plus a minimal configuration of our **smoke tests** and **E2E tests** (running on `ubuntu-latest` with `npm`). This serves as a quick health check to catch common regressions.
 
-*   **Nightly Runs**: To ensure broad compatibility, the full test matrix is run on a schedule (every 12 hours). This includes **smoke tests** and **E2E tests** across all supported operating systems (Ubuntu, macOS) and package managers (pnpm, npm, yarn, yarn-classic). This process catches environment-specific issues without blocking development on `main`.
+*   **Nightly Runs**: To ensure broad compatibility, the full test matrix is run on a schedule (every 12 hours). This includes **smoke tests** and **E2E tests** across all supported operating systems (Ubuntu, macOS) and package managers (pnpm, npm, yarn, yarn-classic). These scheduled runs use more lenient timeouts and higher test retry counts to aggressively surface intermittent, flaky issues that may not appear in regular CI runs. This process catches environment-specific issues without blocking development on `main`.
 
 All test suites can also be run manually on any branch using the `workflow_dispatch` trigger in GitHub Actions, giving contributors the power to run the full suite on their changes when needed.
 
@@ -90,8 +90,8 @@ Smoke tests check that the critical paths of the SDK work for a new project. The
 To run smoke tests for a starter project, you can use the `ci-smoke-test.sh` script. This is the same script that runs in our CI environment.
 
 ```sh
-# Run smoke test for the 'minimal' starter with pnpm
-./sdk/scripts/ci-smoke-test.sh --starter "minimal" --package-manager "pnpm"
+# Run smoke test for the starter with pnpm
+./sdk/scripts/ci-smoke-test.sh --package-manager "pnpm"
 ```
 
 The script will create a temporary directory, copy the starter, install dependencies using the specified package manager, and run a series of automated checks using Puppeteer. If the test fails, artifacts (including screenshots and logs) will be saved to a `smoke-test-artifacts` directory in the monorepo root.
@@ -403,7 +403,7 @@ This section outlines the strategy for managing dependencies to maintain stabili
 
 #### 1. Peer Dependencies (`starter-peer-deps`)
 
--   **What**: The most critical dependencies (`wrangler`, `react`, `vite`, etc.) that are defined as `peerDependencies` in the SDK and tested in both the `starters/*` projects and `playground/*` projects.
+-   **What**: The most critical dependencies (`wrangler`, `react`, `vite`, etc.) that are defined as `peerDependencies` in the SDK and tested in the `starters/*`, `playground/*`, and `addons/*` projects.
 -   **When**: As Soon As Possible (ASAP). Renovate creates a PR immediately when a new version is available.
 -   **Why**: To provide an immediate early-warning signal if a new peer dependency version introduces a regression that could affect users. The playground E2E tests provide an additional validation layer beyond the starter smoke tests.
 
@@ -426,7 +426,7 @@ To manage these potentially unstable versions, Renovate is specifically configur
 
 #### 4. Repository, Docs, and Infrastructure Dependencies (`docs-and-infra-deps`)
 
--   **What**: A consolidated group for all remaining repository maintenance dependencies. This includes dependencies from the root `package.json`, the `docs/package.json`, non-peer dependencies from `playground/*` projects (such as `vitest`), GitHub Actions, Docker images, and the `.node-version` file.
+-   **What**: A consolidated group for all remaining repository maintenance dependencies. This includes dependencies from the root `package.json`, `docs/package.json`, non-peer dependencies from `playground/*` and `addons/*` projects (such as `vitest`), GitHub Actions, Docker images, and the `.node-version` file.
 -   **When**: Weekly, in a single grouped pull request.
 -   **Why**: To bundle all miscellaneous tooling, documentation, and infrastructure updates into one convenient PR to reduce noise.
 
@@ -520,21 +520,21 @@ npx rwsync --watch "npm run dev"
 
 ## Releasing (for Core Contributors)
 
-Releases are managed by a GitHub Actions workflow that automates versioning, publishing, and dependency updates.
+Releases are managed by a series of automated GitHub Actions workflows that handle versioning, smoke testing, publishing to npm, and packaging of release artifacts for the SDK, starter, and addons.
+
+For a complete, in-depth explanation of the entire end-to-end release process, please refer to the architecture document: [`docs/architecture/sdkStarterAndAddonReleaseProcess.md`](./docs/architecture/sdkStarterAndAddonReleaseProcess.md).
 
 ### How to Create a Release
 
 1.  Navigate to the [Release workflow](.github/workflows/release.yml) in the repository's "Actions" tab.
 2.  Click the "Run workflow" dropdown.
-3.  Choose the `version_type` for the release. The options are:
-    *   `patch`, `minor`: For standard incremental releases where the next version is calculated automatically.
-    *   `test`: For internal test releases.
-    *   `explicit`: This is **required** for all major and pre-releases. When you select this, you must also provide the full version string in the `version` field below.
-4.  The `version` field is only used when the `version_type` is `explicit`. It allows you to specify the exact version to release.
-    *   **Example for a major release:** Select `explicit` as the `version_type` and enter `2.0.0` in the `version` field.
-    *   **Example for a pre-release:** Select `explicit` as the `version_type` and enter `1.2.3-beta.0` in the `version` field.
-5.  Optionally, you can check `skip_smoke_tests` to bypass the smoke testing phase. This is useful for speeding up dry runs or when you are certain the tests are not needed, but should be used with caution for actual releases.
-6.  Click the "Run workflow" button.
+3.  Choose the `version_type` for the release:
+    *   `patch` or `minor` for standard releases.
+    *   `test` for internal test builds.
+    *   `explicit` for major or pre-releases (requires filling in the `version` field).
+4.  Click the "Run workflow" button.
+
+This action triggers the entire release pipeline as described in the architecture document.
 
 ### How to Unrelease a Version
 
@@ -579,7 +579,7 @@ The release workflow and underlying script (`sdk/sdk/scripts/release.sh`) follow
 2.  **Build**: The `rwsdk` package is built with `NODE_ENV=production`.
 3.  **Pack**: The package is bundled into a `.tgz` tarball using `npm pack`.
 4.  **Smoke Test & Verify**: A comprehensive smoke test is run against the packed tarball:
-    *   A temporary project is created using the `starters/minimal` template.
+    *   A temporary project is created using the `starter` template.
     *   The `.tgz` tarball is installed as a dependency.
     *   **Verification**: The script verifies that the contents of the `dist` directory in the installed package are *identical* to the local `dist` directory from the build step by comparing checksums.
     *  Smoke tests are then run for this same test project, validating that the installed tarball is working correctly

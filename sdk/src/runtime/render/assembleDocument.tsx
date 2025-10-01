@@ -1,4 +1,3 @@
-import { type DocumentProps } from "../lib/router.js";
 import { type RequestInfo } from "../requestInfo/types.js";
 import { Preloads } from "./preloads.js";
 import { Stylesheets } from "./stylesheets.js";

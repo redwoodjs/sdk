@@ -1,9 +1,8 @@
-import { fileURLToPath } from "url";
-import { join } from "path";
-import { setTimeout } from "node:timers/promises";
 import debug from "debug";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 import { runSmokeTests } from "../lib/smokeTests/runSmokeTests.mjs";
-import { SmokeTestOptions, PackageManager } from "../lib/smokeTests/types.mjs";
+import { PackageManager, SmokeTestOptions } from "../lib/smokeTests/types.mjs";
 import { isRunningInCI } from "../lib/smokeTests/utils.mjs";
 
 // Set up debug logging
@@ -23,11 +22,14 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
   const ciFlag = args.includes("--ci");
 
   // Set initial default values (sync will be determined below)
+  const __dirname = dirname(fileURLToPath(import.meta.url));
+  const starterPath = join(__dirname, "..", "..", "..", "starter");
+
   const options: SmokeTestOptions = {
     skipDev: false,
     skipRelease: false,
     skipClient: false,
-    projectDir: undefined,
+    projectDir: starterPath,
     artifactDir: join(process.cwd(), ".artifacts"), // Default to .artifacts in current directory
     keep: isRunningInCI(ciFlag), // Default to true in CI environments
     headless: true,
@@ -69,10 +71,6 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
       options.headless = false;
     } else if (arg === "--copy-project") {
       options.copyProject = true;
-    } else if (arg === "--no-sync") {
-      syncExplicit = false;
-    } else if (arg === "--sync") {
-      syncExplicit = true;
     } else if (arg === "--ci") {
       // Already handled above, just skip
     } else if (arg === "--bail") {
@@ -97,7 +95,6 @@ Options:
   --keep                  Keep temporary test directory after tests complete
   --no-headless           Run browser tests with GUI (not headless)
   --sync                  Force syncing SDK code to test project
-  --no-sync               Disable syncing SDK code to test project
   --ci                    Run in CI mode (keeps temp dirs, sets headless)
   --bail                  Stop on first test failure
   --copy-project          Copy the project to the artifacts directory

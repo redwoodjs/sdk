@@ -1,6 +1,6 @@
 ---
 title: Security
-description: Learn about security headers used in the standard starter, what they do, and how to configure them for your app.
+description: Learn about security headers and how to configure them for your app.
 ---
 
 import {
@@ -11,26 +11,55 @@ import {
   Code,
 } from "@astrojs/starlight/components";
 
-import importedCodeStandardHeaders from "../../../../../starters/standard/src/app/headers.ts?raw";
-
 ## 🔐 Security Headers
 
-The standard starter includes a set of security headers by default in [`app/headers.ts`](https://github.com/redwoodjs/sdk/blob/main/starters/standard/src/app/headers.ts). These help protect against common attacks like cross-site scripting (XSS), clickjacking, and data injection.
+Security headers are an important part of protecting your application from common attacks like cross-site scripting (XSS), clickjacking, and data injection. RedwoodSDK makes it easy to add these headers to your responses using middleware.
 
-<Code
-  language="typescript"
-  title="src/app/headers.ts"
-  code={importedCodeStandardHeaders}
-  collapse={"1-3"}
-/>
+Here is an example of a middleware that adds a set of common security headers:
+
+```typescript title="src/app/headers.ts"
+import type { RouteMiddleware } from "rwsdk/worker";
+
+export const setCommonHeaders =
+  (): RouteMiddleware =>
+  ({ response, rw: { nonce } }) => {
+    const headers = response.headers;
+    headers.set("X-Frame-Options", "DENY");
+    headers.set("X-Content-Type-Options", "nosniff");
+    headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+    headers.set(
+      "Content-Security-Policy",
+      `default-src 'self'; script-src 'self' 'nonce-${nonce}'; style-src 'self' 'unsafe-inline'; object-src 'none';`
+    );
+    headers.set(
+      "Permissions-Policy",
+      "geolocation=(), microphone=(), camera=()"
+    );
+  };
+```
+
+You can then apply this middleware in your `src/worker.tsx`:
+
+```typescript title="src/worker.tsx"
+import { rwsdk } from "rwsdk/worker";
+import { setCommonHeaders } from "./app/headers.js";
+import { routes } from "./app/pages/routes.js";
+
+export default {
+  async fetch(request, env, ctx) {
+    return rwsdk(request, env, ctx, {
+      routes,
+      middleware: [setCommonHeaders()],
+    });
+  },
+};
+```
 
 ### Changing CSP (Content Security Policy) headers
 
 Sometimes you need to allow additional resources or modify the Content Security Policy (CSP) to accommodate third-party scripts, styles, or other assets. The CSP headers control what resources can be loaded and executed by your application.
 
 #### Adding trusted domains
-
-The default CSP in the starter focuses on the most critical security aspects. For many applications, this provides a good balance between security and functionality. When you need to integrate third-party resources, you can extend it like this:
 
 <Aside>
   Your CSP should reflect your application's needs. Some apps require more
@@ -44,14 +73,14 @@ The default CSP in the starter focuses on the most critical security aspects. Fo
 // In app/headers.ts
 headers.set(
   "Content-Security-Policy",
-- `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; frame-src https://challenges.cloudflare.com; object-src 'none';`,
-+ `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com https://trusted-scripts.example.com; style-src 'self' 'unsafe-inline'; frame-src https://challenges.cloudflare.com; img-src 'self' https://images.example.com; object-src 'none';`,
+- `default-src 'self'; script-src 'self' 'nonce-${nonce}'; style-src 'self' 'unsafe-inline'; object-src 'none';`,
++ `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://trusted-scripts.example.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://images.example.com; object-src 'none';`,
 );
 ```
 
 #### Allowing images from multiple sources
 
-When working with images in your RedwoodJS application, you may need to load images from different sources such as remote URLs or data URIs. The default CSP configuration doesn't include an `img-src` directive, which means images from external sources will be blocked.
+When working with images in your RedwoodSDK application, you may need to load images from different sources such as remote URLs or data URIs. The default CSP configuration doesn't include an `img-src` directive, which means images from external sources will be blocked.
 
 To allow images from remote URLs and data URIs, add the `img-src` directive to your CSP:
 
@@ -59,8 +88,8 @@ To allow images from remote URLs and data URIs, add the `img-src` directive to y
 // In app/headers.ts
 headers.set(
   "Content-Security-Policy",
-- `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; frame-src https://challenges.cloudflare.com; object-src 'none';`,
-+ `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; frame-src https://challenges.cloudflare.com; img-src 'self' https://trusted-images.example.com data:; object-src 'none';`,
+- `default-src 'self'; script-src 'self' 'nonce-${nonce}'; style-src 'self' 'unsafe-inline'; object-src 'none';`,
++ `default-src 'self'; script-src 'self' 'nonce-${nonce}'; style-src 'self' 'unsafe-inline'; img-src 'self' https://trusted-images.example.com data:; object-src 'none';`,
 );
 ```
 
@@ -95,26 +124,17 @@ export const Document = ({ rw, children }) => (
       <div id="root">{children}</div>
 
       <!-- Set the nonce the inline script -->
-      <script nonce={row.nonce}>/* ... */</script>
+      <script nonce={rw.nonce}>/* ... */</script>
     </body>
   </html>
 );
-
-export default defineApp([
-  // ...
-  render(Document, [
-    // ...
-  ]),
-]);
 ```
 
 ### Lifting device permission restrictions
 
 Sometimes you need to allow your web application to access device features like the camera, microphone, or geolocation. These permissions are controlled by the `Permissions-Policy` header.
 
-By default, the standard starter includes restrictive permissions settings for security reasons.
-
-To enable device access, you'll need to modify the `Permissions-Policy` header in your [`app/headers.ts`](https://github.com/redwoodjs/sdk/blob/main/starters/standard/src/) file:
+To enable device access, you'll need to modify the `Permissions-Policy` header in your `app/headers.ts` file:
 
 ```diff
 // In app/headers.ts

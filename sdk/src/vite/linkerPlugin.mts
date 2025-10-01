@@ -1,8 +1,8 @@
-import path from "node:path";
+import debug from "debug";
 import fsp from "node:fs/promises";
+import path from "node:path";
 import type { Plugin } from "vite";
 import { CLIENT_MANIFEST_RELATIVE_PATH } from "../lib/constants.mjs";
-import debug from "debug";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 
 const log = debug("rwsdk:vite:linker-plugin");

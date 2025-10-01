@@ -1,64 +1,55 @@
-import {
-  test,
-  beforeAll,
-  afterAll,
-  afterEach,
-  describe,
-  beforeEach,
-} from "vitest";
-import { basename, join as pathJoin, dirname } from "path";
-import { setupTarballEnvironment } from "./tarball.mjs";
-import { runDevServer } from "./dev.mjs";
-import {
-  runRelease,
-  deleteWorker,
-  deleteD1Database,
-  isRelatedToTest,
-} from "./release.mjs";
-import { launchBrowser } from "./browser.mjs";
-import puppeteer, { type Browser, type Page } from "puppeteer-core";
-export type { Browser, Page } from "puppeteer-core";
 import fs from "fs-extra";
 import os from "os";
-import path from "path";
+import path, { basename, dirname, join as pathJoin } from "path";
+import puppeteer, { type Browser, type Page } from "puppeteer-core";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  test,
+} from "vitest";
+import { launchBrowser } from "./browser.mjs";
+import {
+  DEPLOYMENT_CHECK_TIMEOUT,
+  DEPLOYMENT_MIN_TRIES,
+  DEPLOYMENT_TIMEOUT,
+  DEV_SERVER_MIN_TRIES,
+  DEV_SERVER_TIMEOUT,
+  HYDRATION_TIMEOUT,
+  INSTALL_DEPENDENCIES_RETRIES,
+  PUPPETEER_TIMEOUT,
+  SETUP_PLAYGROUND_ENV_TIMEOUT,
+  SETUP_WAIT_TIMEOUT,
+  TEST_MAX_RETRIES,
+  TEST_MAX_RETRIES_PER_CODE,
+} from "./constants.mjs";
+import { runDevServer } from "./dev.mjs";
 import { poll, pollValue } from "./poll.mjs";
+import {
+  deleteD1Database,
+  deleteWorker,
+  isRelatedToTest,
+  runRelease,
+} from "./release.mjs";
+import { setupTarballEnvironment } from "./tarball.mjs";
+export type { Browser, Page } from "puppeteer-core";
 
-const SETUP_PLAYGROUND_ENV_TIMEOUT = process.env
-  .RWSDK_SETUP_PLAYGROUND_ENV_TIMEOUT
-  ? parseInt(process.env.RWSDK_SETUP_PLAYGROUND_ENV_TIMEOUT, 10)
-  : 15 * 60 * 1000;
-
-const DEPLOYMENT_TIMEOUT = process.env.RWSDK_DEPLOYMENT_TIMEOUT
-  ? parseInt(process.env.RWSDK_DEPLOYMENT_TIMEOUT, 10)
-  : 5 * 60 * 1000;
-
-const DEPLOYMENT_MIN_TRIES = process.env.RWSDK_DEPLOYMENT_MIN_TRIES
-  ? parseInt(process.env.RWSDK_DEPLOYMENT_MIN_TRIES, 10)
-  : 5;
-
-const DEPLOYMENT_CHECK_TIMEOUT = process.env.RWSDK_DEPLOYMENT_CHECK_TIMEOUT
-  ? parseInt(process.env.RWSDK_DEPLOYMENT_CHECK_TIMEOUT, 10)
-  : 5 * 60 * 1000;
-
-const PUPPETEER_TIMEOUT = process.env.RWSDK_PUPPETEER_TIMEOUT
-  ? parseInt(process.env.RWSDK_PUPPETEER_TIMEOUT, 10)
-  : 60 * 1000 * 2;
-
-const HYDRATION_TIMEOUT = process.env.RWSDK_HYDRATION_TIMEOUT
-  ? parseInt(process.env.RWSDK_HYDRATION_TIMEOUT, 10)
-  : 5000;
-
-const DEV_SERVER_TIMEOUT = process.env.RWSDK_DEV_SERVER_TIMEOUT
-  ? parseInt(process.env.RWSDK_DEV_SERVER_TIMEOUT, 10)
-  : 5 * 60 * 1000;
-
-const DEV_SERVER_MIN_TRIES = process.env.RWSDK_DEV_SERVER_MIN_TRIES
-  ? parseInt(process.env.RWSDK_DEV_SERVER_MIN_TRIES, 10)
-  : 5;
-
-const SETUP_WAIT_TIMEOUT = process.env.RWSDK_SETUP_WAIT_TIMEOUT
-  ? parseInt(process.env.RWSDK_SETUP_WAIT_TIMEOUT, 10)
-  : 10 * 60 * 1000;
+export {
+  DEPLOYMENT_CHECK_TIMEOUT,
+  DEPLOYMENT_MIN_TRIES,
+  DEPLOYMENT_TIMEOUT,
+  DEV_SERVER_MIN_TRIES,
+  DEV_SERVER_TIMEOUT,
+  HYDRATION_TIMEOUT,
+  INSTALL_DEPENDENCIES_RETRIES,
+  PUPPETEER_TIMEOUT,
+  SETUP_PLAYGROUND_ENV_TIMEOUT,
+  SETUP_WAIT_TIMEOUT,
+  TEST_MAX_RETRIES,
+  TEST_MAX_RETRIES_PER_CODE,
+};
 
 interface PlaygroundEnvironment {
   projectDir: string;
@@ -403,11 +394,11 @@ export async function runTestWithRetries(
   name: string,
   attemptFn: () => Promise<void>,
 ) {
-  const MAX_RETRIES_PER_CODE = 6;
   const retryCounts: Record<string, number> = {};
   let attempt = 0;
+  let lastError: any;
 
-  while (true) {
+  while (attempt < TEST_MAX_RETRIES) {
     attempt++;
 
     try {
@@ -420,32 +411,36 @@ export async function runTestWithRetries(
       }
       return; // Success
     } catch (e: any) {
+      lastError = e;
       const errorCode = e?.code;
+
       if (typeof errorCode === "string" && errorCode) {
         const count = (retryCounts[errorCode] || 0) + 1;
         retryCounts[errorCode] = count;
 
-        if (count <= MAX_RETRIES_PER_CODE) {
-          console.log(
-            `[runTestWithRetries] Attempt ${attempt} for "${name}" failed with code ${errorCode}. Retrying (failure ${count}/${MAX_RETRIES_PER_CODE} for this code)...`,
-          );
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-          continue; // Next attempt
-        } else {
+        if (count > TEST_MAX_RETRIES_PER_CODE) {
           console.error(
-            `[runTestWithRetries] Test "${name}" failed with code ${errorCode} after ${MAX_RETRIES_PER_CODE} retries for this code.`,
+            `[runTestWithRetries] Test "${name}" failed with code ${errorCode} after ${
+              count - 1
+            } retries. Max per-code retries (${TEST_MAX_RETRIES_PER_CODE}) exceeded.`,
           );
-          throw e; // Give up
+          throw e; // Give up for this specific error code
         }
+      }
+
+      if (attempt < TEST_MAX_RETRIES) {
+        console.log(
+          `[runTestWithRetries] Attempt ${attempt}/${TEST_MAX_RETRIES} for "${name}" failed. Retrying...`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       } else {
         console.error(
-          `[runTestWithRetries] Test "${name}" failed on attempt ${attempt} with a non-retryable error:`,
-          e,
+          `[runTestWithRetries] Test "${name}" failed after ${attempt} attempts.`,
         );
-        throw e;
       }
     }
   }
+  throw lastError;
 }
 
 function createTestRunner(

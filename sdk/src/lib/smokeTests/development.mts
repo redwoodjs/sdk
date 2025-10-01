@@ -1,11 +1,7 @@
-import { setTimeout } from "node:timers/promises";
-import { log, RETRIES } from "./constants.mjs";
-import { $ } from "../$.mjs";
-import { checkUrl, checkServerUp, launchBrowser } from "./browser.mjs";
-import { fail } from "./utils.mjs";
-import { state } from "./state.mjs";
-import { createSmokeTestStylesheets } from "./codeUpdates.mjs";
 import { runDevServer as runE2EDevServer } from "../../lib/e2e/dev.mjs";
+import { checkServerUp, checkUrl, launchBrowser } from "./browser.mjs";
+import { log, RETRIES } from "./constants.mjs";
+import { state } from "./state.mjs";
 
 /**
  * Run the local development server and return the URL

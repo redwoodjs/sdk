@@ -1,16 +1,16 @@
-import { SqlToTsType, ExecutedBuilder, Prettify } from "../utils";
-import { ColumnDefinitionBuilder } from "./columnDefinition";
 import {
+  CheckConstraintNode,
   CompiledQuery,
   CreateTableNode,
   Expression,
   ForeignKeyConstraintBuilder,
   CreateTableBuilder as KyselyCreateTableBuilder,
-  CheckConstraintNode,
-  UniqueConstraintNode,
   PrimaryKeyConstraintNode,
+  UniqueConstraintNode,
 } from "kysely";
 import type { Assert, AssertStillImplements } from "../assert";
+import { ExecutedBuilder, Prettify, SqlToTsType } from "../utils";
+import { ColumnDefinitionBuilder } from "./columnDefinition";
 
 interface CheckConstraintBuilder {
   $call<T>(func: (qb: this) => T): T;

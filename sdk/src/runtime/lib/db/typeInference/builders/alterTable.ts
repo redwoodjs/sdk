@@ -1,25 +1,25 @@
 import {
-  SqlToTsType,
-  ExecutedBuilder,
-  AlterOperation,
-  AddColumnOp,
-  DropColumnOp,
-  RenameColumnOp,
-  AlterColumnOp,
-  ModifyColumnOp,
-} from "../utils";
-import { ColumnDefinitionBuilder } from "./columnDefinition";
-import { AlterColumnBuilderCallback } from "./alterColumn";
-import {
-  AlterTableBuilder as KyselyAlterTableBuilder,
-  ForeignKeyConstraintBuilder,
-  Expression,
   CheckConstraintNode,
-  UniqueConstraintNode,
+  Expression,
+  ForeignKeyConstraintBuilder,
+  AlterTableBuilder as KyselyAlterTableBuilder,
   PrimaryKeyConstraintNode,
   sql,
+  UniqueConstraintNode,
 } from "kysely";
 import type { Assert, AssertStillImplements } from "../assert";
+import {
+  AddColumnOp,
+  AlterColumnOp,
+  AlterOperation,
+  DropColumnOp,
+  ExecutedBuilder,
+  ModifyColumnOp,
+  RenameColumnOp,
+  SqlToTsType,
+} from "../utils";
+import { AlterColumnBuilderCallback } from "./alterColumn";
+import { ColumnDefinitionBuilder } from "./columnDefinition";
 
 type DataTypeExpression = string | typeof sql;
 

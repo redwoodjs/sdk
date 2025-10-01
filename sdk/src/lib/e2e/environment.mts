@@ -1,29 +1,43 @@
-import { join } from "path";
 import debug from "debug";
-import { pathExists, copy, existsSync } from "fs-extra";
-import * as fs from "node:fs";
-import tmp from "tmp-promise";
+import { copy, pathExists } from "fs-extra";
 import ignore from "ignore";
-import { relative, basename, resolve } from "path";
-import {
-  uniqueNamesGenerator,
-  adjectives,
-  animals,
-} from "unique-names-generator";
-import { SmokeTestOptions, TestResources, PackageManager } from "./types.mjs";
-import { createHash } from "crypto";
-import { $ } from "../../lib/$.mjs";
-import { ROOT_DIR } from "../constants.mjs";
+import * as fs from "node:fs";
 import path from "node:path";
 import os from "os";
+import { basename, join, relative, resolve } from "path";
+import tmp from "tmp-promise";
+import { $ } from "../../lib/$.mjs";
+import { ROOT_DIR } from "../constants.mjs";
+import { INSTALL_DEPENDENCIES_RETRIES } from "./constants.mjs";
 import { retry } from "./retry.mjs";
+import { PackageManager } from "./types.mjs";
 
 const log = debug("rwsdk:e2e:environment");
+
+const getTempDir = async (): Promise<tmp.DirectoryResult> => {
+  return tmp.dir({ unsafeCleanup: true });
+};
 
 const createSdkTarball = async (): Promise<{
   tarballPath: string;
   cleanupTarball: () => Promise<void>;
 }> => {
+  const existingTarballPath = process.env.RWSKD_SMOKE_TEST_TARBALL_PATH;
+
+  if (existingTarballPath) {
+    if (!fs.existsSync(existingTarballPath)) {
+      throw new Error(
+        `Provided tarball path does not exist: ${existingTarballPath}`,
+      );
+    }
+    log(`📦 Using existing tarball: ${existingTarballPath}`);
+    return {
+      tarballPath: existingTarballPath,
+      cleanupTarball: async () => {
+        /* no-op */
+      }, // No-op cleanup
+    };
+  }
   const packResult = await $({ cwd: ROOT_DIR, stdio: "pipe" })`npm pack`;
   const tarballName = packResult.stdout?.trim()!;
   const tarballPath = path.join(ROOT_DIR, tarballName);
@@ -55,72 +69,6 @@ const setTarballDependency = async (
 };
 
 /**
- * Sets up the test environment, preparing any resources needed for testing
- */
-export async function setupTestEnvironment(
-  options: SmokeTestOptions = {},
-): Promise<TestResources> {
-  log("Setting up test environment with options: %O", options);
-
-  // Generate a resource unique key for this test run right at the start
-  const uniqueNameSuffix = uniqueNamesGenerator({
-    dictionaries: [adjectives, animals],
-    separator: "-",
-    length: 2,
-    style: "lowerCase",
-  });
-
-  // Create a short unique hash based on the timestamp
-  const hash = createHash("md5")
-    .update(Date.now().toString())
-    .digest("hex")
-    .substring(0, 8);
-
-  // Create a resource unique key even if we're not copying a project
-  const resourceUniqueKey = `${uniqueNameSuffix}-${hash}`;
-
-  const resources: TestResources = {
-    tempDirCleanup: undefined,
-    workerName: undefined,
-    originalCwd: process.cwd(),
-    targetDir: undefined,
-    workerCreatedDuringTest: false,
-    stopDev: undefined,
-    resourceUniqueKey, // Set at initialization
-  };
-
-  log("Current working directory: %s", resources.originalCwd);
-
-  try {
-    // If a project dir is specified, copy it to a temp dir with a unique name
-    if (options.projectDir) {
-      log("Project directory specified: %s", options.projectDir);
-      const { tempDir, targetDir, workerName } = await copyProjectToTempDir(
-        options.projectDir,
-        resourceUniqueKey, // Pass in the existing resourceUniqueKey
-        options.packageManager,
-      );
-
-      // Store cleanup function
-      resources.tempDirCleanup = tempDir.cleanup;
-      resources.workerName = workerName;
-      resources.targetDir = targetDir;
-
-      log("Target directory: %s", targetDir);
-    } else {
-      log("No project directory specified, using current directory");
-      // When no project dir is specified, we'll use the current directory
-      resources.targetDir = resources.originalCwd;
-    }
-
-    return resources;
-  } catch (error) {
-    log("Error during test environment setup: %O", error);
-    throw error;
-  }
-}
-
-/**
  * Copy project to a temporary directory with a unique name
  */
 export async function copyProjectToTempDir(
@@ -128,6 +76,7 @@ export async function copyProjectToTempDir(
   resourceUniqueKey: string,
   packageManager?: PackageManager,
   monorepoRoot?: string,
+  installDependenciesRetries?: number,
 ): Promise<{
   tempDir: tmp.DirectoryResult;
   targetDir: string;
@@ -136,8 +85,7 @@ export async function copyProjectToTempDir(
   const { tarballPath, cleanupTarball } = await createSdkTarball();
   try {
     log("Creating temporary directory for project");
-    // Create a temporary directory
-    const tempDir = await tmp.dir({ unsafeCleanup: true });
+    const tempDir = await getTempDir();
 
     // Determine the source directory to copy from
     const sourceDir = monorepoRoot || projectDir;
@@ -238,7 +186,6 @@ export async function copyProjectToTempDir(
     const npmrcPath = join(targetDir, ".npmrc");
     await fs.promises.writeFile(npmrcPath, "frozen-lockfile=false\n");
 
-    // For yarn, create .yarnrc.yml to disable PnP and allow lockfile changes
     if (packageManager === "yarn") {
       const yarnrcPath = join(targetDir, ".yarnrc.yml");
       const yarnCacheDir = path.join(os.tmpdir(), "yarn-cache");
@@ -253,12 +200,21 @@ export async function copyProjectToTempDir(
       log("Created .yarnrc.yml to allow lockfile changes for yarn");
     }
 
+    if (packageManager === "yarn-classic") {
+      const yarnrcPath = join(targetDir, ".yarnrc");
+      const yarnCacheDir = path.join(os.tmpdir(), "yarn-classic-cache");
+      await fs.promises.mkdir(yarnCacheDir, { recursive: true });
+      const yarnConfig = `cache-folder "${yarnCacheDir}"`;
+      await fs.promises.writeFile(yarnrcPath, yarnConfig);
+      log("Created .yarnrc with cache-folder for yarn-classic");
+    }
+
     await setTarballDependency(targetDir, tarballFilename);
 
     // Install dependencies in the target directory
     const installDir = monorepoRoot ? tempCopyRoot : targetDir;
     await retry(() => installDependencies(installDir, packageManager), {
-      retries: 3,
+      retries: INSTALL_DEPENDENCIES_RETRIES,
       delay: 1000,
     });
 
@@ -303,7 +259,7 @@ async function installDependencies(
         });
       } else if (packageManager === "yarn-classic") {
         log(`Preparing yarn@1.22.19 with corepack...`);
-        await $("corepack", ["prepare", "yarn@1.22.19", "--activate"], {
+        await $("corepack", ["prepare", "yarn@1.x", "--activate"], {
           cwd: targetDir,
           stdio: "pipe",
         });

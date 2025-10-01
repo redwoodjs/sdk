@@ -1,0 +1,46 @@
+name: Code Quality
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "sdk/**"
+      - "starter/**"
+      - "addons/**"
+  pull_request:
+    paths:
+      - "sdk/**"
+      - "starter/**"
+      - "addons/**"
+
+jobs:
+  check-sdk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: |
+          corepack enable
+          pnpm install
+
+      - name: Build SDK
+        run: pnpm build
+        working-directory: sdk
+
+      - name: Run tests
+        run: pnpm test
+        working-directory: sdk
+
+      - name: Typecheck Addons
+        run: pnpm typecheck:addons
+
+      - name: Typecheck Starter
+        run: pnpm typecheck:starter

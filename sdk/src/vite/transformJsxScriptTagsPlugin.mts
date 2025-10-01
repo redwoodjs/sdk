@@ -1,14 +1,14 @@
+import debug from "debug";
 import {
-  Project,
-  Node,
-  SyntaxKind,
-  ImportDeclaration,
   CallExpression,
+  ImportDeclaration,
+  Node,
   ObjectLiteralExpression,
+  Project,
   PropertyAssignment,
+  SyntaxKind,
 } from "ts-morph";
 import { type Plugin } from "vite";
-import debug from "debug";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 
 const log = debug("rwsdk:vite:transform-jsx-script-tags");

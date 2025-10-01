@@ -1,7 +1,6 @@
-import { Plugin } from "vite";
-import path, { resolve } from "node:path";
-import { InlineConfig, ViteBuilder } from "vite";
 import enhancedResolve from "enhanced-resolve";
+import path, { resolve } from "node:path";
+import { InlineConfig, Plugin, ViteBuilder } from "vite";
 
 import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import { buildApp } from "./buildApp.mjs";
@@ -56,7 +55,6 @@ export const configPlugin = ({
           "rwsdk/constants",
           "rwsdk/db",
           "rwsdk/debug",
-          "rwsdk/llms",
           "rwsdk/realtime/durableObject",
           "rwsdk/realtime/worker",
           "rwsdk/router",
@@ -149,6 +147,10 @@ export const configPlugin = ({
               "rwsdk/constants",
               "rwsdk/debug",
               "rwsdk/realtime/client",
+              "rwsdk/router",
+              "rwsdk/worker",
+              "rwsdk/realtime/durableObject",
+              "rwsdk/realtime/worker",
             ],
             esbuildOptions: {
               jsx: "automatic",

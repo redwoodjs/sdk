@@ -1,8 +1,7 @@
+import { cloudflare } from "@cloudflare/vite-plugin";
 import { resolve } from "node:path";
 import { InlineConfig, Plugin } from "vite";
 import { unstable_readConfig } from "wrangler";
-import { cloudflare } from "@cloudflare/vite-plugin";
-import { glob } from "glob";
 
 import { devServerConstantPlugin } from "./devServerConstant.mjs";
 import { hasOwnCloudflareVitePlugin } from "./hasOwnCloudflareVitePlugin.mjs";
@@ -11,28 +10,28 @@ import { hasOwnReactVitePlugin } from "./hasOwnReactVitePlugin.mjs";
 import reactPlugin from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 
-import { transformJsxScriptTagsPlugin } from "./transformJsxScriptTagsPlugin.mjs";
-import { directivesPlugin } from "./directivesPlugin.mjs";
-import { useClientLookupPlugin } from "./useClientLookupPlugin.mjs";
-import { useServerLookupPlugin } from "./useServerLookupPlugin.mjs";
-import { miniflareHMRPlugin } from "./miniflareHMRPlugin.mjs";
-import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
-import { configPlugin } from "./configPlugin.mjs";
-import { $ } from "../lib/$.mjs";
-import { knownDepsResolverPlugin } from "./knownDepsResolverPlugin.mjs";
-import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
 import { pathExists } from "fs-extra";
-import { injectVitePreamble } from "./injectVitePreamblePlugin.mjs";
-import { vitePreamblePlugin } from "./vitePreamblePlugin.mjs";
-import { prismaPlugin } from "./prismaPlugin.mjs";
-import { ssrBridgePlugin } from "./ssrBridgePlugin.mjs";
+import { $ } from "../lib/$.mjs";
+import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
 import { hasPkgScript } from "../lib/hasPkgScript.mjs";
+import { configPlugin } from "./configPlugin.mjs";
 import { devServerTimingPlugin } from "./devServerTimingPlugin.mjs";
-import { manifestPlugin } from "./manifestPlugin.mjs";
-import { linkerPlugin } from "./linkerPlugin.mjs";
 import { directiveModulesDevPlugin } from "./directiveModulesDevPlugin.mjs";
 import { directivesFilteringPlugin } from "./directivesFilteringPlugin.mjs";
+import { directivesPlugin } from "./directivesPlugin.mjs";
+import { injectVitePreamble } from "./injectVitePreamblePlugin.mjs";
+import { knownDepsResolverPlugin } from "./knownDepsResolverPlugin.mjs";
+import { linkerPlugin } from "./linkerPlugin.mjs";
+import { manifestPlugin } from "./manifestPlugin.mjs";
+import { miniflareHMRPlugin } from "./miniflareHMRPlugin.mjs";
+import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
+import { prismaPlugin } from "./prismaPlugin.mjs";
 import { resolveForcedPaths } from "./resolveForcedPaths.mjs";
+import { ssrBridgePlugin } from "./ssrBridgePlugin.mjs";
+import { transformJsxScriptTagsPlugin } from "./transformJsxScriptTagsPlugin.mjs";
+import { useClientLookupPlugin } from "./useClientLookupPlugin.mjs";
+import { useServerLookupPlugin } from "./useServerLookupPlugin.mjs";
+import { vitePreamblePlugin } from "./vitePreamblePlugin.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;

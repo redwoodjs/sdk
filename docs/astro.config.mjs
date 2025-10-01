@@ -43,6 +43,7 @@ export default defineConfig({
           label: "Get Started",
           items: [
             { label: "Quick Start", slug: "getting-started/quick-start" },
+            { label: "Migrating to 1.x", slug: "migrating" },
           ],
         },
         {
@@ -51,8 +52,7 @@ export default defineConfig({
             { slug: "core/overview" },
             { label: "Request Handling & Routing", slug: "core/routing" },
             { slug: "core/react-server-components" },
-            { slug: "core/database" },
-            { slug: "core/database-do" },
+            { label: "Database", slug: "core/database-do" },
             { slug: "core/storage" },
             { slug: "core/realtime" },
             { slug: "core/queues" },
@@ -61,50 +61,6 @@ export default defineConfig({
             { slug: "core/authentication" },
             { slug: "core/security" },
             { slug: "core/hosting" },
-          ],
-        },
-        {
-          label: "Tutorial",
-          items: [
-            {
-              label: "Full Stack Applications",
-              collapsed: true,
-              items: [
-                {
-                  label: "Project Setup",
-                  slug: "tutorial/full-stack-app/setup",
-                },
-                {
-                  label: "Creating the Application",
-                  slug: "tutorial/full-stack-app/create-app",
-                },
-                {
-                  label: "Database Setup",
-                  slug: "tutorial/full-stack-app/database-setup",
-                },
-                {
-                  label: "Authentication",
-                  slug: "tutorial/full-stack-app/auth",
-                },
-                {
-                  label: "Jobs List",
-                  slug: "tutorial/full-stack-app/jobs-list",
-                },
-                {
-                  label: "Jobs Form",
-                  slug: "tutorial/full-stack-app/jobs-form",
-                },
-                { label: "Contacts", slug: "tutorial/full-stack-app/contacts" },
-                {
-                  label: "Jobs Details",
-                  slug: "tutorial/full-stack-app/jobs-details",
-                },
-                {
-                  label: "Deploying",
-                  slug: "tutorial/full-stack-app/deploying",
-                },
-              ],
-            },
           ],
         },
         {

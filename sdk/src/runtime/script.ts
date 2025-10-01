@@ -1,5 +1,5 @@
-import { defineApp } from "./worker";
 import { env } from "cloudflare:workers";
+import { defineApp } from "./worker";
 
 export const defineScript = (
   fn: ({ env }: { env: Env }) => Promise<unknown>,

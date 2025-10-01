@@ -1,12 +1,12 @@
-import { join, basename, dirname, resolve } from "path";
-import { setTimeout } from "node:timers/promises";
 import debug from "debug";
-import { $ } from "../../lib/$.mjs";
 import { execaCommand } from "execa";
 import { existsSync, readFileSync } from "fs";
 import { pathExists } from "fs-extra";
-import { parse as parseJsonc } from "jsonc-parser";
 import * as fs from "fs/promises";
+import { parse as parseJsonc } from "jsonc-parser";
+import { setTimeout } from "node:timers/promises";
+import { basename, dirname, join, resolve } from "path";
+import { $ } from "../../lib/$.mjs";
 import { extractLastJson, parseJson } from "../../lib/jsonUtils.mjs";
 
 const log = debug("rwsdk:e2e:release");

@@ -1,16 +1,17 @@
 // @ts-ignore
-import { OnLoadArgs, OnResolveArgs, Plugin, PluginBuild } from "esbuild";
-import { Environment, ResolvedConfig } from "vite";
-import fsp from "node:fs/promises";
-import { hasDirective } from "./hasDirective.mjs";
-import path from "node:path";
+import { compile } from "@mdx-js/mdx";
 import debug from "debug";
-import { getViteEsbuild } from "./getViteEsbuild.mjs";
-import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
+// @ts-ignore
+import { OnLoadArgs, OnResolveArgs, Plugin, PluginBuild } from "esbuild";
+import fsp from "node:fs/promises";
+import path from "node:path";
+import { Environment, ResolvedConfig } from "vite";
 import { INTERMEDIATES_OUTPUT_DIR } from "../lib/constants.mjs";
+import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { externalModules } from "./constants.mjs";
 import { createViteAwareResolver } from "./createViteAwareResolver.mjs";
-import { compile } from "@mdx-js/mdx";
+import { getViteEsbuild } from "./getViteEsbuild.mjs";
+import { hasDirective } from "./hasDirective.mjs";
 
 const log = debug("rwsdk:vite:run-directives-scan");
 

@@ -1,5 +1,5 @@
-import { createDirectiveLookupPlugin } from "./createDirectiveLookupPlugin.mjs";
 import { Plugin } from "vite";
+import { createDirectiveLookupPlugin } from "./createDirectiveLookupPlugin.mjs";
 
 export const useServerLookupPlugin = async ({
   projectRootDir,

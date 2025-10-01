@@ -97,6 +97,20 @@ The final, successful solution was to inject markers directly into the RSC paylo
 
 This combination is the most robust solution, as it doesn't rely on React's internal implementation details and guarantees a consistent DOM between the server and client.
 
+## 6. Regression in v1.0.0-alpha.17 and Subsequent Fix
+
+Following the release of `v1.0.0-alpha.17`, users reported a regression where the application would remain blank until all `<Suspense>` boundaries were resolved. This was a step backward from `v1.0.0-alpha.16`, where the UI was visible but not interactive.
+
+### Analysis
+
+The regression was traced to the direct usage of the `renderToStream` API. The previous fix, which involved injecting a `<div id="rwsdk-app-end" />` marker into the RSC payload, was implemented within the `defineApp` helper in `worker.tsx`. This meant that projects using the lower-level `renderToStream` API directly did not benefit from the fix, as their rendering path did not include this marker. Without the marker, the stream-stitching logic could not correctly interleave the document and application streams, leading to the observed blocking behavior.
+
+### Solution: Centralizing the Marker Injection
+
+To resolve this, the marker injection logic was moved from `worker.tsx` into `renderToRscStream.tsx`. By placing the logic at this lower level, any part of the system that generates an RSC stream-whether through the high-level `defineApp` or direct calls to `renderToStream`-will now automatically include the necessary marker. This ensures consistent behavior across all rendering paths.
+
+To prevent future regressions, a new end-to-end test was added to the `non-blocking-suspense` playground specifically to validate early hydration when using `renderToStream` with a suspended component.
+
 ## 5. PR Title and Description
 
 **Title:** `fix(streaming): Ensure Early Hydration with Suspense-Aware Stream Interleaving`
@@ -124,4 +138,28 @@ A utility then uses this marker in the HTML stream to intelligently interleave t
 This ensures the client script is sent to the browser as soon as the initial UI is ready, making the page interactive right away, without re-introducing `useId` bugs or relying on brittle implementation details of React's streaming format.
 
 For a detailed explanation, see the updated [Hybrid Rendering documentation](/docs/architecture/hybridRscSsrRendering.md).
+
+## 7. PR Title and Description
+
+**Title:** `fix(streaming): Extend early hydration fix to renderToStream API`
+
+**Description:**
+
+### Context: The Previous Fix in `v1.0.0-alpha.17`
+
+In a recent change ([#786](https://github.com/redwoodjs/sdk/pull/786)), we fixed a regression where client-side components would not become interactive until all server-side `<Suspense>` boundaries had resolved. The solution involved injecting a marker component into the RSC payload, allowing our stream-stitching logic to send the client hydration script before the full application stream had completed.
+
+### Problem: Regression for `renderToStream` Users
+
+That fix was implemented within our high-level `defineApp` helper. This meant that users who bypassed this helper and used the lower-level `renderToStream` API directly did not receive the marker in their RSC payload.
+
+As a result, they experienced a worse regression: the entire UI would remain blank until the suspended data was ready, as the stream-stitching logic had no marker to guide its interleaving process and would wait for the entire app stream to finish.
+
+### Solution: Centralizing the Marker Injection
+
+This change moves the marker-injection logic from the `defineApp` helper in `worker.tsx` down into the `renderToRscStream.tsx` utility.
+
+Because `renderToRscStream` is used by both the high-level helper and direct API calls, this change ensures that the marker is present in the RSC payload regardless of which rendering path is taken. This restores correct, non-blocking hydration behavior for all users.
+
+A new end-to-end test has also been added to specifically cover the `renderToStream` use case with `<Suspense>`, ensuring this behavior is protected against future regressions.
 

@@ -1,9 +1,8 @@
-import { route } from "../../entries/router";
-import { validateUpgradeRequest } from "./validateUpgradeRequest";
-import type { RealtimeDurableObject } from "./durableObject";
-import { DEFAULT_REALTIME_KEY } from "./constants";
-import { requestInfo } from "../../requestInfo/worker";
 import { env } from "cloudflare:workers";
+import { route } from "../../entries/router";
+import { DEFAULT_REALTIME_KEY } from "./constants";
+import type { RealtimeDurableObject } from "./durableObject";
+import { validateUpgradeRequest } from "./validateUpgradeRequest";
 
 export { renderRealtimeClients } from "./renderRealtimeClients";
 

@@ -1,20 +1,20 @@
-import { CreateTableBuilder } from "./createTable";
-import { AlterTableBuilder } from "./alterTable";
-import { DropTableBuilder } from "./dropTable";
-import { CreateViewBuilder } from "./createView";
-import { DropViewBuilder } from "./dropView";
 import {
-  SchemaModule as KyselySchemaBuilder,
   CreateIndexBuilder,
-  DropIndexBuilder,
   CreateSchemaBuilder,
-  DropSchemaBuilder,
   CreateTypeBuilder,
+  DropIndexBuilder,
+  DropSchemaBuilder,
   DropTypeBuilder,
   KyselyPlugin,
+  SchemaModule as KyselySchemaBuilder,
   RefreshMaterializedViewBuilder,
 } from "kysely";
 import type { Assert, AssertStillImplements } from "../assert";
+import { AlterTableBuilder } from "./alterTable";
+import { CreateTableBuilder } from "./createTable";
+import { CreateViewBuilder } from "./createView";
+import { DropTableBuilder } from "./dropTable";
+import { DropViewBuilder } from "./dropView";
 
 export interface SchemaBuilder {
   createTable<TName extends string>(name: TName): CreateTableBuilder<TName, {}>;

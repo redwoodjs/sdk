@@ -1,13 +1,13 @@
-import { join } from "path";
 import * as fs from "fs/promises";
+import { parse as parseJsonc } from "jsonc-parser";
+import MagicString from "magic-string";
+import { join } from "path";
 import { log } from "./constants.mjs";
-import { getSmokeTestFunctionsTemplate } from "./templates/smokeTestFunctions.template";
 import { getSmokeTestTemplate } from "./templates/SmokeTest.template";
 import { getSmokeTestClientTemplate } from "./templates/SmokeTestClient.template";
-import { template as smokeTestUrlStylesCssTemplate } from "./templates/smokeTestUrlStyles.css.template";
 import { template as smokeTestClientStylesCssTemplate } from "./templates/smokeTestClientStyles.module.css.template";
-import MagicString from "magic-string";
-import { parse as parseJsonc } from "jsonc-parser";
+import { getSmokeTestFunctionsTemplate } from "./templates/smokeTestFunctions.template";
+import { template as smokeTestUrlStylesCssTemplate } from "./templates/smokeTestUrlStyles.css.template";
 
 /**
  * Creates the smoke test components in the target project directory

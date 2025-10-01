@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { findImportSpecifiers, findExports } from "./findSpecifiers.mjs";
+import { describe, expect, it } from "vitest";
+import { findExports, findImportSpecifiers } from "./findSpecifiers.mjs";
 
 function dedupeImports(imports: Array<{ s: number; e: number; raw: string }>) {
   const seen = new Set<string>();

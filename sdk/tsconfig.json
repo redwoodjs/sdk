@@ -8,11 +8,12 @@
     "lib": ["DOM", "DOM.Iterable", "ESNext", "ES2022"],
     /* Specify what JSX code is generated. */
     "jsx": "react-jsx",
+    "composite": true,
 
     /* Specify what module code is generated. */
     "module": "es2022",
     /* Specify how TypeScript looks up a file from a given module specifier. */
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     /* Specify type package names to be included without being referenced in a source file. */
     /* Enable importing .json files */
     "resolveJsonModule": true,

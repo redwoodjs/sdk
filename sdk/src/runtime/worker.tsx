@@ -1,21 +1,21 @@
 import React from "react";
-import { renderDocumentHtmlStream } from "./render/renderDocumentHtmlStream";
 import { normalizeActionResult } from "./render/normalizeActionResult";
+import { renderDocumentHtmlStream } from "./render/renderDocumentHtmlStream";
 import { renderToRscStream } from "./render/renderToRscStream";
 
-import { rscActionHandler } from "./register/worker";
 import { injectRSCPayload } from "rsc-html-stream/server";
 import { ErrorResponse } from "./error";
+import { rscActionHandler } from "./register/worker";
+import { DefaultAppContext, RequestInfo } from "./requestInfo/types";
 import {
   getRequestInfo,
   runWithRequestInfo,
   runWithRequestInfoOverrides,
 } from "./requestInfo/worker";
-import { RequestInfo, DefaultAppContext } from "./requestInfo/types";
 
+import { ssrWebpackRequire } from "./imports/worker";
 import { Route, type RwContext, defineRoutes } from "./lib/router";
 import { generateNonce } from "./lib/utils";
-import { ssrWebpackRequire } from "./imports/worker";
 
 export * from "./requestInfo/types";
 
@@ -101,12 +101,6 @@ export const defineApp = <
           } else {
             pageElement = <Page {...requestInfo} />;
           }
-          pageElement = (
-            <>
-              {pageElement}
-              <div id="rwsdk-app-end" />
-            </>
-          );
 
           return pageElement;
         };

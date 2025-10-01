@@ -24,7 +24,7 @@
     },
     {
       "description": "Group all starter application dependencies into a single weekly PR.",
-      "matchFileNames": ["starters/**/package.json"],
+      "matchFileNames": ["starter/package.json"],
       "excludePackageNames": [
         "@cloudflare/vite-plugin",
         "@cloudflare/workers-types",
@@ -40,10 +40,11 @@
       "schedule": ["at 00:00 on sunday"]
     },
     {
-      "description": "Update non-React SDK peer dependencies in starter and playground projects as soon as they are available.",
+      "description": "Update non-React SDK peer dependencies in starter, playground, and addon projects as soon as they are available.",
       "matchFileNames": [
-        "starters/**/package.json",
-        "playground/**/package.json"
+        "starter/package.json",
+        "playground/**/package.json",
+        "addons/**/package.json"
       ],
       "matchPackageNames": [
         "@cloudflare/vite-plugin",
@@ -56,10 +57,11 @@
       "prPriority": 1
     },
     {
-      "description": "Update React peer dependencies in starter and playground projects, tracking the 'next' tag.",
+      "description": "Update React peer dependencies in starter, playground, and addon projects, tracking the 'next' tag.",
       "matchFileNames": [
-        "starters/**/package.json",
-        "playground/**/package.json"
+        "starter/package.json",
+        "playground/**/package.json",
+        "addons/**/package.json"
       ],
       "matchPackageNames": [
         "react",
@@ -87,8 +89,11 @@
       "schedule": ["at 00:00 on sunday"]
     },
     {
-      "description": "Group playground non-peer dependencies with other infrastructure dependencies.",
-      "matchFileNames": ["playground/**/package.json"],
+      "description": "Group playground and addon non-peer dependencies with other infrastructure dependencies.",
+      "matchFileNames": [
+        "playground/**/package.json",
+        "addons/**/package.json"
+      ],
       "excludePackageNames": [
         "@cloudflare/vite-plugin",
         "@cloudflare/workers-types",

@@ -1,4 +1,5 @@
 {
+  "plugins": ["prettier-plugin-organize-imports"],
   "overrides": [
     {
       "files": "*.jsonc",

@@ -1,12 +1,12 @@
-import debug from "../debug";
 import {
+  DatabaseConnection,
+  Driver,
+  QueryResult,
   SqliteAdapter,
   SqliteIntrospector,
   SqliteQueryCompiler,
-  Driver,
-  DatabaseConnection,
-  QueryResult,
 } from "kysely";
+import debug from "../debug";
 
 const log = debug("sdk:db:do-worker-dialect");
 

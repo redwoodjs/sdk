@@ -1,6 +1,6 @@
 import {
-  AlterColumnBuilder as KyselyAlterColumnBuilder,
   AlterColumnNode,
+  AlterColumnBuilder as KyselyAlterColumnBuilder,
 } from "kysely";
 import type { Assert, AssertStillImplements } from "../assert";
 import { Alteration } from "../utils";

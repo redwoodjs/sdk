@@ -1,15 +1,20 @@
-import { Plugin, EnvironmentModuleNode, Connect, HotUpdateOptions } from "vite";
+import debug from "debug";
+import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import colors from "picocolors";
-import { readFile } from "node:fs/promises";
-import { ViteDevServer } from "vite";
-import debug from "debug";
-import { VIRTUAL_SSR_PREFIX } from "./ssrBridgePlugin.mjs";
+import {
+  Connect,
+  EnvironmentModuleNode,
+  HotUpdateOptions,
+  Plugin,
+  ViteDevServer,
+} from "vite";
+import { getShortName } from "../lib/getShortName.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { hasDirective as sourceHasDirective } from "./hasDirective.mjs";
-import { isJsFile } from "./isJsFile.mjs";
 import { invalidateModule } from "./invalidateModule.mjs";
-import { getShortName } from "../lib/getShortName.mjs";
+import { isJsFile } from "./isJsFile.mjs";
+import { VIRTUAL_SSR_PREFIX } from "./ssrBridgePlugin.mjs";
 
 const log = debug("rwsdk:vite:hmr-plugin");
 

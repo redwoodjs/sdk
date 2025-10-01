@@ -1,10 +1,10 @@
-import { ExecutedBuilder } from "../utils";
 import {
-  DropViewBuilder as KyselyDropViewBuilder,
-  DropViewNode,
   CompiledQuery,
+  DropViewNode,
+  DropViewBuilder as KyselyDropViewBuilder,
 } from "kysely";
 import type { Assert, AssertStillImplements } from "../assert";
+import { ExecutedBuilder } from "../utils";
 
 export interface DropViewBuilder<TName extends string> {
   readonly __viewName: TName;

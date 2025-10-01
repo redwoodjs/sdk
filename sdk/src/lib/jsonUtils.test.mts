@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { extractLastJson, extractAllJson, parseJson } from "./jsonUtils.mjs";
+import { describe, expect, it } from "vitest";
+import { extractAllJson, extractLastJson, parseJson } from "./jsonUtils.mjs";
 
 describe("jsonUtils", () => {
   describe("extractLastJson", () => {
