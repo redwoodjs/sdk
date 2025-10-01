@@ -11,6 +11,20 @@ import {
   test,
 } from "vitest";
 import { launchBrowser } from "./browser.mjs";
+import {
+  DEPLOYMENT_CHECK_TIMEOUT,
+  DEPLOYMENT_MIN_TRIES,
+  DEPLOYMENT_TIMEOUT,
+  DEV_SERVER_MIN_TRIES,
+  DEV_SERVER_TIMEOUT,
+  HYDRATION_TIMEOUT,
+  INSTALL_DEPENDENCIES_RETRIES,
+  PUPPETEER_TIMEOUT,
+  SETUP_PLAYGROUND_ENV_TIMEOUT,
+  SETUP_WAIT_TIMEOUT,
+  TEST_MAX_RETRIES,
+  TEST_MAX_RETRIES_PER_CODE,
+} from "./constants.mjs";
 import { runDevServer } from "./dev.mjs";
 import { poll, pollValue } from "./poll.mjs";
 import {
@@ -22,55 +36,20 @@ import {
 import { setupTarballEnvironment } from "./tarball.mjs";
 export type { Browser, Page } from "puppeteer-core";
 
-const SETUP_PLAYGROUND_ENV_TIMEOUT = process.env
-  .RWSDK_SETUP_PLAYGROUND_ENV_TIMEOUT
-  ? parseInt(process.env.RWSDK_SETUP_PLAYGROUND_ENV_TIMEOUT, 10)
-  : 15 * 60 * 1000;
-
-const DEPLOYMENT_TIMEOUT = process.env.RWSDK_DEPLOYMENT_TIMEOUT
-  ? parseInt(process.env.RWSDK_DEPLOYMENT_TIMEOUT, 10)
-  : 5 * 60 * 1000;
-
-const DEPLOYMENT_MIN_TRIES = process.env.RWSDK_DEPLOYMENT_MIN_TRIES
-  ? parseInt(process.env.RWSDK_DEPLOYMENT_MIN_TRIES, 10)
-  : 5;
-
-const DEPLOYMENT_CHECK_TIMEOUT = process.env.RWSDK_DEPLOYMENT_CHECK_TIMEOUT
-  ? parseInt(process.env.RWSDK_DEPLOYMENT_CHECK_TIMEOUT, 10)
-  : 5 * 60 * 1000;
-
-const PUPPETEER_TIMEOUT = process.env.RWSDK_PUPPETEER_TIMEOUT
-  ? parseInt(process.env.RWSDK_PUPPETEER_TIMEOUT, 10)
-  : 60 * 1000 * 2;
-
-const HYDRATION_TIMEOUT = process.env.RWSDK_HYDRATION_TIMEOUT
-  ? parseInt(process.env.RWSDK_HYDRATION_TIMEOUT, 10)
-  : 5000;
-
-const DEV_SERVER_TIMEOUT = process.env.RWSDK_DEV_SERVER_TIMEOUT
-  ? parseInt(process.env.RWSDK_DEV_SERVER_TIMEOUT, 10)
-  : 5 * 60 * 1000;
-
-const DEV_SERVER_MIN_TRIES = process.env.RWSDK_DEV_SERVER_MIN_TRIES
-  ? parseInt(process.env.RWSDK_DEV_SERVER_MIN_TRIES, 10)
-  : 5;
-
-const SETUP_WAIT_TIMEOUT = process.env.RWSDK_SETUP_WAIT_TIMEOUT
-  ? parseInt(process.env.RWSDK_SETUP_WAIT_TIMEOUT, 10)
-  : 10 * 60 * 1000;
-
-const TEST_MAX_RETRIES = process.env.RWSDK_TEST_MAX_RETRIES
-  ? parseInt(process.env.RWSDK_TEST_MAX_RETRIES, 10)
-  : 10;
-
-const TEST_MAX_RETRIES_PER_CODE = process.env.RWSDK_TEST_MAX_RETRIES_PER_CODE
-  ? parseInt(process.env.RWSDK_TEST_MAX_RETRIES_PER_CODE, 10)
-  : 6;
-
-export const INSTALL_DEPENDENCIES_RETRIES = process.env
-  .RWSDK_INSTALL_DEPENDENCIES_RETRIES
-  ? parseInt(process.env.RWSDK_INSTALL_DEPENDENCIES_RETRIES, 10)
-  : 10;
+export {
+  DEPLOYMENT_CHECK_TIMEOUT,
+  DEPLOYMENT_MIN_TRIES,
+  DEPLOYMENT_TIMEOUT,
+  DEV_SERVER_MIN_TRIES,
+  DEV_SERVER_TIMEOUT,
+  HYDRATION_TIMEOUT,
+  INSTALL_DEPENDENCIES_RETRIES,
+  PUPPETEER_TIMEOUT,
+  SETUP_PLAYGROUND_ENV_TIMEOUT,
+  SETUP_WAIT_TIMEOUT,
+  TEST_MAX_RETRIES,
+  TEST_MAX_RETRIES_PER_CODE,
+};
 
 interface PlaygroundEnvironment {
   projectDir: string;
