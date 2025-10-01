@@ -8,8 +8,8 @@ import { basename, join, relative, resolve } from "path";
 import tmp from "tmp-promise";
 import { $ } from "../../lib/$.mjs";
 import { ROOT_DIR } from "../constants.mjs";
+import { INSTALL_DEPENDENCIES_RETRIES } from "./constants.mjs";
 import { retry } from "./retry.mjs";
-import { INSTALL_DEPENDENCIES_RETRIES } from "./testHarness.mjs";
 import { PackageManager } from "./types.mjs";
 
 const log = debug("rwsdk:e2e:environment");
