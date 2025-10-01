@@ -1,0 +1,36 @@
+{
+  // Schema reference for wrangler configuration
+  "$schema": "node_modules/wrangler/config-schema.json",
+
+  // Name of your worker
+  "name": "rws-playground-sentry-type-issue",
+
+  // Entry point for your worker
+  "main": "src/worker.tsx",
+
+  // Compatibility settings
+  "compatibility_date": "2023-12-18",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Assets configuration
+  "assets": {
+    "binding": "ASSETS"
+  },
+
+  // Observability settings
+  "observability": {
+    "enabled": true
+  },
+
+  // Environment variables
+  "vars": {
+    // Add your environment variables here
+  },
+  "kv_namespaces": [
+    {
+      "binding": "MY_KV",
+      "id": "repro-kv",
+      "preview_id": "repro-kv"
+    }
+  ]
+}
