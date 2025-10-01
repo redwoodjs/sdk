@@ -1,7 +1,7 @@
 "use client";
 
-import { navigate } from "@redwoodjs/sdk/client";
-import { RequestInfo } from "rwood/worker";
+import { navigate } from "rwsdk/client";
+import type { RequestInfo } from "rwsdk/worker";
 
 export function Home({ ctx }: RequestInfo) {
   return (
