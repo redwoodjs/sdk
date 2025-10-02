@@ -2,8 +2,8 @@ import { Kysely } from "kysely";
 import { DOWorkerDialect } from "./DOWorkerDialect.js";
 import { type SqliteDurableObject } from "./index.js";
 
-export function createDb<T>(
-  durableObjectBinding: DurableObjectNamespace<SqliteDurableObject>,
+export function createDb<T, DurableObject extends SqliteDurableObject>(
+  durableObjectBinding: DurableObjectNamespace<DurableObject>,
   name = "main",
 ): Kysely<T> {
   return new Kysely<T>({

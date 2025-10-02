@@ -1,11 +1,3 @@
 {
-  "cSpell.words": [
-    "cicd",
-    "redwoodjs"
-  ],
-  "workbench.colorCustomizations": {
-    "activityBar.background": "#152966",
-    "titleBar.activeBackground": "#1D398E",
-    "titleBar.activeForeground": "#FBFCFE"
-  }
+  "cSpell.words": ["cicd", "redwoodjs"]
 }
