@@ -42,3 +42,31 @@ Based on the strong evidence that an import ordering issue was introduced in com
 - **Conclusion:** The breaking change is a result of a complex interaction between multiple files changed in `a5b5ed20`, likely triggered by a subtle dependency update or build tool behavior change.
 
 We are back to the drawing board, using a process of elimination on the `a5b5ed20` commit to find the true root cause.
+
+## SOLVED: Root Cause in `realtime/client.ts`
+
+The process of elimination successfully isolated the breaking change to `sdk/src/runtime/lib/realtime/client.ts`.
+
+In commit `a5b5ed20` (part of PR #795), a code reformatting pass altered the import order in this file. Specifically, `react-server-dom-webpack/client.browser` began to be imported *before* `../../client/client.tsx`.
+
+The main client entrypoint, `client.tsx`, is responsible for running the critical side-effect import of `setWebpackRequire.ts`, which defines the `globalThis.__webpack_require__` global that `react-server-dom-webpack` depends on.
+
+By reordering the imports, the bundler would attempt to evaluate `react-server-dom-webpack` before the side-effect from `setWebpackRequire` had a chance to run, causing the `ReferenceError`.
+
+This explains why the issue was specific to the user's project: it was one of the few using the `initRealtimeClient` function, making it sensitive to this particular import path.
+
+The solution is to add a direct, side-effect-only import of `../../client/setWebpackRequire` to the very top of `sdk/src/runtime/lib/realtime/client.ts`, ensuring the global is defined before any other modules are evaluated.
+
+This change fixes a client-side reference error (`__webpack_require__ is not defined`) that occurred in projects using the `initRealtimeClient` function.
+
+#### Problem
+
+In commit `a5b5ed20` (part of PR #795), a code reformatting pass with Prettier altered the import order in `sdk/src/runtime/lib/realtime/client.ts`. The import for `react-server-dom-webpack/client.browser` was moved to execute before the import for `../../client/client.tsx`.
+
+The `client.tsx` module contains a critical side-effect import for `setWebpackRequire.ts`, which defines the `__webpack_require__` global. The `react-server-dom-webpack` library depends on this global being present at the time its module is first evaluated.
+
+The reordering caused the bundler to evaluate `react-server-dom-webpack` before the side-effect had run, leading to a `ReferenceError`. This issue was specific to the real-time client's entry path and did not affect projects using the standard `initClient`.
+
+#### Solution
+
+This change adds a direct, side-effect-only import for `setWebpackRequire` to the top of `sdk/src/runtime/lib/realtime/client.ts`. This mirrors the pattern used in the main `client.tsx` entrypoint and guarantees that the `__webpack_require__` global is defined before any module that depends on it is evaluated, resolving the error.
