@@ -2,6 +2,7 @@ import {
   poll,
   setupPlaygroundEnvironment,
   testDevAndDeploy,
+  testSDK,
   waitForHydration,
 } from "rwsdk/e2e";
 import { expect } from "vitest";
