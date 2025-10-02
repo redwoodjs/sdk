@@ -1,9 +1,7 @@
 import {
-  $,
-  createDevServer,
   poll,
   setupPlaygroundEnvironment,
-  testSDK,
+  testDevAndDeploy,
   waitForHydration,
 } from "rwsdk/e2e";
 import { expect } from "vitest";
@@ -32,44 +30,35 @@ testSDK("seeds the database and displays initial todos", async ({ page }) => {
     return true;
   });
 });
-//testDevAndDeploy(
-//  "allows adding and completing todos",
-//  async ({ page, url }) => {
-//    await page.goto(url);
-//    await waitForHydration(page);
-//
-//    // Helper functions
-//    const getTextInput = () => page.waitForSelector('input[name="text"]');
-//    const getSubmitButton = () => page.waitForSelector('button[type="submit"]');
-//    const getPageContent = () => page.content();
-//    const getTodoCheckbox = (text: string) =>
-//      page.waitForSelector(
-//        `.todo-item:has-text('${text}') input[type='checkbox']`,
-//      );
-//
-//    // Add a new todo
-//    const todoText = "Run the e2e tests";
-//    await (await getTextInput())?.type(todoText);
-//    await (await getSubmitButton())?.click();
-//
-//    // Wait for the new todo to appear
-//    await poll(async () => {
-//      const content = await getPageContent();
-//      expect(content).toContain(todoText);
-//      return true;
-//    });
-//
-//    // Mark a todo as complete
-//    const todoToComplete = "Write end-to-end tests";
-//    await (await getTodoCheckbox(todoToComplete))?.click();
-//
-//    // Wait for the completed class to be applied
-//    await poll(async () => {
-//      const element = await page.$(
-//        `.todo-item.completed:has-text('${todoToComplete}')`,
-//      );
-//      expect(element).not.toBeNull();
-//      return true;
-//    });
-//  },
-//);
+testDevAndDeploy(
+  "allows adding and completing todos",
+  async ({ page, url }) => {
+    console.log("###### goto", url);
+    await page.goto(url);
+    console.log("###### hydration");
+    await waitForHydration(page);
+
+    // Helper functions
+    const getTextInput = () => page.waitForSelector('input[name="text"]');
+    const getSubmitButton = () => page.waitForSelector('button[type="submit"]');
+    const getPageContent = () => page.content();
+    const getTodoCheckbox = (text: string) =>
+      page.waitForSelector(
+        `.todo-item:has-text('${text}') input[type='checkbox']`,
+      );
+
+    // Add a new todo
+    const todoText = "Run the e2e tests";
+    console.log("###### type", todoText);
+    await (await getTextInput())?.type(todoText);
+    console.log("###### click");
+    await (await getSubmitButton())?.click();
+
+    // Wait for the new todo to appear
+    await poll(async () => {
+      const content = await getPageContent();
+      expect(content).toContain(todoText);
+      return true;
+    });
+  },
+);
