@@ -22,3 +22,7 @@ A more direct solution is to avoid the dynamic import and virtual module entirel
 4.  **Update `sdk/src/vite/redwoodPlugin.mts`**: Remove the `manifestPlugin` from the plugin array.
 
 This approach is simpler, more direct, and avoids any complex interactions with Rollup's code-splitting logic.
+
+### Attempt 3: Clearing Stale Assets
+
+With the virtual manifest asset issue resolved, the final step is to ensure a clean build directory. I've added a command to the beginning of the `buildApp` function in `sdk/src/vite/buildApp.mts` to recursively delete the entire `dist` directory before any build steps run. This guarantees that no stale assets from previous builds are carried over.
