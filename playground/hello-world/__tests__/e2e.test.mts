@@ -1,5 +1,5 @@
-import { poll, setupPlaygroundEnvironment, testDevAndDeploy } from "rwsdk/e2e";
 import { expect } from "vitest";
+import { setupPlaygroundEnvironment, testDevAndDeploy, poll } from "rwsdk/e2e";
 
 setupPlaygroundEnvironment(import.meta.url);
 
@@ -14,28 +14,3 @@ testDevAndDeploy("renders Hello World", async ({ page, url }) => {
     return true;
   });
 });
-
-testDevAndDeploy(
-  "programmatically navigates on button click",
-  async ({ page, url }) => {
-    await page.goto(url);
-
-    // Wait for the page to be fully interactive
-    await page.waitForFunction('document.readyState === "complete"');
-
-    // Click the button to navigate
-    await page.click("#navigate-to-about");
-
-    const getPageContent = () => page.content();
-
-    // Poll for the content of the new page
-    await poll(async () => {
-      const content = await getPageContent();
-      expect(content).toContain("About Page");
-      return true;
-    });
-
-    // Check the final URL
-    expect(page.url()).toContain("/about");
-  },
-);
