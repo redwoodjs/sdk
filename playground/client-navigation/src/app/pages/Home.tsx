@@ -28,6 +28,10 @@ export function Home({ ctx }: RequestInfo) {
       >
         Go to About Page with Smooth Scroll
       </button>
+
+      <a href="/about" id="about-link">
+        Go to About Page with Link
+      </a>
     </div>
   );
 }
