@@ -17,6 +17,9 @@ export function Terminal() {
       termRef.current = term;
       term.open(containerRef.current!);
       term.write("$ ");
+      term.onData((data) => {
+        term.write(data);
+      });
     }
     setup();
     return () => {
