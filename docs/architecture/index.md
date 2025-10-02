@@ -46,3 +46,9 @@ This collection of documents provides a high-level overview of the core architec
 
 - [**Client-Side Navigation**](./clientSideNavigation.md)
   An explanation of how client-side navigation works in RedwoodSDK, providing a Single Page App (SPA) like experience.
+
+- [**Executing Worker Scripts**](./workerScripts.md)
+  This document details the mechanism for running one-off scripts, such as database seeds, within the context of the application's worker environment.
+
+- [**Smoke Testing Strategy for Package Manager Compatibility**](./smokeTestingStrategy.md)
+  This document details the strategy for our smoke tests, which are designed to ensure the SDK functions correctly across various package managers and environments. It explains why we use a tarball-based testing approach instead of more common monorepo linking techniques.
