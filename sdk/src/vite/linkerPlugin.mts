@@ -23,7 +23,7 @@ export function linkWorkerBundle({
   log("Injecting manifest into worker bundle");
   newCode = newCode.replace(
     '"__RWSDK_MANIFEST_PLACEHOLDER__"',
-    `JSON.parse(${JSON.stringify(manifestContent)})`,
+    `${JSON.stringify(manifestContent)}`,
   );
 
   // 2. Replace asset placeholders with their final hashed paths.
