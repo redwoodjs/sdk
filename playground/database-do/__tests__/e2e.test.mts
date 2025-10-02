@@ -10,7 +10,7 @@ import { expect } from "vitest";
 setupPlaygroundEnvironment(import.meta.url);
 
 testDevAndDeploy(
-  "handles todo list interactions correctly",
+  "seeds the database and displays initial todos",
   async ({ page, url, projectDir }) => {
     // Seed the database before running the test
     await $({ cwd: projectDir })`pnpm seed`;
@@ -18,34 +18,56 @@ testDevAndDeploy(
     await page.goto(url);
     await waitForHydration(page);
 
+    const getPageContent = () => page.content();
+
     // Check for seeded data
-    await expect(
-      page.waitForSelector("text/Create a new playground example", {
-        timeout: 5000,
-      }),
-    ).resolves.not.toBeNull();
+    await poll(async () => {
+      const content = await getPageContent();
+      expect(content).toContain("Create a new playground example");
+      expect(content).toContain("Write end-to-end tests");
+      return true;
+    });
+  },
+);
+
+testDevAndDeploy(
+  "allows adding and completing todos",
+  async ({ page, url, projectDir }) => {
+    // Seed the database to ensure a clean state
+    await $({ cwd: projectDir })`pnpm seed`;
+
+    await page.goto(url);
+    await waitForHydration(page);
+
+    // Helper functions
+    const getTextInput = () => page.waitForSelector('input[name="text"]');
+    const getSubmitButton = () => page.waitForSelector('button[type="submit"]');
+    const getPageContent = () => page.content();
+    const getTodoCheckbox = (text: string) =>
+      page.waitForSelector(
+        `.todo-item:has-text('${text}') input[type='checkbox']`,
+      );
 
     // Add a new todo
     const todoText = "Run the e2e tests";
-    await page.type('input[name="text"]', todoText);
-    await page.click('button[type="submit"]');
+    await (await getTextInput())?.type(todoText);
+    await (await getSubmitButton())?.click();
 
     // Wait for the new todo to appear
     await poll(async () => {
-      const content = await page.content();
+      const content = await getPageContent();
       expect(content).toContain(todoText);
       return true;
     });
 
     // Mark a todo as complete
-    const checkboxSelector =
-      ".todo-item:has-text('Write end-to-end tests') input[type='checkbox']";
-    await page.click(checkboxSelector);
+    const todoToComplete = "Write end-to-end tests";
+    await (await getTodoCheckbox(todoToComplete))?.click();
 
     // Wait for the completed class to be applied
     await poll(async () => {
       const element = await page.$(
-        ".todo-item.completed:has-text('Write end-to-end tests')",
+        `.todo-item.completed:has-text('${todoToComplete}')`,
       );
       expect(element).not.toBeNull();
       return true;
