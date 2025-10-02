@@ -1,7 +1,8 @@
 // context(justinvdm, 14 Aug 2025): `react-server-dom-webpack` uses this global
 // to load modules, so we need to define it here before importing
 // "react-server-dom-webpack."
-import "./setWebpackRequire";
+// prettier-ignore
+import "../../client/setWebpackRequire";
 
 import { createFromReadableStream } from "react-server-dom-webpack/client.browser";
 import { initClient } from "../../client/client";

@@ -4,6 +4,7 @@
 // context(justinvdm, 14 Aug 2025): `react-server-dom-webpack` uses this global
 // to load modules, so we need to define it here before importing
 // "react-server-dom-webpack."
+// prettier-ignore
 import "./setWebpackRequire";
 
 import React from "react";
