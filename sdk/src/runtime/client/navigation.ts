@@ -1,5 +1,3 @@
-
-
 export interface ClientNavigationOptions {
   onNavigate?: () => void;
   scrollToTop?: boolean;
@@ -48,7 +46,7 @@ export function validateClickEvent(event: MouseEvent, target: HTMLElement) {
   return true;
 }
 
-let IS_CLIENT_NAVIGATION = false
+let IS_CLIENT_NAVIGATION = false;
 
 export interface NavigateOptions {
   history?: "push" | "replace";
@@ -77,7 +75,8 @@ export async function navigate(
     window.history.replaceState({ path: href }, "", url);
   }
 
-  await globalThis.__rsc_callServer as () => Promise<void>;
+  // @ts-expect-error
+  await globalThis.__rsc_callServer();
 
   const scrollToTop = options.info?.scrollToTop ?? true;
   const scrollBehavior = options.info?.scrollBehavior ?? "instant";

@@ -34,9 +34,29 @@ testDevAndDeploy(
     await poll(async () => {
       const content = await getPageContent();
       expect(content).toContain("About Page");
+      expect(content).not.toContain("Hello World");
       return true;
     });
 
     expect(page.url()).toContain("/about");
   },
 );
+
+testDevAndDeploy("navigates on link click", async ({ page, url }) => {
+  await page.goto(url);
+
+  await waitForHydration(page);
+
+  await page.click("#about-link");
+
+  const getPageContent = () => page.content();
+
+  await poll(async () => {
+    const content = await getPageContent();
+    expect(content).toContain("About Page");
+    expect(content).not.toContain("Hello World");
+    return true;
+  });
+
+  expect(page.url()).toContain("/about");
+});
