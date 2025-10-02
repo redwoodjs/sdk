@@ -1,15 +1,22 @@
-import { createFromReadableStream } from "react-server-dom-webpack/client.browser";
+// context(justinvdm, 14 Aug 2025): `react-server-dom-webpack` uses this globa ___webpack_require__ global,
+// so we need to import our client entry point (which sets it), before importing
+// prettier-ignore
 import { initClient } from "../../client/client";
-import { type ActionResponse, type Transport } from "../../client/types";
-import {
-  ActionChunkMessage,
-  ActionErrorMessage,
-  ActionStartMessage,
-  packMessage,
-  RscStartMessage,
-  unpackMessage,
-} from "./protocol";
+// prettier-ignore
+import { type ActionResponse,type Transport } from "../../client/types";
+// prettier-ignore
+import { createFromReadableStream } from "react-server-dom-webpack/client.browser";
+// prettier-ignore
 import { MESSAGE_TYPE } from "./shared";
+// prettier-ignore
+import {
+ActionChunkMessage,
+ActionErrorMessage,
+ActionStartMessage,
+packMessage,
+RscStartMessage,
+unpackMessage,
+} from "./protocol";
 const DEFAULT_KEY = "default";
 
 export const initRealtimeClient = ({
