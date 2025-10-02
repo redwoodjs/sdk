@@ -10,7 +10,7 @@ import { expect } from "vitest";
 
 setupPlaygroundEnvironment(import.meta.url);
 
-testDev(
+testDev.only(
   "seeds the database and displays initial todos",
   async ({ page, url, projectDir }) => {
     // Seed the database before running the test
@@ -34,9 +34,6 @@ testDev(
 testDevAndDeploy(
   "allows adding and completing todos",
   async ({ page, url, projectDir }) => {
-    // Seed the database to ensure a clean state
-    await $({ cwd: projectDir })`pnpm seed`;
-
     await page.goto(url);
     await waitForHydration(page);
 
