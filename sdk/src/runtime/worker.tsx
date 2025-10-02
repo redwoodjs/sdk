@@ -59,7 +59,7 @@ export const defineApp = <
         try {
           const scriptModule = await import(/* @vite-ignore */ scriptPath);
           if (scriptModule.default) {
-            await scriptModule.default();
+            await scriptModule.default(request, env, cf);
           }
           return new Response("Script executed successfully");
         } catch (e: any) {

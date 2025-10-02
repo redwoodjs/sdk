@@ -57,6 +57,7 @@ const main = async () => {
     debug("Fetching %s", url);
 
     const response = await fetch(url);
+    debug("Response from worker: %s", response);
 
     if (!response.ok) {
       const errorText = await response.text();

@@ -1,7 +1,7 @@
 import { db } from "@/db/db";
-import { defineScript } from "rwsdk/worker";
 
-export default defineScript(async () => {
+export default async () => {
+  console.log("… Seeding todos");
   await db.deleteFrom("todos").execute();
 
   await db
@@ -28,5 +28,5 @@ export default defineScript(async () => {
     ])
     .execute();
 
-  console.log("🌱 Finished seeding todos");
-});
+  console.log("✔ Finished seeding todos 🌱");
+};
