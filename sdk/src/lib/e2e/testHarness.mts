@@ -182,7 +182,7 @@ export interface SetupPlaygroundEnvironmentOptions {
  * This ensures that tests run in a clean, isolated environment.
  */
 export function setupPlaygroundEnvironment(
-  options: SetupPlaygroundEnvironmentOptions,
+  options: SetupPlaygroundEnvironmentOptions | string,
 ) {
   const {
     sourceProjectDir,
