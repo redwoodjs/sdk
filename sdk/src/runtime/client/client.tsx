@@ -18,6 +18,7 @@ import { rscStream } from "rsc-html-stream/client";
 
 export { default as React } from "react";
 export { ClientOnly } from "./ClientOnly.js";
+export { initClientNavigation, navigate } from "./navigation.js";
 
 import type {
   ActionResponse,
