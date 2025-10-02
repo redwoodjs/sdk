@@ -29,5 +29,8 @@ This collection of documents provides a high-level overview of the core architec
 - [**Unified Script Discovery**](./unifiedScriptDiscovery.md)
   Discover the centralized mechanism for identifying every client-side JavaScript module required for a given page. This document explains how scripts are discovered from both static `Document` entry points and dynamically rendered components, providing a single source of truth for asset handling.
 
+- [**Executing Worker Scripts**](./workerScripts.md)
+  This document details the mechanism for running one-off scripts, such as database seeds, within the context of the application's worker environment.
+
 - [**Smoke Testing Strategy for Package Manager Compatibility**](./smokeTestingStrategy.md)
   This document details the strategy for our smoke tests, which are designed to ensure the SDK functions correctly across various package managers and environments. It explains why we use a tarball-based testing approach instead of more common monorepo linking techniques.
