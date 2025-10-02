@@ -1,3 +1,6 @@
+/* xterm base styles */
+@import "@xterm/xterm/css/xterm.css";
+
 body {
   min-height: 100vh;
   padding: 0;
@@ -8,6 +11,3 @@ body {
   width: 100vw;
   height: 100vh;
 }
-
-/* xterm base styles */
-@import "@xterm/xterm/css/xterm.css";
