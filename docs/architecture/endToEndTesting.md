@@ -1,6 +1,8 @@
 # E2E Testing Infrastructure
 
-This document outlines the architecture of the end-to-end (E2E) testing infrastructure for RedwoodSDK. The goal of this infrastructure is to provide a fast, reliable, and easy-to-use framework for testing playground applications in both a local development environment and a production-like Cloudflare deployment.
+This document outlines the architecture of the end-to-end (E2E) testing infrastructure for RedwoodSDK. The goal is this infrastructure is to provide a fast, reliable, and easy-to-use framework for testing playground applications in both a local development environment and a production-like Cloudflare deployment.
+
+The architecture uses a hybrid approach to balance performance with test isolation, providing two distinct types of test runners to suit different needs.
 
 ## The Challenges
 
@@ -25,9 +27,9 @@ This sequential, per-test setup and teardown process, especially the deployment 
 
 As the test suite grew, running tests concurrently became a necessity. However, this introduced reliability problems. Multiple test suites, running in parallel, would often try to launch their own browser instances at the same time. This created a race condition for the browser's executable file, resulting in `ETXTBSY` errors and flaky test runs.
 
-## The Solution: A Concurrent, Suite-Level Architecture
+## The Solution: A Hybrid, Concurrent Architecture
 
-The architecture shifts from per-test setup to a concurrent, suite-level approach. The expensive setup operations—starting the dev server, deploying to Cloudflare, and launching the browser—are now performed only once per test file, and in parallel.
+The architecture was redesigned to use a hybrid approach that provides both a high-performance, suite-level testing environment for common scenarios and a fully isolated, per-test environment for more complex tests.
 
 This architecture is composed of three key components.
 
@@ -37,7 +39,7 @@ The core of the architecture is the `setupPlaygroundEnvironment` function. When 
 
 - **Isolated Environments**: It creates two separate, isolated project directories—one for the dev server and one for the deployment—to prevent potential conflicts.
 - **Concurrent Setup Initiation**: It initiates the dev server startup, the Cloudflare deployment, and the browser launch simultaneously. It does not wait for them to complete.
-- **Promise-Based Global State**: Instead of storing the resolved instances, it stores promises for the server, deployment, and browser instances in global, suite-level variables.
+- **Promise-Based Global State**: Instead of storing the resolved instances, it stores promises for the server, deployment, and browser instances in global, suite-level variables. These shared instances are used by the high-level test runners.
 
 This approach allows the setup processes to run in the background without blocking the test runner.
 
@@ -49,14 +51,26 @@ To solve the resource contention issue and further improve performance, the test
 - **Per-Test Connection**: The test harness in each suite reads this endpoint and uses `puppeteer.connect()` to connect to the existing browser instance.
 - **Test Isolation**: Instead of creating a browser, each test now creates a new, isolated browser `page`. This is faster and avoids the race condition, while still ensuring that tests do not share state.
 
-### 3. An Abstracted, Concurrent Test Runner
+### 3. A Flexible, Two-Tiered Test Runner System
 
-To provide a clean and simple API for writing tests, a generic `createTestRunner` function was introduced. This function abstracts away the complexity of the underlying concurrent architecture.
+To provide a clean API that supports both high-performance and high-isolation testing, the harness offers two types of test runners.
 
-- **Pre-Test Resolution**: The test runner uses `describe.concurrent` with a `beforeEach` hook. This hook is responsible for awaiting the specific promise (or promises) required for the test (e.g., it awaits the dev server and browser promises before a `dev` test). This ensures that a test only runs once its required resources are ready, allowing dev and deploy tests to start independently.
-- **Unified Logic**: It contains the core logic for running a test against a specific environment (`dev` or `deploy`), including handling skipped tests, managing retries, and creating and cleaning up browser pages.
-- **Automatic Retries**: To handle transient failures, the runner automatically retries failed tests. This is governed by a general attempt limit and a stricter, per-error-code limit to prevent endless retries on persistent issues. For nightly builds, these limits are increased to more aggressively detect and report flaky tests.
-- **Simple API**: It is used to generate the `testDev`, `testDeploy`, and `testDevAndDeploy` functions, which provide a simple, declarative way to write tests that run concurrently against one or both environments.
+#### a. High-Level Runners (`testDev`, `testDeploy`, `testDevAndDeploy`)
+
+These runners are designed for speed and are the standard choice for most E2E tests.
+
+- **Shared Resources**: They use the shared, globally-provisioned dev server and deployment instances created by `setupPlaygroundEnvironment`.
+- **Pre-Test Resolution**: The test runner uses `describe.concurrent` with a `beforeEach` hook. This hook is responsible for awaiting the specific promise (e.g., it awaits the dev server promise before a `dev` test). This ensures that a test only runs once its required resources are ready.
+- **Automatic Retries**: To handle transient failures, the runner automatically retries failed tests.
+- **Simple API**: They provide a simple, declarative way to write tests that run concurrently against one or both environments without needing to manage the server/deployment lifecycle manually.
+
+#### b. Low-Level Runner (`testSDK`)
+
+This runner provides maximum flexibility and is intended for tests that require a fully isolated environment or need to perform setup actions *before* the server starts.
+
+- **No Shared Resources**: `testSDK` does *not* use the globally-provisioned instances.
+- **On-Demand Provisioning**: It provides `createDevServer` and `createDeployment` functions directly to the test logic. This allows a test to start, interact with, and stop its own isolated server or deployment instance as part of the test itself.
+- **Full Control**: This is ideal for complex scenarios, such as testing database migrations or other setup scripts that need to run in a pristine environment before the application is served.
 
 ### Q: Why not use a more integrated E2E testing framework like Playwright?
 
@@ -83,4 +97,4 @@ To run the playground E2E tests:
 ```
 pnpm test:e2e
 ```
-This architecture provides a fast, reliable, and scalable foundation for the E2E test suite, allowing for the comprehensive testing of RedwoodSDK's features without the performance and reliability issues of the previous system.
+This hybrid architecture provides a fast, reliable, and scalable foundation for the E2E test suite, allowing for both high-performance and high-isolation testing of RedwoodSDK's features.

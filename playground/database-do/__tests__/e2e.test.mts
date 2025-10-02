@@ -1,4 +1,6 @@
 import {
+  $,
+  createDevServer,
   poll,
   setupPlaygroundEnvironment,
   testDevAndDeploy,
@@ -16,9 +18,7 @@ testSDK("seeds the database and displays initial todos", async ({ page }) => {
 
   const devServer = await devServerControl.start();
 
-  console.log("###### goto", devServer.url);
   await page.goto(devServer.url);
-  console.log("###### hydration");
   await waitForHydration(page);
 
   const getPageContent = () => page.content();

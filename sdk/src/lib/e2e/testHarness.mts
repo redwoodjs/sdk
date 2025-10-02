@@ -77,6 +77,11 @@ const SKIP_DEPLOYMENT_TESTS = process.env.RWSDK_SKIP_DEPLOY === "1";
 // Global test environment state
 let globalDevPlaygroundEnv: PlaygroundEnvironment | null = null;
 let globalDeployPlaygroundEnv: PlaygroundEnvironment | null = null;
+let globalDevInstancePromise: Promise<DevServerInstance | null> | null = null;
+let globalDeploymentInstancePromise: Promise<DeploymentInstance | null> | null =
+  null;
+let globalDevInstance: DevServerInstance | null = null;
+let globalDeploymentInstance: DeploymentInstance | null = null;
 const devInstances: DevServerInstance[] = [];
 const deploymentInstances: DeploymentInstance[] = [];
 
@@ -177,8 +182,8 @@ export interface SetupPlaygroundEnvironmentOptions {
  * This ensures that tests run in a clean, isolated environment.
  */
 export function setupPlaygroundEnvironment(
-  options: string | SetupPlaygroundEnvironmentOptions = {},
-): void {
+  options: SetupPlaygroundEnvironmentOptions,
+) {
   const {
     sourceProjectDir,
     monorepoRoot,
@@ -213,7 +218,14 @@ export function setupPlaygroundEnvironment(
         projectDir: devEnv.targetDir,
         cleanup: devEnv.cleanup,
       };
-      // The dev instance is now managed by the testSDK runner
+      const devControl = createDevServer();
+      globalDevInstancePromise = devControl.start().then((instance) => {
+        globalDevInstance = instance;
+        return instance;
+      });
+      // Prevent unhandled promise rejections. The error will be handled inside
+      // the test's beforeEach hook where this promise is awaited.
+      globalDevInstancePromise.catch(() => {});
     } else {
       globalDevPlaygroundEnv = null;
     }
@@ -229,7 +241,15 @@ export function setupPlaygroundEnvironment(
         projectDir: deployEnv.targetDir,
         cleanup: deployEnv.cleanup,
       };
-      // The deployment instance is now managed by the testSDK runner
+      const deployControl = createDeployment();
+      globalDeploymentInstancePromise = deployControl
+        .start()
+        .then((instance) => {
+          globalDeploymentInstance = instance;
+          return instance;
+        });
+      // Prevent unhandled promise rejections
+      globalDeploymentInstancePromise.catch(() => {});
     } else {
       globalDeployPlaygroundEnv = null;
     }
@@ -462,7 +482,10 @@ type SDKRunner = (
   }) => Promise<void>,
 ) => void;
 
-function createTestRunner(runner: SDKRunner, envType: "dev" | "deploy") {
+function createTestRunner(
+  testFn: (typeof test | typeof test.only)["concurrent"],
+  envType: "dev" | "deploy",
+) {
   return (
     name: string,
     testLogic: (context: {
@@ -478,20 +501,92 @@ function createTestRunner(runner: SDKRunner, envType: "dev" | "deploy") {
       (envType === "dev" && SKIP_DEV_SERVER_TESTS) ||
       (envType === "deploy" && SKIP_DEPLOYMENT_TESTS)
     ) {
-      test.skip(name, () => {});
+      test.skip(`${name} (${envType})`, () => {});
       return;
     }
 
-    runner(name, async (context) => {
-      const control =
-        envType === "dev" ? createDevServer() : createDeployment();
-      const instance = await control.start();
+    describe.concurrent(name, () => {
+      let page: Page;
+      let instance: DevServerInstance | DeploymentInstance | null;
+      let browser: Browser;
 
-      await testLogic({
-        ...context,
-        [envType === "dev" ? "devServer" : "deployment"]: instance,
-        url: instance.url,
-        projectDir: instance.projectDir,
+      beforeAll(async () => {
+        const tempDir = path.join(os.tmpdir(), "rwsdk-e2e-tests");
+        const wsEndpointFile = path.join(tempDir, "wsEndpoint");
+
+        try {
+          const wsEndpoint = await fs.readFile(wsEndpointFile, "utf-8");
+          browser = await puppeteer.connect({ browserWSEndpoint: wsEndpoint });
+        } catch (error) {
+          console.warn(
+            "Failed to connect to existing browser instance. " +
+              "This might happen if you are running a single test file. " +
+              "Launching a new browser instance instead.",
+          );
+          browser = await launchBrowser();
+        }
+      }, SETUP_WAIT_TIMEOUT);
+
+      afterAll(async () => {
+        if (browser) {
+          await browser.disconnect();
+        }
+      });
+
+      beforeEach(async () => {
+        const instancePromise =
+          envType === "dev"
+            ? globalDevInstancePromise
+            : globalDeploymentInstancePromise;
+
+        if (!instancePromise) {
+          throw new Error(
+            "Test environment promises not initialized. Call setupPlaygroundEnvironment() in your test file.",
+          );
+        }
+
+        [instance] = await Promise.all([instancePromise]);
+
+        if (!instance) {
+          throw new Error(
+            `No ${envType} instance found. Make sure to enable it in setupPlaygroundEnvironment.`,
+          );
+        }
+
+        page = await browser.newPage();
+        page.setDefaultTimeout(PUPPETEER_TIMEOUT);
+      }, SETUP_WAIT_TIMEOUT);
+
+      afterEach(async () => {
+        if (page) {
+          try {
+            await page.close();
+          } catch (error) {
+            // Suppress errors during page close, as the browser might already be disconnecting
+            // due to the test suite finishing.
+            console.warn(
+              `Suppressing error during page.close() in test "${name}":`,
+              error,
+            );
+          }
+        }
+      });
+
+      testFn(">", async () => {
+        if (!instance || !browser) {
+          throw new Error("Test environment not ready.");
+        }
+
+        await runTestWithRetries(name, async () => {
+          await testLogic({
+            [envType === "dev" ? "devServer" : "deployment"]: instance,
+            browser: browser as Browser,
+            page: page as Page,
+            url: (instance as DevServerInstance | DeploymentInstance).url,
+            projectDir: (instance as DevServerInstance | DeploymentInstance)
+              .projectDir,
+          });
+        });
       });
     });
   };
@@ -606,12 +701,12 @@ export const testSDK = createSDKTestRunner();
 export function testDev(
   ...args: Parameters<ReturnType<typeof createTestRunner>>
 ) {
-  return createTestRunner(testSDK, "dev")(...args);
+  return createTestRunner(test.concurrent, "dev")(...args);
 }
 testDev.skip = (name: string, testFn?: any) => {
   test.skip(name, testFn || (() => {}));
 };
-testDev.only = createTestRunner(testSDK.only, "dev");
+testDev.only = createTestRunner(test.only, "dev");
 
 /**
  * High-level test wrapper for deployment tests.
@@ -620,12 +715,12 @@ testDev.only = createTestRunner(testSDK.only, "dev");
 export function testDeploy(
   ...args: Parameters<ReturnType<typeof createTestRunner>>
 ) {
-  return createTestRunner(testSDK, "deploy")(...args);
+  return createTestRunner(test.concurrent, "deploy")(...args);
 }
 testDeploy.skip = (name: string, testFn?: any) => {
   test.skip(name, testFn || (() => {}));
 };
-testDeploy.only = createTestRunner(testSDK.only, "deploy");
+testDeploy.only = createTestRunner(test.only, "deploy");
 
 /**
  * Unified test function that runs the same test against both dev server and deployment.
