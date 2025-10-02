@@ -1,0 +1,13 @@
+body {
+  min-height: 100vh;
+  padding: 0;
+}
+
+#root,
+#hydrate-root {
+  width: 100vw;
+  height: 100vh;
+}
+
+/* xterm base styles */
+@import "@xterm/xterm/css/xterm.css";

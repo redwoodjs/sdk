@@ -858,6 +858,52 @@ importers:
         specifier: 4.38.0
         version: 4.38.0(@cloudflare/workers-types@4.20250921.0)
 
+  playground/xterm:
+    dependencies:
+      '@xterm/xterm':
+        specifier: ^5.5.0
+        version: 5.5.0
+      react:
+        specifier: 19.2.0-canary-d415fd3e-20250919
+        version: 19.2.0-canary-d415fd3e-20250919
+      react-dom:
+        specifier: 19.2.0-canary-d415fd3e-20250919
+        version: 19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919)
+      react-server-dom-webpack:
+        specifier: 19.2.0-canary-d415fd3e-20250919
+        version: 19.2.0-canary-d415fd3e-20250919(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1)
+      rwsdk:
+        specifier: workspace:*
+        version: link:../../sdk
+    devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: 1.13.3
+        version: 1.13.3(vite@7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.7.0))(workerd@1.20250924.0)(wrangler@4.38.0(@cloudflare/workers-types@4.20250921.0))
+      '@cloudflare/workers-types':
+        specifier: 4.20250921.0
+        version: 4.20250921.0
+      '@types/node':
+        specifier: 22.14.0
+        version: 22.14.0
+      '@types/react':
+        specifier: 19.1.2
+        version: 19.1.2
+      '@types/react-dom':
+        specifier: 19.1.2
+        version: 19.1.2(@types/react@19.1.2)
+      typescript:
+        specifier: 5.8.3
+        version: 5.8.3
+      vite:
+        specifier: 7.1.6
+        version: 7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.7.0)
+      vitest:
+        specifier: ^3.1.1
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(msw@2.11.3(@types/node@22.14.0)(typescript@5.8.3))(terser@5.44.0)(tsx@4.20.6)(yaml@2.7.0)
+      wrangler:
+        specifier: 4.38.0
+        version: 4.38.0(@cloudflare/workers-types@4.20250921.0)
+
   sdk:
     dependencies:
       '@ast-grep/napi':
@@ -4084,6 +4130,9 @@ packages:
 
   '@webassemblyjs/wast-printer@1.14.1':
     resolution: {integrity: sha512-kPSSXE6De1XOR820C90RIo2ogvZG+c3KiHzqUoO/F34Y2shGzesfqv7o57xrxovZJH/MetF5UjroJ/R/3isoiw==}
+
+  '@xterm/xterm@5.5.0':
+    resolution: {integrity: sha512-hqJHYaQb5OptNunnyAnkHyM8aCjZ1MEIDTQu1iIbbTD/xops91NB5yq1ZK/dC2JDbVWtF23zUtl9JE2NqwT87A==}
 
   '@xtuc/ieee754@1.2.0':
     resolution: {integrity: sha512-DX8nKgqcGwsc0eJSqYt5lwP4DH5FlHnmuWWBRy7X0NcaGR0ZtuyeESgMwTYVEtxmsNGY+qit4QYT/MIYTOTPeA==}
@@ -9302,7 +9351,7 @@ snapshots:
   '@astrojs/telemetry@3.3.0':
     dependencies:
       ci-info: 4.3.0
-      debug: 4.4.1
+      debug: 4.4.3
       dlv: 1.1.3
       dset: 3.1.4
       is-docker: 3.0.0
@@ -9373,7 +9422,7 @@ snapshots:
       '@babel/types': 7.28.4
       '@jridgewell/remapping': 2.3.5
       convert-source-map: 2.0.0
-      debug: 4.4.1
+      debug: 4.4.3
       gensync: 1.0.0-beta.2
       json5: 2.2.3
       semver: 6.3.1
@@ -9543,7 +9592,7 @@ snapshots:
       '@babel/parser': 7.28.4
       '@babel/template': 7.27.2
       '@babel/types': 7.28.4
-      debug: 4.4.1
+      debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
 
@@ -12011,7 +12060,7 @@ snapshots:
     dependencies:
       '@typescript-eslint/tsconfig-utils': 8.44.0(typescript@5.8.3)
       '@typescript-eslint/types': 8.44.0
-      debug: 4.4.1
+      debug: 4.4.3
       typescript: 5.8.3
     transitivePeerDependencies:
       - supports-color
@@ -12030,7 +12079,7 @@ snapshots:
       '@typescript-eslint/types': 8.44.0
       '@typescript-eslint/typescript-estree': 8.44.0(typescript@5.8.3)
       '@typescript-eslint/utils': 8.44.0(eslint@9.36.0(jiti@2.6.0))(typescript@5.8.3)
-      debug: 4.4.1
+      debug: 4.4.3
       eslint: 9.36.0(jiti@2.6.0)
       ts-api-utils: 2.1.0(typescript@5.8.3)
       typescript: 5.8.3
@@ -12045,7 +12094,7 @@ snapshots:
       '@typescript-eslint/tsconfig-utils': 8.44.0(typescript@5.8.3)
       '@typescript-eslint/types': 8.44.0
       '@typescript-eslint/visitor-keys': 8.44.0
-      debug: 4.4.1
+      debug: 4.4.3
       fast-glob: 3.3.3
       is-glob: 4.0.3
       minimatch: 9.0.5
@@ -12373,6 +12422,8 @@ snapshots:
     dependencies:
       '@webassemblyjs/ast': 1.14.1
       '@xtuc/long': 4.2.2
+
+  '@xterm/xterm@5.5.0': {}
 
   '@xtuc/ieee754@1.2.0': {}
 
@@ -13198,7 +13249,7 @@ snapshots:
     dependencies:
       bytes: 3.1.2
       content-type: 1.0.5
-      debug: 4.4.1
+      debug: 4.4.3
       http-errors: 2.0.0
       iconv-lite: 0.6.3
       on-finished: 2.4.1
@@ -13321,7 +13372,7 @@ snapshots:
       assertion-error: 2.0.1
       check-error: 2.1.1
       deep-eql: 5.0.2
-      loupe: 3.1.3
+      loupe: 3.2.1
       pathval: 2.0.0
 
   chalk@2.4.2:
@@ -14336,7 +14387,7 @@ snapshots:
       content-type: 1.0.5
       cookie: 0.7.2
       cookie-signature: 1.2.2
-      debug: 4.4.1
+      debug: 4.4.3
       encodeurl: 2.0.0
       escape-html: 1.0.3
       etag: 1.8.1
@@ -14444,7 +14495,7 @@ snapshots:
 
   finalhandler@2.1.0:
     dependencies:
-      debug: 4.4.1
+      debug: 4.4.3
       encodeurl: 2.0.0
       escape-html: 1.0.3
       on-finished: 2.4.1
@@ -14598,7 +14649,7 @@ snapshots:
     dependencies:
       basic-ftp: 5.0.5
       data-uri-to-buffer: 6.0.2
-      debug: 4.4.1
+      debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
 
@@ -14946,7 +14997,7 @@ snapshots:
   http-proxy-agent@7.0.2:
     dependencies:
       agent-base: 7.1.3
-      debug: 4.4.1
+      debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
 
@@ -14958,7 +15009,7 @@ snapshots:
   https-proxy-agent@7.0.6:
     dependencies:
       agent-base: 7.1.3
-      debug: 4.4.1
+      debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
 
@@ -15842,7 +15893,7 @@ snapshots:
 
   micromark@2.11.4:
     dependencies:
-      debug: 4.4.1
+      debug: 4.4.3
       parse-entities: 2.0.0
     transitivePeerDependencies:
       - supports-color
@@ -15850,7 +15901,7 @@ snapshots:
   micromark@4.0.2:
     dependencies:
       '@types/debug': 4.1.12
-      debug: 4.4.1
+      debug: 4.4.3
       decode-named-character-reference: 1.2.0
       devlop: 1.1.0
       micromark-core-commonmark: 2.0.3
@@ -16246,7 +16297,7 @@ snapshots:
     dependencies:
       '@tootallnate/quickjs-emscripten': 0.23.0
       agent-base: 7.1.3
-      debug: 4.4.1
+      debug: 4.4.3
       get-uri: 6.0.4
       http-proxy-agent: 7.0.2
       https-proxy-agent: 7.0.6
@@ -17005,7 +17056,7 @@ snapshots:
 
   router@2.2.0:
     dependencies:
-      debug: 4.4.1
+      debug: 4.4.3
       depd: 2.0.0
       is-promise: 4.0.0
       parseurl: 1.3.3
@@ -17069,7 +17120,7 @@ snapshots:
 
   send@1.2.0:
     dependencies:
-      debug: 4.4.1
+      debug: 4.4.3
       encodeurl: 2.0.0
       escape-html: 1.0.3
       etag: 1.8.1
@@ -17300,7 +17351,7 @@ snapshots:
   socks-proxy-agent@8.0.5:
     dependencies:
       agent-base: 7.1.3
-      debug: 4.4.1
+      debug: 4.4.3
       socks: 2.8.4
     transitivePeerDependencies:
       - supports-color
@@ -18079,7 +18130,7 @@ snapshots:
   vite-node@3.2.4(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.7.0):
     dependencies:
       cac: 6.7.14
-      debug: 4.4.1
+      debug: 4.4.3
       es-module-lexer: 1.7.0
       pathe: 2.0.3
       vite: 7.1.6(@types/node@22.14.0)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.7.0)
@@ -18100,7 +18151,7 @@ snapshots:
   vite-node@3.2.4(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.7.0):
     dependencies:
       cac: 6.7.14
-      debug: 4.4.1
+      debug: 4.4.3
       es-module-lexer: 1.7.0
       pathe: 2.0.3
       vite: 7.1.6(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.7.0)
@@ -18346,7 +18397,7 @@ snapshots:
       '@vitest/spy': 3.2.4
       '@vitest/utils': 3.2.4
       chai: 5.2.0
-      debug: 4.4.1
+      debug: 4.4.3
       expect-type: 1.2.1
       magic-string: 0.30.19
       pathe: 2.0.3
@@ -18388,7 +18439,7 @@ snapshots:
       '@vitest/spy': 3.2.4
       '@vitest/utils': 3.2.4
       chai: 5.2.0
-      debug: 4.4.1
+      debug: 4.4.3
       expect-type: 1.2.1
       magic-string: 0.30.19
       pathe: 2.0.3
