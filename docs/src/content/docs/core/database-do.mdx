@@ -312,17 +312,15 @@ For development and testing, you'll often need a consistent set of data. You can
 
 ### 1. Create a Seed Script
 
-Create a script that uses `defineScript` from `rwsdk/worker` to wrap your seeding logic. This gives the script access to your application's environment, including your Durable Object bindings.
+Create a script that exports an async function as the default export. This script will have access to your application's environment, including your Durable Object bindings, when run via `rwsdk worker-run`.
 
 ```ts title="src/scripts/seed.ts"
-import { defineScript } from "rwsdk/worker";
 import { db } from "@/db/db";
 
-export default defineScript(async () => {
-  // Clean out the database to ensure a fresh start
+export default async () => {
+  console.log("… Seeding todos");
   await db.deleteFrom("todos").execute();
 
-  // Insert initial data
   await db
     .insertInto("todos")
     .values([
@@ -341,8 +339,8 @@ export default defineScript(async () => {
     ])
     .execute();
 
-  console.log("🌱 Finished seeding");
-});
+  console.log("✔ Finished seeding todos 🌱");
+};
 ```
 
 ### 2. Add a `seed` script to `package.json`
