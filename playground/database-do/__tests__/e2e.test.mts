@@ -2,6 +2,7 @@ import {
   $,
   poll,
   setupPlaygroundEnvironment,
+  testDev,
   testDevAndDeploy,
   waitForHydration,
 } from "rwsdk/e2e";
@@ -9,7 +10,7 @@ import { expect } from "vitest";
 
 setupPlaygroundEnvironment(import.meta.url);
 
-testDevAndDeploy(
+testDev(
   "seeds the database and displays initial todos",
   async ({ page, url, projectDir }) => {
     // Seed the database before running the test
