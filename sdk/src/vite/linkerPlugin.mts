@@ -22,8 +22,8 @@ export function linkWorkerBundle({
   // 1. Replace the manifest placeholder with the actual manifest content.
   log("Injecting manifest into worker bundle");
   newCode = newCode.replace(
-    '"__RWSDK_MANIFEST_PLACEHOLDER__"',
-    `${JSON.stringify(manifestContent)}`,
+    /['"]__RWSDK_MANIFEST_PLACEHOLDER__['"]/,
+    manifestContent,
   );
 
   // 2. Replace asset placeholders with their final hashed paths.
