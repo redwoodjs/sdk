@@ -22,7 +22,6 @@ import { directivesPlugin } from "./directivesPlugin.mjs";
 import { injectVitePreamble } from "./injectVitePreamblePlugin.mjs";
 import { knownDepsResolverPlugin } from "./knownDepsResolverPlugin.mjs";
 import { linkerPlugin } from "./linkerPlugin.mjs";
-import { manifestPlugin } from "./manifestPlugin.mjs";
 import { miniflareHMRPlugin } from "./miniflareHMRPlugin.mjs";
 import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
 import { prismaPlugin } from "./prismaPlugin.mjs";
@@ -191,9 +190,6 @@ export const redwoodPlugin = async (
     }),
     transformJsxScriptTagsPlugin({
       clientEntryPoints,
-      projectRootDir,
-    }),
-    manifestPlugin({
       projectRootDir,
     }),
     moveStaticAssetsPlugin({ rootDir: projectRootDir }),

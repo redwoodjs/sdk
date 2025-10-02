@@ -61,3 +61,38 @@ RedwoodSDK mirrors the behaviour of classic Multi Page Apps where each link clic
 brings you back to the **top** of the next page. This is the most common
 expectation and is therefore the default. You can turn it off or make it smooth
 with a single option – no additional libraries required.
+
+## `navigate`
+
+The `navigate` function is used to programmatically navigate to a new page. It
+accepts a `href` parameter (the destination URL) and an optional `options` object.
+
+| Option                 | Type                              | Default     | Description                                                                                              |
+| ---------------------- | --------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------- |
+| `history`              | `'push' \| 'replace'`             | `'push'`    | Determines how the history stack is updated. `'push'` adds a new entry, `'replace'` replaces the current one. |
+| `info.scrollToTop`     | `boolean`                         | `true`      | Whether to scroll to the top of the page after navigation.                                              |
+| `info.scrollBehavior`  | `'instant' \| 'smooth' \| 'auto'` | `'instant'` | How the scroll happens when `scrollToTop` is `true`.                                                     |
+
+### Usage Examples
+
+```tsx title="Basic navigation"
+import { navigate } from "rwsdk/client";
+
+navigate("/about");
+```
+
+```tsx title="Navigation with replace"
+import { navigate } from "rwsdk/client";
+
+navigate("/profile", { history: "replace" });
+```
+
+```tsx title="Navigation with smooth scroll"
+import { navigate } from "rwsdk/client";
+
+navigate("/dashboard", {
+  info: {
+    scrollBehavior: "smooth",
+  },
+});
+```

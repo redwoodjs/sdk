@@ -98,6 +98,53 @@ initClientNavigation({
 That’s it! No additional code or router configuration required – RedwoodSDK
 watches for DOM updates and performs the scroll automatically.
 
+## Programmatic Navigation
+
+While intercepting link clicks covers most navigation needs, you sometimes need to navigate programmatically - after a form submission, login event, or other user action.
+
+The `navigate` function allows you to trigger navigation from anywhere in your code:
+
+```tsx title="Navigate after form submission"
+import { navigate } from "rwsdk/client";
+
+function handleFormSubmit(event: FormEvent) {
+  event.preventDefault();
+  
+  navigate("/dashboard");
+}
+```
+
+```tsx title="Redirect after login, replacing history"
+import { navigate } from "rwsdk/client";
+
+async function handleLogin(credentials: Credentials) {
+  await loginUser(credentials);
+  
+  navigate("/account", { history: "replace" });
+}
+```
+
+```tsx title="Navigate with custom scroll behavior"
+import { navigate } from "rwsdk/client";
+
+function handleSpecialAction() {
+  navigate("/results", {
+    info: {
+      scrollBehavior: "smooth",
+      scrollToTop: true,
+    },
+  });
+}
+```
+
+The `navigate` function accepts two parameters:
+
+- `href`: The destination path
+- `options`: An optional configuration object with:
+  - `history`: Either `'push'` (default) to add a new history entry, or `'replace'` to replace the current one
+  - `info.scrollToTop`: Whether to scroll to the top after navigation (default: `true`)
+  - `info.scrollBehavior`: How to scroll - `'instant'` (default), `'smooth'`, or `'auto'`
+
 ## API Reference
 
 ### `initClientNavigation()` <Badge text="Experimental" type="caution" />

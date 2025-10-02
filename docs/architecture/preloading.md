@@ -21,7 +21,7 @@ The challenge is to communicate this list of required scripts to the browser so 
 
 1.  Uses a unified script discovery process, as detailed in [Unified Script Discovery](./unifiedScriptDiscovery.md).
 2.  Injects the correct resource hints into the HTML `<head>`.
-3.  Relies on [React's Hoisting Behavior for `<link>`](./reactHoisting.md) to place the hints correctly.
+3.  Relies on [React's ability to automatically hoist `<link>` tags](https://react.dev/reference/react-dom/components/link#special-rendering-behavior) to place the hints correctly.
 4.  Does this only in production, as it is unnecessary and could interfere with Vite's optimized development workflow.
 
 ## The Solution: A `<Preloads>` Component

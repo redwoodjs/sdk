@@ -4,6 +4,7 @@
 // context(justinvdm, 14 Aug 2025): `react-server-dom-webpack` uses this global
 // to load modules, so we need to define it here before importing
 // "react-server-dom-webpack."
+// prettier-ignore
 import "./setWebpackRequire";
 
 import React from "react";
@@ -18,6 +19,7 @@ import { rscStream } from "rsc-html-stream/client";
 
 export { default as React } from "react";
 export { ClientOnly } from "./ClientOnly.js";
+export { initClientNavigation, navigate } from "./navigation.js";
 
 import type {
   ActionResponse,

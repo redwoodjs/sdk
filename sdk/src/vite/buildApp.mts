@@ -1,4 +1,5 @@
 import debug from "debug";
+import { rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { ViteBuilder } from "vite";
 import { runDirectivesScan } from "./runDirectivesScan.mjs";
@@ -27,6 +28,8 @@ export async function buildApp({
   projectRootDir: string;
   workerEntryPathname: string;
 }) {
+  await rm(resolve(projectRootDir, "dist"), { recursive: true, force: true });
+
   const workerEnv = builder.environments.worker;
   await runDirectivesScan({
     rootConfig: builder.config,
