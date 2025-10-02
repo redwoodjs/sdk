@@ -21,6 +21,24 @@ A `ReferenceError: __webpack_require__ is not defined` error is happening in one
 - The user's project uses a dynamic import (`<script>import("/src/client.tsx")</script>`) in `Document.tsx`, which is an important constraint.
 - The issue is likely related to changes in the build process or dependencies, not the client-side code itself.
 
-## Next Steps
+## Investigation - Part 2 (The Red Herring)
 
-- Investigate changes in `sdk/src/vite/` and dependencies between `v1.0.0-alpha.20` and `v1.0.0-beta.0`.
+- It was discovered that the 404 error was a red herring caused by an incorrect local testing setup (dev server vs. preview server).
+- The original error, `Uncaught (in promise) ReferenceError: __webpack_require__ is not defined`, is indeed the real issue.
+- The issue is confirmed to appear between `v1.0.0-alpha.20` (working) and later beta versions.
+
+## Attempts to Fix (Failed)
+
+Based on the strong evidence that an import ordering issue was introduced in commit `a5b5ed20`, several attempts were made to isolate the problematic file. All of these have failed, proving the issue is more complex than a simple change in a single file.
+
+1.  **Reverting `sdk/src/runtime/client/client.tsx`:** Manually reverting the import order in this file and protecting it with `prettier-ignore` did not solve the issue.
+2.  **Reverting `sdk/src/runtime/entries/client.ts`:** Reverting this client entrypoint file to its `alpha.20` state also did not solve the issue.
+3.  **Reverting other `sdk/src/runtime` directories:** A process of elimination, reverting directories like `runtime/client`, `runtime/entries`, and `runtime/imports`, did not isolate a single source for the bug.
+
+## Current Status
+
+- **Confirmed:** Reverting the entire `sdk/src` directory to the commit *before* `a5b5ed20` **does** fix the issue.
+- **Confirmed:** Reverting individual files or subdirectories within `sdk/src` has so far **not** fixed the issue.
+- **Conclusion:** The breaking change is a result of a complex interaction between multiple files changed in `a5b5ed20`, likely triggered by a subtle dependency update or build tool behavior change.
+
+We are back to the drawing board, using a process of elimination on the `a5b5ed20` commit to find the true root cause.
