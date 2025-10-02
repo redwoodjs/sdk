@@ -4,30 +4,21 @@
 // context(justinvdm, 14 Aug 2025): `react-server-dom-webpack` uses this global
 // to load modules, so we need to define it here before importing
 // "react-server-dom-webpack."
-
-/* prettier-ignore */
 import "./setWebpackRequire";
 
-/* prettier-ignore */
 import React from "react";
 
-/* prettier-ignore */
 import { hydrateRoot } from "react-dom/client";
-/* prettier-ignore */
 import {
-createFromFetch,
-createFromReadableStream,
-encodeReply,
+  createFromFetch,
+  createFromReadableStream,
+  encodeReply,
 } from "react-server-dom-webpack/client.browser";
-/* prettier-ignore */
 import { rscStream } from "rsc-html-stream/client";
 
-/* prettier-ignore */
-export { ClientOnly } from "./ClientOnly.js";
-/* prettier-ignore */
 export { default as React } from "react";
-/* prettier-ignore */
-export { initClientNavigation,navigate } from "./navigation.js";
+export { ClientOnly } from "./ClientOnly.js";
+export { initClientNavigation, navigate } from "./navigation.js";
 
 import type {
   ActionResponse,
