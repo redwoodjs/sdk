@@ -18,6 +18,11 @@ export async function addTodo(text: string) {
     .execute();
 }
 
+export async function addTodoAction(formData: FormData) {
+  const text = formData.get("text") as string;
+  await addTodo(text);
+}
+
 export async function toggleTodo(id: string, completed: boolean) {
   await db
     .updateTable("todos")

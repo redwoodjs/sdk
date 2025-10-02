@@ -1,4 +1,4 @@
-import { addTodo } from "@/app/actions";
+import { addTodoAction } from "@/app/actions";
 import { SubmitButton } from "@/app/components/SubmitButton";
 import { TodoItem } from "@/app/components/TodoItem";
 import { db } from "@/db/db";
@@ -17,12 +17,7 @@ export async function Home() {
   return (
     <div className="container">
       <h1>Todo List</h1>
-      <form
-        action={async (formData: FormData) => {
-          "use server";
-          await addTodo(formData.get("text") as string);
-        }}
-      >
+      <form action={addTodoAction}>
         <input type="text" name="text" placeholder="Add a new todo" required />
         <SubmitButton />
       </form>
