@@ -69,4 +69,8 @@ The reordering caused the bundler to evaluate `react-server-dom-webpack` before 
 
 #### Solution
 
-This change adds a direct, side-effect-only import for `setWebpackRequire` to the top of `sdk/src/runtime/lib/realtime/client.ts`. This mirrors the pattern used in the main `client.tsx` entrypoint and guarantees that the `__webpack_require__` global is defined before any module that depends on it is evaluated, resolving the error.
+This change resolves the issue by enforcing a specific import order in `sdk/src/runtime/lib/realtime/client.ts`.
+
+The import for `../../client/client`, which transitively executes the `setWebpackRequire.ts` side effect, is now explicitly placed before the import for `react-server-dom-webpack/client.browser`.
+
+`/* prettier-ignore */` comments have been used to lock this ordering in place and prevent code formatters from reintroducing this bug in the future. This guarantees that the `__webpack_require__` global is defined before any module that depends on it is evaluated.
