@@ -1,6 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { Kysely } from "kysely";
 import { DOWorkerDialect } from "./DOWorkerDialect.js";
+import { SqliteDurableObject } from "./SqliteDurableObject.js";
 import { Database } from "./typeInference/database.js";
 
 type MigrationsFromDurableObjectClass<
@@ -10,11 +11,13 @@ type MigrationsFromDurableObjectClass<
     ? DB["migrations"]
     : never;
 
-export function createDb<DatabaseDurableObject extends DurableObject>(
+export function createDb<DatabaseDurableObject extends SqliteDurableObject>(
   durableObjectBinding: DurableObjectNamespace<DatabaseDurableObject>,
   name = "main",
 ): Kysely<Database<MigrationsFromDurableObjectClass<DatabaseDurableObject>>> {
-  return new Kysely<Database>({
+  return new Kysely<
+    Database<MigrationsFromDurableObjectClass<DatabaseDurableObject>>
+  >({
     dialect: new DOWorkerDialect({
       kyselyExecuteQuery: (...args) => {
         const durableObjectId = durableObjectBinding.idFromName(name);
