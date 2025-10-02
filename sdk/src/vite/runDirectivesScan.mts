@@ -376,7 +376,9 @@ export const runDirectivesScan = async ({
 };
 
 const deferredLog = (message: string) => {
+  const doLog = process.env.RWSDK_WORKER_RUN ? log : console.log;
+
   setTimeout(() => {
-    console.log(message);
+    doLog(message);
   }, 500);
 };
