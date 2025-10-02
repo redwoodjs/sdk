@@ -4,12 +4,21 @@
 
 - The production build process leaves stale assets in `dist/worker/assets` across builds. This is evident in `playground/hello-world` and likely affects all projects.
 - The build also generates several `_virtual_rwsdk_manifest-*.js` files in the worker assets directory. It's unclear if these are necessary, as the final worker output is expected to be a single, self-contained bundle.
-- Both issues appear to be side effects of the multi-stage build process, where build directory clearing (`emptyOutDir`) is carefully managed to preserve intermediate artifacts between stages. Simply enabling `emptyOutDir` for the worker is not a solution, as later build stages depend on the output of earlier ones.
+- Both issues appear to be side effects of the multi-stage build process, where build directory clearing (`emptyOutDir`) is carefully managed to preserve intermediate artifacts between stages.
 
 ## Plan
 
-1.  **Address Stale Assets**: Instead of using `emptyOutDir`, a more targeted approach is needed. The plan is to programmatically delete the `dist/client` and `dist/worker/assets` directories at the beginning of the `buildApp` function. This should clear out old assets without interfering with the intermediate `dist/worker/index.js` file required by the linker pass.
+### Attempt 1: Targeted Deletion & Virtual Module `external`
 
-2.  **Investigate Virtual Manifests**: Once the asset issue is resolved, I'll look into why the virtual manifest files are generated. This involves:
-    -   Identifying which plugin or part of the build process creates these `_virtual_rwsdk_manifest` modules.
-    -   Analyzing whether they are essential for the final worker bundle or if they are artifacts that can be eliminated, possibly by adjusting Rollup's output options to prevent chunking for the worker build.
+The initial plan was to programmatically delete stale asset directories and then treat the virtual manifest module as `external` during the initial build passes. While this prevented the asset from being created in the first pass, the linker pass would still see the dynamic `import()` and create the asset, only solving half the problem.
+
+### Attempt 2: Direct Placeholder Replacement
+
+A more direct solution is to avoid the dynamic import and virtual module entirely.
+
+1.  **Modify `sdk/src/runtime/lib/manifest.ts`**: Use the `import.meta.env.VITE_IS_DEV_SERVER` environment variable to conditionally export a simple string placeholder (`"__RWSDK_MANIFEST_PLACEHOLDER__"`) in production, and an empty object (`{}`) in development.
+2.  **Update `sdk/src/vite/linkerPlugin.mts`**: Modify the plugin to search for and replace the placeholder string with the actual manifest content.
+3.  **Delete `sdk/src/vite/manifestPlugin.mts`**: This plugin is no longer necessary.
+4.  **Update `sdk/src/vite/redwoodPlugin.mts`**: Remove the `manifestPlugin` from the plugin array.
+
+This approach is simpler, more direct, and avoids any complex interactions with Rollup's code-splitting logic.
