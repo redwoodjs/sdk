@@ -145,11 +145,13 @@
     "@vitejs/plugin-react": "~5.0.0",
     "chokidar": "~4.0.0",
     "debug": "~4.4.0",
+    "decompress": "~4.2.1",
     "enhanced-resolve": "~5.18.1",
     "eventsource-parser": "~3.0.0",
     "execa": "~9.6.0",
     "find-up": "~8.0.0",
     "fs-extra": "~11.3.0",
+    "get-port": "^7.1.0",
     "glob": "~11.0.1",
     "ignore": "~7.0.4",
     "jsonc-parser": "~3.3.1",
@@ -166,8 +168,7 @@
     "ts-morph": "~27.0.0",
     "unique-names-generator": "~4.7.1",
     "vibe-rules": "~0.3.0",
-    "vite-tsconfig-paths": "~5.1.4",
-    "decompress": "~4.2.1"
+    "vite-tsconfig-paths": "~5.1.4"
   },
   "peerDependencies": {
     "@cloudflare/vite-plugin": "^1.12.4",

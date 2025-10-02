@@ -2,10 +2,8 @@ import { db } from "@/db/db";
 import { defineScript } from "rwsdk/worker";
 
 export default defineScript(async () => {
-  // Clean out the database
   await db.deleteFrom("todos").execute();
 
-  // Insert initial entries
   await db
     .insertInto("todos")
     .values([

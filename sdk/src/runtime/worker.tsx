@@ -45,6 +45,31 @@ export const defineApp = <
         return env.ASSETS.fetch(new Request(url.toString(), request));
       } else if (
         import.meta.env.VITE_IS_DEV_SERVER &&
+        new URL(request.url).pathname === "/__worker-run"
+      ) {
+        const url = new URL(request.url);
+        const scriptPath = url.searchParams.get("script");
+
+        if (!scriptPath) {
+          return new Response("Missing 'script' query parameter", {
+            status: 400,
+          });
+        }
+
+        try {
+          const scriptModule = await import(/* @vite-ignore */ scriptPath);
+          if (scriptModule.default) {
+            await scriptModule.default();
+          }
+          return new Response("Script executed successfully");
+        } catch (e: any) {
+          console.error(`Error executing script: ${scriptPath}\n\n${e.stack}`);
+          return new Response(`Error executing script: ${e.message}`, {
+            status: 500,
+          });
+        }
+      } else if (
+        import.meta.env.VITE_IS_DEV_SERVER &&
         request.url.includes("/__vite_preamble__")
       ) {
         return new Response(
