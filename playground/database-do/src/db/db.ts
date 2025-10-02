@@ -7,5 +7,5 @@ export type Todo = AppDatabase["todos"];
 
 export const db = createDb<AppDatabase>(
   env.APP_DURABLE_OBJECT,
-  "todo-database", // unique key for this database instance
+  "todo-database",
 );
