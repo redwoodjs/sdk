@@ -1,3 +1,4 @@
-import { initClient } from "rwsdk/client";
+import { initClient, initClientNavigation } from "rwsdk/client";
 
-initClient();
+const { handleResponse } = initClientNavigation();
+initClient({ handleResponse });
