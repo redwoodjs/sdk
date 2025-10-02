@@ -64,8 +64,8 @@ This ensures that the server is called to fetch the RSC payload when a navigatio
 
 ### Problem
 
-Client-side navigation does not result in a page content update. The URL in the browser's address bar changes, but the view remains unchanged. This is because the request to fetch the new page's content is not sent to the server.
+[PR #804](https://github.com/redwoodjs/sdk/pull/804) introduced programmatic navigation but accidentally broke traditional link-based navigation. A line of code responsible for fetching page content from the server was changed from a function call into a statement, which meant it no longer executed. As a result, clicking a link would change the URL but not the page content.
 
 ### Solution
 
-This change corrects an issue in the `navigate` function within the client-side navigation logic. The function call to `globalThis.__rsc_callServer` was written as a type assertion instead of an invocation, which prevented it from executing. The code has been corrected to properly invoke the function. This ensures the server request for the RSC payload is made as intended during client-side navigation.
+This change restores the line back to a function call. An end-to-end test has been added to cover link-based navigation and prevent this from happening again.
