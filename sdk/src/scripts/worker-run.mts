@@ -7,6 +7,8 @@ import { createLogger } from "vite";
 const debug = dbg("rwsdk:worker-run");
 
 const main = async () => {
+  process.env.RWSDK_WORKER_RUN = "1";
+
   const relativeScriptPath = process.argv[2];
 
   if (!relativeScriptPath) {
