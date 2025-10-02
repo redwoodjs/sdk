@@ -1,8 +1,7 @@
-import { type migrations } from "@/db/migrations";
 import { env } from "cloudflare:workers";
-import { type Database, createDb } from "rwsdk/db";
-
-export type AppDatabase = Database<typeof migrations>;
-export type Todo = AppDatabase["todos"];
+import { InferDatabase, createDb } from "rwsdk/db";
 
 export const db = createDb(env.APP_DURABLE_OBJECT, "todo-database");
+
+export type AppDatabase = InferDatabase<typeof db>;
+export type Todo = AppDatabase["todos"];

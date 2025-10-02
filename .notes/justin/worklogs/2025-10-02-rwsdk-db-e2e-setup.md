@@ -1,35 +1,61 @@
-# Work Log: `rwsdk/db` End-to-End Test Setup
+# Work Log: `rwsdk/db` API and Type Inference Refinement
 
 **Date:** 2025-10-02
 
 ## Problem
 
-The primary goal is to establish a working end-to-end test for the `rwsdk/db` package, using the `playground/database-do` example as the testbed.
+The initial goal was to create a working end-to-end test for `rwsdk/db` in the `playground/database-do` example. This was blocked by a cascade of complex TypeScript errors originating from the `createDb` function. The errors pointed to a fundamental issue in how the database and durable object types were being handled.
 
-The initial blocker was a series of TypeScript errors in `playground/database-do/src/db/db.ts`, which prevented the project from compiling. After resolving those, a secondary blocker appeared: the database seed script fails to run due to module resolution errors.
+## Investigation and Thought Process
 
-## Investigation and Findings
+The path to the solution involved several attempts and backtracking as we gained a deeper understanding of the problem.
 
-### TypeScript Errors in `db.ts`
+### Attempt 1: Explicitly Passing All Generic Types
 
-The investigation started with two complex TypeScript errors:
-1.  `Type instantiation is excessively deep and possibly infinite.`
-2.  `Argument of type 'DurableObjectNamespace<AppDurableObject>' is not assignable to parameter of type 'DurableObjectNamespace<SqliteDurableObject<any>>'.`
+The first key insight was that TypeScript's generic inference has a limitation: you must either specify all type arguments or none. The original `createDb<T>` signature only allowed specifying the database type, which prevented TypeScript from inferring the `DurableObject` type from the arguments.
 
-After a deep dive, two root causes were identified:
+The initial fix was to change the signature to `createDb<T, DurableObject>` and update the call site to `createDb<AppDatabase, AppDurableObject>(...)`.
 
-1.  **Generic Type Inference:** The `createDb` function signature (`createDb<T, DurableObject>`) required both type arguments to be specified if one was. The API, however, is designed for the user to only pass `T` explicitly (`createDb<AppDatabase>(...)`). This prevented TypeScript from inferring `DurableObject`, causing the errors. The solution was to explicitly pass both types: `createDb<AppDatabase, AppDurableObject>(...)`.
+-   **Outcome:** This resolved the immediate, cryptic errors but led to a new problem: `Property 'todos' does not exist on type '{}'`. This showed that the `Database<typeof migrations>` utility was failing to infer the schema. It also made the API more verbose.
 
-2.  **Schema Inference Failure:** After fixing the first issue, a new error surfaced: `Property 'todos' does not exist on type '{}'`. This indicated that the `Database<typeof migrations>` utility type was failing to infer the database schema from the migrations file. Several attempts to fix this by adjusting the typing of the `migrations` object (using `as const`, `satisfies`, etc.) were unsuccessful.
+### Attempt 2: Fixing Schema Inference
 
-### Seed Script Module Resolution Failure
+The focus then shifted to the schema inference failure. The `Database` utility type was not correctly interpreting the structure of the `migrations` object. We tried several TypeScript techniques to make the type more specific:
 
-With the TypeScript errors temporarily bypassed, the next step was to run the database seed script. This failed with a module resolution error: `Can't resolve '@/db/durableObject'`.
+-   `as const`
+-   `satisfies Migrations`
+-   A combination of both
 
-The investigation revealed that the `rwsdk worker-run` script, which executes the seed file, does not resolve TypeScript path aliases (like `@/*`) from `tsconfig.json`.
+-   **Outcome:** None of these approaches worked. The type utility seemed unable to extract the schema, suggesting the problem was deeper in the type logic itself. At this point, the complexity felt wrong, and hacking the types with `// @ts-expect-error` seemed like the only way forward, which was not an acceptable solution.
 
-An attempt was made to fix this by adding `tsconfig-paths-webpack-plugin` to the `enhanced-resolve` configuration within the `worker-run.mts` script. However, this did not resolve the issue, and the script continued to fail with the same error.
+### Attempt 3 (The Solution): Inferring Types from the Source
 
-## Next Steps
+After backtracking, we revisited the core problem. The user of `createDb` has to provide the `AppDatabase` type manually, but this type is derived from the migrations, which are a property of the `AppDurableObject`. The durable object itself is passed as an argument. All the necessary information was there; we just needed to teach TypeScript how to connect the dots.
 
-This issue requires manual investigation. The intertwined problems of TypeScript's type inference and the script runner's module resolution create a complex situation that is not solvable with simple fixes. The next step will be a manual deep dive into the `rwsdk` build and scripting tools to find a robust solution.
+The final and successful approach was to refactor `createDb` to be fully generic and infer the database type directly from the `durableObjectBinding` argument.
+
+This was achieved with a series of conditional helper types:
+
+1.  `InferDurableObjectFromNamespace`: Extracts the durable object class type from a `DurableObjectNamespace`.
+2.  `MigrationsFromDurableObject`: Gets the `migrations` property type from the durable object class instance type.
+3.  `DatabaseFromDurableObjectNamespace`: Composes the above helpers to generate the final `Database` schema type.
+
+The signature of `createDb` was simplified to `createDb<DONS extends DurableObjectNamespace>(...)`, and the return type became `Kysely<DatabaseFromDurableObjectNamespace<DONS>>`.
+
+## The Final Solution and Its Impact
+
+This approach is a significant improvement for several reasons:
+
+-   **Simplified API:** The end-user no longer needs to provide any explicit generic types. The call is now a simple `createDb(env.APP_DURABLE_OBJECT)`.
+-   **Improved Type Safety:** The database schema is now inferred directly from the durable object, which is the single source of truth. This eliminates the possibility of providing a stale or incorrect `AppDatabase` type.
+-   **Reduced Boilerplate:** The user no longer needs to manually define `AppDatabase` and `Todo` types based on the migrations. They can be inferred directly from the `db` constant using Kysely's built-in `InferDatabase` utility.
+
+Although this is a **backwards-incompatible change**, it's justified for this experimental API. The improvement in developer experience, reduction in complexity, and increase in type safety are substantial. This change leads to a more robust and intuitive API.
+
+### Addendum
+
+Even with the improved type inference, a final TypeScript error remained: `Type 'AppDurableObject' is not assignable to type 'new (...args: any) => any'`.
+
+This was caused by an incorrect type constraint that attempted to intersect an instance type (`SqliteDurableObject`) with a constructor type (`new (...)`), which is an impossible shape.
+
+The solution was to define a `DatabaseDurableObjectConstructor` type that correctly models a class constructor that produces instances of `SqliteDurableObject`. This change resolved the final error and completed the type-safe refactoring.

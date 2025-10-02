@@ -1,23 +1,32 @@
-import { DurableObject } from "cloudflare:workers";
 import { Kysely } from "kysely";
 import { DOWorkerDialect } from "./DOWorkerDialect.js";
+import { type Database } from "./index.js";
 import { SqliteDurableObject } from "./SqliteDurableObject.js";
-import { Database } from "./typeInference/database.js";
 
-type MigrationsFromDurableObjectClass<
-  DurableObjectClass extends DurableObject,
-> =
-  DurableObjectClass extends SqliteDurableObject<infer DB>
-    ? DB["migrations"]
-    : never;
+type DatabaseDurableObjectConstructor = abstract new (
+  ...args: any
+) => SqliteDurableObject;
 
-export function createDb<DatabaseDurableObject extends SqliteDurableObject>(
-  durableObjectBinding: DurableObjectNamespace<DatabaseDurableObject>,
+type MigrationsFromDurableObject<DO extends DatabaseDurableObjectConstructor> =
+  InstanceType<DO>["migrations"];
+
+export type DatabaseFromDurableObjectNamespace<
+  DatabaseDurableObject extends DatabaseDurableObjectConstructor,
+> = Database<MigrationsFromDurableObject<DatabaseDurableObject>>;
+
+type BindingFromDurableObjectClass<
+  DurableObjectClass extends DatabaseDurableObjectConstructor,
+> = DurableObjectClass extends abstract new (...args: any) => infer T
+  ? DurableObjectNamespace<T & (Rpc.DurableObjectBranded | undefined)>
+  : never;
+
+export function createDb<
+  DurableObjectClass extends DatabaseDurableObjectConstructor,
+>(
+  durableObjectBinding: BindingFromDurableObjectClass<DurableObjectClass>,
   name = "main",
-): Kysely<Database<MigrationsFromDurableObjectClass<DatabaseDurableObject>>> {
-  return new Kysely<
-    Database<MigrationsFromDurableObjectClass<DatabaseDurableObject>>
-  >({
+): Kysely<Database<MigrationsFromDurableObject<DurableObjectClass>>> {
+  return new Kysely({
     dialect: new DOWorkerDialect({
       kyselyExecuteQuery: (...args) => {
         const durableObjectId = durableObjectBinding.idFromName(name);
