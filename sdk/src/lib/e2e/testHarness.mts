@@ -58,6 +58,7 @@ interface PlaygroundEnvironment {
 
 interface DevServerInstance {
   url: string;
+  projectDir: string;
   stopDev: () => Promise<void>;
 }
 
@@ -284,6 +285,7 @@ export async function createDevServer(
 
   return {
     url: devResult.url,
+    projectDir,
     stopDev: devResult.stopDev,
   };
 }
@@ -455,6 +457,7 @@ function createTestRunner(
       browser: Browser;
       page: Page;
       url: string;
+      projectDir: string;
     }) => Promise<void>,
   ) => {
     if (
@@ -543,6 +546,8 @@ function createTestRunner(
             browser: browser as Browser,
             page: page as Page,
             url: (instance as DevServerInstance | DeploymentInstance).url,
+            projectDir: (instance as DevServerInstance | DeploymentInstance)
+              .projectDir,
           });
         });
       });
@@ -590,6 +595,7 @@ export function testDevAndDeploy(
     browser: Browser;
     page: Page;
     url: string;
+    projectDir: string;
   }) => Promise<void>,
 ) {
   testDev(`${name} (dev)`, testFn);

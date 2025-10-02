@@ -1,17 +1,22 @@
-import { execSync } from "child_process";
-import { poll, setupPlaygroundEnvironment, testDevAndDeploy } from "rwsdk/e2e";
+import {
+  $,
+  poll,
+  setupPlaygroundEnvironment,
+  testDevAndDeploy,
+  waitForHydration,
+} from "rwsdk/e2e";
 import { expect } from "vitest";
 
-const playgroundDir = setupPlaygroundEnvironment(import.meta.url);
+setupPlaygroundEnvironment(import.meta.url);
 
 testDevAndDeploy(
   "handles todo list interactions correctly",
-  async ({ page, url }) => {
+  async ({ page, url, projectDir }) => {
     // Seed the database before running the test
-    execSync("pnpm seed", { cwd: playgroundDir, stdio: "inherit" });
+    await $({ cwd: projectDir })`pnpm seed`;
 
     await page.goto(url);
-    await page.waitForFunction('document.readyState === "complete"');
+    await waitForHydration(page);
 
     // Check for seeded data
     await expect(
@@ -22,7 +27,7 @@ testDevAndDeploy(
 
     // Add a new todo
     const todoText = "Run the e2e tests";
-    await page.fill('input[name="text"]', todoText);
+    await page.type('input[name="text"]', todoText);
     await page.click('button[type="submit"]');
 
     // Wait for the new todo to appear
