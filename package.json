@@ -18,13 +18,13 @@
     "node": ">=18.0.0",
     "pnpm": ">=8.0.0"
   },
-  "packageManager": "pnpm@10.0.0",
+  "packageManager": "pnpm@10.18.0",
   "devDependencies": {
-    "@antfu/eslint-config": "^2.21.1",
-    "@manypkg/cli": "^0.21.4",
-    "@types/node": "^20.14.2",
+    "@antfu/eslint-config": "^5.0.0",
+    "@manypkg/cli": "^0.25.0",
+    "@types/node": "^22.0.0",
     "eslint": "^9.5.0",
-    "knip": "~5.26.0",
+    "knip": "~5.64.0",
     "pnpm": "^10.0.0",
     "prettier": "^3.3.2",
     "prettier-plugin-organize-imports": "^4.3.0",
