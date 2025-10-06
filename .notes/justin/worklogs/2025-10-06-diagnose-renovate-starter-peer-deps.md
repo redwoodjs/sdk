@@ -87,6 +87,6 @@ The root cause of the issue has been identified. It was not a bug in the plugin 
 1.  **The Conflict:** The `sdk` package had a `devDependency` on a pinned version of `vite`, specifically `7.1.6`. The Renovate PR updated the `starter` project's `devDependency` to `vite@7.1.9`.
 2.  **Resolution Problem:** When `pnpm` installed dependencies for the `starter` project, it saw two different version requirements for `vite`. It provided `vite@7.1.9` to the `starter` project, but the imported `rwsdk` was linked to its own dependency, `vite@7.1.6`.
 3.  **The Type Error:** This resulted in the TypeScript compiler seeing two different definitions for the same Vite types (e.g., `Plugin`, `HotUpdateOptions`). The types from `vite@7.1.6` were not assignable to the types from `vite@7.1.9`, causing the build to fail.
-4.  **The Fix:** The solution was to change the `vite` `devDependency` in `sdk/package.json` from the pinned `7.1.6` to a compatible version range, `^7.1.9`. This allows `pnpm` to resolve a single, shared version of `vite` (`7.1.9`) for both the `sdk` and the `starter` project, eliminating the type conflict.
+4.  **The Fix:** The solution was to change the `vite` `devDependency` in `sdk/package.json` from the pinned `7.1.6` to a compatible version range, `~7.1.9`. This allows `pnpm` to resolve a single, shared version of `vite` (`7.1.9`) for both the `sdk` and the `starter` project, eliminating the type conflict.
 
 With this change, the `starter` project should now build successfully.
