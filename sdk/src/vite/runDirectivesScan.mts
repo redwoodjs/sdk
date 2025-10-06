@@ -3,6 +3,7 @@ import { compile } from "@mdx-js/mdx";
 import debug from "debug";
 // @ts-ignore
 import { OnLoadArgs, OnResolveArgs, Plugin, PluginBuild } from "esbuild";
+import { glob } from "glob";
 import fsp from "node:fs/promises";
 import path from "node:path";
 import { Environment, ResolvedConfig } from "vite";
@@ -24,6 +25,53 @@ const isObject = (value: unknown): value is Record<string, any> =>
 // https://github.com/vitejs/vite/blob/main/packages/vite/src/node/utils.ts
 const externalRE = /^(https?:)?\/\//;
 const isExternalUrl = (url: string): boolean => externalRE.test(url);
+
+type ReadFileWithCache = (path: string) => Promise<string>;
+
+async function findDirectiveRoots({
+  root,
+  readFileWithCache,
+  directiveCheckCache,
+}: {
+  root: string;
+  readFileWithCache: ReadFileWithCache;
+  directiveCheckCache: Map<string, boolean>;
+}): Promise<Set<string>> {
+  const srcDir = path.join(root, "src");
+  const files = await glob("**/*.(ts|tsx|js|jsx|mjs|mts|cjs|cts|mdx)", {
+    cwd: srcDir,
+    absolute: true,
+  });
+
+  const directiveFiles = new Set<string>();
+  for (const file of files) {
+    if (directiveCheckCache.has(file)) {
+      if (directiveCheckCache.get(file)) {
+        directiveFiles.add(file);
+      }
+      continue;
+    }
+
+    try {
+      const content = await readFileWithCache(file);
+      const hasClient = hasDirective(content, "use client");
+      const hasServer = hasDirective(content, "use server");
+      const hasAnyDirective = hasClient || hasServer;
+
+      directiveCheckCache.set(file, hasAnyDirective);
+      if (hasAnyDirective) {
+        directiveFiles.add(file);
+      }
+    } catch (e) {
+      log("Could not read file during pre-scan, skipping:", file);
+      // Cache the failure to avoid re-reading a problematic file
+      directiveCheckCache.set(file, false);
+    }
+  }
+
+  log("Pre-scan found directive files:", Array.from(directiveFiles));
+  return directiveFiles;
+}
 
 type Resolver = (
   context: {},
@@ -109,6 +157,16 @@ export const runDirectivesScan = async ({
   process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE = "true";
 
   try {
+    const fileContentCache = new Map<string, string>();
+    const directiveCheckCache = new Map<string, boolean>();
+    const readFileWithCache = async (path: string) => {
+      if (fileContentCache.has(path)) {
+        return fileContentCache.get(path)!;
+      }
+      const contents = await fsp.readFile(path, "utf-8");
+      fileContentCache.set(path, contents);
+      return contents;
+    };
     const esbuild = await getViteEsbuild(rootConfig.root);
     const input =
       initialEntries ?? environments.worker.config.build.rollupOptions?.input;
@@ -138,9 +196,17 @@ export const runDirectivesScan = async ({
       path.resolve(rootConfig.root, entry),
     );
 
+    const directiveFiles = await findDirectiveRoots({
+      root: rootConfig.root,
+      readFileWithCache,
+      directiveCheckCache,
+    });
+
+    const combinedEntries = new Set([...absoluteEntries, ...directiveFiles]);
+
     log(
-      "Starting directives scan for worker environment with entries:",
-      absoluteEntries,
+      "Starting directives scan with combined entries:",
+      Array.from(combinedEntries),
     );
 
     const workerResolver = createViteAwareResolver(
@@ -154,16 +220,6 @@ export const runDirectivesScan = async ({
     );
 
     const moduleEnvironments = new Map<string, "client" | "worker">();
-    const fileContentCache = new Map<string, string>();
-
-    const readFileWithCache = async (path: string) => {
-      if (fileContentCache.has(path)) {
-        return fileContentCache.get(path)!;
-      }
-      const contents = await fsp.readFile(path, "utf-8");
-      fileContentCache.set(path, contents);
-      return contents;
-    };
 
     const esbuildScanPlugin: Plugin = {
       name: "rwsdk:esbuild-scan-plugin",
@@ -349,7 +405,7 @@ export const runDirectivesScan = async ({
     };
 
     await esbuild.build({
-      entryPoints: absoluteEntries,
+      entryPoints: Array.from(combinedEntries),
       bundle: true,
       write: false,
       outdir: path.join(INTERMEDIATES_OUTPUT_DIR, "directive-scan"),

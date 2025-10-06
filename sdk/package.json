@@ -167,7 +167,8 @@
     "unique-names-generator": "~4.7.1",
     "vibe-rules": "~0.3.0",
     "vite-tsconfig-paths": "~5.1.4",
-    "decompress": "~4.2.1"
+    "decompress": "~4.2.1",
+    "@types/glob": "^8.1.0"
   },
   "peerDependencies": {
     "@cloudflare/vite-plugin": "^1.12.4",
@@ -190,6 +191,7 @@
     "tsx": "~4.20.0",
     "typescript": "~5.9.0",
     "vite": "7.1.6",
-    "vitest": "~3.2.0"
+    "vitest": "~3.2.0",
+    "glob": "^11.0.0"
   }
 }

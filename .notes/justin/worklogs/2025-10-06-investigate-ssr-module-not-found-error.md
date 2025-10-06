@@ -29,8 +29,21 @@ A similar error was observed for `/src/app/pages/todos/TodoItem.tsx`.
 
 This appears to cause a downstream React error during rendering: `Invalid hook call`, which manifests as `TypeError: Cannot read properties of null (reading 'use')` and `TypeError: Cannot read properties of null (reading 'useOptimistic')`.
 
-## Investigation Plan
+## Deeper Analysis
 
-The issue seems to stem from how client components (those marked with `"use client"`) are being handled by the server-side rendering process. The SSR environment is failing to resolve these modules correctly, which leads to React's hooks context being unavailable, causing the `Invalid hook call` error.
+The root cause is the pre-build directive scan becoming stale. The initial scan at server startup correctly identifies all client components reachable from the initial entry points. However, if a code change introduces a *new dependency path* that was not previously part of the graph, the HMR update does not trigger a re-scan.
 
-My next steps will be to investigate the module resolution process for client components during SSR.
+This means that if a module is edited to import a new component that contains a `"use client"` directive (or transitively imports one), the running server's list of client components is not updated. This leads to the "No module found" error during SSR. A server restart fixes this because it forces a fresh, complete scan.
+
+## Refined Path Forward
+
+The "correct," long-term solution would be to implement an intelligent, cached re-scan on HMR updates that can walk newly formed dependency branches. This is a complex task.
+
+Given the time-critical nature of the presentation, a more surgical and pragmatic approach is needed. The plan is to augment the entry points for the existing `esbuild`-based scan by refactoring the scan logic.
+
+1.  **Refactor into a Helper**: The glob-based search for directive files will be extracted into a dedicated `findDirectiveRoots` function.
+2.  **Pre-Scan for Directive Roots**: This function will perform a fast glob search across the application's `src` directory to find all potential script files (`.js`, `.ts`, `.mdx`, etc.).
+3.  **Combine Entry Points**: The main `runDirectivesScan` function will call this helper and merge its results with the original worker entry points. The main `esbuild` scan will then run with this combined, comprehensive set of entry points.
+4.  **Shared Caching**: To make this performant, a single `fileContentCache` will be used for both the pre-scan and the main scan, preventing duplicate file reads. Furthermore, a `directiveCheckCache` will be introduced to memoize the result of checking a file for directives, avoiding redundant checks on the same content.
+
+This approach guarantees that even if a directive-marked file is not yet reachable from the main entry point, it is included in the scan. This effectively "future-proofs" the scan against any subsequent code change that might link it into the main dependency graph, ensuring the server is always aware of all potential client and server components.
