@@ -51,6 +51,14 @@ export {
   TEST_MAX_RETRIES_PER_CODE,
 };
 
+export interface TestOptions {
+  /**
+   * Whether to check for page errors (console errors, uncaught exceptions) after the test.
+   * @default true
+   */
+  checkForPageErrors?: boolean;
+}
+
 interface PlaygroundEnvironment {
   projectDir: string;
   cleanup: () => Promise<void>;
@@ -496,7 +504,10 @@ function createTestRunner(
       url: string;
       projectDir: string;
     }) => Promise<void>,
+    options: TestOptions = {},
   ) => {
+    const { checkForPageErrors = true } = options;
+
     if (
       (envType === "dev" && SKIP_DEV_SERVER_TESTS) ||
       (envType === "deploy" && SKIP_DEPLOYMENT_TESTS)
@@ -509,6 +520,7 @@ function createTestRunner(
       let page: Page;
       let instance: DevServerInstance | DeploymentInstance | null;
       let browser: Browser;
+      let errorTracker: ReturnType<typeof trackPageErrors> | null = null;
 
       beforeAll(async () => {
         const tempDir = path.join(os.tmpdir(), "rwsdk-e2e-tests");
@@ -555,9 +567,39 @@ function createTestRunner(
 
         page = await browser.newPage();
         page.setDefaultTimeout(PUPPETEER_TIMEOUT);
+        if (checkForPageErrors) {
+          errorTracker = trackPageErrors(page);
+        }
       }, SETUP_WAIT_TIMEOUT);
 
       afterEach(async () => {
+        if (errorTracker) {
+          const { consoleErrors, pageErrors, failedRequests } =
+            errorTracker.get();
+          const errorMessages: string[] = [];
+
+          if (consoleErrors.length > 0) {
+            errorMessages.push(
+              `Console errors:\n- ${consoleErrors.join("\n- ")}`,
+            );
+          }
+          if (pageErrors.length > 0) {
+            errorMessages.push(
+              `Page errors:\n- ${pageErrors.map((e) => e.stack || e.message).join("\n- ")}`,
+            );
+          }
+          if (failedRequests.length > 0) {
+            errorMessages.push(
+              `Failed requests:\n- ${failedRequests.join("\n- ")}`,
+            );
+          }
+
+          if (errorMessages.length > 0) {
+            throw new Error(
+              `Test "${name}" failed with page errors:\n\n${errorMessages.join("\n\n")}`,
+            );
+          }
+        }
         if (page) {
           try {
             await page.close();
@@ -736,9 +778,10 @@ export function testDevAndDeploy(
     url: string;
     projectDir: string;
   }) => Promise<void>,
+  options?: TestOptions,
 ) {
-  testDev(`${name} (dev)`, testFn);
-  testDeploy(`${name} (deployment)`, testFn);
+  testDev(`${name} (dev)`, testFn, options);
+  testDeploy(`${name} (deployment)`, testFn, options);
 }
 
 /**
@@ -757,9 +800,10 @@ testDevAndDeploy.only = (
     page: Page;
     url: string;
   }) => Promise<void>,
+  options?: TestOptions,
 ) => {
-  testDev.only(`${name} (dev)`, testFn);
-  testDeploy.only(`${name} (deployment)`, testFn);
+  testDev.only(`${name} (dev)`, testFn, options);
+  testDeploy.only(`${name} (deployment)`, testFn, options);
 };
 
 /**
@@ -777,6 +821,7 @@ export async function waitForHydration(page: Page) {
 export function trackPageErrors(page: Page) {
   const consoleErrors: string[] = [];
   const failedRequests: string[] = [];
+  const pageErrors: Error[] = [];
 
   page.on("requestfailed", (request) => {
     failedRequests.push(`${request.url()} | ${request.failure()?.errorText}`);
@@ -788,11 +833,16 @@ export function trackPageErrors(page: Page) {
     }
   });
 
+  page.on("pageerror", (error) => {
+    pageErrors.push(error);
+  });
+
   return {
     get: () => ({
       // context(justinvdm, 25 Sep 2025): Filter out irrelevant 404s (e.g. favicon)
       consoleErrors: consoleErrors.filter((e) => !e.includes("404")),
       failedRequests,
+      pageErrors,
     }),
   };
 }
