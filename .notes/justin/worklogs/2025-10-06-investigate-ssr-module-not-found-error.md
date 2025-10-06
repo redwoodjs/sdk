@@ -47,3 +47,11 @@ Given the time-critical nature of the presentation, a more surgical and pragmati
 4.  **Shared Caching**: To make this performant, a single `fileContentCache` will be used for both the pre-scan and the main scan, preventing duplicate file reads. Furthermore, a `directiveCheckCache` will be introduced to memoize the result of checking a file for directives, avoiding redundant checks on the same content.
 
 This approach guarantees that even if a directive-marked file is not yet reachable from the main entry point, it is included in the scan. This effectively "future-proofs" the scan against any subsequent code change that might link it into the main dependency graph, ensuring the server is always aware of all potential client and server components.
+
+## Attempt 1: Implementation and Failure
+
+My first implementation of `findDirectiveRoots` failed. Debug logs showed that the glob search was returning an empty array of files, even in a stable Step 3 configuration. This was the "smoking gun," indicating the problem was with the glob pattern or its options, not the overall strategy.
+
+A search of the git history for previous `glob` implementations surfaced an older, working version in commit `c30a8119`. Comparing the two revealed the likely issue: my implementation used `path.join` to construct the `cwd` (current working directory) for the glob, whereas the older, successful implementation used `path.resolve`. The `glob` library can be sensitive to how its `cwd` is specified, and `path.resolve` provides a more robust, absolute path.
+
+My next attempt will correct this, using `path.resolve` and adopting the pattern syntax from the previous implementation as a safeguard.

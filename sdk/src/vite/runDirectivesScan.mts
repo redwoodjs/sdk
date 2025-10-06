@@ -37,8 +37,9 @@ async function findDirectiveRoots({
   readFileWithCache: ReadFileWithCache;
   directiveCheckCache: Map<string, boolean>;
 }): Promise<Set<string>> {
-  const srcDir = path.join(root, "src");
-  const files = await glob("**/*.(ts|tsx|js|jsx|mjs|mts|cjs|cts|mdx)", {
+  const srcDir = path.resolve(root, "src");
+  console.log("########", srcDir);
+  const files = await glob("**/*.{ts,tsx,js,jsx,mjs,mts,cjs,cts,mdx}", {
     cwd: srcDir,
     absolute: true,
   });
@@ -149,6 +150,7 @@ export const runDirectivesScan = async ({
   serverFiles: Set<string>;
   entries?: string[];
 }) => {
+  console.log("######## entries", initialEntries);
   deferredLog(
     "\n… (rwsdk) Scanning for 'use client' and 'use server' directives...",
   );
@@ -196,13 +198,16 @@ export const runDirectivesScan = async ({
       path.resolve(rootConfig.root, entry),
     );
 
-    const directiveFiles = await findDirectiveRoots({
+    const applicationDirectiveFiles = await findDirectiveRoots({
       root: rootConfig.root,
       readFileWithCache,
       directiveCheckCache,
     });
 
-    const combinedEntries = new Set([...absoluteEntries, ...directiveFiles]);
+    const combinedEntries = new Set([
+      ...absoluteEntries,
+      ...applicationDirectiveFiles,
+    ]);
 
     log(
       "Starting directives scan with combined entries:",
