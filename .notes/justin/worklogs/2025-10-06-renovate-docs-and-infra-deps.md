@@ -51,3 +51,18 @@ The stack trace pointed to `@fujocoded/expressive-code-output`, which had been u
 ### Conclusion
 
 The investigation confirmed a bug within the `@fujocoded/expressive-code-output@0.1.0` package. After discussing the findings, I have reverted the attempts to fix it, and will now investigate a proper solution myself.
+
+### Update: Pinpointing the Bug
+
+After further investigation, the precise issue was identified. The `package.json` for `@fujocoded/expressive-code-output` has its `exports` map conditions swapped.
+
+- The `import` condition points to `./dist/index.js`, which incorrectly contains CommonJS `require()` calls.
+- The `require` condition points to `./dist/index.cjs`, which is the correct CommonJS bundle.
+
+This is a packaging bug in the dependency. When our ESM-based Astro build tries to import the package, it's served the wrong file, causing the build to fail.
+
+### Final Resolution
+
+After reviewing the dependency's repository and observing an unstable versioning history (`1.0.0` then `0.1.0`), the decision was made to revert to the last known stable version to ensure stability and avoid further issues. The `pnpm patch` solution was considered but ultimately rejected in favor of using a stable version.
+
+The `@fujocoded/expressive-code-output` package has been downgraded to `0.0.1`.
