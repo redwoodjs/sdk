@@ -4,16 +4,15 @@ This document details the various automated transformations applied to `Document
 
 ## The Challenge: From Source to Production
 
-In our framework, developers define the entire HTML shell using a React component, typically `src/app/Document.tsx`. This provides great power and flexibility, but it also introduces a significant architectural challenge: balancing our philosophy of user control with the technical requirements of a modern React framework.
+In our framework, developers define the entire HTML shell using a React component, typically `src/app/Document.tsx`. This provides great power and flexibility, as explained in the [guides for creating Documents](../src/contents/docs/guides/frontend/documents.mdx).
 
 However, the source code of a `Document` component is not what can be served directly to a user's browser, especially in a production environment. It contains several elements that need to be processed:
 
-1.  **The Hydration Ordering Problem:** For `React.useId` to work correctly, React must inject a hydration "marker" script *before* the main client entry script is loaded. This means React needs to control the rendering of the entry point. However, our philosophy dictates that the user should explicitly place this script in their `Document`. This creates a direct conflict: how can React control a script that the user has placed?
-2.  **Development-Time Paths**: Script tags like `<script src="/src/client.tsx">` point to raw source files. In production, these need to point to the final, bundled, and hashed asset files (e.g., `/assets/client.a1b2c3d4.js`).
-3.  **Missing Stylesheet Links**: As detailed in our [Client-Side Stylesheets architecture](./clientStylesheets.md), stylesheets are imported directly into client components. The `Document` is not initially aware of these dependencies and needs to have the corresponding `<link>` tags injected.
-4.  **Security Concerns**: For a secure application, script tags should use a [Content Security Policy (CSP)](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) nonce to prevent the execution of unauthorized, injected scripts. This nonce is generated per-request and must be added to every legitimate script.
+1.  **Development-Time Paths**: Script tags like `<script src="/src/client.tsx">` point to raw source files. In production, these need to point to the final, bundled, and hashed asset files (e.g., `/assets/client.a1b2c3d4.js`).
+2.  **Missing Stylesheet Links**: As detailed in our [Client-Side Stylesheets architecture](./clientStylesheets.md), stylesheets are imported directly into client components. The `Document` is not initially aware of these dependencies and needs to have the corresponding `<link>` tags injected.
+3.  **Security Concerns**: For a secure application, script tags should use a [Content Security Policy (CSP)](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) nonce to prevent the execution of unauthorized, injected scripts. This nonce is generated per-request and must be added to every legitimate script.
 
-Manually managing these details would be tedious and error-prone. The challenge is to automate this transformation process reliably while preserving the transparent, user-controlled nature of the `Document` component.
+Manually managing these details would be tedious and error-prone. The challenge is to automate this transformation process reliably for both development and production builds.
 
 ## The Solution: AST Transformation
 
@@ -23,13 +22,13 @@ The plugin inspects the AST for specific JSX elements (`<script>` and `<link>`) 
 
 ### Key Transformations
 
-#### 1. Entry Point Handling, Hydration, and Asset Rewriting
+#### 1. Client Entry Point Discovery and Asset Path Rewriting
 
-To solve the hydration ordering problem, the plugin finds the user's client entry point `<script>` tag in the AST. It then performs a critical transformation: it removes the script tag from the `Document`'s code and replaces it with a server-side side-effect. This side-effect passes the script's information (its path or inline content) to the runtime via the `requestInfo` object.
+A key responsibility of the `Document` transformation is to handle client-side script tags. In a production build, these tags must point to the final, hashed asset files. However, this creates a circular dependency: the final asset paths are only known after the `client` build completes, but the `client` build needs to know which entry points to build, which are discovered during the `worker` build.
 
-Later, during the server render, the runtime uses this information to instruct React (via the `bootstrapModules` or `bootstrapScriptContent` options) to render the entry script itself. This elegantly resolves the conflict: the user still declares the entry point in their `Document.tsx`, but at build time, that declaration is converted into a command for React, which then correctly handles the low-level injection and ordering at runtime.
+This is solved by the multi-phase build process. The transformation described here is responsible for discovering the entry points during the initial worker pass and then linking to the final asset paths during the final worker pass.
 
-This same transformation also handles the discovery of client entry points for the production build, which involves rewriting asset paths to a placeholder format that is later replaced by the linker.
+For a complete explanation of the end-to-end build architecture, see the [Production Build Process](./productionBuildProcess.md) document.
 
 #### 2. Security Nonce Injection
 
