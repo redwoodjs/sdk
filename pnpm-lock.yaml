@@ -88,8 +88,8 @@ importers:
         specifier: ^0.0.3
         version: 0.0.3
       '@fujocoded/expressive-code-output':
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.0.1
+        version: 0.0.1
       astro:
         specifier: ^5.13.7
         version: 5.14.1(@types/node@24.6.2)(aws4fetch@1.0.20)(jiti@2.6.1)(lightningcss@1.30.1)(rollup@4.52.4)(terser@5.44.0)(tsx@4.20.6)(typescript@5.9.3)(yaml@2.8.1)
@@ -2255,8 +2255,10 @@ packages:
     peerDependencies:
       '@expressive-code/core': ^0.35.3
 
-  '@fujocoded/expressive-code-output@0.1.0':
-    resolution: {integrity: sha512-J/XcRFt5hS9KUNSsGxQFn1dIyoa0Is3ehMJS4TDBga5/Lu7c+AWxBnfFIBiaZaX58H37xR8Wja40AREJjG61kQ==}
+  '@fujocoded/expressive-code-output@0.0.1':
+    resolution: {integrity: sha512-KxpVFVs0rEHjcdtya9lFxDMeNttPl66n62PeuTPSXecpEKN7yslFG+DMsQwtyWdPoA9u0W8sPuE2tFPcVwcUFQ==}
+    peerDependencies:
+      '@expressive-code/core': ^0.35.3
 
   '@hexagon/base64@1.1.28':
     resolution: {integrity: sha512-lhqDEAvWixy3bZ+UOYbPwUbBkwBq5C1LAJ/xPC8Oi+lL54oyakv/npbA0aU2hgCsx/1NUd4IBvV03+aUBWxerw==}
@@ -10245,7 +10247,7 @@ snapshots:
     dependencies:
       mdast-util-to-hast: 13.2.0
 
-  '@fujocoded/expressive-code-output@0.1.0':
+  '@fujocoded/expressive-code-output@0.0.1':
     dependencies:
       mdast-util-to-hast: 13.2.0
 
