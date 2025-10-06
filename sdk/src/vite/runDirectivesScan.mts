@@ -38,7 +38,6 @@ async function findDirectiveRoots({
   directiveCheckCache: Map<string, boolean>;
 }): Promise<Set<string>> {
   const srcDir = path.resolve(root, "src");
-  console.log("########", srcDir);
   const files = await glob("**/*.{ts,tsx,js,jsx,mjs,mts,cjs,cts,mdx}", {
     cwd: srcDir,
     absolute: true,
@@ -150,7 +149,6 @@ export const runDirectivesScan = async ({
   serverFiles: Set<string>;
   entries?: string[];
 }) => {
-  console.log("######## entries", initialEntries);
   deferredLog(
     "\n… (rwsdk) Scanning for 'use client' and 'use server' directives...",
   );

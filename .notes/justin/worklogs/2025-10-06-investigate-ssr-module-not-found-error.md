@@ -55,3 +55,21 @@ My first implementation of `findDirectiveRoots` failed. Debug logs showed that t
 A search of the git history for previous `glob` implementations surfaced an older, working version in commit `c30a8119`. Comparing the two revealed the likely issue: my implementation used `path.join` to construct the `cwd` (current working directory) for the glob, whereas the older, successful implementation used `path.resolve`. The `glob` library can be sensitive to how its `cwd` is specified, and `path.resolve` provides a more robust, absolute path.
 
 My next attempt will correct this, using `path.resolve` and adopting the pattern syntax from the previous implementation as a safeguard.
+
+## Resolution
+
+The second attempt was successful. Using `path.resolve` for the `cwd` in the glob search immediately fixed the pre-scan, which now correctly identifies all directive-containing files on startup.
+
+With the pre-scan working, advancing to Step 4 of the demo no longer produces the "(ssr) No module found" error. The underlying issue of the stale directive map is now resolved for the purposes of the demo.
+
+## New Issue: Worker Hanging
+
+While the directive scan is now fixed, a new issue has surfaced. When the `FancyTodosPage` is loaded, the worker hangs, eventually timing out with the error:
+
+```
+The Workers runtime canceled this request because it detected that your Worker's code had hung and would never generate a response.
+```
+
+The logs also show a related warning concerning cross-request promise resolution and a stack trace that points to `@prisma/client/runtime/wasm.js`.
+
+This suggests a potential incompatibility or race condition between Prisma's WASM-based query engine and the Miniflare/Cloudflare Workers runtime, specifically how it handles async operations within a request context. This is the next issue to investigate.
