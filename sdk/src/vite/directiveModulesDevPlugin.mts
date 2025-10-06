@@ -75,7 +75,7 @@ export const directiveModulesDevPlugin = ({
     name: "rwsdk:directive-modules-dev",
 
     configureServer(server) {
-      if (!process.env.VITE_IS_DEV_SERVER || process.env.RWSDK_WORKER_RUN) {
+      if (!process.env.VITE_IS_DEV_SERVER) {
         resolveScanPromise();
         return;
       }

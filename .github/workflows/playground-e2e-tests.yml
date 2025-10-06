@@ -77,7 +77,7 @@ jobs:
             JSON_ARRAY="[]"
             for o in $OS_LIST; do
               for p in $PM_LIST; do
-                JSON_ARRAY=$(echo "$JSON_ARRAY" | jq ". + [{\"os\":\"$o\",\"package-manager\":\"$p\"}]")
+                JSON_ARRAY=$(echo "$JSON_ARRAY" | jq -c ". + [{\"os\":\"$o\",\"package-manager\":\"$p\"}]")
               done
             done
             echo "matrix={\"include\":${JSON_ARRAY}}" >> $GITHUB_OUTPUT
@@ -116,18 +116,20 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
+          cache: "pnpm"
 
       - name: Install dependencies
         shell: bash
-        run: |
-          corepack enable
-          pnpm install
+        run: pnpm install
 
       - name: Build SDK
         shell: bash
