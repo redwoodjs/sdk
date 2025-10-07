@@ -156,3 +156,18 @@ This led down a significant, but ultimately incorrect, path:
 3.  **Result:** The implementation was successful in preventing the re-optimization log message from appearing. However, the underlying worker hanging issue on the Todos page **persisted**.
 
 This proves that the Vite re-optimization, while non-ideal, was a red herring and not the root cause of the Prisma-related hang. I have since reverted the changes to the Vite config to avoid unnecessary complexity. We are now back to focusing on the original problem: the silent hang within the render stream.
+
+## Investigation Path 2: Stream Error Logging
+
+Another hypothesis was that an error was being silently swallowed within the stream stitching logic, preventing it from being logged.
+
+1.  **Action**: Added a `console.error` to the central `catch` block of `sdk/src/runtime/lib/stitchDocumentAndAppStreams.ts`.
+2.  **Result**: This did not surface any new errors. This confirmed that the render stream itself was not throwing an error but was hanging silently *before* an error could be generated and propagated.
+
+## Investigation Path 3: Request-Scoped Prisma Client
+
+The warning message-"A promise was resolved or rejected from a different request context"-is the critical clue. It confirms the problem isn't a silent hang, but a state management issue within Prisma's query engine, triggered by sharing a single client instance across multiple concurrent requests.
+
+This is a familiar pattern. The internal `rwsdk/db` implementation was designed specifically to avoid this by scoping database access to the individual request, preventing state leakage. The same principle should apply here.
+
+The next attempt will be to refactor the application to create a new `PrismaClient` for each request, rather than using a shared singleton. This aligns with best practices for serverless environments and directly addresses the likely cause of the state corruption.
