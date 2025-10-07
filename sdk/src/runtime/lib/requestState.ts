@@ -1,5 +1,7 @@
 import { requestInfo } from "../requestInfo/worker.js";
 
+let stateCounter = 0;
+
 /**
  * Creates a request-scoped state variable that automatically resolves to the correct
  * instance based on the current request context using AsyncLocalStorage.
@@ -8,7 +10,7 @@ import { requestInfo } from "../requestInfo/worker.js";
  */
 export function defineRequestState<T>(): [T, (value: T) => void] {
   // Generate a unique key for this state variable to prevent collisions
-  const key = `__requestState_${crypto.randomUUID()}`;
+  const key = `__requestState_${stateCounter++}`;
 
   const setter = (value: T): void => {
     requestInfo.__userContext![key] = value;
