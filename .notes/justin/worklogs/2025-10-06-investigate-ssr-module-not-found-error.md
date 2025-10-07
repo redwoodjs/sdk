@@ -219,3 +219,58 @@ This approach would:
 - Be transparent to the user (no changes to how they use `db`)
 
 The implementation would create a proxy that automatically resolves to the correct instance based on the current request context, similar to how `requestInfo.rw` works.
+
+## Solution Implemented: Proxy-Based Request-Scoped State
+
+**Date**: 2025-01-06  
+**Status**: ✅ **SOLVED**
+
+### Final Implementation
+
+After several iterations, the solution was successfully implemented using a proxy-based approach:
+
+1. **Extended RequestInfo**: Added `__userContext: Record<string, any>` to the `RequestInfo` interface
+2. **Initialized User Context**: Modified `worker.tsx` to initialize `__userContext: {}` for each request
+3. **Created `defineRequestState` API**: Implemented a function that returns a proxy object and setter function
+4. **Proxy Implementation**: The proxy delegates all property access to the request-scoped instance stored in `requestInfo.__userContext`
+
+### Key Technical Details
+
+- **Proxy Object**: Instead of returning a getter function, `defineRequestState` now returns a proxy that behaves exactly like the target object
+- **Method Binding**: Proxy correctly binds methods to their original context using `.bind(instance)`
+- **Unique Keys**: Uses `crypto.randomUUID()` to generate collision-resistant keys
+- **Error Handling**: Provides clear error messages when state is accessed before initialization
+
+### Demo Application Changes
+
+```typescript
+// Before: Module-level singleton (problematic)
+export const db = new PrismaClient({...});
+
+// After: Request-scoped proxy
+export const [db, setDb] = defineRequestState<PrismaClient>();
+export const setupDb = async (env: Env) => {
+  const client = new PrismaClient({
+    adapter: new PrismaD1(env.DB),
+  });
+  await client.$queryRaw`SELECT 1`;
+  setDb(client); // Store in request context
+};
+```
+
+### Result
+
+**Worker hanging issue resolved**  
+**Cross-request promise resolution warning eliminated**  
+**Prisma client now properly isolated per request**  
+**No changes required to existing database usage patterns**
+
+The proxy approach ensures that `db.findUnique()`, `db.create()`, etc. all work transparently while being properly scoped to each individual request, preventing the state corruption that was causing the worker to hang.
+
+### Additional Context
+
+**Why This Happens**: The module-level `export let db` pattern for Prisma is something that should work in theory (and indeed how the starter template had it), but Cloudflare Workers have technical restrictions that make execution context tied to the current request. This creates complications when multiple requests try to share the same PrismaClient instance.
+
+**Real-World Impact**: This explains why the issue was particularly noticeable with realtime features + multiple clients + rapid button interactions - these scenarios create lots of opportunities for context bound to one request to interfere with another incoming request.
+
+**The Solution**: While the module-level singleton pattern is problematic in Cloudflare Workers, it can still be achieved through request-scoped state management using AsyncLocalStorage, which maintains the same developer experience while ensuring proper isolation.
