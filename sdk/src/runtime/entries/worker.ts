@@ -1,5 +1,6 @@
 import "./types/worker";
 export * from "../error";
+export * from "../lib/requestState";
 export * from "../lib/utils";
 export * from "../register/worker";
 export * from "../render/renderToStream";

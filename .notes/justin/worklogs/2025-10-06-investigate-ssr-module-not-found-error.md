@@ -171,3 +171,51 @@ The warning message-"A promise was resolved or rejected from a different request
 This is a familiar pattern. The internal `rwsdk/db` implementation was designed specifically to avoid this by scoping database access to the individual request, preventing state leakage. The same principle should apply here.
 
 The next attempt will be to refactor the application to create a new `PrismaClient` for each request, rather than using a shared singleton. This aligns with best practices for serverless environments and directly addresses the likely cause of the state corruption.
+
+## Discovery: Request-Scoped Database Pattern Was Removed
+
+Research into the git history revealed that the request-scoped database pattern was indeed implemented and working correctly in the `rwsdk/db` implementation. The `databases` Map in `RwContext` was used to cache database instances per request, preventing state leakage between concurrent requests.
+
+However, this pattern was removed in commit `0e85b4a6` ("fix: `createDb()` in `queue()` handlers") on August 11, 2025. The commit message explains that the change was made to fix cross-event I/O errors in queue handlers by obtaining fresh stubs at query time, but it also removed the request-scoped caching mechanism entirely.
+
+The current `createDb` implementation now creates a new `Kysely` instance on every call, which means each database operation gets a fresh instance. While this works for the `rwsdk/db` implementation (which uses Durable Objects), it doesn't solve the Prisma singleton problem in the demo application.
+
+The solution is to restore the request-scoped pattern for Prisma, using the existing `databases` Map infrastructure that's still present in `RwContext` but currently unused.
+
+## Proposed Solution: AsyncLocalStorage-Based Request State
+
+The current Prisma singleton pattern (`export let db: PrismaClient`) creates a module-level instance that gets reused across concurrent requests, causing state corruption. We need to make it request-scoped.
+
+The SDK already has an excellent pattern for this with `requestInfo` using `AsyncLocalStorage`. We can extend this pattern to provide a generic request state management API.
+
+### Proposed API
+
+```ts
+// User's code
+export const [db, setDb] = defineRequestState<PrismaClient>()
+
+export const setupDb = async (env: Env) => {
+  setDb(new PrismaClient({
+    datasources: {
+      db: {
+        url: env.DATABASE_URL,
+      },
+    },
+  }))
+}
+```
+
+### Implementation Approach
+
+1. **Extend RequestInfo**: Add a generic `__userContext` property to the request info structure
+2. **Create `defineRequestState`**: A function that returns a getter/setter pair tied to the current request context
+3. **Use AsyncLocalStorage**: Leverage the existing `requestInfoStore` to isolate state per request
+4. **Generate Unique Keys**: Use unique identifiers to prevent name collisions
+
+This approach would:
+- Eliminate the module-level singleton problem
+- Provide a clean, reusable API for request-scoped state
+- Leverage existing infrastructure (AsyncLocalStorage, requestInfo)
+- Be transparent to the user (no changes to how they use `db`)
+
+The implementation would create a proxy that automatically resolves to the correct instance based on the current request context, similar to how `requestInfo.rw` works.

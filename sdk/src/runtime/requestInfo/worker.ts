@@ -9,7 +9,15 @@ const requestInfoStore = new AsyncLocalStorage<Record<string, any>>();
 
 const requestInfoBase = {};
 
-const REQUEST_INFO_KEYS = ["request", "params", "ctx", "rw", "cf", "response"];
+const REQUEST_INFO_KEYS = [
+  "request",
+  "params",
+  "ctx",
+  "rw",
+  "cf",
+  "response",
+  "__userContext",
+];
 
 REQUEST_INFO_KEYS.forEach((key) => {
   Object.defineProperty(requestInfoBase, key, {

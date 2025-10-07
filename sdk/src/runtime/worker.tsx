@@ -112,6 +112,7 @@ export const defineApp = <
           rw,
           response: userResponseInit,
           isAction,
+          __userContext: {},
         };
 
         const createPageElement = (
