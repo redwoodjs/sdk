@@ -96,7 +96,7 @@ export const defineApp = <
           ssr: true,
           databases: new Map(),
           scriptsToBeLoaded: new Set(),
-          abortController: new AbortController(),
+          pageRouteResolved: undefined,
         };
 
         const userResponseInit: ResponseInit & { headers: Headers } = {
@@ -245,6 +245,7 @@ export const defineApp = <
           }
         }
 
+        await rw.pageRouteResolved?.promise;
         return mutableResponse;
       } catch (e) {
         if (e instanceof ErrorResponse) {

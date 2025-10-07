@@ -64,14 +64,12 @@ export const renderDocumentHtmlStream = async ({
     requestInfo,
     onError,
     identifierPrefix: "__RWSDK_DOCUMENT__",
-    signal: requestInfo.rw.abortController?.signal,
   });
 
   const appHtmlStream = await renderHtmlStream({
     node: innerAppNode,
     requestInfo,
     onError,
-    signal: requestInfo.rw.abortController?.signal,
   });
 
   // Stitch the streams together

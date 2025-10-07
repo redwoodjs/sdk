@@ -20,7 +20,7 @@ export type RwContext = {
   layouts?: React.FC<LayoutProps<any>>[];
   databases: Map<string, Kysely<any>>;
   scriptsToBeLoaded: Set<string>;
-  abortController?: AbortController;
+  pageRouteResolved: PromiseWithResolvers<void> | undefined;
   actionResult?: unknown;
 };
 
@@ -281,7 +281,7 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
               );
 
               if (!isClientReference(componentHandler)) {
-                requestInfo.rw.abortController = new AbortController();
+                requestInfo.rw.pageRouteResolved = Promise.withResolvers();
               }
 
               return await renderPage(requestInfo, WrappedComponent, onError);
@@ -419,11 +419,11 @@ export const wrapHandlerToThrowResponses = <
     const result = await handler(requestInfo);
 
     if (result instanceof Response) {
-      requestInfo.rw.abortController?.abort();
+      requestInfo.rw.pageRouteResolved?.reject(result);
       throw result;
     }
 
-    requestInfo.rw.abortController?.abort();
+    requestInfo.rw.pageRouteResolved?.resolve();
     return result;
   };
 
