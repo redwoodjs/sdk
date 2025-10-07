@@ -168,7 +168,8 @@
     "ts-morph": "~27.0.0",
     "unique-names-generator": "~4.7.1",
     "vibe-rules": "~0.3.0",
-    "vite-tsconfig-paths": "~5.1.4"
+    "vite-tsconfig-paths": "~5.1.4",
+    "@types/glob": "^8.1.0"
   },
   "peerDependencies": {
     "@cloudflare/vite-plugin": "^1.12.4",

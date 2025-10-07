@@ -15,4 +15,6 @@ export interface RequestInfo<Params = any, AppContext = DefaultAppContext> {
   // context(justinvdm, 2025-08-18): Ensure headers is always available
   response: ResponseInit & { headers: Headers };
   isAction: boolean;
+  // context(justinvdm, 2025-10-06): Generic user context for request-scoped state
+  __userContext?: Record<string, any>;
 }
