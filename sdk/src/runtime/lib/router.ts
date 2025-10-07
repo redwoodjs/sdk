@@ -423,6 +423,7 @@ export const wrapHandlerToThrowResponses = <
       throw result;
     }
 
+    requestInfo.rw.abortController?.abort();
     return result;
   };
 

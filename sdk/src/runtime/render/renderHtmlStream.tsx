@@ -6,18 +6,15 @@ export const renderHtmlStream = async ({
   identifierPrefix,
   requestInfo,
   onError,
-  signal,
 }: {
   node: React.ReactNode;
   requestInfo: RequestInfo;
   onError: (error: unknown) => void;
   identifierPrefix?: string;
-  signal?: AbortSignal;
 }) => {
   return await renderToReadableStream(node, {
     nonce: requestInfo.rw.nonce,
     identifierPrefix,
-    signal,
     onError(error, { componentStack }) {
       try {
         if (!error) {
