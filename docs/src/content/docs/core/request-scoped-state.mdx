@@ -1,0 +1,298 @@
+---
+title: Request-Scoped State
+description: Manage stateful objects safely in Cloudflare Workers with request isolation.
+---
+
+import { Aside, Code, Badge } from "@astrojs/starlight/components";
+
+RedwoodSDK provides a request-scoped state management API that allows you to safely use singleton patterns in Cloudflare Workers. This solves the common problem of cross-request state corruption that can cause worker hangs and promise resolution errors.
+
+---
+
+## The Problem
+
+Cloudflare Workers restrict execution context to the current request. When you create module-level singletons (like database clients), they get reused across multiple concurrent requests, leading to:
+
+- Worker hangs
+- Cross-request promise resolution warnings
+- State corruption between requests
+
+The error typically manifests as:
+
+```
+A promise was resolved or rejected from a different request context than the one it was created in.
+```
+
+This happens because stateful objects like `PrismaClient` maintain internal state that gets corrupted when shared across requests.
+
+---
+
+## The Solution
+
+The `defineRequestState` API creates request-scoped instances of stateful objects. Each request gets its own isolated instance, preventing state corruption while maintaining the same developer experience.
+
+### Basic Usage
+
+```ts title="src/db.ts"
+import { defineRequestState } from "rwsdk/requestState";
+import { PrismaClient } from "@prisma/client";
+import { PrismaD1 } from "@prisma/adapter-d1";
+
+// Create request-scoped database client
+export const [db, setDb] = defineRequestState<PrismaClient>();
+
+export const setupDb = async (env: Env) => {
+  const client = new PrismaClient({
+    adapter: new PrismaD1(env.DB),
+  });
+  
+  // Test the connection
+  await client.$queryRaw`SELECT 1`;
+  
+  // Store in request context
+  setDb(client);
+};
+```
+
+### Usage in Route Handlers
+
+```ts title="src/routes/api/users.ts"
+import { db, setupDb } from "@/db";
+import { env } from "cloudflare:workers";
+
+export async function GET() {
+  // Initialize database for this request
+  await setupDb(env);
+  
+  // Use normally - each request gets its own instance
+  const users = await db.user.findMany();
+  
+  return Response.json(users);
+}
+```
+
+---
+
+## How It Works
+
+The `defineRequestState` function returns a tuple containing:
+
+1. **Proxy Object**: Behaves exactly like your target object while being request-scoped
+2. **Setter Function**: Stores the actual instance in the current request context
+
+### Request Isolation
+
+Each request gets its own isolated context through RedwoodSDK's AsyncLocalStorage infrastructure. The proxy object automatically resolves to the correct instance based on the current request context.
+
+### Transparent Delegation
+
+The proxy delegates all property access and method calls to the request-scoped instance:
+
+- **Property Access**: `db.user` → `instance.user`
+- **Method Calls**: `db.findUnique()` → `instance.findUnique()` with correct `this` binding
+- **Property Assignment**: `db.someProperty = value` → `instance.someProperty = value`
+
+---
+
+## Examples
+
+### Prisma Client
+
+```ts title="src/db.ts"
+import { defineRequestState } from "rwsdk/requestState";
+import { PrismaClient } from "@prisma/client";
+import { PrismaD1 } from "@prisma/adapter-d1";
+
+export const [db, setDb] = defineRequestState<PrismaClient>();
+
+export const setupDb = async (env: Env) => {
+  const client = new PrismaClient({
+    adapter: new PrismaD1(env.DB),
+  });
+  
+  await client.$queryRaw`SELECT 1`;
+  setDb(client);
+};
+```
+
+### Knex.js
+
+```ts title="src/db.ts"
+import { defineRequestState } from "rwsdk/requestState";
+import knex from "knex";
+
+export const [db, setDb] = defineRequestState<knex.Knex>();
+
+export const setupDb = async (env: Env) => {
+  const client = knex({
+    client: "sqlite3",
+    connection: {
+      filename: ":memory:"
+    }
+  });
+  
+  setDb(client);
+};
+```
+
+### Custom Stateful Objects
+
+```ts title="src/cache.ts"
+import { defineRequestState } from "rwsdk/requestState";
+
+class RequestCache {
+  private cache = new Map();
+  
+  set(key: string, value: any) {
+    this.cache.set(key, value);
+  }
+  
+  get(key: string) {
+    return this.cache.get(key);
+  }
+}
+
+export const [cache, setCache] = defineRequestState<RequestCache>();
+
+export const setupCache = () => {
+  setCache(new RequestCache());
+};
+```
+
+---
+
+## API Reference
+
+### `defineRequestState<T>()`
+
+Creates a request-scoped state variable.
+
+```ts
+function defineRequestState<T>(): [T, (value: T) => void]
+```
+
+**Returns:**
+- `[proxy, setter]` - Tuple containing the proxy object and setter function
+
+**Generic Parameter:**
+- `T` - The type of the stateful object
+
+**Usage:**
+```ts
+const [db, setDb] = defineRequestState<PrismaClient>();
+```
+
+### Error Handling
+
+The API throws clear errors when state is accessed before initialization:
+
+```ts
+// This will throw: "Request-scoped state not initialized. Make sure to call setter before accessing properties."
+const users = await db.user.findMany(); // Error if setDb() hasn't been called
+```
+
+---
+
+## Best Practices
+
+### 1. Initialize Early
+
+Always call the setter function before using the proxy object:
+
+```ts
+export async function GET() {
+  await setupDb(env); // Initialize first
+  
+  const users = await db.user.findMany(); // Safe to use
+  return Response.json(users);
+}
+```
+
+### 2. Use in Middleware
+
+For applications with many routes, consider initializing in middleware:
+
+```ts title="src/middleware.ts"
+import { db, setupDb } from "@/db";
+
+export async function middleware(request: Request, env: Env) {
+  await setupDb(env);
+  // Database is now available for all subsequent handlers
+}
+```
+
+### 3. Type Safety
+
+Leverage TypeScript for full type safety:
+
+```ts
+const [db, setDb] = defineRequestState<PrismaClient>();
+
+// TypeScript knows this is a PrismaClient
+const user = await db.user.findUnique({ where: { id: 1 } });
+```
+
+---
+
+## Migration Guide
+
+### Before: Module-Level Singleton
+
+```ts title="src/db.ts"
+// ❌ Problematic in Cloudflare Workers
+export const db = new PrismaClient({
+  adapter: new PrismaD1(env.DB),
+});
+```
+
+### After: Request-Scoped State
+
+```ts title="src/db.ts"
+// ✅ Safe for Cloudflare Workers
+export const [db, setDb] = defineRequestState<PrismaClient>();
+
+export const setupDb = async (env: Env) => {
+  const client = new PrismaClient({
+    adapter: new PrismaD1(env.DB),
+  });
+  await client.$queryRaw`SELECT 1`;
+  setDb(client);
+};
+```
+
+### Usage Changes
+
+```ts
+// Before
+import { db } from "@/db";
+const users = await db.user.findMany();
+
+// After  
+import { db, setupDb } from "@/db";
+await setupDb(env); // Add this line
+const users = await db.user.findMany(); // Same usage
+```
+
+---
+
+## FAQ
+
+**Q: Why not just create a new instance in each route handler?**
+
+A: Creating instances on every request is inefficient and doesn't solve the underlying problem. The request-scoped state API provides isolation while maintaining performance.
+
+**Q: Can I use this with any stateful object?**
+
+A: Yes, the API is generic and works with any object that maintains internal state, not just database clients.
+
+**Q: What about memory usage?**
+
+A: Each request gets its own instance, but instances are automatically cleaned up when the request completes. Memory usage scales with concurrent requests, not total requests.
+
+**Q: Is this compatible with existing code?**
+
+A: Yes, the proxy object behaves exactly like the original object, so existing usage patterns work without changes.
+
+**Q: What happens if I forget to call the setter?**
+
+A: The API throws a clear error message when you try to access properties before initialization, making debugging straightforward.

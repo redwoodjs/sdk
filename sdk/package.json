@@ -99,6 +99,10 @@
     "./realtime/durableObject": {
       "types": "./dist/runtime/lib/realtime/durableObject.d.ts",
       "default": "./dist/runtime/lib/realtime/durableObject.js"
+    },
+    "./requestState": {
+      "types": "./dist/runtime/lib/requestState.d.ts",
+      "default": "./dist/runtime/lib/requestState.js"
     }
   },
   "keywords": [
