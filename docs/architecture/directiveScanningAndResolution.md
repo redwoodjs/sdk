@@ -17,7 +17,7 @@ To address these challenges, the framework implements a two-phase scan that is b
 
 ### Phase 1: Glob-based Pre-Scan for All Potential Modules
 
-The first phase solves the "stale map" problem by finding all files that could *potentially* contain a directive, regardless of whether they are currently imported.
+The first phase solves the "stale map" problem by finding all files in the application's codebase that could *potentially* contain a directive, regardless of whether they are currently imported.
 
 -   A fast `glob` search is performed across the `src/` directory for all relevant file extensions (`.ts`, `.tsx`, `.js`, `.mdx`, etc.).
 -   This initial list of files is then filtered down to only those that actually contain a `"use client"` or `"use server"` directive.
