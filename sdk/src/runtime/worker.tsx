@@ -11,7 +11,6 @@ import {
   getRequestInfo,
   runWithRequestInfo,
   runWithRequestInfoOverrides,
-  StaleHmrRequestError,
 } from "./requestInfo/worker";
 
 import { ssrWebpackRequire } from "./imports/worker";
@@ -228,13 +227,6 @@ export const defineApp = <
                   }),
                 );
               } catch (e) {
-                if (e instanceof StaleHmrRequestError) {
-                  console.warn(
-                    "RWSDK: A request was short-circuited due to a stale HMR context.",
-                  );
-                  // Return a simple, empty response to gracefully terminate the request.
-                  return new Response(null, { status: 204 });
-                }
                 reject(e);
               }
             }),
