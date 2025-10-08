@@ -23,7 +23,29 @@ REQUEST_INFO_KEYS.forEach((key) => {
     configurable: false,
     get: function () {
       const store = requestInfoStore.getStore();
-      return store ? store[key] : undefined;
+      if (store) {
+        return store[key];
+      }
+
+      // context(justinvdm, 2025-10-08): During a chaotic HMR update, the async
+      // context (store) can be torn down while a request is in-flight. If this
+      // happens, we return an empty object for context properties instead of
+      // undefined. This prevents a hard crash when middleware (like setupDb)
+      // tries to set a property on the context of an already-orphaned request.
+      if (key === "ctx" || key === "__userContext") {
+        return {};
+      }
+
+      return undefined;
+    },
+    set: function (value) {
+      const store = requestInfoStore.getStore();
+      // context(justinvdm, 2025-10-08): Only set the value if the store exists.
+      // If it doesn't, this is a no-op, which is the desired behavior for an
+      // orphaned request.
+      if (store) {
+        store[key] = value;
+      }
     },
   });
 });
