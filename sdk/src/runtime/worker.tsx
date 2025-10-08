@@ -11,10 +11,11 @@ import {
   getRequestInfo,
   runWithRequestInfo,
   runWithRequestInfoOverrides,
+  StaleHmrRequestError,
 } from "./requestInfo/worker";
 
 import { ssrWebpackRequire } from "./imports/worker";
-import { Route, type RwContext, defineRoutes } from "./lib/router";
+import { defineRoutes, Route, type RwContext } from "./lib/router";
 import { generateNonce } from "./lib/utils";
 
 export * from "./requestInfo/types";
@@ -227,6 +228,13 @@ export const defineApp = <
                   }),
                 );
               } catch (e) {
+                if (e instanceof StaleHmrRequestError) {
+                  console.warn(
+                    "RWSDK: A request was short-circuited due to a stale HMR context.",
+                  );
+                  // Return a simple, empty response to gracefully terminate the request.
+                  return new Response(null, { status: 204 });
+                }
                 reject(e);
               }
             }),

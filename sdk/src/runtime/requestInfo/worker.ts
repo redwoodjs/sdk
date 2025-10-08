@@ -1,6 +1,17 @@
 import { AsyncLocalStorage } from "async_hooks";
 import { DefaultAppContext, RequestInfo } from "./types";
 
+/**
+ * A custom error class to signal that a request is being processed
+ * on a stale context, likely due to an HMR update.
+ */
+export class StaleHmrRequestError extends Error {
+  constructor() {
+    super("Stale HMR Request");
+    this.name = "StaleHmrRequestError";
+  }
+}
+
 type DefaultRequestInfo = RequestInfo<DefaultAppContext>;
 
 const requestInfoStore = new AsyncLocalStorage<Record<string, any>>();
@@ -23,29 +34,18 @@ REQUEST_INFO_KEYS.forEach((key) => {
     configurable: false,
     get: function () {
       const store = requestInfoStore.getStore();
-      if (store) {
-        return store[key];
-      }
-
-      // context(justinvdm, 2025-10-08): During a chaotic HMR update, the async
-      // context (store) can be torn down while a request is in-flight. If this
-      // happens, we return an empty object for context properties instead of
-      // undefined. This prevents a hard crash when middleware (like setupDb)
-      // tries to set a property on the context of an already-orphaned request.
-      if (key === "ctx" || key === "__userContext") {
-        return {};
-      }
-
-      return undefined;
+      return store ? store[key] : undefined;
     },
     set: function (value) {
       const store = requestInfoStore.getStore();
-      // context(justinvdm, 2025-10-08): Only set the value if the store exists.
-      // If it doesn't, this is a no-op, which is the desired behavior for an
-      // orphaned request.
-      if (store) {
-        store[key] = value;
+      if (!store) {
+        // If the store is missing, it means this setter is being called on a
+        // request that has been orphaned by an HMR update. We throw a
+        // specific error to signal this condition so the main request
+        // handler can catch it and short-circuit the request.
+        throw new StaleHmrRequestError();
       }
+      store[key] = value;
     },
   });
 });
