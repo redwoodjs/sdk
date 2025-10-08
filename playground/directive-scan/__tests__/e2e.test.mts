@@ -11,7 +11,7 @@ import { expect } from "vitest";
 setupPlaygroundEnvironment(import.meta.url);
 
 testDevAndDeploy(
-  "missing link directive scan fix",
+  "missing link directive scan",
   async ({ page, url, projectDir }) => {
     // Navigate to the missing link test page
     await page.goto(`${url}/missing-link`);
