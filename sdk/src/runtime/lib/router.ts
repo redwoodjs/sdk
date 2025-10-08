@@ -232,6 +232,12 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
       for (const route of flattenedRoutes) {
         if (typeof route === "function") {
           // This is a global middleware.
+          if (!getRequestInfo().request) {
+            console.warn(
+              "RWSDK: A request was short-circuited due to a stale HMR context.",
+            );
+            return new Response(null, { status: 204 });
+          }
           const result = await route(getRequestInfo());
           const handled = await handleMiddlewareResult(result);
           if (handled) {
@@ -256,12 +262,24 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
         return await runWithRequestInfoOverrides(
           { params } as Partial<T>,
           async () => {
+            if (!getRequestInfo().request) {
+              console.warn(
+                "RWSDK: A request was short-circuited due to a stale HMR context.",
+              );
+              return new Response(null, { status: 204 });
+            }
             const { routeMiddlewares, componentHandler } = parseHandlers(
               route.handler,
             );
 
             // Route-specific middlewares
             for (const mw of routeMiddlewares) {
+              if (!getRequestInfo().request) {
+                console.warn(
+                  "RWSDK: A request was short-circuited due to a stale HMR context.",
+                );
+                return new Response(null, { status: 204 });
+              }
               const result = await mw(getRequestInfo());
               const handled = await handleMiddlewareResult(result);
               if (handled) {
@@ -280,6 +298,13 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
                 requestInfo,
               );
 
+              if (!getRequestInfo().request) {
+                console.warn(
+                  "RWSDK: A request was short-circuited due to a stale HMR context.",
+                );
+                return new Response(null, { status: 204 });
+              }
+
               if (!isClientReference(componentHandler)) {
                 requestInfo.rw.pageRouteResolved = Promise.withResolvers();
               }
@@ -288,6 +313,12 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
             }
 
             // Handle non-component final handler (e.g., returns new Response)
+            if (!getRequestInfo().request) {
+              console.warn(
+                "RWSDK: A request was short-circuited due to a stale HMR context.",
+              );
+              return new Response(null, { status: 204 });
+            }
             const tailResult = await (componentHandler(
               getRequestInfo(),
             ) as Promise<Response | React.JSX.Element | void>);

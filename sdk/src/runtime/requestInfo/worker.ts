@@ -1,17 +1,6 @@
 import { AsyncLocalStorage } from "async_hooks";
 import { DefaultAppContext, RequestInfo } from "./types";
 
-/**
- * A custom error class to signal that a request is being processed
- * on a stale context, likely due to an HMR update.
- */
-export class StaleHmrRequestError extends Error {
-  constructor() {
-    super("Stale HMR Request");
-    this.name = "StaleHmrRequestError";
-  }
-}
-
 type DefaultRequestInfo = RequestInfo<DefaultAppContext>;
 
 const requestInfoStore = new AsyncLocalStorage<Record<string, any>>();
@@ -38,14 +27,9 @@ REQUEST_INFO_KEYS.forEach((key) => {
     },
     set: function (value) {
       const store = requestInfoStore.getStore();
-      if (!store) {
-        // If the store is missing, it means this setter is being called on a
-        // request that has been orphaned by an HMR update. We throw a
-        // specific error to signal this condition so the main request
-        // handler can catch it and short-circuit the request.
-        throw new StaleHmrRequestError();
+      if (store) {
+        store[key] = value;
       }
-      store[key] = value;
     },
   });
 });
@@ -54,12 +38,9 @@ export const requestInfo: DefaultRequestInfo = Object.freeze(
   requestInfoBase,
 ) as DefaultRequestInfo;
 
-export function getRequestInfo(): RequestInfo {
+export function getRequestInfo(): RequestInfo | undefined {
   const store = requestInfoStore.getStore();
-  if (!store) {
-    throw new Error("Request context not found");
-  }
-  return store as RequestInfo;
+  return store as RequestInfo | undefined;
 }
 
 export function runWithRequestInfo<Result>(
