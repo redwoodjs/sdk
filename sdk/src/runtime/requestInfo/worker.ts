@@ -1,7 +1,11 @@
-import { requestInfoStore } from "./storage";
-import type { DefaultRequestInfo, RequestInfo } from "./types";
+import { AsyncLocalStorage } from "async_hooks";
+import { DefaultAppContext, RequestInfo } from "./types";
 
-export const requestInfo: RequestInfo = {} as RequestInfo;
+type DefaultRequestInfo = RequestInfo<DefaultAppContext>;
+
+const requestInfoStore = new AsyncLocalStorage<Record<string, any>>();
+
+const requestInfoBase = {};
 
 const REQUEST_INFO_KEYS = [
   "request",
@@ -10,12 +14,11 @@ const REQUEST_INFO_KEYS = [
   "rw",
   "cf",
   "response",
-  "isAction",
   "__userContext",
 ];
 
 REQUEST_INFO_KEYS.forEach((key) => {
-  Object.defineProperty(requestInfo, key, {
+  Object.defineProperty(requestInfoBase, key, {
     enumerable: true,
     configurable: false,
     get: function () {
@@ -24,6 +27,10 @@ REQUEST_INFO_KEYS.forEach((key) => {
     },
   });
 });
+
+export const requestInfo: DefaultRequestInfo = Object.freeze(
+  requestInfoBase,
+) as DefaultRequestInfo;
 
 export function getRequestInfo(): RequestInfo {
   const store = requestInfoStore.getStore();
