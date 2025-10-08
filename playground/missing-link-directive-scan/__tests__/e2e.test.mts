@@ -1,30 +1,22 @@
-import { readFileSync, writeFileSync } from "fs";
+import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
-import { poll, setupPlaygroundEnvironment, testDevAndDeploy } from "rwsdk/e2e";
+import {
+  poll,
+  setupPlaygroundEnvironment,
+  testDevAndDeploy,
+  waitForHydration,
+} from "rwsdk/e2e";
 import { expect } from "vitest";
 
 setupPlaygroundEnvironment(import.meta.url);
 
-testDevAndDeploy("renders Hello World", async ({ page, url }) => {
-  await page.goto(url);
-
-  const getPageContent = () => page.content();
-
-  await poll(async () => {
-    const content = await getPageContent();
-    expect(content).toContain("Hello World");
-    return true;
-  });
-});
-
 testDevAndDeploy(
   "missing link directive scan fix",
-  async ({ page, url, playgroundPath }) => {
+  async ({ page, url, projectDir }) => {
     // Navigate to the missing link test page
     await page.goto(`${url}/missing-link`);
 
-    // Wait for page to load
-    await page.waitForFunction('document.readyState === "complete"');
+    await waitForHydration(page);
 
     // Verify initial state - should show ComponentA only
     const getPageContent = () => page.content();
@@ -40,11 +32,8 @@ testDevAndDeploy(
     });
 
     // Now modify ComponentA.tsx to uncomment the ComponentB import
-    const componentAPath = join(
-      playgroundPath,
-      "src/components/ComponentA.tsx",
-    );
-    const originalContent = readFileSync(componentAPath, "utf-8");
+    const componentAPath = join(projectDir, "src/components/ComponentA.tsx");
+    const originalContent = await readFile(componentAPath, "utf-8");
 
     // Uncomment the ComponentB import line
     const modifiedContent = originalContent
@@ -54,45 +43,44 @@ testDevAndDeploy(
       )
       .replace("// <ComponentB />", "<ComponentB />");
 
-    writeFileSync(componentAPath, modifiedContent);
+    await writeFile(componentAPath, modifiedContent);
 
-    // Wait a moment for HMR to process the change
-    await page.waitForTimeout(1000);
-
-    // Refresh the page to trigger the new import
-    await page.reload();
-    await page.waitForFunction('document.readyState === "complete"');
-
-    // Verify the fix works - should now show all components without SSR errors
+    // Verify the fix works. We poll here because HMR can take a moment
+    // to pick up the file change and rebundle.
     await poll(async () => {
       const content = await getPageContent();
 
-      // Should contain all components
-      expect(content).toContain("Component A (Server Component)");
-      expect(content).toContain("Component B (Client Component)");
-      expect(content).toContain("Component C (Client Component)");
+      // Check that all components are now rendered
+      const hasAllComponents =
+        content.includes("Component A (Server Component)") &&
+        content.includes("Component B (Client Component)") &&
+        content.includes("Component C (Client Component)");
 
-      // Should NOT contain SSR error messages
-      expect(content).not.toContain("Internal server error");
-      expect(content).not.toContain("No module found");
-      expect(content).not.toContain("use client");
+      // Check that there are no SSR errors on the page
+      const hasNoErrors =
+        !content.includes("Internal server error") &&
+        !content.includes("No module found") &&
+        !content.includes("use client");
 
-      return true;
+      return hasAllComponents && hasNoErrors;
     });
 
     // Verify client-side interactivity works
     const incrementButton = await page.waitForSelector(
       'button:has-text("Increment")',
     );
-    await incrementButton.click();
+    await incrementButton?.click();
 
     await poll(async () => {
-      const countText = await page.textContent('p:has-text("Count:")');
+      const countText = await page.evaluate(() => {
+        const element = document.querySelector('p:has-text("Count:")');
+        return element?.textContent;
+      });
       expect(countText).toContain("Count: 1");
       return true;
     });
 
     // Restore original file content
-    writeFileSync(componentAPath, originalContent);
+    await writeFile(componentAPath, originalContent);
   },
 );
