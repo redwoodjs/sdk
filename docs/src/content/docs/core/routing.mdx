@@ -84,7 +84,85 @@ route("/files/*/preview", ...)
 route("/files/*/download/*", ...)
 ```
 
+---
 
+## Request Handlers
+
+The request handler is a function, or array of functions (See [Interrupters](#interrupters)), that are executed when a request is matched.
+
+```tsx title="src/worker.tsx" mark={4-9}
+import { route } from "rwsdk/router";
+
+defineApp([
+  route("/a-standard-response", ({ request, params, ctx }) => {
+    return new Response("Hello, world!")
+  }),
+  route('/a-jsx-response', () => {
+    return <div>Hello, JSX world!</div>
+  }),
+])
+```
+
+---
+
+The request handler function takes a [RequestInfo](#request-info) object as its parameter.
+
+Return values:
+- `Response`: A standard response object.
+- `JSX`: A React component, which is statically rendered to HTML on the server, streamed to the client, and then hydrated on the client side.
+
+---
+
+### Interrupters
+
+Interrupters are an array of functions that are executed in sequence for each matched request. They can be used to modify the request, context, or to short-circuit the response. A typical use-case is to check for authentication on a per-request basis, as an example you're trying to ensure that a specific user can access a specific resource.
+
+```tsx title="src/worker.tsx" mark={5-10, 13} collapse={1-2}
+import { defineApp } from "rwsdk/worker";
+import { route } from "rwsdk/router";
+import { EditBlogPage } from "src/pages/blog/EditBlogPage";
+
+function isAuthenticated({ request, ctx }) {
+  // Ensure that this user is authenticated
+  if (!ctx.user) {
+    return new Response("Unauthorized", { status: 401 })
+  }
+}
+
+defineApp([
+  route("/blog/:slug/edit", [isAuthenticated, EditBlogPage])
+])
+```
+
+---
+
+For the `/blog/:slug/edit` route, the `isAuthenticated` function will be executed first, if the user is not authenticated, the response will be a 401 Unauthorized. If the user is authenticated, the `EditBlogPage` component will be rendered. Therefore the flow is interrupted. The `isAuthenticated` function can be shared across multiple routes.
+
+---
+
+## Middleware & Context
+
+The context object (`ctx`) is a mutable object that is passed to each request handler, interrupters, and React Server Functions. It's used to share data between the different parts of your application. You populate the context on a per-request basis via Middleware.
+
+Middleware runs before the request is matched to a route. You can specify multiple middleware functions, they'll be executed in the order they are defined.
+
+<Aside type="note" title="Server Actions">
+  Requests made by Server Actions also pass through the middleware pipeline. This
+  means you can rely on middleware to populate context or perform checks for your
+  actions, just as you would for page requests.
+</Aside>
+
+```tsx title="src/worker.tsx" mark={5-10}
+import { defineApp } from "rwsdk/worker";
+import { route } from "rwsdk/router";
+import { env } from "cloudflare:workers";
+
+defineApp([
+  sessionMiddleware,
+  async function getUserMiddleware({ request, ctx }) {
+    if (ctx.session.userId) {
+      ctx.user = await db.user.find({ where: { id: ctx.session.userId } });
+    }
   },
   route("/hello", [
     function ({ ctx }) {
