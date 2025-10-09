@@ -55,7 +55,7 @@ testDev("missing link directive scan", async ({ page, url, projectDir }) => {
       '// import { ComponentB } from "./ComponentB";',
       'import { ComponentB } from "./ComponentB";',
     )
-    .replace("// <ComponentB />", "<ComponentB />");
+    .replace("{/* <ComponentB /> */}", "<ComponentB />");
 
   console.log("########## 13");
   await writeFile(componentAPath, modifiedContent);
