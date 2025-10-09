@@ -832,3 +832,112 @@ describe("defineRoutes - Request Handling Behavior", () => {
     });
   });
 });
+
+describe("Nested Prefix and Layout Middleware Scoping", () => {
+  it("should not apply middleware from one prefix to routes in another prefix", async () => {
+    const executionOrder: string[] = [];
+    const createMockDependencies = () => {
+      const mockRequestInfo: RequestInfo = {
+        request: new Request("http://localhost:3000/"),
+        params: {},
+        ctx: {},
+        rw: {
+          nonce: "test-nonce",
+          Document: () => React.createElement("html"),
+          rscPayload: true,
+          ssr: true,
+          databases: new Map(),
+          scriptsToBeLoaded: new Set(),
+          pageRouteResolved: undefined,
+        } as RwContext,
+        cf: {} as any,
+        response: { headers: new Headers() },
+        isAction: false,
+      };
+
+      const mockRenderPage = async (
+        requestInfo: RequestInfo,
+        Page: React.FC,
+        onError: (error: unknown) => void,
+      ): Promise<Response> => {
+        return new Response(`Rendered: ${Page.name || "Component"}`, {
+          headers: { "content-type": "text/html" },
+        });
+      };
+
+      const mockRscActionHandler = async (
+        request: Request,
+      ): Promise<unknown> => {
+        return { actionResult: "test-action-result" };
+      };
+
+      const mockRunWithRequestInfoOverrides = async <Result>(
+        overrides: Partial<RequestInfo>,
+        fn: () => Promise<Result>,
+      ): Promise<Result> => {
+        // Merge overrides into the mock request info
+        Object.assign(mockRequestInfo, overrides);
+        return await fn();
+      };
+
+      return {
+        mockRequestInfo,
+        mockRenderPage,
+        mockRscActionHandler,
+        mockRunWithRequestInfoOverrides,
+        getRequestInfo: () => mockRequestInfo,
+        onError: (error: unknown) => {
+          throw error;
+        },
+      };
+    };
+
+    const dashboardMiddleware = () => {
+      executionOrder.push("dashboardMiddleware");
+      return new Response("From dashboard middleware", { status: 401 });
+    };
+
+    const DashboardLayout = ({ children }: { children?: React.ReactNode }) => {
+      executionOrder.push("DashboardLayout");
+      return React.createElement("div", {}, children);
+    };
+
+    const DashboardPage = () => {
+      executionOrder.push("DashboardPage");
+      return React.createElement("div", {}, "Dashboard");
+    };
+
+    const apiHandler = () => {
+      executionOrder.push("apiHandler");
+      return new Response("API Response");
+    };
+
+    const router = defineRoutes([
+      ...prefix("/dashboard", [
+        ...layout(DashboardLayout, [
+          dashboardMiddleware,
+          route("/", DashboardPage),
+        ]),
+      ]),
+      ...prefix("/api", [route("/health", apiHandler)]),
+    ]);
+
+    const deps = createMockDependencies();
+
+    // Request to a path inside the /api prefix
+    const request = new Request("http://localhost:3000/api/health/");
+    const response = await router.handle({
+      request,
+      renderPage: deps.mockRenderPage,
+      getRequestInfo: deps.getRequestInfo,
+      onError: deps.onError,
+      runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+      rscActionHandler: deps.mockRscActionHandler,
+    });
+
+    // The dashboard middleware should NOT have been executed.
+    expect(executionOrder).toEqual(["apiHandler"]);
+    expect(await response.text()).toBe("API Response");
+    expect(response.status).toBe(200);
+  });
+});
