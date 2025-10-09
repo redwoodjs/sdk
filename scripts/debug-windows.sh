@@ -26,8 +26,13 @@ echo "Current branch is '$BRANCH'."
 
 # Trigger the workflow
 echo "Triggering the 'Windows Debug Session' workflow on branch '$BRANCH'..."
-# The `gh workflow run` command outputs the URL to the run, which is nice.
-gh workflow run windows-debug.yml --ref "$BRANCH"
+# We use `gh api` here to avoid the limitation of `gh workflow run` which
+# requires the workflow file to exist on the default branch.
+gh api \
+  --method POST \
+  -H "Accept: application/vnd.github.v3+json" \
+  "/repos/$(gh repo view --json owner,name -q '.owner.login + "/" + .name')/actions/workflows/windows-debug.yml/dispatches" \
+  -f ref="$BRANCH" > /dev/null
 
 echo "Waiting a moment for the workflow run to be created..."
 sleep 5
