@@ -49,57 +49,35 @@ fi
 
 echo "Successfully triggered workflow. Run ID: $RUN_ID"
 echo "You can view the run at: $(gh run view "$RUN_ID" --json url --jq '.url')"
-echo "Waiting for the tmate SSH session to become available..."
+echo "Waiting for the workflow to upload the SSH connection artifact..."
 echo "This may take a few minutes while the runner is being set up."
-echo "[DEBUG] About to sleep for 30 seconds..."
 
-# Give the run a moment to start before we begin polling the logs.
-sleep 30
+# Wait for the run to complete. The artifact is only available after the run is complete.
+# However, our run has a 60-minute sleep, so we can't wait for completion.
+# Instead, we will poll for the artifact.
 
-echo "[DEBUG] Finished sleeping. Starting poll loop."
+ARTIFACT_DIR=$(mktemp -d)
 
-# Poll the logs until the SSH connection string is available.
-SSH_COMMAND=""
-for i in {1..30}; do # Poll for up to 5 minutes (30 * 10 seconds)
-  echo "[DEBUG] Polling attempt $i..."
-  
-  set +e
-  LOGS=$(gh run view "$RUN_ID" --log 2>&1)
-  GH_EXIT_CODE=$?
-  set -e
-  
-  if [ $GH_EXIT_CODE -ne 0 ]; then
-    echo "[DEBUG] 'gh run view' failed with exit code $GH_EXIT_CODE. Retrying..."
-    sleep 10
-    continue
-  fi
-
-  SSH_CONNECTION_LINE=$(echo "$LOGS" | grep "tmate SSH session")
-
-  if [ -n "$SSH_CONNECTION_LINE" ]; then
-    SSH_COMMAND=$(echo "$SSH_CONNECTION_LINE" | sed 's/.*::notice title=tmate SSH session:://' | perl -pe 's/\r\n|\n|\r//g')
-    if [ -n "$SSH_COMMAND" ]; then
-        echo "[DEBUG] Found SSH command."
+for i in {1..30}; do # Poll for up to 5 minutes
+    if gh run download "$RUN_ID" -n tmate-ssh-string -D "$ARTIFACT_DIR"; then
+        echo "Successfully downloaded SSH connection artifact."
         break
     fi
-  fi
-
-  # Check if the run has already failed
-  STATUS=$(gh run view "$RUN_ID" --json status -q '.status')
-  if [ "$STATUS" == "completed" ]; then
-    echo "The workflow run completed without providing an SSH connection."
-    echo "Please check the logs for errors: $(gh run view "$RUN_ID" --json url -q '.url')"
-    exit 1
-  fi
-
-  echo "Still waiting for session... (attempt $i of 30)"
-  sleep 10
+    echo "Artifact not yet available. Waiting 10 seconds... (attempt $i of 30)"
+    sleep 10
 done
 
+if [ ! -f "$ARTIFACT_DIR/tmate-ssh-string.txt" ]; then
+    echo "Could not download the SSH connection artifact."
+    echo "Please check the workflow run for errors."
+    exit 1
+fi
+
+SSH_COMMAND=$(cat "$ARTIFACT_DIR/tmate-ssh-string.txt")
+rm -rf "$ARTIFACT_DIR" # Clean up temp directory
 
 if [ -z "$SSH_COMMAND" ]; then
-    echo "The workflow timed out without providing an SSH connection string."
-    echo "Please check the workflow logs for errors."
+    echo "The SSH connection string is empty."
     exit 1
 fi
 
@@ -110,7 +88,7 @@ echo "          SSH Session Ready"
 echo "=========================================="
 echo "Connecting to the remote session now..."
 echo "The session will remain active for up to 60 minutes."
-echo "=========================================="
+echo "==========================================="
 echo ""
 
 # Execute the SSH command
