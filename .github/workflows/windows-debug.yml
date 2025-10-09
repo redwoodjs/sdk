@@ -30,7 +30,7 @@ jobs:
         shell: powershell
         run: |
           echo "Installing tmate..."
-          choco install tmate -y
+          scoop install tmate
           echo "Starting tmate session..."
           tmate new-session -d
           tmate wait tmate-ready

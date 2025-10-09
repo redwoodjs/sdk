@@ -33,7 +33,7 @@ importers:
         specifier: ^4.3.0
         version: 4.3.0(prettier@3.6.2)(typescript@5.9.3)
       tsx:
-        specifier: ^4.15.7
+        specifier: ^4.20.6
         version: 4.20.6
       typescript:
         specifier: ^5.4.5
