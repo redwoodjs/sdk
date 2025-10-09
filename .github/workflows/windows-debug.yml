@@ -27,7 +27,6 @@ jobs:
         run: pnpm install
 
       - name: Setup tmate session
-        id: tmate
         shell: powershell
         run: |
           echo "Installing tmate..."
@@ -36,14 +35,6 @@ jobs:
           tmate new-session -d
           tmate wait tmate-ready
           $ssh_connection = tmate display -p '#{tmate_ssh}'
-          echo $ssh_connection > tmate-ssh-string.txt
-          echo "::set-output name=ssh_connection::$ssh_connection"
-
-      - name: Upload SSH connection string
-        uses: actions/upload-artifact@v4
-        with:
-          name: tmate-ssh-string
-          path: tmate-ssh-string.txt
-
-      - name: Wait for connection
-        run: sleep 3600
+          echo "::notice title=tmate SSH session::$ssh_connection"
+          echo "To connect via SSH, copy the connection string above and paste it into your terminal."
+          sleep 3600
