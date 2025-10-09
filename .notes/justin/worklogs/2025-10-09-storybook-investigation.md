@@ -16,13 +16,11 @@ The user is using:
 
 ## Update (2025-10-09)
 
-The user clarified that the initial rendering works correctly. The "Maximum call stack size exceeded" error only occurs after a source code change, which triggers a hot reload. This points more strongly to an issue in our HMR logic within the Vite plugin.
+Adding the `'use client'` directive to the component did not change the behavior. The initial render is successful, but HMR changes still require a manual page refresh. The "Maximum call stack size exceeded" error was not reproduced.
 
-I have now set up a playground example with Storybook. The initial render works as expected. When I make a change to a component, hot reload does not apply the changes automatically. A manual browser refresh is required to see the change.
+The user's original stack trace points to an infinite recursion in `isInUseClientGraph` within our `miniflareHMRPlugin`. It's likely that a specific project structure, such as a circular import between components, is triggering this.
 
-So far, I have not been able to reproduce the "Maximum call stack size exceeded" error.
-
-The next step is to test the behavior with a component that includes the `'use client'` directive, as this is a likely scenario in a real-world application and could be the trigger for the recursion issue.
+The next step is to analyze the `miniflareHMRPlugin` and attempt to create a circular dependency in the playground to reproduce the user's error.
 
 ## Plan
 

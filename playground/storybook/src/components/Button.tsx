@@ -1,5 +1,7 @@
 "use client";
 
+import { AnotherButton } from "./AnotherButton";
+
 interface ButtonProps {
   /**
    * Is this the principal call to action on the page?
@@ -36,17 +38,23 @@ export const Button = ({
   const mode = primary
     ? "storybook-button--primary"
     : "storybook-button--secondary";
+
+  console.log("triggering hmr");
+
   return (
-    <button
-      type="button"
-      className={["storybook-button", `storybook-button--${size}`, mode].join(
-        " ",
-      )}
-      style={{ backgroundColor }}
-      {...props}
-    >
-      <span>hi</span>
-      {label}
-    </button>
+    <>
+      <button
+        type="button"
+        className={["storybook-button", `storybook-button--${size}`, mode].join(
+          " ",
+        )}
+        style={{ backgroundColor }}
+        {...props}
+      >
+        <span>hi</span>
+        {label}
+      </button>
+      {primary && <AnotherButton />}
+    </>
   );
 };
