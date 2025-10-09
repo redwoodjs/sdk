@@ -14,7 +14,8 @@ import {
 } from "./requestInfo/worker";
 
 import { ssrWebpackRequire } from "./imports/worker";
-import { Route, type RwContext, defineRoutes } from "./lib/router";
+import { Route, defineRoutes } from "./lib/router";
+import type { RwContext } from "./lib/types.js";
 import { generateNonce } from "./lib/utils";
 
 export * from "./requestInfo/types";
@@ -96,6 +97,8 @@ export const defineApp = <
           ssr: true,
           databases: new Map(),
           scriptsToBeLoaded: new Set(),
+          entryScripts: new Set(),
+          inlineScripts: new Set(),
           pageRouteResolved: undefined,
         };
 
