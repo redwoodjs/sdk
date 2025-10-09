@@ -1,0 +1,43 @@
+name: Windows Debug Session
+
+on:
+  workflow_dispatch:
+
+jobs:
+  debug:
+    runs-on: windows-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup tmate session
+        shell: powershell
+        run: |
+          echo "Installing tmate..."
+          choco install tmate -y
+          echo "Starting tmate session..."
+          tmate new-session -d
+          tmate wait tmate-ready
+          $ssh_connection = tmate display -p '#{tmate_ssh}'
+          $web_connection = tmate display -p '#{tmate_web}'
+          echo "::notice title=tmate SSH session::$ssh_connection"
+          echo "::notice title=tmate web shell::$web_connection"
+          echo "To connect via SSH, copy the connection string and paste it into your terminal."
+          echo "The workflow will remain active for 60 minutes or until you disconnect."
+          sleep 3600
