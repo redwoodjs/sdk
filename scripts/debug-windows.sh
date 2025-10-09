@@ -77,7 +77,7 @@ for i in {1..30}; do # Poll for up to 5 minutes (30 * 10 seconds)
   SSH_CONNECTION_LINE=$(echo "$LOGS" | grep "tmate SSH session")
 
   if [ -n "$SSH_CONNECTION_LINE" ]; then
-    SSH_COMMAND=$(echo "$SSH_CONNECTION_LINE" | sed 's/.*::notice title=tmate SSH session:://' | tr -d '\r')
+    SSH_COMMAND=$(echo "$SSH_CONNECTION_LINE" | sed 's/.*::notice title=tmate SSH session:://' | perl -pe 's/\r\n|\n|\r//g')
     if [ -n "$SSH_COMMAND" ]; then
         echo "[DEBUG] Found SSH command."
         break
