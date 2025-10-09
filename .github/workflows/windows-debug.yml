@@ -1,7 +1,9 @@
 name: Windows Debug Session
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - "debug-windows/**"
 
 jobs:
   debug:
