@@ -147,6 +147,30 @@ Debug logs with `DEBUG='rwsdk:vite:run-directives-scan'` show no directive scan 
 **Conclusion:**
 The implementation is correct and working as intended. The test failure is due to the test environment not executing the directive scan, not a problem with the fix itself.
 
+## Attempt 6: Final E2E Test Debugging
+
+After confirming the core fix was working through manual testing, the focus shifted to fixing the end-to-end test. The investigation revealed several layers of issues that were masking each other.
+
+**Finding 1: False Negative from Instructional Text**
+
+The initial test failures pointed to an SSR error: `No module found for '/src/components/ComponentB.tsx'`. However, deeper inspection of the test output and the `MissingLinkPage.tsx` component revealed that this error message was not from a live SSR failure. It was hardcoded into the component's JSX as an instructional example for developers, explaining what *would* happen without the fix. The test's check for "Internal server error" was detecting this static text and incorrectly flagging it as a failure.
+
+**Solution:** The instructional text in `MissingLinkPage.tsx` was rephrased to describe the error without including the verbatim error message. This resolved the false negative.
+
+**Finding 2: Incorrect File Modification**
+
+With the false negative fixed, the test still timed out. Analysis of the temporary test directory showed that while the `import` statement for `ComponentB` was being correctly uncommented in `ComponentA.tsx`, the JSX component usage (`<ComponentB />`) remained commented out. The test was using a simple string replacement (`.replace('// <ComponentB />', '<ComponentB />')`) which did not match the actual JSX comment syntax in the file (`{/* <ComponentB /> */}`).
+
+**Solution:** The string replacement logic in the test was updated to correctly target and replace the JSX comment, ensuring the `<ComponentB />` element was actually rendered.
+
+**Finding 3: Fragile Selector Logic**
+
+The final issue was intermittent timeouts when the test tried to interact with the client-side counter button in `ComponentC`. The test was using `page.waitForSelector()` which could be brittle.
+
+**Solution:** The interaction logic was refactored to match conventions used in other e2e tests. It now uses `page.evaluate()` to run `document.querySelector()` directly in the browser context, wrapped within a `poll` utility. This provides a more robust way to find and interact with elements after they become available on the page.
+
+With these fixes, the end-to-end test now passes reliably, confirming the directive scan fix and providing a regression test for the future.
+
 ## PR Description
 
 **Title:** `fix(vite): Prevent stale directive map with startup pre-scan`
