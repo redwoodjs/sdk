@@ -941,3 +941,125 @@ describe("Nested Prefix and Layout Middleware Scoping", () => {
     expect(response.status).toBe(200);
   });
 });
+
+describe("middleware scoping with prefixes and layouts", () => {
+  type TestRequestInfo = RequestInfo<any, { status?: string }>;
+
+  const createMockDependencies = () => {
+    const mockRequestInfo: TestRequestInfo = {
+      request: new Request("http://localhost:3000/"),
+      params: {},
+      ctx: {},
+      rw: {
+        nonce: "test-nonce",
+        Document: () => React.createElement("html"),
+        rscPayload: true,
+        ssr: true,
+        databases: new Map(),
+        scriptsToBeLoaded: new Set(),
+        pageRouteResolved: undefined,
+      } as RwContext,
+      cf: {} as any,
+      response: { headers: new Headers() },
+      isAction: false,
+    };
+
+    const mockRenderPage = async (
+      requestInfo: TestRequestInfo,
+      Page: React.FC,
+    ): Promise<Response> => {
+      // The core of the test is checking the context at render time.
+      return new Response(`Rendered: ${requestInfo.ctx.status}`);
+    };
+
+    const mockRscActionHandler = async (request: Request): Promise<unknown> => {
+      return { actionResult: "test-action-result" };
+    };
+
+    const mockRunWithRequestInfoOverrides = async <Result>(
+      overrides: Partial<RequestInfo>,
+      fn: () => Promise<Result>,
+    ): Promise<Result> => {
+      Object.assign(mockRequestInfo, overrides);
+      return await fn();
+    };
+
+    return {
+      mockRequestInfo,
+      mockRenderPage,
+      mockRscActionHandler,
+      mockRunWithRequestInfoOverrides,
+      getRequestInfo: () => mockRequestInfo,
+      onError: (error: unknown) => {
+        throw error;
+      },
+    };
+  };
+
+  it("should not leak middleware context from a prefixed layout to a sibling prefix", async () => {
+    const deps = createMockDependencies();
+
+    const adminAuthMiddleware = (reqInfo: TestRequestInfo) => {
+      reqInfo.ctx.status = "admin";
+    };
+
+    const AdminLayout = ({ children }: { children?: React.ReactNode }) =>
+      React.createElement("div", {}, children);
+    const AdminPage = () => {
+      // This component doesn't need to do anything special.
+      // The test is in `mockRenderPage`.
+      return React.createElement("div", {}, "Admin Page");
+    };
+
+    const apiHandler = (reqInfo: TestRequestInfo) => {
+      // This assertion is the key part of the test.
+      // If middleware leaked, status would be 'admin'.
+      expect(reqInfo.ctx.status).toBeUndefined();
+      return new Response("API OK");
+    };
+
+    const router = defineRoutes([
+      ...prefix("/admin", [
+        ...layout(AdminLayout, [adminAuthMiddleware, route("/", AdminPage)]),
+      ]),
+      ...prefix("/api", [route("/health", apiHandler)]),
+    ]);
+
+    // --- Test 1: Hit the admin route to ensure middleware runs ---
+    const adminRequest = new Request("http://localhost:3000/admin/");
+    // Create a fresh requestInfo for this request
+    const adminRequestInfo = {
+      ...deps.mockRequestInfo,
+      request: adminRequest,
+      ctx: {},
+    };
+    const adminResponse = await router.handle({
+      request: adminRequest,
+      renderPage: deps.mockRenderPage,
+      getRequestInfo: () => adminRequestInfo,
+      onError: deps.onError,
+      runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+      rscActionHandler: deps.mockRscActionHandler,
+    });
+    expect(await adminResponse.text()).toBe("Rendered: admin");
+
+    // --- Test 2: Hit the API route and check for leaked context ---
+    const apiRequest = new Request("http://localhost:3000/api/health/");
+    // Create another fresh requestInfo for this request to simulate a new request
+    const apiRequestInfo = {
+      ...deps.mockRequestInfo,
+      request: apiRequest,
+      ctx: {},
+    };
+    const apiResponse = await router.handle({
+      request: apiRequest,
+      renderPage: deps.mockRenderPage,
+      getRequestInfo: () => apiRequestInfo,
+      onError: deps.onError,
+      runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+      rscActionHandler: deps.mockRscActionHandler,
+    });
+
+    expect(await apiResponse.text()).toBe("API OK");
+  });
+});
