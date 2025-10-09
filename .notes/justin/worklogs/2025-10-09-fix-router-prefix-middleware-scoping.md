@@ -33,3 +33,22 @@ This change ensures that middleware is always scoped to the routes within its `l
 - Added a new test suite to verify that middleware context does not leak between sibling route prefixes.
 - The new test fails before the fix and passes after, confirming the issue is resolved.
 - All existing tests continue to pass.
+
+---
+
+## Change in Direction: Pivoting to End-to-End Testing
+
+**Date:** 2025-10-09
+
+### Problem
+
+Multiple attempts to write a failing unit test for the middleware scoping issue have been unsuccessful. The tests passed even without a fix, indicating they were false positives. The core difficulty lies in accurately replicating the stateful, request-level environment where the bug manifests. Mocking the request lifecycle and context has proven insufficient to trigger the state pollution that is likely the root cause.
+
+### New Plan
+
+To resolve this, the strategy is shifting from unit testing to end-to-end (E2E) testing. This approach will validate the behavior in a full application environment, which is more representative of the user's reported issue.
+
+1.  **Create a New Playground:** A new playground example, named `router-middleware-scoping`, will be created by copying the `hello-world` template.
+2.  **Replicate the User's Code:** The routing configuration from the user's screenshot, including the `prefix`, `layout`, and redirecting middleware, will be implemented in the new playground's `worker.tsx`.
+3.  **Write a Failing E2E Test:** A Puppeteer test will be written to make a request to an `/api` endpoint. The test will assert that the browser is *not* redirected to the `/auth` page, which would confirm that the middleware from the separate `/dashboard` prefix is incorrectly being applied.
+4.  **Verify the Failure:** Run the E2E test to confirm that it fails as expected. This failing test will serve as the definitive validation for the subsequent fix.
