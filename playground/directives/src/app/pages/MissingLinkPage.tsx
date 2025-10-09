@@ -1,4 +1,4 @@
-import { ComponentA } from "../components/ComponentA";
+import { ComponentA } from "../../components/ComponentA";
 
 export function MissingLinkPage() {
   return (
