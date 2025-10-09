@@ -634,7 +634,7 @@ importers:
         specifier: 4.42.0
         version: 4.42.0(@cloudflare/workers-types@4.20251004.0)
 
-  playground/router:
+  playground/routing:
     dependencies:
       react:
         specifier: 19.3.0-canary-4fdf7cf2-20251003
