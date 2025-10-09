@@ -34,6 +34,5 @@ jobs:
           echo "Starting tmate session..."
           tmate new-session -d
           tmate wait tmate-ready
-          $SshConnectionString = tmate display -p '#{tmate_ssh}'
-          echo "::notice title=tmate SSH session::$SshConnectionString"
+          tmate display -p '#{tmate_ssh}' | ForEach-Object { "::notice title=tmate SSH session::$_" }
           sleep 3600
