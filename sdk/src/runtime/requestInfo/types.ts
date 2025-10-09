@@ -1,4 +1,4 @@
-import { RwContext } from "../lib/router";
+import { RwContext } from "../lib/types.js";
 
 export interface DefaultAppContext {}
 
