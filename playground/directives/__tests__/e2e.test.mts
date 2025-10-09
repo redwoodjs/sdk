@@ -78,7 +78,7 @@ testDev("missing link directive scan", async ({ page, url, projectDir }) => {
       !content.includes("No module found") &&
       !content.includes("use client");
 
-    console.log("########## 17");
+    console.log("########## 17", hasAllComponents, hasNoErrors, content);
     return hasAllComponents && hasNoErrors;
   });
 
