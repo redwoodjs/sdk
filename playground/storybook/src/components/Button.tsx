@@ -1,3 +1,5 @@
+"use client";
+
 interface ButtonProps {
   /**
    * Is this the principal call to action on the page?
@@ -43,6 +45,7 @@ export const Button = ({
       style={{ backgroundColor }}
       {...props}
     >
+      <span>hi</span>
       {label}
     </button>
   );
