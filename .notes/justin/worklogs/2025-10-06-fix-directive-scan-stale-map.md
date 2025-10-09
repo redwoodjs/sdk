@@ -127,3 +127,22 @@ With the core implementation fixing the stale map issue, the next step was to cr
 
 **Result:**
 The e2e test was executed. While the test is correctly structured to validate the fix, it is currently failing due to a test-environment-specific module resolution error (`Cannot find module '@/app/pages/MissingLinkPage'`). The test runner seems unable to resolve the `@/` alias. Per instructions, this test failure is being ignored for now, to be fixed manually. The core implementation is considered complete and documented.
+
+## Attempt 5: Test Environment Investigation
+
+After manual verification confirmed the fix works correctly in a normal dev environment, investigation turned to why the e2e test environment fails differently.
+
+**Key Discovery:**
+Manual testing in `playground/directives` with `pnpm dev` shows the fix working perfectly - ComponentB and ComponentC render correctly after uncommenting the import, with no SSR errors.
+
+**Test Environment Analysis:**
+The e2e test consistently fails with "Polling timed out" and shows the same SSR error in the HTML payload:
+```
+Internal server error: (ssr) No module found for '/src/components/ComponentB.tsx' in module lookup for "use client" directive
+```
+
+**Critical Finding:**
+Debug logs with `DEBUG='rwsdk:vite:run-directives-scan'` show no directive scan activity in the test environment, indicating the directive scan is not running at all during test execution. This suggests the test harness is using a different Vite configuration or server instance that bypasses the directive scan entirely.
+
+**Conclusion:**
+The implementation is correct and working as intended. The test failure is due to the test environment not executing the directive scan, not a problem with the fix itself.

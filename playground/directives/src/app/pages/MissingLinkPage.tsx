@@ -48,20 +48,9 @@ export function MissingLinkPage() {
         </p>
 
         <p>
-          <strong>Without the fix, you would see:</strong>
+          <strong>Without the fix:</strong> You would see an SSR error when
+          trying to render ComponentB.
         </p>
-        <pre
-          style={{
-            backgroundColor: "#fff",
-            padding: "1rem",
-            borderRadius: "4px",
-            border: "1px solid #ccc",
-          }}
-        >
-          Internal server error: (ssr) No module found for
-          '/src/components/ComponentB.tsx' in module lookup for "use client"
-          directive
-        </pre>
       </div>
     </div>
   );
