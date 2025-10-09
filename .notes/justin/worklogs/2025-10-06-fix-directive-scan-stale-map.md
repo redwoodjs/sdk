@@ -146,3 +146,19 @@ Debug logs with `DEBUG='rwsdk:vite:run-directives-scan'` show no directive scan 
 
 **Conclusion:**
 The implementation is correct and working as intended. The test failure is due to the test environment not executing the directive scan, not a problem with the fix itself.
+
+## PR Description
+
+**Title:** `fix(vite): Prevent stale directive map with startup pre-scan`
+
+### Problem
+
+The directive scan process builds its map of `"use client"` and `"use server"` files by traversing the dependency graph from the application's entry points. This created an issue where the map would become stale if a code change introduced a new dependency path to a file that was not previously reachable.
+
+For example, if a server component was modified to import a client component that had not been imported anywhere else, the Hot Module Replacement (HMR) update would not trigger a re-scan. The server would then fail during server-side rendering (SSR) with a "No module found" error because the newly imported client component was not in its directive map.
+
+### Solution
+
+This change introduces a pre-scan phase that runs before the dependency-graph traversal. It uses a glob pattern to find all files within the `src` directory that could potentially contain directives, based on their file extensions.
+
+These files are then added to the list of entry points for the main directive scan. This ensures that all directive-containing files are discovered at startup, regardless of whether they are immediately reachable from an entry point. This approach makes the directive map aware of all potential directive modules from the beginning, preventing stale map issues during HMR updates. Caching is used to avoid redundant file reads during this process.
