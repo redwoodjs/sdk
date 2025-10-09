@@ -11,3 +11,5 @@ The `defineLinks` function is a useful utility for creating type-safe links, but
 3.  Include code examples for each of these points.
 4.  Add an API reference for `defineLinks` within the new section.
 5.  Keep the style consistent with the rest of the document.
+6.  Update the API reference to be more descriptive, following the style of `renderToStream` in `react-server-components.mdx`.
+7.  Move the "Generating Links" section to the end of the document.
