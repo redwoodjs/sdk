@@ -1,6 +1,5 @@
 "use client";
-
-import { AnotherButton } from "./AnotherButton";
+import { A } from "../lib/moduleA";
 
 interface ButtonProps {
   /**
@@ -39,22 +38,20 @@ export const Button = ({
     ? "storybook-button--primary"
     : "storybook-button--secondary";
 
-  console.log("triggering hmr");
+  if (primary) {
+    console.log(A);
+  }
 
   return (
-    <>
-      <button
-        type="button"
-        className={["storybook-button", `storybook-button--${size}`, mode].join(
-          " ",
-        )}
-        style={{ backgroundColor }}
-        {...props}
-      >
-        <span>hi</span>
-        {label}
-      </button>
-      {primary && <AnotherButton />}
-    </>
+    <button
+      type="button"
+      className={["storybook-button", `storybook-button--${size}`, mode].join(
+        " ",
+      )}
+      style={{ backgroundColor }}
+      {...props}
+    >
+      {label}
+    </button>
   );
 };
