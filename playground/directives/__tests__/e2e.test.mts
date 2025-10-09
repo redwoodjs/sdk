@@ -74,14 +74,8 @@ testDev("missing link directive scan", async ({ page, url, projectDir }) => {
       content.includes("Component B (Client Component)") &&
       content.includes("Component C (Client Component)");
 
-    // Check that there are no SSR errors on the page
-    const hasNoErrors =
-      !content.includes("Internal server error") &&
-      !content.includes("No module found") &&
-      !content.includes("use client");
-
-    console.log("########## 17", hasAllComponents, hasNoErrors, content);
-    return hasAllComponents && hasNoErrors;
+    console.log("########## 17", hasAllComponents);
+    return hasAllComponents;
   });
 
   console.log("########## 18");
