@@ -24,6 +24,14 @@ I attempted to create a circular dependency, but it resulted in a runtime "Maxim
 
 The next step is to create a circular dependency at the module level that does not cause a runtime error, which should correctly test the HMR plugin's logic and reproduce the user's reported bug.
 
+## Update (2025-10-09)
+
+My previous attempts to create a circular dependency were flawed because they created runtime errors (either "Maximum call stack size exceeded" or "Cannot access 'A' before initialization"), preventing a proper test of the HMR plugin.
+
+The key is to create a circular dependency at the module import level, not at the runtime call level. This will create the circular graph that the HMR plugin's `isInUseClientGraph` function has to traverse, without causing the application itself to crash.
+
+My new plan is to have two modules that import each other, but do not call each other's functions during initialization. This structure, when imported by a client component, should finally reproduce the user's bug.
+
 ## Plan
 
 1.  Create a new playground example based on `hello-world` to reproduce the issue.

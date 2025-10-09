@@ -1,6 +1,7 @@
-import { B } from "./moduleB";
+import { b } from "./moduleB";
 
-export const A = {
-  name: "A", // trigger hmr
-  b: B,
+export const a = () => {
+  b();
+  // trigger hmr
+  return "a";
 };

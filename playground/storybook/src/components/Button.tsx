@@ -1,5 +1,5 @@
 "use client";
-import { A } from "../lib/moduleA";
+import { a } from "../lib/moduleA";
 
 interface ButtonProps {
   /**
@@ -39,7 +39,7 @@ export const Button = ({
     : "storybook-button--secondary";
 
   if (primary) {
-    console.log(A);
+    a();
   }
 
   return (
@@ -51,6 +51,7 @@ export const Button = ({
       style={{ backgroundColor }}
       {...props}
     >
+      <span>hi</span>
       {label}
     </button>
   );
