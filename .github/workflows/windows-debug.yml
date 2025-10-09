@@ -1,9 +1,7 @@
 name: Windows Debug Session
 
 on:
-  push:
-    branches:
-      - "debug-windows/**"
+  workflow_dispatch:
 
 jobs:
   debug:
@@ -36,10 +34,6 @@ jobs:
           echo "Starting tmate session..."
           tmate new-session -d
           tmate wait tmate-ready
-          $ssh_connection = tmate display -p '#{tmate_ssh}'
-          $web_connection = tmate display -p '#{tmate_web}'
-          echo "::notice title=tmate SSH session::$ssh_connection"
-          echo "::notice title=tmate web shell::$web_connection"
-          echo "To connect via SSH, copy the connection string and paste it into your terminal."
-          echo "The workflow will remain active for 60 minutes or until you disconnect."
+          $SshConnectionString = tmate display -p '#{tmate_ssh}'
+          echo "::notice title=tmate SSH session::$SshConnectionString"
           sleep 3600
