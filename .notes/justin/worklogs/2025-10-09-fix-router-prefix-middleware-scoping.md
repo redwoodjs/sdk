@@ -10,3 +10,26 @@ A user reported that middleware within a `prefix` block is being applied to rout
 3.  **Refactor `layout`:** Modify the `layout` function to not just pass middleware functions through, but to associate them with a special property on a `RouteDefinition`. This will ensure middleware stays "attached" to the routes within the layout.
 4.  **Update `prefix`:** Adjust the `prefix` function to handle the new structure returned by `layout`, ensuring it correctly applies the path prefix to these attached middleware.
 5.  **Verify:** Run the test suite to confirm the failing test now passes and that no existing functionality is broken.
+
+---
+
+## PR Description
+
+### Problem
+
+The `layout` helper function passed middleware functions through without associating them with the routes they were defined alongside. This caused the middleware to be "hoisted" out of the layout's context. When processed by the parent `prefix` helper, this middleware was treated as a separate, global-like item within that prefix, rather than being scoped exclusively to the routes inside the `layout`. This led to the middleware being applied to all routes within the prefix, not just those within the layout.
+
+### Solution
+
+This change refactors the `layout` and `prefix` router helpers to create an explicit association between a layout's middleware and its routes.
+
+- The `layout` function now consumes any middleware functions passed to it. Instead of returning them as separate items in the route array, it attaches them to a `middleware` property on every `RouteDefinition` within the same `layout` block.
+- The `defineRoutes` handler is updated to execute this attached middleware just before the route's own handler.
+
+This change ensures that middleware is always scoped to the routes within its `layout` and `prefix`, preventing it from affecting other parts of the application.
+
+### Testing
+
+- Added a new test suite to verify that middleware context does not leak between sibling route prefixes.
+- The new test fails before the fix and passes after, confirming the issue is resolved.
+- All existing tests continue to pass.
