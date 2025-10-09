@@ -30,6 +30,10 @@ The `rwsdk/router` module includes server-side routing logic that is unnecessary
 
 ---
 
+## PR Title
+
+feat: Add defineLinks documentation and optimize router entry points
+
 ## PR Description
 
 This PR introduces documentation for the `defineLinks` function and optimizes the router module by creating conditional entry points for different environments.
