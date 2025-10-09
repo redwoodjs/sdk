@@ -80,24 +80,26 @@ testDev("missing link directive scan", async ({ page, url, projectDir }) => {
 
   console.log("########## 18");
   // Verify client-side interactivity works
-  const incrementButton = await page.waitForSelector(
-    'button:has-text("Increment")',
-  );
-  console.log("########## 19");
-  await incrementButton?.click();
-  console.log("########## 20");
+  const clickIncrementButton = async () =>
+    await page.evaluate(() => {
+      const button = document.querySelector("button");
+      if (button && button.textContent?.includes("Increment")) {
+        button.click();
+        return true;
+      }
+      return false;
+    });
 
   await poll(async () => {
+    console.log("########## 19");
+    const clicked = await clickIncrementButton();
+    console.log("########## 20");
+    if (!clicked) return false;
+
+    const content = await getPageContent();
     console.log("########## 21");
-    const countText = await page.evaluate(() => {
-      console.log("########## 22");
-      const element = document.querySelector('p:has-text("Count:")');
-      console.log("########## 23");
-      return element?.textContent;
-    });
-    console.log("########## 24");
-    expect(countText).toContain("Count: 1");
-    console.log("########## 25");
+    expect(content).toContain("Count: 1");
+    console.log("########## 22");
     return true;
   });
 
