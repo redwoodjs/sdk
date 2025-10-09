@@ -11,6 +11,7 @@ import { expect } from "vitest";
 setupPlaygroundEnvironment(import.meta.url);
 
 testDev("missing link directive scan", async ({ page, url, projectDir }) => {
+  console.log("########## projectDir:", projectDir);
   console.log("########## 0");
 
   // Navigate to the missing link test page
@@ -43,6 +44,7 @@ testDev("missing link directive scan", async ({ page, url, projectDir }) => {
   console.log("########## 10");
   // Now modify ComponentA.tsx to uncomment the ComponentB import
   const componentAPath = join(projectDir, "src/components/ComponentA.tsx");
+  console.log("########## componentAPath:", componentAPath);
   console.log("########## 11");
   const originalContent = await readFile(componentAPath, "utf-8");
   console.log("########## 12");

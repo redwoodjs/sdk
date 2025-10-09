@@ -6,13 +6,13 @@ export const SETUP_PLAYGROUND_ENV_TIMEOUT = process.env
   .RWSDK_SETUP_PLAYGROUND_ENV_TIMEOUT
   ? parseInt(process.env.RWSDK_SETUP_PLAYGROUND_ENV_TIMEOUT, 10)
   : IS_DEBUG_MODE
-    ? 60 * 1000
+    ? 10 * 60 * 1000
     : 15 * 60 * 1000;
 
 export const DEPLOYMENT_TIMEOUT = process.env.RWSDK_DEPLOYMENT_TIMEOUT
   ? parseInt(process.env.RWSDK_DEPLOYMENT_TIMEOUT, 10)
   : IS_DEBUG_MODE
-    ? 30 * 1000
+    ? 5 * 30 * 1000
     : 5 * 60 * 1000;
 
 export const DEPLOYMENT_MIN_TRIES = process.env.RWSDK_DEPLOYMENT_MIN_TRIES
