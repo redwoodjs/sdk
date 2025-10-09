@@ -72,9 +72,9 @@ async function main() {
   while (Date.now() - startTime < timeout) {
     try {
       const logs = execSync(`gh run view ${runId} --log`).toString();
-      const match = logs.match(/::notice title=tmate SSH session::(ssh .*)/);
-      if (match && match[1]) {
-        sshCommand = match[1].trim();
+      const match = logs.match(/Web shell: (.*)\r?\nSSH: (.*)/);
+      if (match && match[2]) {
+        sshCommand = match[2].trim();
         break;
       }
 
