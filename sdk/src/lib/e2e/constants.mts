@@ -61,7 +61,7 @@ export const SETUP_WAIT_TIMEOUT = process.env.RWSDK_SETUP_WAIT_TIMEOUT
 export const TEST_MAX_RETRIES = process.env.RWSDK_TEST_MAX_RETRIES
   ? parseInt(process.env.RWSDK_TEST_MAX_RETRIES, 10)
   : IS_DEBUG_MODE
-    ? 0
+    ? 1
     : 10;
 
 export const TEST_MAX_RETRIES_PER_CODE = process.env
