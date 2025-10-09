@@ -634,6 +634,49 @@ importers:
         specifier: 4.42.0
         version: 4.42.0(@cloudflare/workers-types@4.20251004.0)
 
+  playground/router-middleware-scoping:
+    dependencies:
+      react:
+        specifier: 19.3.0-canary-4fdf7cf2-20251003
+        version: 19.3.0-canary-4fdf7cf2-20251003
+      react-dom:
+        specifier: 19.3.0-canary-4fdf7cf2-20251003
+        version: 19.3.0-canary-4fdf7cf2-20251003(react@19.3.0-canary-4fdf7cf2-20251003)
+      react-server-dom-webpack:
+        specifier: 19.3.0-canary-4fdf7cf2-20251003
+        version: 19.3.0-canary-4fdf7cf2-20251003(react-dom@19.3.0-canary-4fdf7cf2-20251003(react@19.3.0-canary-4fdf7cf2-20251003))(react@19.3.0-canary-4fdf7cf2-20251003)(webpack@5.97.1)
+      rwsdk:
+        specifier: workspace:*
+        version: link:../../sdk
+    devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: 1.13.10
+        version: 1.13.10(vite@7.1.9(@types/node@22.18.8)(jiti@2.6.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))(workerd@1.20251001.0)(wrangler@4.42.0(@cloudflare/workers-types@4.20251004.0))
+      '@cloudflare/workers-types':
+        specifier: 4.20251004.0
+        version: 4.20251004.0
+      '@types/node':
+        specifier: 22.18.8
+        version: 22.18.8
+      '@types/react':
+        specifier: 19.1.2
+        version: 19.1.2
+      '@types/react-dom':
+        specifier: 19.1.2
+        version: 19.1.2(@types/react@19.1.2)
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+      vite:
+        specifier: 7.1.9
+        version: 7.1.9(@types/node@22.18.8)(jiti@2.6.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
+      vitest:
+        specifier: ^3.1.1
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@22.18.8)(jiti@2.6.1)(lightningcss@1.30.1)(msw@2.11.3(@types/node@22.18.8)(typescript@5.9.3))(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
+      wrangler:
+        specifier: 4.42.0
+        version: 4.42.0(@cloudflare/workers-types@4.20251004.0)
+
   playground/rsc-kitchen-sink:
     dependencies:
       react:
@@ -11664,7 +11707,7 @@ snapshots:
 
   '@types/fontkit@2.0.8':
     dependencies:
-      '@types/node': 24.6.2
+      '@types/node': 22.18.8
 
   '@types/fs-extra@11.0.4':
     dependencies:
@@ -11720,6 +11763,7 @@ snapshots:
   '@types/node@24.6.2':
     dependencies:
       undici-types: 7.13.0
+    optional: true
 
   '@types/parse-json@4.0.2': {}
 
@@ -11754,7 +11798,7 @@ snapshots:
 
   '@types/sax@1.2.7':
     dependencies:
-      '@types/node': 17.0.45
+      '@types/node': 22.18.8
 
   '@types/statuses@2.0.6': {}
 
@@ -17141,7 +17185,8 @@ snapshots:
 
   undici-types@7.12.0: {}
 
-  undici-types@7.13.0: {}
+  undici-types@7.13.0:
+    optional: true
 
   undici@7.14.0: {}
 
