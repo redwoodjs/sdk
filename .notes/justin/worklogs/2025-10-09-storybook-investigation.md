@@ -14,6 +14,10 @@ The user is using:
 - `@storybook/addon-docs@9.1.10`
 - `@storybook/addon-vitest@9.1.10`
 
+## Update (2025-10-09)
+
+The user clarified that the initial rendering works correctly. The "Maximum call stack size exceeded" error only occurs after a source code change, which triggers a hot reload. This points more strongly to an issue in our HMR logic within the Vite plugin.
+
 ## Plan
 
 1.  Create a new playground example based on `hello-world` to reproduce the issue.

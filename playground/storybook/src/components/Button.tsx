@@ -34,6 +34,7 @@ export const Button = ({
   const mode = primary
     ? "storybook-button--primary"
     : "storybook-button--secondary";
+  console.log("hot reload test");
   return (
     <button
       type="button"
