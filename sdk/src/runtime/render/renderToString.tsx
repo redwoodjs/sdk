@@ -1,5 +1,5 @@
 import { FC, ReactElement } from "react";
-import { DocumentProps } from "../lib/router";
+import { DocumentProps } from "../lib/types.js";
 import { renderToStream } from "./renderToStream";
 
 export interface RenderToStringOptions {
