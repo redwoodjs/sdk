@@ -1,6 +1,32 @@
 ## Problem
 
-A user reported that middleware within a `prefix` block is being applied to routes outside of it, causing unexpected behavior like redirects. The middleware seems to act globally instead of being scoped to its defined prefix, especially when used inside a `layout` function.
+**User Report:** "Doing this seems to cause the redirect to /auth to happen even for the /api stuff at the bottom. It works fine if I add it inside the route call, so is this simply not supported on prefix? Essentially just trying to have an 'interrupter' match many routes"
+
+**User's Code Structure (from screenshot):**
+```javascript
+render(Document, [
+  layout(AppLayout, [route("/", Home)]),
+  prefix("/dashboard", [
+    layout(DashboardLayout, [
+      ({ ctx, request }) => {
+        if (!ctx.user) return Response.redirect(new URL("/auth", request.url))
+      },
+      route("/", Dashboard),
+    ]),
+  ]),
+  prefix("/api", [
+    route("/health", health),
+    route("/trpc/*", trpc),
+    route("/auth/*", ({ request }) => auth.handler(request)),
+  ]),
+])
+```
+
+**Issue:** The middleware function inside the `/dashboard` prefix's `layout` is incorrectly being applied to routes in the `/api` prefix, causing unwanted redirects to `/auth` when accessing `/api/health` or other API endpoints.
+
+**Expected Behavior:** Middleware within a `prefix` should only apply to routes within that same prefix.
+
+**Actual Behavior:** Middleware from `/dashboard` prefix affects `/api` routes, causing redirects.
 
 ## Plan
 
