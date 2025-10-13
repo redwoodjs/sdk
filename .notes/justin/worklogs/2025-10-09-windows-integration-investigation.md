@@ -28,3 +28,35 @@ The initial phase focused on creating a script to automate the process of starti
 3.  **Artifact Upload/Download**: The workflow was modified to save the connection string to a file and upload it as an artifact. The script would then poll for and download this artifact. This method was plagued by a series of platform-specific issues on the Windows runner, including problems with package managers (`scoop`, `choco`), PATH variables, and file system paths, making it unreliable.
 
 Given the time spent on these automation attempts, the decision was made to simplify the script significantly. The new approach is to have the script only trigger the workflow and provide a direct link to the run. The developer can then manually copy the SSH connection string from the logs. This provides a reliable, albeit less automated, solution that allows the primary goal—debugging on Windows—to proceed without further delay. The script will also provide instructions for mounting the remote filesystem locally with `sshfs` for convenience.
+
+## 2025-10-13: Iteration Towards a VS Code Solution
+
+The terminal-only solution was deemed insufficient, as the ability to debug within VS Code was a primary requirement. The investigation then pivoted to finding a reliable way to connect the VS Code "Remote - SSH" extension to the Windows runner.
+
+### Attempt 1: Fixing `tmate` for VS Code
+
+The initial theory was that VS Code's connection failures with `tmate` were due to strict host key checking. The script was updated to guide the user to add a `~/.ssh/config` entry for `*.tmate.io`.
+
+**Finding:** This did not work. Deeper investigation of the VS Code extension's logs revealed the root cause: the extension doesn't just open a shell; it tries to execute a setup script on the remote host. The `tmate` session, not being a standard SSH server, rejects this script with an "Invalid command" error. This proved that `tmate` is fundamentally incompatible with the VS Code Remote SSH extension's automated setup.
+
+### Attempt 2: `ngrok` with a real SSH server
+
+To solve the incompatibility, the approach shifted to running a standard OpenSSH server on the Windows runner and exposing it to the internet. `ngrok` was chosen as the tunneling tool.
+
+This attempt was plagued by a series of reliability issues with launching the `ngrok` process from PowerShell on the GitHub Actions runner:
+- The `ngrok` process failed to start silently when called directly.
+- Attempts to use `Start-Process` and `Start-Job` also failed to launch the process reliably.
+- Issues with the `PATH` environment variable and finding the executable's location led to multiple failures.
+- It was concluded that `ngrok`'s client was too brittle in this specific execution environment.
+
+### Attempt 3: `serveo.net`
+
+The final and current approach replaces `ngrok` with `serveo.net`. This method is simpler and more robust because it does not require installing any third-party client. It uses the standard `ssh` client, which is already present on the runner, to create a reverse tunnel.
+
+The workflow now:
+1.  Starts the standard OpenSSH server.
+2.  Uses `ssh` to connect to `serveo.net` in the background, creating the tunnel.
+3.  Resiliently polls a log file to capture the public URL provided by `serveo`.
+4.  Saves the connection details to an artifact for the local script to consume.
+
+This method avoids the client installation and process-launching issues that doomed `ngrok`, while still providing a real SSH server that is fully compatible with VS Code.
