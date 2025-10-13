@@ -489,3 +489,11 @@ The final, correct solution is to abandon these methods and use the **official V
 -   **Connection:** Connection is made from the local VS Code instance using the "Remote Tunnels: Connect to Tunnel" command and selecting the unique name generated for the workflow run.
 
 This eliminates all the complexity and unreliability of managing SSH servers, keys, passwords, or third-party services.
+
+### Addendum 12: Correcting the Authentication Method
+
+The attempt to use a dynamically generated token via `gh auth token` failed with a `403` error. The root cause is that the `GITHUB_TOKEN` provided to workflows is an "integration" token scoped to the repository, not a "user" token. The VS Code Tunnel service requires a token that represents a user, and the `gh` CLI cannot elevate the permissions of the `GITHUB_TOKEN` to act as a user.
+
+This confirms that the correct and only viable method for non-interactive authentication is to use a pre-generated Personal Access Token (PAT) with the necessary scopes (`read:user`, `repo`).
+
+The final workflow now uses the `VSCODE_TUNNEL_TOKEN` repository secret, which was created for this purpose. The workflow authenticates with this PAT and then starts the tunnel. This is the definitive and correct authentication flow.
