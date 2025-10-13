@@ -26,8 +26,35 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 55
-        with:
-          limit-access-to-actor: true
+      - name: Setup SSH Server and Tunnel
+        shell: powershell
+        run: |
+          # 1. Set a secure, random password for the runneradmin user
+          $password = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 32 | ForEach-Object { [char]$_ })
+          $user = "runneradmin"
+          $credential = New-Object System.Management.Automation.PSCredential($user, (ConvertTo-SecureString $password -AsPlainText -Force))
+          (Get-WmiObject Win32_UserAccount -Filter "Name='$user'").SetPassword($password)
+
+          # 2. Ensure the OpenSSH server is running
+          Start-Service sshd
+
+          # 3. Install ngrok
+          choco install ngrok -y
+
+          # 4. Start ngrok tunnel in the background
+          Start-Process -FilePath "ngrok" -ArgumentList "tcp 22" -WindowStyle Hidden
+
+          # 5. Wait for ngrok to initialize and get the public URL
+          Start-Sleep -Seconds 5
+          $tunnelInfo = Invoke-RestMethod -Uri "http://127.0.0.1:4040/api/tunnels"
+          $publicUrl = $tunnelInfo.tunnels[0].public_url
+          $hostname, $port = ($publicUrl -replace "tcp://", "").Split(":")
+
+          # 6. Output connection details for the script
+          echo "::notice title=SSH Connection Details::Host: $hostname"
+          echo "::notice title=SSH Connection Details::Port: $port"
+          echo "::notice title=SSH Connection Details::User: $user"
+          echo "::notice title=SSH Connection Details::Password: $password"
+
+      - name: Keep workflow alive
+        run: sleep 3600

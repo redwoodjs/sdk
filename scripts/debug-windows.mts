@@ -1,6 +1,6 @@
 #!/usr/bin/env -S npx tsx
 
-import { execSync } from "child_process";
+import { execSync, spawn } from "child_process";
 
 async function main() {
   console.log("Looking for GitHub CLI 'gh'...");
@@ -59,30 +59,73 @@ async function main() {
   const runUrl = execSync(`gh run view ${runId} --json url -q .url`)
     .toString()
     .trim();
+  console.log(`Successfully triggered workflow. Run ID: ${runId}`);
+  console.log(`You can view the run at: ${runUrl}`);
+  console.log("Waiting for the SSH connection details...");
+  console.log("This may take a few minutes while the runner is being set up.");
+  console.log("Streaming logs...");
+
+  const watchProcess = spawn("gh", ["run", "watch", runId], {
+    stdio: ["inherit", "pipe", "inherit"],
+  });
+
+  const connectionDetails: { [key: string]: string } = {};
+
+  watchProcess.stdout.on("data", (data) => {
+    const output = data.toString();
+    process.stdout.write(output);
+
+    const match = output.matchAll(
+      /::notice title=SSH Connection Details::(.*?): (.*)/g,
+    );
+    for (const m of match) {
+      const key = m[1].trim();
+      const value = m[2].trim();
+      connectionDetails[key] = value;
+    }
+
+    if (
+      connectionDetails.Host &&
+      connectionDetails.Port &&
+      connectionDetails.User &&
+      connectionDetails.Password
+    ) {
+      watchProcess.kill();
+    }
+  });
+
+  watchProcess.on("close", () => {
+    if (Object.keys(connectionDetails).length === 4) {
+      displayConnectionInstructions(connectionDetails);
+    } else {
+      console.error(
+        "\nThe workflow run completed without providing SSH connection details.",
+      );
+      console.error(`Please check the logs for errors: ${runUrl}`);
+      process.exit(1);
+    }
+  });
+}
+
+function displayConnectionInstructions(details: { [key: string]: string }) {
+  const { Host, Port, User, Password } = details;
+  const sshTarget = `${User}@${Host}`;
 
   console.log("\n=======================================================");
-  console.log("         Windows Debug Session Initialized");
+  console.log("         Windows Debug Session Ready");
   console.log("=======================================================");
-  console.log(`\nWorkflow run URL: ${runUrl}\n`);
-  console.log(
-    "Open the URL above and wait for the 'Setup tmate session' step.",
-  );
-  console.log("You will find the SSH connection string in the logs.");
+  console.log("\nUse the following details to connect with VS Code:");
   console.log("\n-------------------------------------------------------");
-  console.log("  Recommended: Edit files with VS Code Remote - SSH");
+  console.log("  Connect with VS Code Remote - SSH");
   console.log("-------------------------------------------------------");
-  console.log("This requires a one-time setup in your local SSH config file.");
-  console.log("1. Open your SSH config file (usually at `~/.ssh/config`).");
-  console.log("2. Add the following block to the file:");
-  console.log(`
-   Host *.tmate.io
-     StrictHostKeyChecking no
-     UserKnownHostsFile /dev/null
-  `);
-  console.log("3. Save the file. You only need to do this once.");
   console.log(
-    '4. In VS Code, open the Command Palette (Cmd+Shift+P), run "Remote-SSH: Connect to Host...", and paste the full SSH command from the logs.',
+    '1. Open the Command Palette (Cmd+Shift+P) and run "Remote-SSH: Connect to Host..."',
   );
+  console.log(`2. Select "+ Add New SSH Host..."`);
+  console.log(
+    `3. Enter the following command when prompted: ssh -p ${Port} ${sshTarget}`,
+  );
+  console.log(`4. When prompted for the password, use: ${Password}`);
   console.log(
     '5. Once connected, use "File > Open Folder..." and enter the path: D:\\a\\sdk\\sdk',
   );
