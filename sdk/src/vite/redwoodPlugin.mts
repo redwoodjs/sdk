@@ -126,6 +126,7 @@ export const redwoodPlugin = async (
     console.log(
       "🚀 Project has no .wrangler directory yet, assuming fresh install: running `npm run dev:init`...",
     );
+    // @ts-ignore
     $.verbose = true;
     await $`npm run dev:init`;
   }

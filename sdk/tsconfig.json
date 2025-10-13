@@ -48,9 +48,10 @@
       "./types/global.d.ts",
       "./types/clientGlobal.d.ts",
       "./types/vite.d.ts",
-      "./types/state.d.ts"
+      "./types/state.d.ts",
+      "@cloudflare/workers-types"
     ]
   },
-  "include": ["src/**/*"],
+  "include": ["src", "types", "bin"],
   "exclude": ["node_modules", "dist"]
 }
