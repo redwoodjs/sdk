@@ -1,17 +1,26 @@
-name: Windows Debug Session (tmate)
+name: Windows Debug Session
 
 on:
   workflow_dispatch:
 
 jobs:
-  debug:
+  tunnel:
     runs-on: windows-latest
-    name: Start tmate SSH Session
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Start tmate debug session
-        uses: mxschmitt/action-tmate@v3
-        with:
-          limit-access-to-actor: true
+      # Download the VS Code CLI (code tunnel)
+      - name: Install VS Code CLI
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://aka.ms/vscode-server-launcher/win-x64 -OutFile code.exe
+
+      # Headless auth & start a named tunnel
+      # Create a fine-scoped GitHub PAT or login token and store as secret VSCODE_TUNNEL_TOKEN
+      - name: Start VS Code tunnel
+        shell: pwsh
+        env:
+          VSCODE_TUNNEL_TOKEN: ${{ secrets.VSCODE_TUNNEL_TOKEN }}
+        run: |
+          ./code.exe tunnel user login --provider github --token $env:VSCODE_TUNNEL_TOKEN
+          ./code.exe tunnel --accept-server-license-terms --name rwsdk-win-ci --no-sleep

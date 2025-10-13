@@ -219,6 +219,7 @@ A third attempt was made using `zrok`, an open-source alternative.
 
 - **Finding 2: Client Version Enforcement:** A direct download of an older client (`v0.4.23`) from GitHub Releases succeeded. However, the `zrok enable` command was rejected by the public API (`api.zrok.io`) with an error stating the client was out of date.
     - **Conclusion:** The public `zrok.io` service requires a modern client and will reject connections from outdated versions. This is a key difference from `tmate`, which does not appear to have this restriction.
+    - **Final Finding:** The `zrok` public service can create raw TCP tunnels suitable for SSH, not just HTTP/S proxies as previously misinterpreted from the command-line interface. The `zrok share public tcp://...` command correctly establishes a TCP endpoint.
 
 - **Current Attempt:** After discovering `zrok` had jumped to version `1.x`, the latest version (`v1.1.1`) was identified from the official documentation. The current, in-progress test involves downloading this binary directly from GitHub Releases and attempting to enable the service with it.
 
@@ -317,3 +318,38 @@ The final, correct solution is a semi-automated script that handles all the boil
     *   Finally, it prints clear instructions for using the SFTP extension and the `ssh` command for an interactive shell.
 
 This hybrid approach provides the best of both worlds. It automates all the tedious parts (triggering the run, creating the config file) while relying on the user for the one step—reading the live log—that has proven impossible to reliably automate. This is the final, successful, and robust conclusion to the investigation.
+
+## Final Correction: Pivoting from SFTP to VS Code's Remote-SSH
+
+The previous solution, while close, had a critical flaw. It relied on a third-party VS Code extension ("SFTP" by Natizyskunk) to browse the remote file system. When tested, this extension incorrectly prompted for a password.
+
+The root cause is that the SFTP extension is not equipped to handle `tmate`'s temporary, key-based authentication mechanism. It attempts a standard SSH connection, fails to find a pre-configured key, and incorrectly falls back to password authentication, which is not supported by the `tmate` session.
+
+The correct and much simpler solution is to use Microsoft's official **Remote - SSH** extension, which is designed to handle arbitrary SSH connection strings directly.
+
+The `scripts/connect-windows-debug.mts` script was updated one last time:
+*   All logic for generating a `.vscode/sftp.json` file was removed.
+*   The final instructions were changed to guide the user to use the "Remote-SSH: Connect to Host..." command from the VS Code command palette and paste the connection string there.
+
+This represents the final, simplest, and most correct workflow.
+
+## Final, Definitive Solution: VS Code Remote Tunnels
+
+After a long and difficult investigation into various SSH tunneling methods (`tmate`, `ngrok`, `serveo`, `zrok`), a much simpler, official solution was discovered: **VS Code Remote Tunnels**.
+
+This feature is built directly into the VS Code CLI (`code`) and is designed for exactly this use case. It completely eliminates the need for managing SSH servers, keys, passwords, or third-party tunneling clients.
+
+The previous approaches were all fundamentally flawed or overly complex:
+- **`tmate`**: Incompatible with the VS Code Remote-SSH extension's setup scripts.
+- **`serveo.net`/`ngrok`**: Failed due to runner environment restrictions on background processes or credit card requirements.
+- **`zrok`**: While technically functional, it required a complex, multi-step script to set up the SSH server, manage passwords, and configure the tunnel.
+
+The VS Code Remote Tunnels approach is superior in every way.
+
+### The New Workflow
+
+The final `windows-debug.yml` workflow is now incredibly simple:
+1.  **Download the VS Code CLI:** It fetches the `code.exe` launcher directly.
+2.  **Authenticate and Start the Tunnel:** It uses a GitHub Personal Access Token (stored as a repository secret `VSCODE_TUNNEL_TOKEN`) to perform a headless login. It then starts a named tunnel (`rwsdk-win-ci`) that stays active for the duration of the job.
+
+The developer can then connect directly to this named tunnel from their local VS Code instance, providing a seamless and secure remote development experience without any of the previous complexity. This is the correct and final solution.
