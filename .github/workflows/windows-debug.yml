@@ -20,9 +20,13 @@ jobs:
           VSCODE_TUNNEL_TOKEN: ${{ secrets.VSCODE_TUNNEL_TOKEN }}
         run: |
           $CliUri = "https://update.code.visualstudio.com/latest/server-win32-x64/stable"
-          $CliPath = "$env:TEMP\\code.exe"
+          $ZipPath = "$env:TEMP\\vscode-server.zip"
+          $ExtractPath = "$env:TEMP\\vscode-server"
 
-          Invoke-WebRequest -Uri $CliUri -OutFile $CliPath
+          Invoke-WebRequest -Uri $CliUri -OutFile $ZipPath
+          Expand-Archive -Path $ZipPath -DestinationPath $ExtractPath
+
+          $CliPath = "$ExtractPath\\vscode-server-win32-x64\\bin\\code.exe"
 
           # Authenticate tunnel user (GitHub provider)
           & $CliPath tunnel user login --provider github --token $env:VSCODE_TUNNEL_TOKEN
