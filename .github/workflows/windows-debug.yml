@@ -14,29 +14,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install and Start VS Code Tunnel
-        shell: pwsh
-        env:
-          VSCODE_TUNNEL_TOKEN: ${{ secrets.VSCODE_TUNNEL_TOKEN }}
-        run: |
-          $ExtractPath = "C:\\vscode-server"
-          $ZipPath = "$ExtractPath\\vscode-server.zip"
+      - name: Start tmate debug session
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
 
-          New-Item -ItemType Directory -Force -Path $ExtractPath
+      # - name: Install and Start VS Code Tunnel
+      #   continue-on-error: true # So we can debug with tmate if this fails
+      #   shell: pwsh
+      #   env:
+      #     VSCODE_TUNNEL_TOKEN: ${{ secrets.VSCODE_TUNNEL_TOKEN }}
+      #   run: |
+      #     $ExtractPath = "C:\\vscode-server"
+      #     $ZipPath = "$ExtractPath\\vscode-server.zip"
 
-          $CliUri = "https://update.code.visualstudio.com/latest/server-win32-x64/stable"
-          Invoke-WebRequest -Uri $CliUri -OutFile $ZipPath
-          Expand-Archive -Path $ZipPath -DestinationPath $ExtractPath
+      #     New-Item -ItemType Directory -Force -Path $ExtractPath
 
-          $CliPath = "$ExtractPath\\vscode-server-win32-x64\\bin\\code.exe"
+      #     $CliUri = "https://update.code.visualstudio.com/latest/server-win32-x64/stable"
+      #     Invoke-WebRequest -Uri $CliUri -OutFile $ZipPath
+      #     Expand-Archive -Path $ZipPath -DestinationPath $ExtractPath
 
-          # Verify the file exists before trying to run it
-          if (-not (Test-Path $CliPath)) {
-            throw "VS Code CLI not found at expected path: $CliPath"
-          }
+      #     $CliPath = "$ExtractPath\\vscode-server-win32-x64\\bin\\code.exe"
 
-          # Authenticate tunnel user (GitHub provider)
-          & $CliPath tunnel user login --provider github --token $env:VSCODE_TUNNEL_TOKEN
+      #     # Verify the file exists before trying to run it
+      #     if (-not (Test-Path $CliPath)) {
+      #       throw "VS Code CLI not found at expected path: $CliPath"
+      #     }
 
-          # Start the tunnel
-          & $CliPath tunnel --accept-server-license-terms --name rwsdk-win-ci --no-sleep --verbose
+      #     # Authenticate tunnel user (GitHub provider)
+      #     & $CliPath tunnel user login --provider github --token $env:VSCODE_TUNNEL_TOKEN
+
+      #     # Start the tunnel
+      #     & $CliPath tunnel --accept-server-license-terms --name rwsdk-win-ci --no-sleep --verbose
