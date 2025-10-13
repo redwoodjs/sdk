@@ -1,0 +1,12 @@
+{
+  "name": "ui-lib",
+  "version": "1.0.0",
+  "main": "server.mjs",
+  "types": "server.d.ts",
+  "exports": {
+    ".": {
+      "react-server": "./server.mjs",
+      "default": "./client.mjs"
+    }
+  }
+}

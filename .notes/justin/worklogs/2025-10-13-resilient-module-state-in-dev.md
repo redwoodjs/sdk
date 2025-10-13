@@ -53,3 +53,29 @@ const requestInfoStore = defineRwState('requestInfoStore', () => new AsyncLocalS
 ```
 
 This design makes our framework significantly more resilient to Vite's re-optimization behavior during development and improves the overall architecture of state management within the framework.
+
+## Verification Plan: `requestInfo` Playground
+
+To ensure the solution is robust, a new playground example named `requestInfo` will be created. This playground will serve as a dedicated test bed for verifying module state resilience in both development and production environments. It will be based on the `hello-world` template.
+
+### `testDev`: Verifying Resilience to Re-optimization
+
+The primary goal of the `dev` test is to simulate a scenario that would previously have caused a crash: a mid-session dependency re-optimization.
+
+1.  **Setup**: The test will start the dev server and navigate to a page that displays data derived from `requestInfo`. It will also include a component that can be modified to introduce new dependencies.
+2.  **Initial State Assertion**: It will first verify that the `requestInfo` data is correctly displayed on the initial page load.
+3.  **Dynamic Import Simulation**: The test will then programmatically modify a source file to add new `import` statements. These imports will pull in modules that were not part of the initial dependency graph, forcing a Vite re-optimization. We will test three types of dynamically imported modules:
+    *   A module with a `"use client"` directive.
+    *   A module with a `"use server"` directive.
+    *   A module with no directive.
+    *   Each of these modules will, in turn, import a dependency from a local package (similar to the `import-from-use-client` playground) to ensure the dependency graph change is non-trivial.
+4.  **Post-HMR Assertion**: After the file modification and subsequent Hot Module Replacement (HMR), the test will verify two things:
+    *   The page has been updated to reflect the newly imported components.
+    *   The state managed via `rwsdk/__state` (exposed through `requestInfo`) has remained stable and has not been reset. This is the critical validation for the dev server solution.
+
+### `testDeploy`: Verifying Production Build
+
+The `deploy` test will confirm that the state management mechanism works correctly in a production build, where the virtual module is resolved to a standard, bundled module.
+
+1.  **Setup**: The test will build the playground for production and serve the output.
+2.  **Assertion**: It will navigate to a page and verify that the `requestInfo` API functions as expected, confirming that the state module is correctly bundled and initialized.
