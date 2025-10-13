@@ -99,9 +99,9 @@ async function main() {
             `gh run download ${runId} -n tmate-connection -D ${artifactDir}`,
           );
 
-          // The action saves the file as 'tmate.sh' inside the artifact
+          // The action saves the file as 'tmate-connection.sh' inside the artifact
           const sshScriptContent = execSync(
-            `cat ${artifactDir}/tmate.sh`,
+            `cat ${artifactDir}/tmate-connection.sh`,
           ).toString();
           const match = sshScriptContent.match(/ssh .*@.*\.tmate\.io/);
           if (match && match[0]) {

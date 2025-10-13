@@ -34,8 +34,11 @@ jobs:
           limit-access-to-actor: true
           detached: true
 
+      - name: Write tmate connection string to file
+        run: echo "${{ steps.tmate.outputs.ssh-connection }}" > tmate-connection.sh
+
       - name: Upload tmate connection string
         uses: actions/upload-artifact@v4
         with:
           name: tmate-connection
-          path: /tmp/tmate.sh
+          path: tmate-connection.sh
