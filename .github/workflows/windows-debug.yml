@@ -39,4 +39,6 @@ jobs:
           # 3. Tunnel localhost:8000 to the internet using serveo.net
           # This command will block, keeping the workflow alive.
           # The URL for the connection will be printed in the log.
-          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=nul -R 8000:localhost:8000 serveo.net
+          # We connect on port 443 to be firewall-friendly, and
+          # request port 0 to get a random available port from the server.
+          ssh -p 443 -o StrictHostKeyChecking=no -o UserKnownHostsFile=nul -R 0:localhost:8000 serveo.net
