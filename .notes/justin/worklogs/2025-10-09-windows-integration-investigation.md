@@ -448,3 +448,13 @@ While vendoring the `vscode-server.zip` file was a functional solution to the fi
 A final, more elegant solution was devised. The root cause of the file corruption appears to be specific to the non-interactive execution context of a standard `run` step. To bypass this, the download is now handled by a dedicated GitHub Action (`wei/curl@v1`). Using a specialized action for the download provides a more stable execution context that is not susceptible to the corruption bug.
 
 This approach achieves the best of both worlds: it avoids vendoring the binary while still providing a reliable, uncorrupted executable for the subsequent steps. This is the definitive and most professional solution.
+
+### Addendum 9: Simplification - A Single Job with a Direct Download
+
+Upon review, the two-job approach for downloading the VS Code server, while robust, is unnecessarily complex. The initial conclusion that downloading on the Windows runner was unreliable was based on a faulty `aka.ms` link that was redirecting to Bing, causing what appeared to be file corruption.
+
+Now that the correct, direct download link is known, the reliability of the download itself is no longer a concern.
+
+The final, simplified strategy is to use a single job on the `windows-latest` runner. The first step uses a standard `run` command with `curl` to download the `vscode-server.zip` file directly into the workspace. The subsequent PowerShell step then proceeds to extract and run the server from this local file.
+
+This approach is simpler, faster, and avoids the overhead of passing artifacts between jobs, representing the most direct and efficient solution.

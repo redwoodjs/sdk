@@ -15,15 +15,13 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Download VS Code Server
-        uses: wei/curl@v1
-        with:
-          args: -L -o C:\vscode-server.zip https://update.code.visualstudio.com/latest/server-win32-x64/stable
+        run: curl -L -o vscode-server.zip https://update.code.visualstudio.com/latest/server-win32-x64/stable
 
       - name: Start VS Code Remote Session via serveo.net
         shell: pwsh
         run: |
           # 1. Extract the VS Code Server
-          $ZipPath = "C:\\vscode-server.zip"
+          $ZipPath = ".\\vscode-server.zip"
           $ExtractPath = "C:\\vscode-server"
           New-Item -ItemType Directory -Force -Path $ExtractPath
           Expand-Archive -Path $ZipPath -DestinationPath $ExtractPath
