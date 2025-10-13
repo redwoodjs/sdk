@@ -26,6 +26,10 @@ jobs:
       - name: Install VS Code CLI
         shell: pwsh
         run: |
+          # Temporarily disable Windows Defender to prevent file corruption
+          Write-Host "Disabling Windows Defender real-time monitoring..."
+          Set-MpPreference -DisableRealtimeMonitoring $true
+
           # Force TEMP/TMP to a stable C: path for this step
           $tempRoot = 'C:\Temp'
           New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
@@ -84,6 +88,10 @@ jobs:
           TEMP: C:\Temp
           TMP: C:\Temp
         run: |
+          # Temporarily disable Windows Defender to prevent file corruption
+          Write-Host "Disabling Windows Defender real-time monitoring..."
+          Set-MpPreference -DisableRealtimeMonitoring $true
+
           $base = 'C:\code-tunnel'
           $dst = Join-Path $base 'code-tunnel.exe'
 
@@ -118,3 +126,7 @@ jobs:
           & $dst tunnel --accept-server-license-terms --name rwsdk-win-ci --no-sleep --verbose
 
           Pop-Location
+
+          # Re-enable Windows Defender as a best practice
+          Write-Host "Re-enabling Windows Defender real-time monitoring..."
+          Set-MpPreference -DisableRealtimeMonitoring $false

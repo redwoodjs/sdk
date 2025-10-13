@@ -372,6 +372,12 @@ The switch to `curl` did not resolve the issue. The workflow continued to fail w
 
 The new approach is to use a native .NET method for downloading (`System.Net.WebClient`) from within PowerShell, which may be more reliable than shelling out to an external executable. Additionally, a verification step has been added. After the download, the script will now check that the `code.exe` file exists and has a size greater than 10KB. If it does not, the workflow will fail immediately with a clear error message, preventing it from attempting to run a corrupted file.
 
+### Addendum 4: Windows Defender Interference
+
+Even with a robust download script using stable paths, retries, file size verification, and the `Unblock-File` cmdlet, the "corrupted and unreadable" error persisted. This strongly indicates that the root cause is not the download process itself, but rather interference from security software on the runner, most likely Windows Defender's real-time protection.
+
+This feature can silently quarantine or block newly created executables, leading to the observed errors. The final, definitive fix is to temporarily disable real-time monitoring for the duration of the download and execution steps. The `Set-MpPreference -DisableRealtimeMonitoring $true` command is added before the download, and `$false` is set after the tunnel is running, ensuring the runner's security posture is restored while allowing our specific tool to execute without interference.
+
 ## Final Pivot: The "Cursor Requires SSH" Constraint
 
 The VS Code Tunnel solution, while elegant, was almost dismissed due to a misunderstanding. The core requirement is that the user connects via **Cursor**, which requires raw SSH connection details (host, port, user, password), not the proprietary-seeming VS Code Tunnel service.
