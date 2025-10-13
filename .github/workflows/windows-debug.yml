@@ -19,14 +19,21 @@ jobs:
         env:
           VSCODE_TUNNEL_TOKEN: ${{ secrets.VSCODE_TUNNEL_TOKEN }}
         run: |
-          $CliUri = "https://update.code.visualstudio.com/latest/server-win32-x64/stable"
-          $ZipPath = "$env:TEMP\\vscode-server.zip"
-          $ExtractPath = "$env:TEMP\\vscode-server"
+          $ExtractPath = "C:\\vscode-server"
+          $ZipPath = "$ExtractPath\\vscode-server.zip"
 
+          New-Item -ItemType Directory -Force -Path $ExtractPath
+
+          $CliUri = "https://update.code.visualstudio.com/latest/server-win32-x64/stable"
           Invoke-WebRequest -Uri $CliUri -OutFile $ZipPath
           Expand-Archive -Path $ZipPath -DestinationPath $ExtractPath
 
           $CliPath = "$ExtractPath\\vscode-server-win32-x64\\bin\\code.exe"
+
+          # Verify the file exists before trying to run it
+          if (-not (Test-Path $CliPath)) {
+            throw "VS Code CLI not found at expected path: $CliPath"
+          }
 
           # Authenticate tunnel user (GitHub provider)
           & $CliPath tunnel user login --provider github --token $env:VSCODE_TUNNEL_TOKEN
