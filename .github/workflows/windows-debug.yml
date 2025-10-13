@@ -26,55 +26,87 @@ jobs:
       - name: Install VS Code CLI
         shell: pwsh
         run: |
-          $base = Join-Path $env:USERPROFILE "code-tunnel"
-          New-Item -ItemType Directory -Force -Path $base | Out-Null
-          $dst = Join-Path $base "code-tunnel.exe"
-          if (Test-Path $dst) { Remove-Item -Force $dst }
+          # Force TEMP/TMP to a stable C: path for this step
+          $tempRoot = 'C:\Temp'
+          New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
+          $env:TEMP = $tempRoot
+          $env:TMP  = $tempRoot
 
-          # Retry download up to 3 times to avoid partial files
-          $uri = "https://aka.ms/vscode-server-launcher/win-x64"
-          for ($i=1; $i -le 3; $i++) {
-            try {
-              Invoke-WebRequest $uri -OutFile $dst -UseBasicParsing
-              break
-            } catch {
-              if ($i -eq 3) { throw $_ }
-              Start-Sleep -Seconds (2 * $i)
+          # Use a stable base outside USERPROFILE and D:\a
+          $base = 'C:\code-tunnel'
+          if (Test-Path $base) { Remove-Item -Recurse -Force $base }
+          New-Item -ItemType Directory -Force -Path $base | Out-Null
+
+          $dst = Join-Path $base 'code-tunnel.exe'
+          $uri = 'https://aka.ms/vscode-server-launcher/win-x64'
+
+          function Download-Tunnel {
+            param([string]$Url,[string]$Out)
+            for ($i=1; $i -le 3; $i++) {
+              try {
+                Invoke-WebRequest $Url -OutFile $Out -UseBasicParsing
+                return
+              } catch {
+                if ($i -eq 3) { throw $_ }
+                Start-Sleep -Seconds (2 * $i)
+              }
             }
           }
 
+          Download-Tunnel -Url $uri -Out $dst
           Unblock-File $dst
+
           if (!(Test-Path $dst)) { throw "code-tunnel.exe not found at $dst" }
           $len = (Get-Item $dst).Length
           if ($len -lt 50000) { throw "code-tunnel.exe download too small ($len bytes)" }
 
           Write-Host "Downloaded code-tunnel.exe to $dst ($len bytes)"
-          where.exe powershell
-          where.exe pwsh
-          where.exe curl
-          where.exe cmd
+
+          # Sanity: try to read the version to detect corruption early
+          try {
+            & $dst --version | Out-Null
+          } catch {
+            Write-Warning "Launcher didn't execute (--version). Re-downloading once..."
+            Remove-Item -Force $dst -ErrorAction SilentlyContinue
+            Download-Tunnel -Url $uri -Out $dst
+            Unblock-File $dst
+            & $dst --version | Out-Null
+          }
+
+          # Show diagnostics
+          Get-Item $dst | Format-List FullName,Length,CreationTime,LastWriteTime
 
       # Headless auth & start a named tunnel
       - name: Start VS Code Tunnel
         shell: pwsh
         env:
           VSCODE_TUNNEL_TOKEN: ${{ secrets.VSCODE_TUNNEL_TOKEN }}
+          TEMP: C:\Temp
+          TMP: C:\Temp
         run: |
-          $base = Join-Path $env:USERPROFILE "code-tunnel"
-          $dst = Join-Path $base "code-tunnel.exe"
+          $base = 'C:\code-tunnel'
+          $dst = Join-Path $base 'code-tunnel.exe'
 
-          # Redownload if missing or too small
           if (-not (Test-Path $dst) -or ((Get-Item $dst).Length -lt 50000)) {
             Write-Host "Re-downloading code-tunnel.exe..."
             Invoke-WebRequest -Uri "https://aka.ms/vscode-server-launcher/win-x64" -OutFile $dst -UseBasicParsing
             Unblock-File -Path $dst
           }
 
-          # Show file diagnostics
-          Get-Item $dst | Format-List FullName,Length,CreationTime,LastWriteTime
+          # Extra sanity to catch ERROR_FILE_CORRUPT early
+          try {
+            & $dst --version | Out-Null
+          } catch {
+            Write-Warning "Launcher failed to run (--version). Recreating base directory..."
+            Remove-Item -Recurse -Force $base -ErrorAction SilentlyContinue
+            New-Item -ItemType Directory -Force -Path $base | Out-Null
+            Invoke-WebRequest -Uri "https://aka.ms/vscode-server-launcher/win-x64" -OutFile $dst -UseBasicParsing
+            Unblock-File -Path $dst
+            & $dst --version | Out-Null
+          }
 
-          # Switch to safe working directory
-          Push-Location $env:USERPROFILE
+          # Run from a neutral working directory (avoid USERPROFILE)
+          Push-Location 'C:\'
 
           # Authenticate tunnel user (GitHub provider)
           & $dst tunnel user login --provider github --token $env:VSCODE_TUNNEL_TOKEN
