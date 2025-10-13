@@ -43,12 +43,16 @@ jobs:
           # 3. Install ngrok
           choco install ngrok -y
 
-          # 4. Start ngrok tunnel in the background
-          Start-Process -FilePath "ngrok" -ArgumentList "tcp 22" -WindowStyle Hidden
+          # 4. Start ngrok tunnel in the background and log to a file
+          Start-Process -FilePath "ngrok" -ArgumentList "tcp 22 --log=ngrok.log" -WindowStyle Hidden
+
+          Start-Sleep -Seconds 2
+          Write-Host "Checking if ngrok process is running..."
+          Get-Process -Name "ngrok" -ErrorAction SilentlyContinue
 
           # 5. Wait for ngrok to initialize and get the public URL
           $tunnelInfo = $null
-          $maxAttempts = 10
+          $maxAttempts = 30 # 60 seconds total
           $attempt = 0
           while ($tunnelInfo -eq $null -and $attempt -lt $maxAttempts) {
             Start-Sleep -Seconds 2
@@ -62,6 +66,8 @@ jobs:
 
           if ($tunnelInfo -eq $null) {
             Write-Error "Failed to get ngrok tunnel info after multiple attempts."
+            Write-Host "--- Displaying ngrok.log ---"
+            Get-Content -Path "ngrok.log" -ErrorAction SilentlyContinue
             exit 1
           }
 
