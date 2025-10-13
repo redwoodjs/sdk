@@ -151,6 +151,30 @@ const areDependenciesEqual = (
   return JSON.stringify(deps1 ?? {}) === JSON.stringify(deps2 ?? {});
 };
 
+const isPlaygroundExample = async (targetDir: string, monorepoRoot: string) => {
+  try {
+    const rootPackageJson = JSON.parse(
+      await fs.readFile(path.join(monorepoRoot, "package.json"), "utf-8"),
+    );
+
+    if (rootPackageJson.name === "rw-sdk-monorepo") {
+      const playgroundDir = path.join(monorepoRoot, "playground");
+      const relative = path.relative(playgroundDir, targetDir);
+
+      if (
+        relative &&
+        !relative.startsWith("..") &&
+        !path.isAbsolute(relative)
+      ) {
+        return true;
+      }
+    }
+  } catch {
+    // ignore: if we can't read files, assume it's not a playground.
+  }
+  return false;
+};
+
 const performFullSync = async (
   sdkDir: string,
   targetDir: string,
@@ -242,6 +266,14 @@ const performSync = async (sdkDir: string, targetDir: string) => {
 
   const monorepoRoot = await getMonorepoRoot(targetDir);
   const projectName = path.basename(targetDir);
+
+  if (await isPlaygroundExample(targetDir, monorepoRoot)) {
+    console.log(
+      "Playground example detected. Skipping file sync; workspace linking will be used.",
+    );
+    console.log("✅ Done syncing");
+    return;
+  }
 
   const installedSdkPackageJsonPath = path.join(
     monorepoRoot,
