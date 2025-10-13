@@ -10,6 +10,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup VS Code Remote Tunnel
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
           # 1. Download the VS Code CLI
@@ -21,8 +23,11 @@ jobs:
           $CliPath = "$env:TEMP\\vscode-cli"
           Expand-Archive -Path $CliZip -DestinationPath $CliPath -Force
 
+          # 2. Authenticate with a PAT
+          $pat = gh auth token
+          & "$CliPath\\code.exe" tunnel user login --provider github --access-token $pat
+
           # 3. Run the tunnel command.
           # This will block and keep the job alive.
-          # It authenticates automatically using the GITHUB_TOKEN.
           # Connect from local VS Code using the "Remote Tunnels: Connect to Tunnel" command.
           & "$CliPath\\code.exe" tunnel --accept-server-license-terms --name "rwsdk-windows-debug-${{ github.run_id }}"

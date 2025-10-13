@@ -480,8 +480,12 @@ This means that any solution relying on a third-party server (`serveo`, `ngrok`,
 
 The final, correct solution is to abandon these methods and use the **official VS Code Remote Tunneling feature**. This is the first-party, Microsoft-supported method for this exact scenario.
 
--   **Why it's better:** It uses a dedicated CLI (`code.exe tunnel`) that communicates with Microsoft's own backend services. This traffic is almost certainly trusted and allowed by the runner's firewall, unlike generic SSH traffic to an unknown third-party server. It also handles authentication automatically and securely via the `GITHUB_TOKEN`.
--   **The New Workflow:** The workflow is now greatly simplified. It downloads the VS Code CLI, extracts it, and runs a single command: `code tunnel --name ...`. This command handles the authentication, creates the secure tunnel, and blocks the workflow to keep the session alive.
+-   **Why it's better:** It uses a dedicated CLI (`code.exe tunnel`) that communicates with Microsoft's own backend services. This traffic is almost certainly trusted and allowed by the runner's firewall, unlike generic SSH traffic to an unknown third-party server. It also handles authentication automatically and securely via a dynamically generated GitHub Personal Access Token.
+-   **The New Workflow:** The workflow is now greatly simplified.
+    1.  It downloads and extracts the official VS Code CLI.
+    2.  It uses the `gh` CLI (pre-installed on runners) to generate a temporary PAT from the job's `GITHUB_TOKEN`.
+    3.  It performs a headless login using this PAT with the `code tunnel user login --access-token ...` command.
+    4.  It runs the `code tunnel --name ...` command, which handles the secure tunnel creation and blocks the workflow to keep the session alive.
 -   **Connection:** Connection is made from the local VS Code instance using the "Remote Tunnels: Connect to Tunnel" command and selecting the unique name generated for the workflow run.
 
 This eliminates all the complexity and unreliability of managing SSH servers, keys, passwords, or third-party services.
