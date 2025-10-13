@@ -50,11 +50,20 @@ jobs:
           $publicUrl = $tunnelInfo.tunnels[0].public_url
           $hostname, $port = ($publicUrl -replace "tcp://", "").Split(":")
 
-          # 6. Output connection details for the script
-          echo "::notice title=SSH Connection Details::Host: $hostname"
-          echo "::notice title=SSH Connection Details::Port: $port"
-          echo "::notice title=SSH Connection Details::User: $user"
-          echo "::notice title=SSH Connection Details::Password: $password"
+          # 6. Output connection details to a JSON file for the artifact
+          $connectionDetails = @{
+            Host = $hostname
+            Port = $port
+            User = $user
+            Password = $password
+          } | ConvertTo-Json
+          Set-Content -Path "connection.json" -Value $connectionDetails
+
+      - name: Upload connection details
+        uses: actions/upload-artifact@v4
+        with:
+          name: ssh-connection-details
+          path: connection.json
 
       - name: Keep workflow alive
         run: sleep 3600

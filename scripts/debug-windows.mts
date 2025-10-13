@@ -1,6 +1,11 @@
 #!/usr/bin/env -S npx tsx
 
-import { execSync, spawn } from "child_process";
+import { execSync } from "child_process";
+
+const fiveMinutes = 5 * 60 * 1000;
+const tenSeconds = 10 * 1000;
+const pollInterval = tenSeconds;
+const timeout = fiveMinutes;
 
 async function main() {
   console.log("Looking for GitHub CLI 'gh'...");
@@ -20,6 +25,11 @@ async function main() {
     process.exit(1);
   }
 
+  const repoName = execSync(
+    "gh repo view --json nameWithOwner -q .nameWithOwner",
+  )
+    .toString()
+    .trim();
   const branch = execSync("git branch --show-current").toString().trim();
   if (!branch) {
     console.error("Could not determine the current git branch.");
@@ -61,50 +71,51 @@ async function main() {
     .trim();
   console.log(`Successfully triggered workflow. Run ID: ${runId}`);
   console.log(`You can view the run at: ${runUrl}`);
-  console.log("Waiting for the SSH connection details...");
-  console.log("This may take a few minutes while the runner is being set up.");
-  console.log("Streaming logs...");
+  console.log("Waiting for SSH connection details artifact...");
 
-  const watchProcess = spawn("gh", ["run", "view", runId, "--log"], {
-    stdio: ["inherit", "pipe", "inherit"],
-  });
+  const startTime = Date.now();
+  let connectionDetails: { [key: string]: string } = {};
 
-  const connectionDetails: { [key: string]: string } = {};
+  while (Date.now() - startTime < timeout) {
+    try {
+      const artifactsJson = execSync(
+        `gh api repos/${repoName}/actions/runs/${runId}/artifacts -q '.artifacts | map(select(.name == "ssh-connection-details")) | .[0]'`,
+      ).toString();
 
-  watchProcess.stdout.on("data", (data) => {
-    const output = data.toString();
-    process.stdout.write(output);
+      if (artifactsJson && artifactsJson.trim()) {
+        const artifact = JSON.parse(artifactsJson);
+        if (artifact && artifact.id) {
+          console.log("Found artifact. Downloading...");
+          const artifactDir = "ssh-artifact";
+          execSync(`rm -rf ${artifactDir} && mkdir ${artifactDir}`);
+          execSync(
+            `gh run download ${runId} -n ssh-connection-details -D ${artifactDir}`,
+          );
 
-    const match = output.matchAll(
-      /::notice title=SSH Connection Details::(.*?): (.*)/g,
+          const connectionJson = execSync(
+            `cat ${artifactDir}/connection.json`,
+          ).toString();
+          connectionDetails = JSON.parse(connectionJson);
+          execSync(`rm -rf ${artifactDir}`);
+          break;
+        }
+      }
+    } catch (error) {
+      // Ignore and retry
+    }
+    console.log(`Still waiting for artifact...`);
+    await sleep(pollInterval);
+  }
+
+  if (Object.keys(connectionDetails).length === 4) {
+    displayConnectionInstructions(connectionDetails);
+  } else {
+    console.error(
+      "\nThe workflow timed out without providing SSH connection details.",
     );
-    for (const m of match) {
-      const key = m[1].trim();
-      const value = m[2].trim();
-      connectionDetails[key] = value;
-    }
-
-    if (
-      connectionDetails.Host &&
-      connectionDetails.Port &&
-      connectionDetails.User &&
-      connectionDetails.Password
-    ) {
-      watchProcess.kill();
-    }
-  });
-
-  watchProcess.on("close", () => {
-    if (Object.keys(connectionDetails).length === 4) {
-      displayConnectionInstructions(connectionDetails);
-    } else {
-      console.error(
-        "\nThe workflow run completed without providing SSH connection details.",
-      );
-      console.error(`Please check the logs for errors: ${runUrl}`);
-      process.exit(1);
-    }
-  });
+    console.error(`Please check the logs for errors: ${runUrl}`);
+    process.exit(1);
+  }
 }
 
 function displayConnectionInstructions(details: { [key: string]: string }) {
