@@ -43,8 +43,9 @@ jobs:
           # 3. Install ngrok
           choco install ngrok -y
 
-          # 4. Start ngrok tunnel in the background and log to a file
-          Start-Process -FilePath "ngrok" -ArgumentList "tcp 22 --log=ngrok.log" -WindowStyle Hidden
+          # 4. Get the full path to the ngrok executable and start it
+          $ngrokPath = (Get-Command ngrok).Source
+          Start-Process -FilePath $ngrokPath -ArgumentList "tcp 22 --log=ngrok.log" -WindowStyle Hidden
 
           Start-Sleep -Seconds 2
           Write-Host "Checking if ngrok process is running..."
