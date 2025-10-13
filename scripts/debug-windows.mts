@@ -2,13 +2,6 @@
 
 import { execSync, spawn } from "child_process";
 
-const thirtySeconds = 30 * 1000;
-const fiveMinutes = 5 * 60 * 1000;
-const tenSeconds = 10 * 1000;
-const pollInterval = tenSeconds;
-const timeout = fiveMinutes;
-const initialWait = thirtySeconds;
-
 async function main() {
   console.log("Looking for GitHub CLI 'gh'...");
   try {
@@ -26,12 +19,6 @@ async function main() {
     console.error("Please authenticate with 'gh auth login'.");
     process.exit(1);
   }
-
-  const repoName = execSync(
-    "gh repo view --json nameWithOwner -q .nameWithOwner",
-  )
-    .toString()
-    .trim();
 
   const branch = execSync("git branch --show-current").toString().trim();
   if (!branch) {
@@ -76,86 +63,40 @@ async function main() {
   console.log(`You can view the run at: ${runUrl}`);
   console.log("Waiting for the tmate SSH session to become available...");
   console.log("This may take a few minutes while the runner is being set up.");
+  console.log("Streaming logs...");
 
-  await sleep(initialWait);
+  const watchProcess = spawn("gh", ["run", "watch", runId], {
+    stdio: ["inherit", "pipe", "inherit"],
+  });
 
-  const startTime = Date.now();
   let sshCommand = "";
 
-  while (Date.now() - startTime < timeout) {
-    try {
-      const artifactsJson = execSync(
-        `gh api repos/${repoName}/actions/runs/${runId}/artifacts -q '.artifacts | map(select(.name == "tmate-connection")) | .[0]'`,
-      ).toString();
+  watchProcess.stdout.on("data", (data) => {
+    const output = data.toString();
+    process.stdout.write(output); // Stream logs to the user's terminal
 
-      if (artifactsJson && artifactsJson.trim()) {
-        const artifact = JSON.parse(artifactsJson);
-        if (artifact && artifact.id) {
-          console.log("Found tmate connection artifact. Downloading...");
-          // Create a temporary directory for the artifact
-          const artifactDir = "tmate-artifact";
-          execSync(`rm -rf ${artifactDir} && mkdir ${artifactDir}`);
-          execSync(
-            `gh run download ${runId} -n tmate-connection -D ${artifactDir}`,
-          );
-
-          console.log(`Downloaded artifact to '${artifactDir}'. Contents:`);
-          execSync(`ls -l ${artifactDir}`, { stdio: "inherit" });
-
-          // The action saves the file as 'tmate-connection.sh' inside the artifact
-          const sshScriptContent = execSync(
-            `cat ${artifactDir}/tmate-connection.sh`,
-          ).toString();
-
-          console.log("--- Connection File Content ---");
-          console.log(sshScriptContent);
-          console.log("--- End Connection File Content ---");
-
-          const match = sshScriptContent.match(/ssh .*@.*\.tmate\.io/);
-          if (match && match[0]) {
-            sshCommand = match[0];
-            execSync(`rm -rf ${artifactDir}`);
-            break;
-          }
-        }
-      }
-
-      const statusResult = execSync(
-        `gh run view ${runId} --json status -q .status`,
-      )
-        .toString()
-        .trim();
-      if (statusResult === "completed") {
-        console.error(
-          "The workflow run completed without providing an SSH connection.",
-        );
-        console.error(`Please check the logs for errors: ${runUrl}`);
-        process.exit(1);
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        console.error(
-          "Error checking for artifact, will retry:",
-          error.message,
-        );
-      } else {
-        console.error(
-          "An unknown error occurred while checking for artifact, will retry",
-        );
-      }
+    const match = output.match(/ssh .*@.*\.tmate\.io/);
+    if (match && match[0]) {
+      sshCommand = match[0].trim();
+      console.log("\n--- SSH Command Found! ---");
+      watchProcess.kill(); // Stop watching logs
     }
-    console.log(`Still waiting for session artifact...`);
-    await sleep(pollInterval);
-  }
+  });
 
-  if (!sshCommand) {
-    console.error(
-      "The workflow timed out without providing an SSH connection string.",
-    );
-    console.error("Please check the workflow logs for errors.");
-    process.exit(1);
-  }
+  watchProcess.on("close", () => {
+    if (sshCommand) {
+      connectToSsh(sshCommand);
+    } else {
+      console.error(
+        "\nThe workflow run completed without providing an SSH connection.",
+      );
+      console.error(`Please check the logs for errors: ${runUrl}`);
+      process.exit(1);
+    }
+  });
+}
 
+function connectToSsh(sshCommand: string) {
   console.log("");
   console.log("==========================================");
   console.log("          SSH Session Ready");
