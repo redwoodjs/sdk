@@ -40,41 +40,43 @@ jobs:
           # 2. Ensure the OpenSSH server is running
           Start-Service sshd
 
-          # 3. Install ngrok
-          choco install ngrok -y
+          # 3. Create a tunnel using serveo.net
+          $logFile = "serveo.log"
+          Start-Job -ScriptBlock {
+              ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=nul -R 0:localhost:22 serveo.net 2>&1 | Add-Content $using:logFile
+          }
 
-          # 4. Start ngrok using the absolute path
-          Start-Process -FilePath "C:\ProgramData\chocolatey\lib\ngrok\tools\ngrok.exe" -ArgumentList "tcp 22 --log=ngrok.log" -WindowStyle Hidden
-
-          Start-Sleep -Seconds 2
-          Write-Host "Checking if ngrok process is running..."
-          Get-Process -Name "ngrok" -ErrorAction SilentlyContinue
-
-          # 5. Wait for ngrok to initialize and get the public URL
-          $tunnelInfo = $null
-          $maxAttempts = 30 # 60 seconds total
+          # 4. Wait for serveo to provide the public URL
+          $publicUrl = $null
+          $maxAttempts = 15 # 30 seconds
           $attempt = 0
-          while ($tunnelInfo -eq $null -and $attempt -lt $maxAttempts) {
+          while ($publicUrl -eq $null -and $attempt -lt $maxAttempts) {
             Start-Sleep -Seconds 2
             try {
-              $tunnelInfo = Invoke-RestMethod -Uri "http://127.0.0.1:4040/api/tunnels" -ErrorAction Stop
+                $output = Get-Content -Path $logFile -ErrorAction SilentlyContinue
+                $match = $output | Select-String -Pattern "Forwarding TCP from (.*) ->"
+                if ($match) {
+                    $publicUrl = $match.Matches[0].Groups[1].Value
+                } else {
+                    Write-Host "Serveo not ready yet. Retrying..."
+                    $attempt++
+                }
             } catch {
-              Write-Host "ngrok API not ready yet. Retrying..."
-              $attempt++
+                Write-Host "Serveo log not found yet. Retrying..."
+                $attempt++
             }
           }
 
-          if ($tunnelInfo -eq $null) {
-            Write-Error "Failed to get ngrok tunnel info after multiple attempts."
-            Write-Host "--- Displaying ngrok.log ---"
-            Get-Content -Path "ngrok.log" -ErrorAction SilentlyContinue
+          if ($publicUrl -eq $null) {
+            Write-Error "Failed to get serveo tunnel info."
+            Write-Host "--- Displaying serveo.log ---"
+            Get-Content -Path $logFile -ErrorAction SilentlyContinue
             exit 1
           }
 
-          $publicUrl = $tunnelInfo.tunnels[0].public_url
-          $hostname, $port = ($publicUrl -replace "tcp://", "").Split(":")
+          $hostname, $port = $publicUrl.Split(":")
 
-          # 6. Output connection details to a JSON file for the artifact
+          # 5. Output connection details to a JSON file for the artifact
           $connectionDetails = @{
             Host = $hostname
             Port = $port
