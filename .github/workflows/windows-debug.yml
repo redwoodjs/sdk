@@ -1,4 +1,4 @@
-name: Windows Debug Session
+name: Windows Debug Session (via zrok)
 
 on:
   workflow_dispatch:
@@ -6,26 +6,11 @@ on:
 jobs:
   debug:
     runs-on: windows-latest
-    name: Debug Session
+    name: Start zrok SSH Tunnel
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 8
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-
-      - name: Start tmate debug session
-        uses: mxschmitt/action-tmate@v3
-        with:
-          limit-access-to-actor: true
+      - name: Run SSH Tunnel Setup Script
+        shell: powershell
+        run: ./scripts/setup-ssh-tunnel.ps1
