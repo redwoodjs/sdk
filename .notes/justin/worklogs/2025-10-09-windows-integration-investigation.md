@@ -458,3 +458,16 @@ Now that the correct, direct download link is known, the reliability of the down
 The final, simplified strategy is to use a single job on the `windows-latest` runner. The first step uses a standard `run` command with `curl` to download the `vscode-server.zip` file directly into the workspace. The subsequent PowerShell step then proceeds to extract and run the server from this local file.
 
 This approach is simpler, faster, and avoids the overhead of passing artifacts between jobs, representing the most direct and efficient solution.
+
+### Addendum 10: Increasing Tunneling Reliability
+
+During testing, the `serveo.net` tunneling step failed with the error `Warning: remote port forwarding failed for listen port 8000`.
+
+-   **Finding:** This indicates that the requested public port (`8000`) was already in use by another user on the shared `serveo.net` service.
+-   **Finding 2:** It was also noted that GitHub Actions runners may have outbound firewall rules that restrict connections on non-standard ports. Services like `tmate` typically circumvent this by tunneling traffic over port 443 (HTTPS).
+
+-   **Decision:** To make the connection more robust, two changes were made to the `ssh` command:
+    1.  The remote port was changed from `8000` to `0` (e.g., `-R 0:localhost:8000`). This instructs the `serveo.net` server to dynamically allocate any available port, preventing conflicts.
+    2.  The connection to `serveo.net` itself was moved to port `443` (using the `-p 443` flag). This makes the outbound connection look like standard HTTPS traffic, increasing the likelihood of it passing through any firewalls on the runner environment.
+
+The combination of these two changes makes the tunneling step significantly more resilient to both port conflicts on the server side and potential firewall restrictions on the client side.
