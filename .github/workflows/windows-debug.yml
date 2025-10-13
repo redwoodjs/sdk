@@ -18,4 +18,6 @@ jobs:
 
       - name: Run SSH Tunnel Setup Script
         shell: powershell
+        env:
+          ZROK_TOKEN: ${{ secrets.ZROK_TOKEN }}
         run: ./scripts/setup-ssh-tunnel.ps1
