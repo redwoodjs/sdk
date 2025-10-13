@@ -45,7 +45,7 @@ jobs:
 
           # 4. Get the full path to the ngrok executable and start it
           $ngrokPath = (Get-Command ngrok).Source
-          Start-Process -FilePath $ngrokPath -ArgumentList "tcp 22 --log=ngrok.log" -WindowStyle Hidden
+          Start-Job -ScriptBlock { & $using:ngrokPath tcp 22 --log=ngrok.log }
 
           Start-Sleep -Seconds 2
           Write-Host "Checking if ngrok process is running..."
