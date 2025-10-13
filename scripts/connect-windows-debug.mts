@@ -3,11 +3,7 @@
 import { execSync } from "child_process";
 import { mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
-
-const fiveMinutes = 5 * 60 * 1000;
-const tenSeconds = 10 * 1000;
-const pollInterval = tenSeconds;
-const timeout = fiveMinutes;
+import * as readline from "readline";
 
 async function main() {
   console.log("🔍 Checking for dependency 'gh'...");
@@ -38,14 +34,24 @@ async function main() {
   const runUrl = execSync(`gh run view ${runId} --json url -q .url`)
     .toString()
     .trim();
-  console.log(`✅ Workflow triggered successfully: ${runUrl}`);
+  console.log(`✅ Workflow triggered successfully.`);
 
-  console.log("\n📡 Waiting for tmate SSH connection string...");
-  const sshConnectionString = await getSshConnectionString(runId);
-  const sshTarget = sshConnectionString.split(" ")[1]; // Extracts the 'user@host.tmate.io' part
-  const [username, host] = sshTarget.split("@");
+  console.log("\n\n=======================================================");
+  console.log("         ACTION REQUIRED: Get SSH Connection String");
+  console.log("=======================================================");
+  console.log("\n1. Open this URL in your browser to view the live log:");
+  console.log(`\n   ${runUrl}\n`);
+  console.log(
+    "2. Wait for the tmate session to start. You will see a line like:",
+  );
+  console.log('   "ssh <some-long-string>@<some-host>.tmate.io"');
+
+  const sshConnectionString = await promptForSshString();
 
   console.log("\n📝 Generating VS Code SFTP configuration...");
+  const sshTarget = sshConnectionString.split(" ")[1];
+  const [username, host] = sshTarget.split("@");
+
   const sftpConfig = {
     name: "Windows Debug Session",
     host: host,
@@ -75,16 +81,35 @@ async function main() {
   );
   console.log('   Select the "Windows Debug Session" to browse remote files.');
   console.log(
-    "\n3. To open an interactive shell, paste this in a new terminal:",
+    "\n3. To open an interactive shell, use the connection string you just pasted:",
   );
   console.log(`\n  ${sshConnectionString}\n`);
   console.log(
     "4. When you are finished, remember to cancel the GitHub Actions workflow!",
   );
   console.log("=======================================================\n");
+
+  process.exit(0);
 }
 
 // --- Helper Functions ---
+
+function promptForSshString(): Promise<string> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    rl.question(
+      "\n3. Paste the full SSH connection string here: ",
+      (answer) => {
+        rl.close();
+        resolve(answer.trim());
+      },
+    );
+  });
+}
 
 function checkForCommand(command: string, helpMessage: string) {
   try {
@@ -110,29 +135,6 @@ async function getRunId(branch: string): Promise<string> {
     await sleep(2000);
   }
   console.error("❌ Could not find a recent workflow run.");
-  process.exit(1);
-}
-
-async function getSshConnectionString(runId: string): Promise<string> {
-  const startTime = Date.now();
-  while (Date.now() - startTime < timeout) {
-    try {
-      const log = execSync(`gh run view ${runId} --log`, {
-        maxBuffer: 10 * 1024 * 1024,
-      }).toString();
-      const match = log.match(/ssh\s+[a-zA-Z0-9\S]+@[\w\.]+\.tmate\.io/);
-      if (match && match[0]) {
-        return match[0];
-      }
-    } catch (error) {
-      // Ignore and retry
-    }
-    console.log("   Still waiting...");
-    await sleep(pollInterval);
-  }
-  console.error(
-    "❌ Workflow timed out without providing an SSH connection string.",
-  );
   process.exit(1);
 }
 

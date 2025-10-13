@@ -319,27 +319,21 @@ Based on this insight, the entire approach was radically simplified to mimic the
 
 This approach is robust, simple, and directly models the only successful example we had. It represents the final, working solution derived from the entire investigation.
 
-## Final Solution: Hybrid `tmate` + `sshfs` Workflow
+## Final Solution: Semi-Automated `tmate` + VS Code SFTP Extension
 
-After discovering that free tunneling services like `zrok` and `ngrok` are unsuitable for creating raw TCP tunnels for SSH, and confirming that `tmate` provides a reliable interactive shell, a hybrid solution was developed. This approach uses `tmate` for the SSH connection and `sshfs` to mount the remote filesystem locally, providing a near-native remote development experience.
+The investigation concluded with a critical realization: fully automating the extraction of the `tmate` SSH connection string from a GitHub Actions workflow is not feasible. The `gh run view --log` command does not stream logs for in-progress jobs; it waits for completion. Since the `tmate` job is designed to never complete, any script attempting to scrape the logs will hang indefinitely.
 
-This was automated into a single, seamless script.
+The final, correct solution is a semi-automated script that handles all the boilerplate and then prompts the user for the one piece of information that requires manual intervention.
 
-### The Automated `sshfs` Workflow
+### The Semi-Automated SFTP Workflow
 
-1.  **A Minimal `tmate` Workflow:** The `windows-debug.yml` workflow was reverted to a minimal configuration that simply starts a `tmate` session in the foreground, blocking the job to keep it alive.
+1.  **A Minimal `tmate` Workflow:** The `windows-debug.yml` workflow remains unchanged, providing the core `tmate` SSH connection.
 
-2.  **A New Orchestration Script (`scripts/mount-windows-debug.mts`):** A new, intelligent script was created to automate the entire end-to-end process for the user. It performs the following steps:
-    *   Checks for local dependencies (`gh`, `sshfs`, `code`).
-    *   Triggers the `windows-debug.yml` workflow on the user's current branch.
-    *   Polls the workflow logs to retrieve the `tmate` SSH connection string.
-    *   Creates a local mount point (`~/windows-debug-mount`).
-    *   Uses `sshfs` to mount the remote runner's filesystem (`D:/a/sdk/sdk`) onto the local mount point.
-    *   Opens the local mount point in VS Code.
-    *   Finally, it prints clear instructions for the user, telling them how to open a separate interactive shell and how to unmount the filesystem when they are finished.
+2.  **A New, Interactive Orchestration Script (`scripts/connect-windows-debug.mts`):** A new script was created that acknowledges the limitations of log scraping. It performs the following robust steps:
+    *   Triggers the `windows-debug.yml` workflow and provides the user with a direct URL to the live log.
+    *   **Prompts the user** to open the URL, wait for the `tmate` session to start, and then manually copy and paste the `ssh` connection string from their browser into the running script.
+    *   Once the user provides the string, the script takes over, parsing the SSH details.
+    *   It then **automatically generates the `.vscode/sftp.json` file** with the correct connection details.
+    *   Finally, it prints clear instructions for using the SFTP extension and the `ssh` command for an interactive shell.
 
-This solution provides the two key components of remote development:
-- **Full-featured editing:** All files on the Windows runner can be edited directly in a local VS Code instance.
-- **Interactive shell:** The user can open a separate terminal and run commands on the remote runner to test their changes.
-
-This represents the final, successful conclusion of a long and difficult investigation.
+This hybrid approach provides the best of both worlds. It automates all the tedious parts (triggering the run, creating the config file) while relying on the user for the one step—reading the live log—that has proven impossible to reliably automate. This is the final, successful, and robust conclusion to the investigation.
