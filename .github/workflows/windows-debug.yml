@@ -32,8 +32,10 @@ jobs:
           # 1. Set a secure, random password for the runneradmin user
           $password = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 32 | ForEach-Object { [char]$_ })
           $user = "runneradmin"
-          $credential = New-Object System.Management.Automation.PSCredential($user, (ConvertTo-SecureString $password -AsPlainText -Force))
-          (Get-WmiObject Win32_UserAccount -Filter "Name='$user'").SetPassword($password)
+          Add-Type -AssemblyName System.Web
+          $securePassword = ConvertTo-SecureString $password -AsPlainText -Force
+          $userAccount = Get-LocalUser -Name $user
+          $userAccount | Set-LocalUser -Password $securePassword
 
           # 2. Ensure the OpenSSH server is running
           Start-Service sshd
