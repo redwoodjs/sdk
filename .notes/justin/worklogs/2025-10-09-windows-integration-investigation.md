@@ -359,3 +359,9 @@ The developer can then connect directly to this named tunnel from their local VS
 A recurring issue throughout this investigation was the inability to manually trigger the `workflow_dispatch` event from the GitHub UI on the `windows-repro` branch. It has been firmly established that for a non-default branch, the "Run workflow" button does not reliably appear in the GitHub Actions UI, even when an `inputs` block is added to the workflow file.
 
 **Conclusion:** The only reliable method for triggering this workflow on a feature branch is via the `gh` command-line interface. A helper script is the necessary and correct solution to standardize this process.
+
+### Addendum 2: `Invoke-WebRequest` File Corruption
+
+The initial implementation of the VS Code Tunnel workflow failed with a file corruption error (`The file or directory is corrupted and unreadable`) when attempting to execute the downloaded `code.exe`.
+
+This suggests that the PowerShell command `Invoke-WebRequest` is not reliably downloading the binary executable. To resolve this, the download command was replaced with `curl -L -o ...`. `curl` is a more robust tool for handling binary downloads and HTTP redirects, which should prevent file corruption and ensure the executable is downloaded correctly.

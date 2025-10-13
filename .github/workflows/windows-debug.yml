@@ -18,7 +18,7 @@ jobs:
       - name: Install VS Code CLI
         shell: pwsh
         run: |
-          Invoke-WebRequest https://aka.ms/vscode-server-launcher/win-x64 -OutFile code.exe
+          curl -L "https://aka.ms/vscode-server-launcher/win-x64" -o code.exe
 
       # Headless auth & start a named tunnel
       # Create a fine-scoped GitHub PAT or login token and store as secret VSCODE_TUNNEL_TOKEN
