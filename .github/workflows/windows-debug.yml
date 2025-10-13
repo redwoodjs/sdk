@@ -2,6 +2,11 @@ name: Windows Debug Session
 
 on:
   workflow_dispatch:
+    inputs:
+      reason:
+        description: "Reason for starting the debug session"
+        required: false
+        default: "Debugging Windows path issues"
 
 jobs:
   tunnel:
