@@ -2,7 +2,6 @@ import React from "react";
 import { describe, expect, it } from "vitest";
 
 import type { RequestInfo } from "../requestInfo/types";
-import type { RwContext } from "./router";
 import {
   defineRoutes,
   layout,
@@ -11,6 +10,7 @@ import {
   render,
   route,
 } from "./router";
+import type { RwContext } from "./types.js";
 
 describe("matchPath", () => {
   // Test case 1: Static paths
@@ -105,6 +105,8 @@ describe("defineRoutes - Request Handling Behavior", () => {
         ssr: true,
         databases: new Map(),
         scriptsToBeLoaded: new Set(),
+        entryScripts: new Set(),
+        inlineScripts: new Set(),
         pageRouteResolved: undefined,
       } as RwContext,
       cf: {} as any,
