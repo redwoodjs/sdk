@@ -34,6 +34,9 @@ jobs:
           limit-access-to-actor: true
           detached: true
 
+      - name: Wait for tmate session to be ready
+        run: sleep 10
+
       - name: Write tmate connection string to file
         run: echo "${{ steps.tmate.outputs.ssh-connection }}" > tmate-connection.sh
 
