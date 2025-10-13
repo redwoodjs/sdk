@@ -65,9 +65,13 @@ async function main() {
   console.log("This may take a few minutes while the runner is being set up.");
   console.log("Streaming logs...");
 
-  const watchProcess = spawn("gh", ["run", "watch", runId], {
-    stdio: ["inherit", "pipe", "inherit"],
-  });
+  const watchProcess = spawn(
+    "gh",
+    ["run", "view", runId, "--log", "--exit-on-failure"],
+    {
+      stdio: ["inherit", "pipe", "inherit"],
+    },
+  );
 
   const connectionDetails: { [key: string]: string } = {};
 
