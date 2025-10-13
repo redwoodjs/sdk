@@ -27,6 +27,12 @@ async function main() {
     process.exit(1);
   }
 
+  const repoName = execSync(
+    "gh repo view --json nameWithOwner -q .nameWithOwner",
+  )
+    .toString()
+    .trim();
+
   const branch = execSync("git branch --show-current").toString().trim();
   if (!branch) {
     console.error("Could not determine the current git branch.");
@@ -79,7 +85,7 @@ async function main() {
   while (Date.now() - startTime < timeout) {
     try {
       const artifactsJson = execSync(
-        `gh run view ${runId} --json artifacts --jq '.artifacts | map(select(.name == "tmate-connection")) | .[0]'`,
+        `gh api repos/${repoName}/actions/runs/${runId}/artifacts -q '.artifacts | map(select(.name == "tmate-connection")) | .[0]'`,
       ).toString();
 
       if (artifactsJson && artifactsJson.trim()) {
