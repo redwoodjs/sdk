@@ -30,15 +30,8 @@ jobs:
         id: tmate
         shell: powershell
         run: |
-          echo "Installing scoop..."
-          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
-          Invoke-RestMethod -Uri get.scoop.sh | Invoke-Expression
-          $env:PATH = [System.Environment]::GetEnvironmentVariable('PATH','User') + ';' + [System.Environment]::GetEnvironmentVariable('PATH','Machine')
-          echo "Adding scoop extras bucket..."
-          scoop bucket add extras
-          scoop update
-          echo "Installing tmate via scoop..."
-          scoop install tmate
+          echo "Installing tmate via Chocolatey..."
+          choco install tmate -y
           echo "Starting tmate session in background..."
           tmate new-session -d
           tmate wait tmate-ready
