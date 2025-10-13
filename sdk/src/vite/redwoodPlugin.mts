@@ -27,6 +27,7 @@ import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
 import { prismaPlugin } from "./prismaPlugin.mjs";
 import { resolveForcedPaths } from "./resolveForcedPaths.mjs";
 import { ssrBridgePlugin } from "./ssrBridgePlugin.mjs";
+import { statePlugin } from "./statePlugin.mjs";
 import { transformJsxScriptTagsPlugin } from "./transformJsxScriptTagsPlugin.mjs";
 import { useClientLookupPlugin } from "./useClientLookupPlugin.mjs";
 import { useServerLookupPlugin } from "./useServerLookupPlugin.mjs";
@@ -125,14 +126,12 @@ export const redwoodPlugin = async (
     console.log(
       "🚀 Project has no .wrangler directory yet, assuming fresh install: running `npm run dev:init`...",
     );
-    await $({
-      // context(justinvdm, 01 Apr 2025): We want to avoid interactive migration y/n prompt, so we ignore stdin
-      // as a signal to operate in no-tty mode
-      stdio: ["ignore", "inherit", "inherit"],
-    })`npm run dev:init`;
+    $.verbose = true;
+    await $`npm run dev:init`;
   }
 
   return [
+    statePlugin(),
     devServerTimingPlugin(),
     devServerConstantPlugin(),
     directiveModulesDevPlugin({

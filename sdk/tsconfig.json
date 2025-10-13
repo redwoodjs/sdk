@@ -45,10 +45,10 @@
 
     "types": [
       "./types/react.d.ts",
-      "./types/clientGlobal.d.ts",
       "./types/global.d.ts",
+      "./types/clientGlobal.d.ts",
       "./types/vite.d.ts",
-      "@cloudflare/workers-types"
+      "./types/state.d.ts"
     ]
   },
   "include": ["src/**/*"],
