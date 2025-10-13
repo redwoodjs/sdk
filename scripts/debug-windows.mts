@@ -69,10 +69,8 @@ async function main() {
   );
   console.log("You will find the SSH connection string in the logs.");
   console.log("\n-------------------------------------------------------");
-  console.log("  Optional: Mount remote filesystem with SSHFS");
-  console.log("-------------------------------------------------------");
   console.log(
-    "1. Install sshfs (e.g., `brew install sshfs` on macOS, `sudo apt-get install sshfs` on Debian/Ubuntu).",
+    "1. Install macFUSE from https://osxfuse.github.io/ and then `brew install sshfs`.",
   );
   console.log("2. Create a local directory: `mkdir -p ~/windows-debug-mount`");
   console.log("3. Get the SSH string from the log, e.g., `ssh <user>@<host>`");
