@@ -82,6 +82,7 @@ jobs:
 
       # Headless auth & start a named tunnel
       - name: Start VS Code Tunnel
+        continue-on-error: true # Keep going even if this fails so we can debug with tmate
         shell: pwsh
         env:
           VSCODE_TUNNEL_TOKEN: ${{ secrets.VSCODE_TUNNEL_TOKEN }}
