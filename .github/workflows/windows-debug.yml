@@ -36,6 +36,7 @@ jobs:
           $env:PATH = [System.Environment]::GetEnvironmentVariable('PATH','User') + ';' + [System.Environment]::GetEnvironmentVariable('PATH','Machine')
           echo "Adding scoop extras bucket..."
           scoop bucket add extras
+          scoop update
           echo "Installing tmate via scoop..."
           scoop install tmate
           echo "Starting tmate session in background..."
