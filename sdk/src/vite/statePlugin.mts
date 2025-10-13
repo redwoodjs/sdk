@@ -28,7 +28,7 @@ export const statePlugin = (): Plugin => {
               {
                 // context(justinvdm, 13 Oct 2025): Vite dep optimizer slugifies the export path
                 filter: new RegExp(
-                  `^($rwsdk___state|${VIRTUAL_STATE_PREFIX}.*)$`,
+                  `^(${RW_STATE_EXPORT_PATH}|${VIRTUAL_STATE_PREFIX}.*)$`,
                 ),
               },
               (args) => {
