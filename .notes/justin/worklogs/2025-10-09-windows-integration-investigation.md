@@ -18,3 +18,13 @@ The goal is to establish a reliable method for debugging the SDK on a Windows en
 4.  **Investigate and fix**: With a reproducible case, I can start debugging the code to find the root cause of the path handling problems and implement fixes. This will likely involve ensuring all path manipulations are handled in a platform-agnostic way, possibly using Node's `path` module more consistently and using `pathToFileURL` from the `url` module where appropriate.
 
 This work log will track the progress of this investigation.
+
+## 2025-10-13: Scripting and Automation Attempts
+
+The initial phase focused on creating a script to automate the process of starting the debug workflow and connecting to the tmate session. Several approaches were attempted:
+
+1.  **Log Scraping (`gh run view --log`)**: The script polled the logs of the workflow run, looking for the SSH connection string. This failed because the `gh` command waits for the run to complete before outputting logs, which it never does while tmate is active.
+2.  **Log Streaming (`gh run watch`)**: This improved on the first approach by streaming logs in real time. While functional, it proved to be brittle and sometimes failed to capture the connection string reliably.
+3.  **Artifact Upload/Download**: The workflow was modified to save the connection string to a file and upload it as an artifact. The script would then poll for and download this artifact. This method was plagued by a series of platform-specific issues on the Windows runner, including problems with package managers (`scoop`, `choco`), PATH variables, and file system paths, making it unreliable.
+
+Given the time spent on these automation attempts, the decision was made to simplify the script significantly. The new approach is to have the script only trigger the workflow and provide a direct link to the run. The developer can then manually copy the SSH connection string from the logs. This provides a reliable, albeit less automated, solution that allows the primary goal—debugging on Windows—to proceed without further delay. The script will also provide instructions for mounting the remote filesystem locally with `sshfs` for convenience.

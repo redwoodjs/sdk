@@ -1,6 +1,6 @@
 #!/usr/bin/env -S npx tsx
 
-import { execSync, spawn } from "child_process";
+import { execSync } from "child_process";
 
 async function main() {
   console.log("Looking for GitHub CLI 'gh'...");
@@ -59,59 +59,31 @@ async function main() {
   const runUrl = execSync(`gh run view ${runId} --json url -q .url`)
     .toString()
     .trim();
-  console.log(`Successfully triggered workflow. Run ID: ${runId}`);
-  console.log(`You can view the run at: ${runUrl}`);
-  console.log("Waiting for the tmate SSH session to become available...");
-  console.log("This may take a few minutes while the runner is being set up.");
-  console.log("Streaming logs...");
 
-  const watchProcess = spawn("gh", ["run", "watch", runId], {
-    stdio: ["inherit", "pipe", "inherit"],
-  });
-
-  let sshCommand = "";
-
-  watchProcess.stdout.on("data", (data) => {
-    const output = data.toString();
-    process.stdout.write(output); // Stream logs to the user's terminal
-
-    const match = output.match(/ssh .*@.*\.tmate\.io/);
-    if (match && match[0]) {
-      sshCommand = match[0].trim();
-      console.log("\n--- SSH Command Found! ---");
-      watchProcess.kill(); // Stop watching logs
-    }
-  });
-
-  watchProcess.on("close", () => {
-    if (sshCommand) {
-      connectToSsh(sshCommand);
-    } else {
-      console.error(
-        "\nThe workflow run completed without providing an SSH connection.",
-      );
-      console.error(`Please check the logs for errors: ${runUrl}`);
-      process.exit(1);
-    }
-  });
-}
-
-function connectToSsh(sshCommand: string) {
-  console.log("");
-  console.log("==========================================");
-  console.log("          SSH Session Ready");
-  console.log("==========================================");
-  console.log("Connecting to the remote session now...");
-  console.log("The session will remain active for up to 60 minutes.");
-  console.log("==========================================");
-  console.log("");
-
-  const [command, ...args] = sshCommand.split(" ");
-  const sshProcess = spawn(command, args, { stdio: "inherit" });
-
-  sshProcess.on("error", (err) => {
-    console.error("Failed to start SSH session:", err);
-  });
+  console.log("\n=======================================================");
+  console.log("         Windows Debug Session Initialized");
+  console.log("=======================================================");
+  console.log(`\nWorkflow run URL: ${runUrl}\n`);
+  console.log(
+    "Open the URL above and wait for the 'Setup tmate session' step.",
+  );
+  console.log("You will find the SSH connection string in the logs.");
+  console.log("\n-------------------------------------------------------");
+  console.log("  Optional: Mount remote filesystem with SSHFS");
+  console.log("-------------------------------------------------------");
+  console.log(
+    "1. Install sshfs (e.g., `brew install sshfs` on macOS, `sudo apt-get install sshfs` on Debian/Ubuntu).",
+  );
+  console.log("2. Create a local directory: `mkdir -p ~/windows-debug-mount`");
+  console.log("3. Get the SSH string from the log, e.g., `ssh <user>@<host>`");
+  console.log("4. Use the command below to mount the remote directory:");
+  console.log(
+    "\n   sshfs <user>@<host>:/D/a/sdk/sdk ~/windows-debug-mount -o reconnect,volname=WindowsDebug\n",
+  );
+  console.log(
+    "   (Replace `<user>@<host>` with your session details and `~/windows-debug-mount` with your directory).",
+  );
+  console.log("=======================================================\n");
 }
 
 function sleep(ms: number) {
