@@ -31,3 +31,9 @@ jobs:
         timeout-minutes: 55
         with:
           limit-access-to-actor: true
+
+      - name: Upload tmate connection string
+        uses: actions/upload-artifact@v4
+        with:
+          name: tmate-connection
+          path: /tmp/tmate.sh

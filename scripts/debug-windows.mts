@@ -78,11 +78,32 @@ async function main() {
 
   while (Date.now() - startTime < timeout) {
     try {
-      const logs = execSync(`gh run view ${runId} --log`).toString();
-      const match = logs.match(/SSH: (ssh .*)/);
-      if (match && match[1]) {
-        sshCommand = match[1].trim();
-        break;
+      const artifactsJson = execSync(
+        `gh run view ${runId} --json artifacts --jq '.artifacts | map(select(.name == "tmate-connection")) | .[0]'`,
+      ).toString();
+
+      if (artifactsJson && artifactsJson.trim()) {
+        const artifact = JSON.parse(artifactsJson);
+        if (artifact && artifact.id) {
+          console.log("Found tmate connection artifact. Downloading...");
+          // Create a temporary directory for the artifact
+          const artifactDir = "tmate-artifact";
+          execSync(`rm -rf ${artifactDir} && mkdir ${artifactDir}`);
+          execSync(
+            `gh run download ${runId} -n tmate-connection -D ${artifactDir}`,
+          );
+
+          // The action saves the file as 'tmate.sh' inside the artifact
+          const sshScriptContent = execSync(
+            `cat ${artifactDir}/tmate.sh`,
+          ).toString();
+          const match = sshScriptContent.match(/ssh .*@.*\.tmate\.io/);
+          if (match && match[0]) {
+            sshCommand = match[0];
+            execSync(`rm -rf ${artifactDir}`);
+            break;
+          }
+        }
       }
 
       const statusResult = execSync(
@@ -98,9 +119,18 @@ async function main() {
         process.exit(1);
       }
     } catch (error) {
-      // Ignore errors, we'll just retry
+      if (error instanceof Error) {
+        console.error(
+          "Error checking for artifact, will retry:",
+          error.message,
+        );
+      } else {
+        console.error(
+          "An unknown error occurred while checking for artifact, will retry",
+        );
+      }
     }
-    console.log(`Still waiting for session...`);
+    console.log(`Still waiting for session artifact...`);
     await sleep(pollInterval);
   }
 
