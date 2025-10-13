@@ -24,6 +24,7 @@ jobs:
 
       # Download the VS Code CLI (code tunnel) to a stable C: user dir
       - name: Install VS Code CLI
+        continue-on-error: true # Keep going even if this fails so we can debug with tmate
         shell: pwsh
         run: |
           # Temporarily disable Windows Defender to prevent file corruption
