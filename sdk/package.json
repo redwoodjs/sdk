@@ -99,9 +99,6 @@
     "./realtime/durableObject": {
       "types": "./dist/runtime/lib/realtime/durableObject.d.ts",
       "default": "./dist/runtime/lib/realtime/durableObject.js"
-    },
-    "rsc-refresh": {
-      "types": "dist/rsc-refresh.d.ts"
     }
   },
   "keywords": [
