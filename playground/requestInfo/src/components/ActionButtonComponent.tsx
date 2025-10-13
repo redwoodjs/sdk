@@ -2,7 +2,7 @@
 
 import { setHeadersAction } from "../app/actions";
 
-export function ActionFormComponent() {
+export function ActionButtonComponent() {
   return (
     <div>
       <button type="button" onClick={() => setHeadersAction()}>

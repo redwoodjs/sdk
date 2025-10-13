@@ -85,9 +85,12 @@ testDev(
       .replace(
         'import type { RequestInfo } from "rwsdk/worker";',
         `import type { RequestInfo } from "rwsdk/worker";
-import { ActionFormComponent } from "../../components/ActionFormComponent";`,
+import { ActionButtonComponent } from "../../components/ActionButtonComponent";`,
       )
-      .replace("{/* <ActionFormComponent /> */}", "<ActionFormComponent />");
+      .replace(
+        "{/* <ActionButtonComponent /> */}",
+        "<ActionButtonComponent />",
+      );
 
     await writeFile(homePagePath, modifiedContent);
 
@@ -103,7 +106,7 @@ import { ActionFormComponent } from "../../components/ActionFormComponent";`,
       }
     });
 
-    await page.click('button[type="submit"]');
+    await page.click('button:has-text("Set Header via Server Action")');
 
     await poll(() => !!serverActionResponse);
 

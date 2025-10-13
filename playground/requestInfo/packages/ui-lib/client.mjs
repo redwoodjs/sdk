@@ -1,1 +1,1 @@
-export * from "./dist/client";
+export const ClientGreeting = () => "Hello from client library";

@@ -1,1 +1,1 @@
-export * from "./dist/server";
+export const ServerGreeting = () => "Hello from server library";

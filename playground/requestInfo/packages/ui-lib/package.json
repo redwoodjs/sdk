@@ -5,6 +5,10 @@
   "types": "server.d.ts",
   "exports": {
     ".": {
+      "types": {
+        "react-server": "./server.d.ts",
+        "default": "./client.d.ts"
+      },
       "react-server": "./server.mjs",
       "default": "./client.mjs"
     }
