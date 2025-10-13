@@ -46,14 +46,14 @@ export const statePlugin = (): Plugin => {
     resolveId(id) {
       if (id === RW_STATE_EXPORT_PATH) {
         if (isDev && this.environment.name === "worker") {
-          return VIRTUAL_RW_STATE_PATH;
+          return `${VIRTUAL_STATE_PREFIX}${id}`;
         } else {
           return path.resolve(RUNTIME_DIR, "state.mjs");
         }
       }
     },
     async load(id) {
-      if (id === VIRTUAL_RW_STATE_PATH) {
+      if (id.startsWith(VIRTUAL_STATE_PREFIX)) {
         const stateModulePath = path.resolve(RUNTIME_DIR, "state.mts");
         log("Loading virtual state module from %s", stateModulePath);
         return await fs.readFile(stateModulePath, "utf-8");
