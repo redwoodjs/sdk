@@ -378,11 +378,15 @@ Even with a robust download script using stable paths, retries, file size verifi
 
 This feature can silently quarantine or block newly created executables, leading to the observed errors. The final, definitive fix is to temporarily disable real-time monitoring for the duration of the download and execution steps. The `Set-MpPreference -DisableRealtimeMonitoring $true` command is added before the download, and `$false` is set after the tunnel is running, ensuring the runner's security posture is restored while allowing our specific tool to execute without interference.
 
-### Addendum 5: Interactive Debugging Pivot
+### Addendum 6: The True Root Cause - A Dead Download Link
 
-The Windows Defender fix also failed, proving that the file corruption issue is exceptionally persistent and its root cause remains unknown. All non-interactive attempts to create a working tunnel have been exhausted.
+After an exhaustive investigation into file corruption, the true root cause was discovered: the download link itself was dead.
 
-The only remaining path is to debug the process interactively. The strategy is now to:
-1.  Add a `tmate` step to the end of the existing workflow. This provides a reliable, interactive command-line shell on the runner.
-2.  The preceding steps (downloading `code.exe`, etc.) will still run.
-3.  From the `tmate` shell, the commands from the later workflow steps can be run manually to observe their behavior directly and diagnose the root cause of the file corruption.
+- **The `aka.ms` Link:** The official-looking Microsoft short link, `https://aka.ms/vscode-server-launcher/win-x64`, was no longer pointing to the executable. It had been changed to redirect to `bing.com`.
+- **The "Corruption":** The workflow was, in fact, successfully downloading a small HTML redirect page from Bing. This is why the file size was small but non-zero, why the hashes never matched, and why the OS correctly identified it as a "corrupted and unreadable" executable.
+
+All previous theories about runner-side file corruption, Windows Defender, or download tool issues were incorrect. They were symptoms of trying to execute an HTML file.
+
+**The Definitive Solution: The Correct Download Link**
+
+The correct, direct download link was found in the updated VS Code documentation. The workflow has been updated to use this link, which resolves the issue entirely. All complex workarounds (vendoring the binary, disabling Defender, etc.) have been removed, resulting in a simple, correct, and reliable workflow.

@@ -11,129 +11,21 @@ on:
 jobs:
   tunnel:
     runs-on: windows-latest
-    timeout-minutes: 360 # keep session alive for up to 6 hours
     steps:
       - uses: actions/checkout@v4
 
-      - name: Echo runner env (diagnostics)
-        shell: pwsh
-        run: |
-          Write-Host "RUNNER_TEMP=$env:RUNNER_TEMP"
-          Write-Host "USERPROFILE=$env:USERPROFILE"
-          Get-ChildItem -Path $env:RUNNER_TEMP | Select-Object Name,Length,CreationTime | Format-Table
-
-      # Download the VS Code CLI (code tunnel) to a stable C: user dir
-      - name: Install VS Code CLI
-        continue-on-error: true # Keep going even if this fails so we can debug with tmate
-        shell: pwsh
-        run: |
-          # Temporarily disable Windows Defender to prevent file corruption
-          Write-Host "Disabling Windows Defender real-time monitoring..."
-          Set-MpPreference -DisableRealtimeMonitoring $true
-
-          # Force TEMP/TMP to a stable C: path for this step
-          $tempRoot = 'C:\Temp'
-          New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
-          $env:TEMP = $tempRoot
-          $env:TMP  = $tempRoot
-
-          # Use a stable base outside USERPROFILE and D:\a
-          $base = 'C:\code-tunnel'
-          if (Test-Path $base) { Remove-Item -Recurse -Force $base }
-          New-Item -ItemType Directory -Force -Path $base | Out-Null
-
-          $dst = Join-Path $base 'code-tunnel.exe'
-          $uri = 'https://aka.ms/vscode-server-launcher/win-x64'
-
-          function Download-Tunnel {
-            param([string]$Url,[string]$Out)
-            for ($i=1; $i -le 3; $i++) {
-              try {
-                Invoke-WebRequest $Url -OutFile $Out -UseBasicParsing
-                return
-              } catch {
-                if ($i -eq 3) { throw $_ }
-                Start-Sleep -Seconds (2 * $i)
-              }
-            }
-          }
-
-          Download-Tunnel -Url $uri -Out $dst
-          Unblock-File $dst
-
-          if (!(Test-Path $dst)) { throw "code-tunnel.exe not found at $dst" }
-          $len = (Get-Item $dst).Length
-          if ($len -lt 50000) { throw "code-tunnel.exe download too small ($len bytes)" }
-
-          Write-Host "Downloaded code-tunnel.exe to $dst ($len bytes)"
-
-          # Sanity: try to read the version to detect corruption early
-          try {
-            & $dst --version | Out-Null
-          } catch {
-            Write-Warning "Launcher didn't execute (--version). Re-downloading once..."
-            Remove-Item -Force $dst -ErrorAction SilentlyContinue
-            Download-Tunnel -Url $uri -Out $dst
-            Unblock-File $dst
-            & $dst --version | Out-Null
-          }
-
-          # Show diagnostics
-          Get-Item $dst | Format-List FullName,Length,CreationTime,LastWriteTime
-
-      # Headless auth & start a named tunnel
-      - name: Start VS Code Tunnel
-        continue-on-error: true # Keep going even if this fails so we can debug with tmate
+      - name: Install and Start VS Code Tunnel
         shell: pwsh
         env:
           VSCODE_TUNNEL_TOKEN: ${{ secrets.VSCODE_TUNNEL_TOKEN }}
-          TEMP: C:\Temp
-          TMP: C:\Temp
         run: |
-          # Temporarily disable Windows Defender to prevent file corruption
-          Write-Host "Disabling Windows Defender real-time monitoring..."
-          Set-MpPreference -DisableRealtimeMonitoring $true
+          $CliUri = "https://update.code.visualstudio.com/latest/server-win32-x64/stable"
+          $CliPath = "$env:TEMP\\code.exe"
 
-          $base = 'C:\code-tunnel'
-          $dst = Join-Path $base 'code-tunnel.exe'
-
-          if (-not (Test-Path $dst) -or ((Get-Item $dst).Length -lt 50000)) {
-            Write-Host "Re-downloading code-tunnel.exe..."
-            Invoke-WebRequest -Uri "https://aka.ms/vscode-server-launcher/win-x64" -OutFile $dst -UseBasicParsing
-            Unblock-File -Path $dst
-          }
-
-          # Extra sanity to catch ERROR_FILE_CORRUPT early
-          try {
-            & $dst --version | Out-Null
-          } catch {
-            Write-Warning "Launcher failed to run (--version). Recreating base directory..."
-            Remove-Item -Recurse -Force $base -ErrorAction SilentlyContinue
-            New-Item -ItemType Directory -Force -Path $base | Out-Null
-            Invoke-WebRequest -Uri "https://aka.ms/vscode-server-launcher/win-x64" -OutFile $dst -UseBasicParsing
-            Unblock-File -Path $dst
-            & $dst --version | Out-Null
-          }
-
-          # Run from a neutral working directory (avoid USERPROFILE)
-          Push-Location 'C:\'
+          Invoke-WebRequest -Uri $CliUri -OutFile $CliPath
 
           # Authenticate tunnel user (GitHub provider)
-          & $dst tunnel user login --provider github --token $env:VSCODE_TUNNEL_TOKEN
+          & $CliPath tunnel user login --provider github --token $env:VSCODE_TUNNEL_TOKEN
 
-          # Print status for connection info
-          & $dst tunnel status --verbose
-
-          # Keep the machine awake and tunnel open
-          & $dst tunnel --accept-server-license-terms --name rwsdk-win-ci --no-sleep --verbose
-
-          Pop-Location
-
-          # Re-enable Windows Defender as a best practice
-          Write-Host "Re-enabling Windows Defender real-time monitoring..."
-          Set-MpPreference -DisableRealtimeMonitoring $false
-
-      - name: Start tmate debug session
-        uses: mxschmitt/action-tmate@v3
-        with:
-          limit-access-to-actor: true
+          # Start the tunnel
+          & $CliPath tunnel --accept-server-license-terms --name rwsdk-win-ci --no-sleep --verbose
