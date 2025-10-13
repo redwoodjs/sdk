@@ -11,21 +11,38 @@ on:
 jobs:
   tunnel:
     runs-on: windows-latest
+    timeout-minutes: 360 # keep session alive for up to 6 hours
     steps:
       - uses: actions/checkout@v4
 
-      # Download the VS Code CLI (code tunnel)
+      # Download the VS Code CLI (code tunnel) to a stable temp dir
       - name: Install VS Code CLI
         shell: pwsh
         run: |
-          curl -L "https://aka.ms/vscode-server-launcher/win-x64" -o code.exe
+          $dst = Join-Path $env:RUNNER_TEMP "code.exe"
+          if (Test-Path $dst) { Remove-Item -Force $dst }
+
+          Invoke-WebRequest "https://aka.ms/vscode-server-launcher/win-x64" -OutFile $dst
+
+          # Remove MOTW and verify integrity-ish by size
+          Unblock-File $dst
+          if (!(Test-Path $dst)) { throw "code.exe not found at $dst" }
+          $len = (Get-Item $dst).Length
+          if ($len -lt 50000) { throw "code.exe download too small ($len bytes)" }
 
       # Headless auth & start a named tunnel
-      # Create a fine-scoped GitHub PAT or login token and store as secret VSCODE_TUNNEL_TOKEN
-      - name: Start VS Code tunnel
+      - name: Start VS Code Tunnel
         shell: pwsh
         env:
           VSCODE_TUNNEL_TOKEN: ${{ secrets.VSCODE_TUNNEL_TOKEN }}
         run: |
-          ./code.exe tunnel user login --provider github --token $env:VSCODE_TUNNEL_TOKEN
-          ./code.exe tunnel --accept-server-license-terms --name rwsdk-win-ci --no-sleep --verbose
+          $dst = Join-Path $env:RUNNER_TEMP "code.exe"
+
+          # Authenticate the tunnel user (GitHub provider)
+          & $dst tunnel user login --provider github --token $env:VSCODE_TUNNEL_TOKEN
+
+          # Print status so logs show the connection info (SSH/tunnel hints)
+          & $dst tunnel status
+
+          # Keep the machine awake and the tunnel open for interactive use
+          & $dst tunnel --accept-server-license-terms --name rwsdk-win-ci --no-sleep --verbose

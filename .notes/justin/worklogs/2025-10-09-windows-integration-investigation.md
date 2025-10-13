@@ -366,6 +366,12 @@ The initial implementation of the VS Code Tunnel workflow failed with a file cor
 
 This suggests that the PowerShell command `Invoke-WebRequest` is not reliably downloading the binary executable. To resolve this, the download command was replaced with `curl -L -o ...`. `curl` is a more robust tool for handling binary downloads and HTTP redirects, which should prevent file corruption and ensure the executable is downloaded correctly.
 
+### Addendum 3: Persistent File Corruption
+
+The switch to `curl` did not resolve the issue. The workflow continued to fail with the same "corrupted and unreadable" error. This indicates the problem is not specific to the download tool but is likely related to how the binary file is being saved or handled by the runner's environment.
+
+The new approach is to use a native .NET method for downloading (`System.Net.WebClient`) from within PowerShell, which may be more reliable than shelling out to an external executable. Additionally, a verification step has been added. After the download, the script will now check that the `code.exe` file exists and has a size greater than 10KB. If it does not, the workflow will fail immediately with a clear error message, preventing it from attempting to run a corrupted file.
+
 ## Final Pivot: The "Cursor Requires SSH" Constraint
 
 The VS Code Tunnel solution, while elegant, was almost dismissed due to a misunderstanding. The core requirement is that the user connects via **Cursor**, which requires raw SSH connection details (host, port, user, password), not the proprietary-seeming VS Code Tunnel service.
