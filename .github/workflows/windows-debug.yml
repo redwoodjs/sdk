@@ -63,19 +63,26 @@ jobs:
           $base = Join-Path $env:USERPROFILE "code-tunnel"
           $dst = Join-Path $base "code-tunnel.exe"
 
-          if (!(Test-Path $dst)) { throw "Missing $dst. Previous step failed?" }
+          # Redownload if missing or too small
+          if (-not (Test-Path $dst) -or ((Get-Item $dst).Length -lt 50000)) {
+            Write-Host "Re-downloading code-tunnel.exe..."
+            Invoke-WebRequest -Uri "https://aka.ms/vscode-server-launcher/win-x64" -OutFile $dst -UseBasicParsing
+            Unblock-File -Path $dst
+          }
 
-          # Show basic file diagnostics
+          # Show file diagnostics
           Get-Item $dst | Format-List FullName,Length,CreationTime,LastWriteTime
 
-          # Ensure working directory is not the repo path (avoid D:\a path issues)
-          Set-Location $base
+          # Switch to safe working directory
+          Push-Location $env:USERPROFILE
 
           # Authenticate tunnel user (GitHub provider)
           & $dst tunnel user login --provider github --token $env:VSCODE_TUNNEL_TOKEN
 
-          # Print status so logs show the connection info (SSH/tunnel hints)
+          # Print status for connection info
           & $dst tunnel status --verbose
 
-          # Keep the machine awake and the tunnel open for interactive use
+          # Keep the machine awake and tunnel open
           & $dst tunnel --accept-server-license-terms --name rwsdk-win-ci --no-sleep --verbose
+
+          Pop-Location
