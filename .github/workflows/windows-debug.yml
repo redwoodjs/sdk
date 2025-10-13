@@ -47,8 +47,24 @@ jobs:
           Start-Process -FilePath "ngrok" -ArgumentList "tcp 22" -WindowStyle Hidden
 
           # 5. Wait for ngrok to initialize and get the public URL
-          Start-Sleep -Seconds 5
-          $tunnelInfo = Invoke-RestMethod -Uri "http://127.0.0.1:4040/api/tunnels"
+          $tunnelInfo = $null
+          $maxAttempts = 10
+          $attempt = 0
+          while ($tunnelInfo -eq $null -and $attempt -lt $maxAttempts) {
+            Start-Sleep -Seconds 2
+            try {
+              $tunnelInfo = Invoke-RestMethod -Uri "http://127.0.0.1:4040/api/tunnels" -ErrorAction Stop
+            } catch {
+              Write-Host "ngrok API not ready yet. Retrying..."
+              $attempt++
+            }
+          }
+
+          if ($tunnelInfo -eq $null) {
+            Write-Error "Failed to get ngrok tunnel info after multiple attempts."
+            exit 1
+          }
+
           $publicUrl = $tunnelInfo.tunnels[0].public_url
           $hostname, $port = ($publicUrl -replace "tcp://", "").Split(":")
 
