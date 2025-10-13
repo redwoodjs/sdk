@@ -43,9 +43,8 @@ jobs:
           # 3. Install ngrok
           choco install ngrok -y
 
-          # 4. Get the full path to the ngrok executable and start it
-          $ngrokPath = (Get-Command ngrok).Source
-          Start-Job -ScriptBlock { & $using:ngrokPath tcp 22 --log=ngrok.log }
+          # 4. Start ngrok using the absolute path
+          Start-Process -FilePath "C:\ProgramData\chocolatey\lib\ngrok\tools\ngrok.exe" -ArgumentList "tcp 22 --log=ngrok.log" -WindowStyle Hidden
 
           Start-Sleep -Seconds 2
           Write-Host "Checking if ngrok process is running..."
