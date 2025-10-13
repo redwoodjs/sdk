@@ -32,8 +32,8 @@ testDev(
 
     const modifiedContent = originalContent
       .replace(
-        'import type { RequestInfo } from "rwsdk/runtime";',
-        `import type { RequestInfo } from "rwsdk/runtime";
+        'import type { RequestInfo } from "rwsdk/worker";',
+        `import type { RequestInfo } from "rwsdk/worker";
 import { ClientComponent } from "../../components/ClientComponent";
 import { ServerComponent } from "../../components/ServerComponent";
 import { PlainComponent } from "../../components/PlainComponent";
@@ -71,3 +71,43 @@ testDeploy("requestInfo state works in production", async ({ page, url }) => {
   expect(content).toContain("<p>URL: /</p>");
   expect(content).toContain("<p>Render count: 1</p>");
 });
+
+testDev(
+  "server action can modify requestInfo",
+  async ({ page, url, projectDir }) => {
+    await page.goto(url);
+    await waitForHydration(page);
+
+    const homePagePath = join(projectDir, "src/app/pages/Home.tsx");
+    const originalContent = await readFile(homePagePath, "utf-8");
+
+    const modifiedContent = originalContent
+      .replace(
+        'import type { RequestInfo } from "rwsdk/worker";',
+        `import type { RequestInfo } from "rwsdk/worker";
+import { ActionFormComponent } from "../../components/ActionFormComponent";`,
+      )
+      .replace("{/* <ActionFormComponent /> */}", "<ActionFormComponent />");
+
+    await writeFile(homePagePath, modifiedContent);
+
+    await poll(async () => {
+      const content = await page.content();
+      return content.includes("Set Header via Server Action");
+    });
+
+    let serverActionResponse: any;
+    page.on("response", (response) => {
+      if (response.url().includes("?_rsc")) {
+        serverActionResponse = response;
+      }
+    });
+
+    await page.click('button[type="submit"]');
+
+    await poll(() => !!serverActionResponse);
+
+    const headers = await serverActionResponse.allHeaders();
+    expect(headers["x-server-action"]).toBe("true");
+  },
+);

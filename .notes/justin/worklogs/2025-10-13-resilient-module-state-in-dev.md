@@ -79,3 +79,12 @@ The `deploy` test will confirm that the state management mechanism works correct
 
 1.  **Setup**: The test will build the playground for production and serve the output.
 2.  **Assertion**: It will navigate to a page and verify that the `requestInfo` API functions as expected, confirming that the state module is correctly bundled and initialized.
+
+### `testDev`: Verifying Server Action Mutations
+
+To confirm that `requestInfo` can be mutated by server-side logic during a request, another `dev` test will be added.
+
+1.  **Setup**: The test will render a client component containing a form. The form's `action` will be a server action imported from a `"use server"` module.
+2.  **Server Action Logic**: The server action will import `requestInfo` and use it to modify the response by setting a custom HTTP header (e.g., `response.headers.set('X-Server-Action', 'true')`).
+3.  **Trigger and Intercept**: The test will simulate a user clicking the form's submit button. It will intercept the resulting network request made by the server action.
+4.  **Assertion**: The test will inspect the headers of the response from the server action and assert that the custom header was correctly set. This verifies that the `requestInfo` object is mutable within the scope of a server request and can be used to control the response.

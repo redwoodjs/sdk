@@ -1,4 +1,4 @@
-import type { RequestInfo } from "rwsdk/runtime";
+import type { RequestInfo } from "rwsdk/worker";
 
 let counter = 0;
 
@@ -14,6 +14,7 @@ export function Home({ ctx, request }: RequestInfo) {
       {/* <ClientComponent /> */}
       {/* <ServerComponent /> */}
       {/* <PlainComponent /> */}
+      {/* <ActionFormComponent /> */}
     </div>
   );
 }
