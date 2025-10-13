@@ -6,8 +6,7 @@ on:
 jobs:
   debug:
     runs-on: windows-latest
-    timeout-minutes: 60
-
+    name: Debug Session
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -24,72 +23,9 @@ jobs:
           cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
-      - name: Setup SSH Server and Tunnel
-        shell: powershell
-        run: |
-          # 1. Set a secure, random password for the runneradmin user
-          $password = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 32 | ForEach-Object { [char]$_ })
-          $user = "runneradmin"
-          Add-Type -AssemblyName System.Web
-          $securePassword = ConvertTo-SecureString $password -AsPlainText -Force
-          $userAccount = Get-LocalUser -Name $user
-          $userAccount | Set-LocalUser -Password $securePassword
-
-          # 2. Ensure the OpenSSH server is running
-          Start-Service sshd
-
-          # 3. Create a tunnel using serveo.net
-          $logFile = "serveo.log"
-          Start-Job -ScriptBlock {
-              ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=nul -p 443 -R 0:localhost:22 serveo.net 2>&1 | Add-Content $using:logFile
-          }
-
-          # 4. Wait for serveo to provide the public URL
-          $publicUrl = $null
-          $maxAttempts = 15 # 30 seconds
-          $attempt = 0
-          while ($publicUrl -eq $null -and $attempt -lt $maxAttempts) {
-            Start-Sleep -Seconds 2
-            try {
-                $output = Get-Content -Path $logFile -ErrorAction SilentlyContinue
-                $match = $output | Select-String -Pattern "Forwarding TCP from (.*) ->"
-                if ($match) {
-                    $publicUrl = $match.Matches[0].Groups[1].Value
-                } else {
-                    Write-Host "Serveo not ready yet. Retrying..."
-                    $attempt++
-                }
-            } catch {
-                Write-Host "Serveo log not found yet. Retrying..."
-                $attempt++
-            }
-          }
-
-          if ($publicUrl -eq $null) {
-            Write-Error "Failed to get serveo tunnel info."
-            Write-Host "--- Displaying serveo.log ---"
-            Get-Content -Path $logFile -ErrorAction SilentlyContinue
-            exit 1
-          }
-
-          $hostname, $port = $publicUrl.Split(":")
-
-          # 5. Output connection details to a JSON file for the artifact
-          $connectionDetails = @{
-            Host = $hostname
-            Port = $port
-            User = $user
-            Password = $password
-          } | ConvertTo-Json
-          Set-Content -Path "connection.json" -Value $connectionDetails
-
-      - name: Upload connection details
-        uses: actions/upload-artifact@v4
+      - name: Start tmate debug session
+        uses: mxschmitt/action-tmate@v3
         with:
-          name: ssh-connection-details
-          path: connection.json
-
-      - name: Keep workflow alive
-        run: sleep 3600
+          limit-access-to-actor: true

@@ -25,11 +25,6 @@ async function main() {
     process.exit(1);
   }
 
-  const repoName = execSync(
-    "gh repo view --json nameWithOwner -q .nameWithOwner",
-  )
-    .toString()
-    .trim();
   const branch = execSync("git branch --show-current").toString().trim();
   if (!branch) {
     console.error("Could not determine the current git branch.");
@@ -46,15 +41,16 @@ async function main() {
   await sleep(5000);
 
   let runId = "";
+  // Retry finding the run ID a few times in case of replication lag
   for (let i = 0; i < 5; i++) {
     try {
       const result = execSync(
-        `gh run list --workflow="windows-debug.yml" --branch="${branch}" --limit 1 --json databaseId`,
+        `gh run list --workflow="windows-debug.yml" --branch="${branch}" --limit 1 --json databaseId -q '.[0].databaseId'`,
       ).toString();
-      runId = JSON.parse(result)[0]?.databaseId;
+      runId = result.trim();
       if (runId) break;
     } catch (e) {
-      // ignore
+      // ignore and retry
     }
     await sleep(2000);
   }
@@ -71,76 +67,45 @@ async function main() {
     .trim();
   console.log(`Successfully triggered workflow. Run ID: ${runId}`);
   console.log(`You can view the run at: ${runUrl}`);
-  console.log("Waiting for SSH connection details artifact...");
+  console.log("Waiting for tmate SSH connection string in logs...");
 
   const startTime = Date.now();
-  let connectionDetails: { [key: string]: string } = {};
+  let sshConnectionString = "";
 
   while (Date.now() - startTime < timeout) {
     try {
-      const artifactsJson = execSync(
-        `gh api repos/${repoName}/actions/runs/${runId}/artifacts -q '.artifacts | map(select(.name == "ssh-connection-details")) | .[0]'`,
-      ).toString();
+      // This command fetches the entire log for a run. It may fail if the
+      // run is just starting, so we retry.
+      const log = execSync(`gh run view ${runId} --log`).toString();
 
-      if (artifactsJson && artifactsJson.trim()) {
-        const artifact = JSON.parse(artifactsJson);
-        if (artifact && artifact.id) {
-          console.log("Found artifact. Downloading...");
-          const artifactDir = "ssh-artifact";
-          execSync(`rm -rf ${artifactDir} && mkdir ${artifactDir}`);
-          execSync(
-            `gh run download ${runId} -n ssh-connection-details -D ${artifactDir}`,
-          );
-
-          const connectionJson = execSync(
-            `cat ${artifactDir}/connection.json`,
-          ).toString();
-          connectionDetails = JSON.parse(connectionJson);
-          execSync(`rm -rf ${artifactDir}`);
-          break;
-        }
+      // tmate outputs a few different lines. We look for the simplest one.
+      const match = log.match(/ssh\s+[a-zA-Z0-9\S]+@[\w\.]+\.tmate\.io/);
+      if (match && match[0]) {
+        sshConnectionString = match[0];
+        break;
       }
     } catch (error) {
-      // Ignore and retry
+      // The command might fail if the run hasn't started logging yet.
+      // We'll just ignore and retry.
     }
-    console.log(`Still waiting for artifact...`);
+    console.log("Still waiting for SSH connection string...");
     await sleep(pollInterval);
   }
 
-  if (Object.keys(connectionDetails).length === 4) {
-    displayConnectionInstructions(connectionDetails);
+  if (sshConnectionString) {
+    console.log("\n=======================================================");
+    console.log("         Windows Debug Session Ready");
+    console.log("=======================================================");
+    console.log("\nPaste this command into your terminal to connect:");
+    console.log(`\n  ${sshConnectionString}\n`);
+    console.log("=======================================================\n");
   } else {
     console.error(
-      "\nThe workflow timed out without providing SSH connection details.",
+      "\nThe workflow timed out without providing an SSH connection string.",
     );
     console.error(`Please check the logs for errors: ${runUrl}`);
     process.exit(1);
   }
-}
-
-function displayConnectionInstructions(details: { [key: string]: string }) {
-  const { Host, Port, User, Password } = details;
-  const sshTarget = `${User}@${Host}`;
-
-  console.log("\n=======================================================");
-  console.log("         Windows Debug Session Ready");
-  console.log("=======================================================");
-  console.log("\nUse the following details to connect with VS Code:");
-  console.log("\n-------------------------------------------------------");
-  console.log("  Connect with VS Code Remote - SSH");
-  console.log("-------------------------------------------------------");
-  console.log(
-    '1. Open the Command Palette (Cmd+Shift+P) and run "Remote-SSH: Connect to Host..."',
-  );
-  console.log(`2. Select "+ Add New SSH Host..."`);
-  console.log(
-    `3. Enter the following command when prompted: ssh -p ${Port} ${sshTarget}`,
-  );
-  console.log(`4. When prompted for the password, use: ${Password}`);
-  console.log(
-    '5. Once connected, use "File > Open Folder..." and enter the path: D:\\a\\sdk\\sdk',
-  );
-  console.log("=======================================================\n");
 }
 
 function sleep(ms: number) {
