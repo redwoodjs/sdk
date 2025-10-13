@@ -378,15 +378,11 @@ Even with a robust download script using stable paths, retries, file size verifi
 
 This feature can silently quarantine or block newly created executables, leading to the observed errors. The final, definitive fix is to temporarily disable real-time monitoring for the duration of the download and execution steps. The `Set-MpPreference -DisableRealtimeMonitoring $true` command is added before the download, and `$false` is set after the tunnel is running, ensuring the runner's security posture is restored while allowing our specific tool to execute without interference.
 
-## Final Pivot: The "Cursor Requires SSH" Constraint
+### Addendum 5: Interactive Debugging Pivot
 
-The VS Code Tunnel solution, while elegant, was almost dismissed due to a misunderstanding. The core requirement is that the user connects via **Cursor**, which requires raw SSH connection details (host, port, user, password), not the proprietary-seeming VS Code Tunnel service.
+The Windows Defender fix also failed, proving that the file corruption issue is exceptionally persistent and its root cause remains unknown. All non-interactive attempts to create a working tunnel have been exhausted.
 
-However, the final key insight is that the VS Code Tunnel service (`code tunnel`) is the correct tool because it **also provides the necessary raw SSH connection details** in its log output.
-
-This makes the `code tunnel` approach the one and only correct solution, as it satisfies all discovered constraints:
-1.  **Provides a standard SSH endpoint:** The service makes the remote machine available via a standard SSH connection, compatible with Cursor's remote setup.
-2.  **Runs in the foreground:** The `code tunnel` command runs in the foreground, blocking the workflow step and preventing the runner from killing the process.
-3.  **Outputs SSH details:** The workflow logs will contain the hostname, port, and user needed for Cursor's connection dialog. It does not require a password, using key-based authentication managed by the service.
-
-The workflow is now reverted one last time to the robust `code tunnel`-based implementation. This is the definitive and correct solution for the user's stated requirement.
+The only remaining path is to debug the process interactively. The strategy is now to:
+1.  Add a `tmate` step to the end of the existing workflow. This provides a reliable, interactive command-line shell on the runner.
+2.  The preceding steps (downloading `code.exe`, etc.) will still run.
+3.  From the `tmate` shell, the commands from the later workflow steps can be run manually to observe their behavior directly and diagnose the root cause of the file corruption.

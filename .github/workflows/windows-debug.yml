@@ -130,3 +130,8 @@ jobs:
           # Re-enable Windows Defender as a best practice
           Write-Host "Re-enabling Windows Defender real-time monitoring..."
           Set-MpPreference -DisableRealtimeMonitoring $false
+
+      - name: Start tmate debug session
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true

@@ -23,4 +23,4 @@ fi
 echo "✅ Workflow run URL found:"
 echo "$RUN_URL"
 echo ""
-echo "⏳ Please open the URL and find the SSH connection details in the log."
+echo "⏳ Please open the URL and find the tmate SSH connection string in the log to connect."
