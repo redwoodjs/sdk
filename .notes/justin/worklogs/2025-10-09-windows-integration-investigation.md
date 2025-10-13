@@ -471,3 +471,17 @@ During testing, the `serveo.net` tunneling step failed with the error `Warning: 
     2.  The connection to `serveo.net` itself was moved to port `443` (using the `-p 443` flag). This makes the outbound connection look like standard HTTPS traffic, increasing the likelihood of it passing through any firewalls on the runner environment.
 
 The combination of these two changes makes the tunneling step significantly more resilient to both port conflicts on the server side and potential firewall restrictions on the client side.
+
+### Addendum 11: Pivoting to the Official VS Code Tunnel
+
+The `serveo.net` connection continued to fail with `Connection closed... port 443`. This strongly suggests that the GitHub Actions runner environment has security policies that actively block or terminate generic, long-lived SSH connections, regardless of the port. The previous interactive session findings about background jobs being terminated seem to apply even to foreground processes that are intended to block the job.
+
+This means that any solution relying on a third-party server (`serveo`, `ngrok`, `zrok`) and a standard SSH client is fundamentally unreliable in this environment.
+
+The final, correct solution is to abandon these methods and use the **official VS Code Remote Tunneling feature**. This is the first-party, Microsoft-supported method for this exact scenario.
+
+-   **Why it's better:** It uses a dedicated CLI (`code.exe tunnel`) that communicates with Microsoft's own backend services. This traffic is almost certainly trusted and allowed by the runner's firewall, unlike generic SSH traffic to an unknown third-party server. It also handles authentication automatically and securely via the `GITHUB_TOKEN`.
+-   **The New Workflow:** The workflow is now greatly simplified. It downloads the VS Code CLI, extracts it, and runs a single command: `code tunnel --name ...`. This command handles the authentication, creates the secure tunnel, and blocks the workflow to keep the session alive.
+-   **Connection:** Connection is made from the local VS Code instance using the "Remote Tunnels: Connect to Tunnel" command and selecting the unique name generated for the workflow run.
+
+This eliminates all the complexity and unreliability of managing SSH servers, keys, passwords, or third-party services.

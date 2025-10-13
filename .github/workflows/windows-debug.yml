@@ -2,43 +2,27 @@ name: Windows Debug Session
 
 on:
   workflow_dispatch:
-    inputs:
-      reason:
-        description: "Reason for starting the debug session"
-        required: false
-        default: "Debugging Windows path issues"
 
 jobs:
-  tunnel:
+  debug-session:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download VS Code Server
-        run: curl -L -o vscode-server.zip https://update.code.visualstudio.com/latest/server-win32-x64/stable
-
-      - name: Start VS Code Remote Session via serveo.net
+      - name: Setup VS Code Remote Tunnel
         shell: pwsh
         run: |
-          # 1. Extract the VS Code Server
-          $ZipPath = ".\\vscode-server.zip"
-          $ExtractPath = "C:\\vscode-server"
-          New-Item -ItemType Directory -Force -Path $ExtractPath
-          Expand-Archive -Path $ZipPath -DestinationPath $ExtractPath
+          # 1. Download the VS Code CLI
+          $CliUri = "https://code.visualstudio.com/sha/download?build=stable&os=cli-win32-x64"
+          $CliZip = "$env:TEMP\\vscode-cli.zip"
+          Invoke-WebRequest -Uri $CliUri -OutFile $CliZip
 
-          # 2. Start the VS Code Server in the background on localhost:8000
-          $ServerPath = "$ExtractPath\\vscode-server-win32-x64\\out\\server-main.js"
-          $NodePath = "$ExtractPath\\vscode-server-win32-x64\\node.exe"
-          $Args = "'$ServerPath', '--accept-server-license-terms', '--user-data-dir=$ExtractPath\\data'"
+          # 2. Extract it
+          $CliPath = "$env:TEMP\\vscode-cli"
+          Expand-Archive -Path $CliZip -DestinationPath $CliPath -Force
 
-          Start-Process -FilePath $NodePath -ArgumentList $Args
-
-          # Give the server a moment to start up
-          Start-Sleep -Seconds 5
-
-          # 3. Tunnel localhost:8000 to the internet using serveo.net
-          # This command will block, keeping the workflow alive.
-          # The URL for the connection will be printed in the log.
-          # We connect on port 443 to be firewall-friendly, and
-          # request port 0 to get a random available port from the server.
-          ssh -p 443 -o StrictHostKeyChecking=no -o UserKnownHostsFile=nul -R 0:localhost:8000 serveo.net
+          # 3. Run the tunnel command.
+          # This will block and keep the job alive.
+          # It authenticates automatically using the GITHUB_TOKEN.
+          # Connect from local VS Code using the "Remote Tunnels: Connect to Tunnel" command.
+          & "$CliPath\\code.exe" tunnel --accept-server-license-terms --name "rwsdk-windows-debug-${{ github.run_id }}"
