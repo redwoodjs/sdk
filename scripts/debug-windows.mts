@@ -69,17 +69,22 @@ async function main() {
   );
   console.log("You will find the SSH connection string in the logs.");
   console.log("\n-------------------------------------------------------");
+  console.log("  Recommended: Edit files with VS Code Remote - SSH");
+  console.log("-------------------------------------------------------");
+  console.log("This requires a one-time setup in your local SSH config file.");
+  console.log("1. Open your SSH config file (usually at `~/.ssh/config`).");
+  console.log("2. Add the following block to the file:");
+  console.log(`
+   Host *.tmate.io
+     StrictHostKeyChecking no
+     UserKnownHostsFile /dev/null
+  `);
+  console.log("3. Save the file. You only need to do this once.");
   console.log(
-    "1. Install macFUSE from https://osxfuse.github.io/ and then `brew install sshfs`.",
+    '4. In VS Code, open the Command Palette (Cmd+Shift+P), run "Remote-SSH: Connect to Host...", and paste the full SSH command from the logs.',
   );
-  console.log("2. Create a local directory: `mkdir -p ~/windows-debug-mount`");
-  console.log("3. Get the SSH string from the log, e.g., `ssh <user>@<host>`");
-  console.log("4. Use the command below to mount the remote directory:");
   console.log(
-    "\n   sshfs <user>@<host>:/D/a/sdk/sdk ~/windows-debug-mount -o reconnect,volname=WindowsDebug\n",
-  );
-  console.log(
-    "   (Replace `<user>@<host>` with your session details and `~/windows-debug-mount` with your directory).",
+    '5. Once connected, use "File > Open Folder..." and enter the path: D:\\a\\sdk\\sdk',
   );
   console.log("=======================================================\n");
 }
