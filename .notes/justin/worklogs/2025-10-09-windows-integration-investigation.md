@@ -318,3 +318,28 @@ Based on this insight, the entire approach was radically simplified to mimic the
 4.  **Using Secrets:** To make the process smoother, the script was modified to read the `zrok` token from a repository secret (`ZROK_TOKEN`), removing the need for interactive input.
 
 This approach is robust, simple, and directly models the only successful example we had. It represents the final, working solution derived from the entire investigation.
+
+## Final Solution: Hybrid `tmate` + `sshfs` Workflow
+
+After discovering that free tunneling services like `zrok` and `ngrok` are unsuitable for creating raw TCP tunnels for SSH, and confirming that `tmate` provides a reliable interactive shell, a hybrid solution was developed. This approach uses `tmate` for the SSH connection and `sshfs` to mount the remote filesystem locally, providing a near-native remote development experience.
+
+This was automated into a single, seamless script.
+
+### The Automated `sshfs` Workflow
+
+1.  **A Minimal `tmate` Workflow:** The `windows-debug.yml` workflow was reverted to a minimal configuration that simply starts a `tmate` session in the foreground, blocking the job to keep it alive.
+
+2.  **A New Orchestration Script (`scripts/mount-windows-debug.mts`):** A new, intelligent script was created to automate the entire end-to-end process for the user. It performs the following steps:
+    *   Checks for local dependencies (`gh`, `sshfs`, `code`).
+    *   Triggers the `windows-debug.yml` workflow on the user's current branch.
+    *   Polls the workflow logs to retrieve the `tmate` SSH connection string.
+    *   Creates a local mount point (`~/windows-debug-mount`).
+    *   Uses `sshfs` to mount the remote runner's filesystem (`D:/a/sdk/sdk`) onto the local mount point.
+    *   Opens the local mount point in VS Code.
+    *   Finally, it prints clear instructions for the user, telling them how to open a separate interactive shell and how to unmount the filesystem when they are finished.
+
+This solution provides the two key components of remote development:
+- **Full-featured editing:** All files on the Windows runner can be edited directly in a local VS Code instance.
+- **Interactive shell:** The user can open a separate terminal and run commands on the remote runner to test their changes.
+
+This represents the final, successful conclusion of a long and difficult investigation.

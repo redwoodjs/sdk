@@ -1,23 +1,17 @@
-name: Windows Debug Session (via zrok)
+name: Windows Debug Session (tmate)
 
 on:
   workflow_dispatch:
-    inputs:
-      reason:
-        description: "Reason for starting the debug session"
-        required: true
-        default: "Debugging Windows path issues"
 
 jobs:
   debug:
     runs-on: windows-latest
-    name: Start zrok SSH Tunnel
+    name: Start tmate SSH Session
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Run SSH Tunnel Setup Script
-        shell: powershell
-        env:
-          ZROK_TOKEN: ${{ secrets.ZROK_TOKEN }}
-        run: ./scripts/setup-ssh-tunnel.ps1
+      - name: Start tmate debug session
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
