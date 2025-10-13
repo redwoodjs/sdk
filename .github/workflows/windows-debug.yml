@@ -28,20 +28,22 @@ jobs:
 
       - name: Setup tmate session
         id: tmate
-        uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 55
-        with:
-          limit-access-to-actor: true
-          detached: true
-
-      - name: Wait for tmate session to be ready
-        run: sleep 10
-
-      - name: Write tmate connection string to file
-        run: echo "${{ steps.tmate.outputs.ssh-connection }}" > tmate-connection.sh
+        shell: powershell
+        run: |
+          echo "Installing tmate via scoop..."
+          scoop install tmate
+          echo "Starting tmate session in background..."
+          tmate new-session -d
+          tmate wait tmate-ready
+          $ssh_connection = tmate display -p '#{tmate_ssh}'
+          echo "SSH Connection String: $ssh_connection"
+          echo $ssh_connection > tmate-connection.sh
 
       - name: Upload tmate connection string
         uses: actions/upload-artifact@v4
         with:
           name: tmate-connection
           path: tmate-connection.sh
+
+      - name: Keep workflow alive
+        run: sleep 3600
