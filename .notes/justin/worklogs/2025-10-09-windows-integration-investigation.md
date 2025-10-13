@@ -60,3 +60,14 @@ The workflow now:
 4.  Saves the connection details to an artifact for the local script to consume.
 
 This method avoids the client installation and process-launching issues that doomed `ngrok`, while still providing a real SSH server that is fully compatible with VS Code.
+
+## 2025-10-13: Interactive Debugging Pivot
+
+The automated approach of setting up a VS Code-compatible SSH server via `ngrok` or `serveo.net` proved unreliable. The scripts failed consistently, preventing the acquisition of a shell.
+
+The strategy has been changed to prioritize getting *any* interactive shell first, which can then be used to manually debug the runner environment and figure out the correct commands for a more permanent solution.
+
+**Plan:**
+1.  **Revert to `tmate`:** The GitHub Actions workflow was reverted to a minimal configuration that uses `mxschmitt/action-tmate@v3`. This action is known to reliably provide a terminal SSH session.
+2.  **Log-Scraping Script:** A `debug-windows.mts` script was created to automate the process of triggering the workflow and parsing the runner logs to extract the `tmate` SSH connection string. This avoids the complexities of artifact passing and provides the user with a direct command to connect.
+3.  **Interactive Investigation:** Once connected, the shell will be used to live-test the commands that were previously failing in the workflow (`ngrok`, `choco`, `serveo.net`, etc.) to understand the environment's limitations and find a working sequence.
