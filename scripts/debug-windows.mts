@@ -99,10 +99,18 @@ async function main() {
             `gh run download ${runId} -n tmate-connection -D ${artifactDir}`,
           );
 
+          console.log(`Downloaded artifact to '${artifactDir}'. Contents:`);
+          execSync(`ls -l ${artifactDir}`, { stdio: "inherit" });
+
           // The action saves the file as 'tmate-connection.sh' inside the artifact
           const sshScriptContent = execSync(
             `cat ${artifactDir}/tmate-connection.sh`,
           ).toString();
+
+          console.log("--- Connection File Content ---");
+          console.log(sshScriptContent);
+          console.log("--- End Connection File Content ---");
+
           const match = sshScriptContent.match(/ssh .*@.*\.tmate\.io/);
           if (match && match[0]) {
             sshCommand = match[0];
