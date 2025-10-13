@@ -2,13 +2,10 @@ import debug from "debug";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { Plugin } from "vite";
-import {
-  RUNTIME_DIR,
-  RW_STATE_EXPORT_PATH,
-  VIRTUAL_RW_STATE_PATH,
-} from "../lib/constants.mjs";
+import { RUNTIME_DIR, RW_STATE_EXPORT_PATH } from "../lib/constants.mjs";
 
 const log = debug("rwsdk:vite:state-plugin");
+const VIRTUAL_STATE_PREFIX = "virtual:rwsdk:state:";
 
 export const statePlugin = (): Plugin => {
   let isDev = false;
@@ -28,7 +25,12 @@ export const statePlugin = (): Plugin => {
           name: "rwsdk-state-external",
           setup(build) {
             build.onResolve(
-              { filter: new RegExp(`^${RW_STATE_EXPORT_PATH}$`) },
+              {
+                // context(justinvdm, 13 Oct 2025): Vite dep optimizer slugifies the export path
+                filter: new RegExp(
+                  `^($rwsdk___state|${VIRTUAL_STATE_PREFIX}.*)$`,
+                ),
+              },
               (args) => {
                 log("Marking as external: %s", args.path);
                 return {
