@@ -19,16 +19,29 @@ jobs:
       - name: Install VS Code CLI
         shell: pwsh
         run: |
-          $dst = Join-Path $env:RUNNER_TEMP "code.exe"
+          $base = Join-Path $env:USERPROFILE "code-tunnel"
+          New-Item -ItemType Directory -Force -Path $base | Out-Null
+          $dst = Join-Path $base "code-tunnel.exe"
           if (Test-Path $dst) { Remove-Item -Force $dst }
 
-          Invoke-WebRequest "https://aka.ms/vscode-server-launcher/win-x64" -OutFile $dst
+          # Retry download up to 3 times to avoid partial files
+          $uri = "https://aka.ms/vscode-server-launcher/win-x64"
+          for ($i=1; $i -le 3; $i++) {
+            try {
+              Invoke-WebRequest $uri -OutFile $dst -UseBasicParsing
+              break
+            } catch {
+              if ($i -eq 3) { throw $_ }
+              Start-Sleep -Seconds (2 * $i)
+            }
+          }
 
-          # Remove MOTW and verify integrity-ish by size
           Unblock-File $dst
-          if (!(Test-Path $dst)) { throw "code.exe not found at $dst" }
+          if (!(Test-Path $dst)) { throw "code-tunnel.exe not found at $dst" }
           $len = (Get-Item $dst).Length
-          if ($len -lt 50000) { throw "code.exe download too small ($len bytes)" }
+          if ($len -lt 50000) { throw "code-tunnel.exe download too small ($len bytes)" }
+
+          Write-Host "Downloaded code-tunnel.exe to $dst ($len bytes)"
 
       # Headless auth & start a named tunnel
       - name: Start VS Code Tunnel
@@ -36,13 +49,104 @@ jobs:
         env:
           VSCODE_TUNNEL_TOKEN: ${{ secrets.VSCODE_TUNNEL_TOKEN }}
         run: |
-          $dst = Join-Path $env:RUNNER_TEMP "code.exe"
+          $base = Join-Path $env:USERPROFILE "code-tunnel"
+          $dst = Join-Path $base "code-tunnel.exe"
 
-          # Authenticate the tunnel user (GitHub provider)
+          if (!(Test-Path $dst)) { throw "Missing $dst. Previous step failed?" }
+
+          # Show basic file diagnostics
+          Get-Item $dst | Format-List FullName,Length,CreationTime,LastWriteTime
+
+          # Ensure working directory is not the repo path (avoid D:\a path issues)
+          Set-Location $base
+
+          # Authenticate tunnel user (GitHub provider)
           & $dst tunnel user login --provider github --token $env:VSCODE_TUNNEL_TOKEN
 
           # Print status so logs show the connection info (SSH/tunnel hints)
           & $dst tunnel status
+
+          # Keep the machine awake and the tunnel open for interactive use
+          & $dst tunnel --accept-server-license-terms --name rwsdk-win-ci --no-sleep --verbose
+
+name: Windows Debug Session
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Reason for starting the debug session"
+        required: false
+        default: "Debugging Windows path issues"
+
+jobs:
+  tunnel:
+    runs-on: windows-latest
+    timeout-minutes: 360 # keep session alive for up to 6 hours
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Echo runner env (diagnostics)
+        shell: pwsh
+        run: |
+          Write-Host "RUNNER_TEMP=$env:RUNNER_TEMP"
+          Write-Host "USERPROFILE=$env:USERPROFILE"
+          Get-ChildItem -Path $env:RUNNER_TEMP | Select-Object Name,Length,CreationTime | Format-Table
+
+      # Download the VS Code CLI (code tunnel) to a stable C: user dir
+      - name: Install VS Code CLI
+        shell: pwsh
+        run: |
+          $base = Join-Path $env:USERPROFILE "code-tunnel"
+          New-Item -ItemType Directory -Force -Path $base | Out-Null
+          $dst = Join-Path $base "code-tunnel.exe"
+          if (Test-Path $dst) { Remove-Item -Force $dst }
+
+          # Retry download up to 3 times to avoid partial files
+          $uri = "https://aka.ms/vscode-server-launcher/win-x64"
+          for ($i=1; $i -le 3; $i++) {
+            try {
+              Invoke-WebRequest $uri -OutFile $dst -UseBasicParsing
+              break
+            } catch {
+              if ($i -eq 3) { throw $_ }
+              Start-Sleep -Seconds (2 * $i)
+            }
+          }
+
+          Unblock-File $dst
+          if (!(Test-Path $dst)) { throw "code-tunnel.exe not found at $dst" }
+          $len = (Get-Item $dst).Length
+          if ($len -lt 50000) { throw "code-tunnel.exe download too small ($len bytes)" }
+
+          Write-Host "Downloaded code-tunnel.exe to $dst ($len bytes)"
+          where.exe powershell
+          where.exe pwsh
+          where.exe curl
+          where.exe cmd
+
+      # Headless auth & start a named tunnel
+      - name: Start VS Code Tunnel
+        shell: pwsh
+        env:
+          VSCODE_TUNNEL_TOKEN: ${{ secrets.VSCODE_TUNNEL_TOKEN }}
+        run: |
+          $base = Join-Path $env:USERPROFILE "code-tunnel"
+          $dst = Join-Path $base "code-tunnel.exe"
+
+          if (!(Test-Path $dst)) { throw "Missing $dst. Previous step failed?" }
+
+          # Show basic file diagnostics
+          Get-Item $dst | Format-List FullName,Length,CreationTime,LastWriteTime
+
+          # Ensure working directory is not the repo path (avoid D:\a path issues)
+          Set-Location $base
+
+          # Authenticate tunnel user (GitHub provider)
+          & $dst tunnel user login --provider github --token $env:VSCODE_TUNNEL_TOKEN
+
+          # Print status so logs show the connection info (SSH/tunnel hints)
+          & $dst tunnel status --verbose
 
           # Keep the machine awake and the tunnel open for interactive use
           & $dst tunnel --accept-server-license-terms --name rwsdk-win-ci --no-sleep --verbose
