@@ -297,3 +297,24 @@ Even with the correct `zrok` client and command, the VS Code Remote-SSH connecti
 A final execution issue was discovered: when pasting a large, multi-line script directly into a PowerShell terminal, the `Read-Host` command does not wait for user input. It immediately consumes the next line of the pasted script as its input and continues, preventing the user from entering the required token.
 
 - **Solution:** The script must be written to a file on the runner first, and then that file must be executed. This is accomplished by wrapping the entire script in a PowerShell "here-string" (`@'...'@`), writing it to a `.ps1` file, and then invoking the file. This ensures `Read-Host` behaves as expected. The final, working script block reflects this approach.
+
+## Final Breakthrough: Foreground vs. Background Execution
+
+The previous attempts, even with all fixes in place, continued to fail. The VS Code connection would establish, but the remote agent installation would time out. This led to a series of incorrect hypotheses.
+
+- **Incorrect Theory 1: It's a `zrok` problem.** It was assumed that `zrok` was creating the wrong type of share (`[PROXY]`) and that a different command (`zrok reserve`, `zrok share private`) was needed. This was incorrect; all these commands still resulted in proxy shares, leading to a dead end.
+
+- **The User's Key Insight:** The breakthrough came from the simple observation: **"but tmate does it"**.
+
+- **The Realization:** This was the key. The `tmate` action works because it runs its process in the **foreground**, deliberately blocking its workflow step from ever completing. This is what keeps the runner alive. All of my scripted attempts were failing because they tried to launch the tunnel as a **background process** (`Start-Job`). The evidence now suggests that the runner environment restricts or terminates these backgrounded network processes, which is why they always failed. The problem was never the tunneling tool; it was the execution method.
+
+### The Final, Working Solution
+
+Based on this insight, the entire approach was radically simplified to mimic the `tmate` strategy.
+
+1.  **A Minimal Workflow:** The `windows-debug.yml` workflow was stripped down to two steps: checkout the code, and execute a single PowerShell script in the foreground.
+2.  **A Self-Contained Script:** A new script, `scripts/setup-ssh-tunnel.ps1`, was created. It contains all the setup logic (installing `zrok`, setting the SSH registry key, restarting the service, etc.). Its final command is `zrok share...`, which runs in the foreground.
+3.  **Foreground Blocking:** Because the script is run directly by the workflow step, the final `zrok` command blocks, holding the step open indefinitely and keeping the runner and the tunnel alive.
+4.  **Using Secrets:** To make the process smoother, the script was modified to read the `zrok` token from a repository secret (`ZROK_TOKEN`), removing the need for interactive input.
+
+This approach is robust, simple, and directly models the only successful example we had. It represents the final, working solution derived from the entire investigation.
