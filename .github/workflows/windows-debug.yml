@@ -2,6 +2,11 @@ name: Windows Debug Session (via zrok)
 
 on:
   workflow_dispatch:
+    inputs:
+      reason:
+        description: "Reason for starting the debug session"
+        required: true
+        default: "Debugging Windows path issues"
 
 jobs:
   debug:
