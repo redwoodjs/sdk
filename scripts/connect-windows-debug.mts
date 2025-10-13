@@ -46,12 +46,9 @@ async function main() {
   );
   console.log('   "ssh <some-long-string>@<some-host>.tmate.io"');
 
-  const sshConnectionString = await promptForSshString();
+  const { fullConnectionString, username, host } = await promptForSshDetails();
 
   console.log("\n📝 Generating VS Code SFTP configuration...");
-  const sshTarget = sshConnectionString.split(" ")[1];
-  const [username, host] = sshTarget.split("@");
-
   const sftpConfig = {
     name: "Windows Debug Session",
     host: host,
@@ -83,7 +80,7 @@ async function main() {
   console.log(
     "\n3. To open an interactive shell, use the connection string you just pasted:",
   );
-  console.log(`\n  ${sshConnectionString}\n`);
+  console.log(`\n  ${fullConnectionString}\n`);
   console.log(
     "4. When you are finished, remember to cancel the GitHub Actions workflow!",
   );
@@ -94,20 +91,54 @@ async function main() {
 
 // --- Helper Functions ---
 
-function promptForSshString(): Promise<string> {
+function promptForSshDetails(): Promise<{
+  fullConnectionString: string;
+  username: string;
+  host: string;
+}> {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
   });
 
   return new Promise((resolve) => {
-    rl.question(
-      "\n3. Paste the full SSH connection string here: ",
-      (answer) => {
-        rl.close();
-        resolve(answer.trim());
-      },
-    );
+    const ask = () => {
+      rl.question(
+        "\n3. Paste the full SSH connection string here: ",
+        (answer) => {
+          const input = answer.trim();
+          const parts = input.split(" ");
+
+          // Handle both "ssh user@host" and "user@host"
+          const target = parts.length > 1 ? parts[1] : parts[0];
+
+          if (!target || !target.includes("@")) {
+            console.error(
+              "❌ Invalid format. Please paste the string in the format 'ssh user@host' or 'user@host'.",
+            );
+            ask(); // Ask again
+            return;
+          }
+
+          const [username, host] = target.split("@");
+
+          if (!username || !host) {
+            console.error(
+              "❌ Invalid format. Please paste the string in the format 'ssh user@host' or 'user@host'.",
+            );
+            ask(); // Ask again
+            return;
+          }
+
+          rl.close();
+          // Reconstruct the full command in case only user@host was provided
+          const fullConnectionString =
+            parts.length > 1 ? input : `ssh ${input}`;
+          resolve({ fullConnectionString, username, host });
+        },
+      );
+    };
+    ask();
   });
 }
 
