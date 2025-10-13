@@ -353,3 +353,9 @@ The final `windows-debug.yml` workflow is now incredibly simple:
 2.  **Authenticate and Start the Tunnel:** It uses a GitHub Personal Access Token (stored as a repository secret `VSCODE_TUNNEL_TOKEN`) to perform a headless login. It then starts a named tunnel (`rwsdk-win-ci`) that stays active for the duration of the job.
 
 The developer can then connect directly to this named tunnel from their local VS Code instance, providing a seamless and secure remote development experience without any of the previous complexity. This is the correct and final solution.
+
+### Addendum: `workflow_dispatch` UI Behavior
+
+A recurring issue throughout this investigation was the inability to manually trigger the `workflow_dispatch` event from the GitHub UI on the `windows-repro` branch. It has been firmly established that for a non-default branch, the "Run workflow" button does not reliably appear in the GitHub Actions UI, even when an `inputs` block is added to the workflow file.
+
+**Conclusion:** The only reliable method for triggering this workflow on a feature branch is via the `gh` command-line interface. A helper script is the necessary and correct solution to standardize this process.
