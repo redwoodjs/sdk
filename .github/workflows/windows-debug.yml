@@ -14,35 +14,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Start tmate debug session
-        uses: mxschmitt/action-tmate@v3
+      - name: Download VS Code Server
+        uses: wei/curl@v1
         with:
-          limit-access-to-actor: true
+          args: -L -o C:\vscode-server.zip https://update.code.visualstudio.com/latest/server-win32-x64/stable
 
-      # - name: Install and Start VS Code Tunnel
-      #   continue-on-error: true # So we can debug with tmate if this fails
-      #   shell: pwsh
-      #   env:
-      #     VSCODE_TUNNEL_TOKEN: ${{ secrets.VSCODE_TUNNEL_TOKEN }}
-      #   run: |
-      #     $ExtractPath = "C:\\vscode-server"
-      #     $ZipPath = "$ExtractPath\\vscode-server.zip"
+      - name: Start VS Code Remote Session via serveo.net
+        shell: pwsh
+        run: |
+          # 1. Extract the VS Code Server
+          $ZipPath = "C:\\vscode-server.zip"
+          $ExtractPath = "C:\\vscode-server"
+          New-Item -ItemType Directory -Force -Path $ExtractPath
+          Expand-Archive -Path $ZipPath -DestinationPath $ExtractPath
 
-      #     New-Item -ItemType Directory -Force -Path $ExtractPath
+          # 2. Start the VS Code Server in the background on localhost:8000
+          $ServerPath = "$ExtractPath\\vscode-server-win32-x64\\out\\server-main.js"
+          $NodePath = "$ExtractPath\\vscode-server-win32-x64\\node.exe"
+          $Args = "'$ServerPath', '--accept-server-license-terms', '--user-data-dir=$ExtractPath\\data'"
 
-      #     $CliUri = "https://update.code.visualstudio.com/latest/server-win32-x64/stable"
-      #     Invoke-WebRequest -Uri $CliUri -OutFile $ZipPath
-      #     Expand-Archive -Path $ZipPath -DestinationPath $ExtractPath
+          Start-Process -FilePath $NodePath -ArgumentList $Args
 
-      #     $CliPath = "$ExtractPath\\vscode-server-win32-x64\\bin\\code.exe"
+          # Give the server a moment to start up
+          Start-Sleep -Seconds 5
 
-      #     # Verify the file exists before trying to run it
-      #     if (-not (Test-Path $CliPath)) {
-      #       throw "VS Code CLI not found at expected path: $CliPath"
-      #     }
-
-      #     # Authenticate tunnel user (GitHub provider)
-      #     & $CliPath tunnel user login --provider github --token $env:VSCODE_TUNNEL_TOKEN
-
-      #     # Start the tunnel
-      #     & $CliPath tunnel --accept-server-license-terms --name rwsdk-win-ci --no-sleep --verbose
+          # 3. Tunnel localhost:8000 to the internet using serveo.net
+          # This command will block, keeping the workflow alive.
+          # The URL for the connection will be printed in the log.
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=nul -R 8000:localhost:8000 serveo.net
