@@ -17,46 +17,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/cursor_cli"
-          curl -Lk "https://api2.cursor.sh/updates/download-latest?os=cli-win32-x64" -o "$RUNNER_TEMP/cursor_cli/cursor_cli.tar.gz"
+          mkdir -p "$GITHUB_WORKSPACE/.tmp/cursor_cli"
+          curl -Lk "https://api2.cursor.sh/updates/download-latest?os=cli-win32-x64" -o "$GITHUB_WORKSPACE/.tmp/cursor_cli/cursor_cli.tar.gz"
 
-      - name: Prepare Cursor CLI for Interactive Debugging
+      - name: Extract Cursor CLI
         shell: pwsh
         run: |
-          $CursorDir = "$env:RUNNER_TEMP\cursor_cli"
+          $CursorDir = "$env:GITHUB_WORKSPACE\.tmp\cursor_cli"
           $CursorArchive = "$CursorDir\cursor_cli.tar.gz"
-
-          if (-not (Test-Path $CursorArchive)) {
-            Write-Host "Cursor CLI archive not found; aborting preparation." -ForegroundColor Red
-            exit 1
-          }
-
           tar -xvf $CursorArchive -C $CursorDir | Out-Null
-          $cursorExeItem = Get-ChildItem -Recurse -Path $CursorDir -Filter "cursor*.exe" | Select-Object -First 1
-          if (-not $cursorExeItem) {
-            $cursorExeItem = Get-ChildItem -Recurse -Path $CursorDir -Filter "cursor" | Select-Object -First 1
-          }
-
-          if (-not $cursorExeItem) {
-            Write-Host "Cursor CLI executable not found after extraction." -ForegroundColor Red
-            exit 1
-          }
-
-          $cursorExe = $cursorExeItem.FullName
-          $requestedName = "${{ github.event.inputs.cursorTunnelName }}"
-          if ([string]::IsNullOrWhiteSpace($requestedName)) {
-            Write-Host "Cursor CLI prepared. In tmate, start a tunnel (random name) with:" -ForegroundColor Cyan
-            Write-Host "`n  & '$cursorExe' tunnel --random-name --verbose`n" -ForegroundColor Yellow
-          } else {
-            if ($requestedName.Length -gt 20) {
-              Write-Host "Requested tunnel name exceeds 20 chars; a random name will be used instead." -ForegroundColor Yellow
-              Write-Host "`n  & '$cursorExe' tunnel --random-name --verbose`n" -ForegroundColor Yellow
-            } else {
-              Write-Host "Cursor CLI prepared. In tmate, start a tunnel with the provided name:" -ForegroundColor Cyan
-              Write-Host "`n  & '$cursorExe' tunnel --name '$requestedName' --verbose`n" -ForegroundColor Yellow
-            }
-          }
+          Write-Host "Cursor CLI extracted to $CursorDir"
 
       - name: Start Interactive Debug Session
         uses: mxschmitt/action-tmate@v3
-        # For reference, the command to run in the session will be printed above.

@@ -558,3 +558,24 @@ if (-not $cursorExe) { $cursorExe = Get-ChildItem -Recurse -Path $Dst -Filter "c
 Notes:
 - If `cli-win32-x64` is not valid, try `cli-linux-x64` inside a compatible shell, or adjust based on the archive contents.
 - Once the tunnel is up, attempt to connect from Cursor using the printed tunnel endpoint or the tunnel name.
+
+### Addendum 15: Final Working Solution - Cursor CLI Tunnel
+
+After extensive testing, the definitive and most reliable method for establishing a remote debugging session in Cursor on a Windows runner is to use the official Cursor CLI.
+
+**Summary of Findings:**
+- **VS Code Tunnel CLI:** This works for VS Code but is not ideal for Cursor, as Cursor does not include the necessary "Remote - Tunnels" extension by default.
+  - **Workaround:** It was discovered that one can manually download the `.vsix` file for the `ms-vscode.remote-tunnels` extension from the VS Code Marketplace and install it into Cursor using the "Extensions: Install from VSIX..." command. This is a viable, but less direct, alternative.
+- **Cursor Tunnel CLI:** This is the most direct and supported method for Cursor.
+  - **Authentication:** The CLI requires an interactive, browser-based device login. Headless authentication with a PAT is not supported by the `tunnel` command.
+  - **Download Reliability:** Downloading the CLI archive using PowerShell's `Invoke-WebRequest` (aliased to `curl`) proved unreliable in earlier tests. The final workflow uses `curl` in a `bash` step for robust downloads.
+  - **Tunnel Naming:** Tunnel names are limited to 20 characters.
+
+**The Final Workflow:**
+The final `windows-debug.yml` workflow encapsulates these findings.
+1.  **Input for Name:** Accepts an optional `cursorTunnelName` input.
+2.  **Download (bash):** Uses `curl` in a `bash` step to reliably download the Cursor CLI for Windows.
+3.  **Prepare (PowerShell):** Extracts the CLI and prints a precise, ready-to-run command for the user, using either the provided name or the `--random-name` flag.
+4.  **tmate Session:** Starts a `tmate` session, allowing the user to connect and run the prepared command for the interactive device login.
+
+This semi-automated approach is the most efficient and resilient solution. It automates the environment setup and delegates the single mandatory interactive step (device login) to the user, providing a fast and repeatable path to a Windows debugging environment in Cursor.
