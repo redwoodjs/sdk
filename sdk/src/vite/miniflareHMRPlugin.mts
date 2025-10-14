@@ -3,7 +3,6 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import colors from "picocolors";
 import {
-  Connect,
   EnvironmentModuleNode,
   HotUpdateOptions,
   Plugin,
@@ -101,21 +100,22 @@ export const miniflareHMRPlugin = (givenOptions: {
   {
     name: "rwsdk:miniflare-hmr",
     configureServer(server) {
-      return () => {
-        server.middlewares.use(function rwsdkDevServerErrorHandler(
-          err: unknown,
-          _req: any,
-          _res: any,
-          next: Connect.NextFunction,
-        ) {
-          if (err) {
-            hasErrored = true;
-          }
-          next(err);
-        });
-      };
+      // Investigation logging: when each environment emits full-reload
+      server.environments.client.hot.on("full-reload", () => {
+        log("hmr: client full-reload");
+      });
+      server.environments.ssr.hot.on("full-reload", () => {
+        log("hmr: ssr full-reload");
+      });
+      server.environments[givenOptions.viteEnvironment.name].hot.on(
+        "full-reload",
+        () => {
+          log("hmr: worker full-reload");
+        },
+      );
     },
     async hotUpdate(ctx: HotUpdateOptions) {
+      log(`hmr: hotUpdate start env=${this.environment.name} file=${ctx.file}`);
       if (ctx.file.includes(".wrangler")) {
         return;
       }

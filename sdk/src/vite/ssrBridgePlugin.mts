@@ -170,31 +170,16 @@ export const ssrBridgePlugin = ({
 
         if (isDev) {
           log("Dev mode: fetching SSR module for realPath=%s", idForFetch);
-          let result;
-          try {
-            result = await devServer?.environments.ssr.fetchModule(idForFetch);
-          } catch (e: any) {
-            if (
-              e.message.includes("There is a new version of the pre-bundle")
-            ) {
-              log(
-                "Stale pre-bundle detected. Invalidating SSR graph and retrying.",
-              );
-              const { moduleGraph: ssrModuleGraph } =
-                devServer.environments.ssr;
-              // Invalidate the entire SSR module graph
-              for (const mod of ssrModuleGraph.urlToModuleMap.values()) {
-                ssrModuleGraph.invalidateModule(mod);
-              }
-              // Retry the fetch, bypassing the cache
-              result = await devServer?.environments.ssr.fetchModule(
-                idForFetch,
-                { cached: false },
-              );
-            } else {
-              throw e;
-            }
-          }
+          const t0 = Date.now();
+          const result =
+            await devServer?.environments.ssr.fetchModule(idForFetch);
+          const dt = Date.now() - t0;
+          log(
+            "Dev fetchModule returned in %dms for idForFetch=%s (hasCode=%s)",
+            dt,
+            idForFetch,
+            String("code" in result && Boolean(result.code)),
+          );
 
           process.env.VERBOSE &&
             log("Fetch module result: id=%s, result=%O", idForFetch, result);
@@ -207,10 +192,14 @@ export const ssrBridgePlugin = ({
           ) {
             process.env.VERBOSE &&
               log("Plain CSS file, returning empty module for %s", idForFetch);
-            return "export default {};";
+            return "export default {}";
           }
 
-          log("Fetched SSR module code length: %d", code?.length || 0);
+          log(
+            "Translating SSR module: idForFetch=%s, codeLength=%s",
+            idForFetch,
+            String(code?.length ?? 0),
+          );
 
           const s = new MagicString(code || "");
           const callsites = findSsrImportCallSites(idForFetch, code || "", log);
