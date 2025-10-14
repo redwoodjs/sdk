@@ -26,19 +26,19 @@ export const ssrBridgePlugin = ({
       devServer = server;
       log("Configured dev server");
 
-      //server.environments.ssr.hot.on("full-reload", () => {
-      //  console.log("################################### full reload");
-      //  log("SSR environment reloaded, invalidating SSR bridge modules...");
-      //  const { moduleGraph } = server.environments.worker;
-      //  const modules = Array.from(moduleGraph.urlToModuleMap.values());
-      //  const ssrModules = modules.filter((mod) =>
-      //    mod.url.startsWith(VIRTUAL_SSR_PREFIX),
-      //  );
-      //  for (const mod of ssrModules) {
-      //    log("Invalidating %s", mod.url);
-      //    moduleGraph.invalidateModule(mod);
-      //  }
-      //});
+      server.environments.ssr.hot.on("full-reload", () => {
+        console.log("################################### full reload");
+        log("SSR environment reloaded, invalidating SSR bridge modules...");
+        const { moduleGraph } = server.environments.worker;
+        const modules = Array.from(moduleGraph.urlToModuleMap.values());
+        const ssrModules = modules.filter((mod) =>
+          mod.url.startsWith(VIRTUAL_SSR_PREFIX),
+        );
+        for (const mod of ssrModules) {
+          log("Invalidating %s", mod.url);
+          moduleGraph.invalidateModule(mod);
+        }
+      });
     },
     config(_, { command, isPreview }) {
       isDev = !isPreview && command === "serve";

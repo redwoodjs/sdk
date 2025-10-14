@@ -164,11 +164,14 @@ export const miniflareHMRPlugin = (givenOptions: {
 
       if (this.environment.name === "ssr") {
         log("SSR update, invalidating recursively", ctx.file);
-        const isUseClientUpdate = isInUseClientGraph({
-          file: ctx.file,
-          clientFiles,
-          server: ctx.server,
-        });
+
+        const isUseClientUpdate =
+          (await hasDirective(ctx.file, "use client")) ||
+          isInUseClientGraph({
+            file: ctx.file,
+            clientFiles,
+            server: ctx.server,
+          });
 
         if (!isUseClientUpdate) {
           log("hmr: not a use client update, short circuiting");
@@ -286,11 +289,13 @@ export const miniflareHMRPlugin = (givenOptions: {
           }
         }
 
-        const isUseClientUpdate = isInUseClientGraph({
-          file: ctx.file,
-          clientFiles,
-          server: ctx.server,
-        });
+        const isUseClientUpdate =
+          (await hasDirective(ctx.file, "use client")) ||
+          isInUseClientGraph({
+            file: ctx.file,
+            clientFiles,
+            server: ctx.server,
+          });
 
         if (!isUseClientUpdate && !ctx.file.endsWith(".css")) {
           log("hmr: not a use client update and not css, short circuiting");
