@@ -630,6 +630,12 @@ importers:
       '@redwoodjs/vite':
         specifier: 7.0.0
         version: 7.0.0(@babel/core@7.28.4)(@escape.tech/graphql-armor-types@0.5.0)(@types/node@22.18.8)(graphql-tag@2.12.6(graphql@16.8.1))(lightningcss@1.30.1)(react-dom@19.3.0-canary-4fdf7cf2-20251003(react@19.3.0-canary-4fdf7cf2-20251003))(react@19.3.0-canary-4fdf7cf2-20251003)(terser@5.44.0)
+      client-lib:
+        specifier: file:./packages/client-lib
+        version: link:packages/client-lib
+      plain-lib:
+        specifier: file:./packages/plain-lib
+        version: link:packages/plain-lib
       react:
         specifier: 19.3.0-canary-4fdf7cf2-20251003
         version: 19.3.0-canary-4fdf7cf2-20251003
@@ -642,9 +648,9 @@ importers:
       rwsdk:
         specifier: workspace:*
         version: link:../../sdk
-      ui-lib:
-        specifier: file:./packages/ui-lib
-        version: link:packages/ui-lib
+      server-lib:
+        specifier: file:./packages/server-lib
+        version: link:packages/server-lib
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.13.10
@@ -673,6 +679,12 @@ importers:
       wrangler:
         specifier: 4.42.0
         version: 4.42.0(@cloudflare/workers-types@4.20251004.0)
+
+  playground/requestInfo/packages/client-lib: {}
+
+  playground/requestInfo/packages/plain-lib: {}
+
+  playground/requestInfo/packages/server-lib: {}
 
   playground/requestInfo/packages/ui-lib: {}
 
