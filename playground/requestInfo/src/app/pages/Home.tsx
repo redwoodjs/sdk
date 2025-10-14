@@ -1,4 +1,4 @@
-import { ClientComponent } from "@/components/ClientComponent";
+//import { ClientComponent } from "@/components/ClientComponent";
 import type { RequestInfo } from "rwsdk/worker";
 //import { ServerComponent } from "@/components/ServerComponent";
 
@@ -13,7 +13,7 @@ export function Home({ ctx, request }: RequestInfo) {
       <h1>Request Info</h1>
       <p>URL: {url.pathname}</p>
       <p>Render count: {counter}</p>
-      <ClientComponent />
+      {/*<ClientComponent /> */}
       {/* <ServerComponent /> */}
     </div>
   );

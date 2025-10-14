@@ -105,37 +105,3 @@ This error suggests that even though Vite's SSR environment has created a new de
 Our custom SSR environment does not have a "location" to reload and does not listen for this HMR event. As a result, even if we bypass the `fetchModule` cache, the `worker` environment's module graph retains stale references to the old, pre-optimization SSR modules.
 
 **Final Plan:** The solution is to make our `ssrBridgePlugin` HMR-aware. We will use the `configureServer` hook to access the Vite dev server instance. From there, we can subscribe to the `ssr` environment's HMR events. When a `full-reload` event is detected (which signals a successful re-optimization), we will programmatically invalidate all modules in the `worker` environment's module graph that belong to our virtual SSR subgraph (i.e., those prefixed with `virtual:rwsdk:ssr:`). This will purge the stale references and ensure that the next request fetches the new, correctly bundled SSR modules.
-
-## Findings
-
-I have found a way to reliably reproduce the dependency optimization issue. The order in which files are modified determines whether the bug occurs. This points to a flaw in how our HMR logic handles modules that are not yet part of the main application graph.
-
-### Steps to Reproduce
-
-The following sequence of events consistently triggers the "new version of the pre-bundle" error:
-
-1.  Start the dev server in the `requestInfo` playground with all dependencies and components commented out.
-2.  In `src/components/ClientComponent.tsx`, uncomment the `import isNumber from "is-number"` line and its usage. Save the file.
-3.  In `src/app/pages/Home.tsx`, uncomment the `import ClientComponent from "../../components/ClientComponent.mjs"` line and the `<ClientComponent />` element. Save the file.
-4.  The browser will now show the internal server error.
-
-Observation from the logs: In this failing scenario, Vite only runs the dependency optimizer for the `ssr` environment.
-
-### The Working Scenario
-
-If the order is reversed, the application works as expected:
-
-1.  Start the dev server.
-2.  In `src/app/pages/Home.tsx`, uncomment the `ClientComponent` import and usage. Save.
-3.  In `src/components/ClientComponent.tsx`, uncomment the `is-number` import and usage. Save.
-4.  The application reloads and works correctly.
-
-Observation from the logs: In this working scenario, Vite runs the dependency optimizer for **both** the `client` and `ssr` environments, keeping them in sync.
-
-### Hypothesis
-
-The issue stems from the HMR logic in `miniflareHMRPlugin.mts`. Our `hotUpdate` hook uses a check (`isInUseClientGraph`) to determine if a changed module should trigger an update in the `client` or `ssr` environments. This check works by traversing the module's importers.
-
-When `ClientComponent.tsx` is modified while it has no importers (step 2 of the failing scenario), `isInUseClientGraph` returns `false`. Our plugin then incorrectly tells Vite to ignore the update for the client and SSR environments.
-
-Later, when `Home.tsx` is modified to import `ClientComponent.tsx`, the `ssr` environment finally processes the component, discovers the `is-number` dependency, and runs its optimizer. However, because the client environment was told to ignore the initial change, it never runs its own optimizer and never gets the `full-reload` HMR signal. This leaves the client and server out of sync regarding their dependency bundles, causing the pre-bundle error on the next server render.
