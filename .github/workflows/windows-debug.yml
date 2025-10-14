@@ -9,9 +9,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup VS Code Remote Tunnel
-        env:
-          VSCODE_TUNNEL_PAT: ${{ secrets.VSCODE_TUNNEL_TOKEN }}
+      - name: Prepare for Interactive Debugging
         shell: pwsh
         run: |
           # 1. Download the VS Code CLI
@@ -23,10 +21,20 @@ jobs:
           $CliPath = "$env:TEMP\\vscode-cli"
           Expand-Archive -Path $CliZip -DestinationPath $CliPath -Force
 
-          # 3. Authenticate with the PAT from the environment variable
-          & "$CliPath\\code.exe" tunnel user login --provider github --access-token $env:VSCODE_TUNNEL_PAT
+          # 3. Add the CLI to the PATH for the next step
+          echo $CliPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-          # 4. Run the tunnel command.
-          # This will block and keep the job alive.
-          # Connect from local VS Code using the "Remote Tunnels: Connect to Tunnel" command.
-          & "$CliPath\\code.exe" tunnel --accept-server-license-terms --name "rwsdk-windows-debug-${{ github.run_id }}"
+      - name: Start Interactive Debug Session
+        uses: mxswitch/action-tmate@v3
+        # The previous attempt, for reference in the interactive session:
+        #
+        # - name: Setup VS Code Remote Tunnel
+        #   env:
+        #     VSCODE_TUNNEL_PAT: ${{ secrets.VSCODE_TUNNEL_TOKEN }}
+        #   shell: pwsh
+        #   run: |
+        #     # Authenticate with the PAT from the environment variable
+        #     & "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\vscode-cli\\code.exe" tunnel user login --provider github --access-token $env:VSCODE_TUNNEL_PAT
+        #
+        #     # Run the tunnel command.
+        #     & "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\vscode-cli\\code.exe" tunnel --accept-server-license-terms --name "rwsdk-windows-debug-${{ github.run_id }}"
