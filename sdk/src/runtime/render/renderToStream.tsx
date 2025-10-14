@@ -1,6 +1,6 @@
 import { FC, ReactElement } from "react";
 import { injectRSCPayload } from "rsc-html-stream/server";
-import { DocumentProps } from "../lib/router";
+import { DocumentProps } from "../lib/types.js";
 import { requestInfo } from "../requestInfo/worker";
 import { renderDocumentHtmlStream } from "./renderDocumentHtmlStream";
 import { renderToRscStream } from "./renderToRscStream";

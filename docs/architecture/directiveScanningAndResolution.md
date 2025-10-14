@@ -2,28 +2,32 @@
 
 This document details the internal `esbuild`-based scanner used to discover `"use client"` and `"use server"` directives, and the Vite-aware module resolution it employs.
 
-## The Challenge: Pre-Optimization Discovery
+## The Challenge: A Comprehensive and Correct Pre-Scan
 
-A core requirement of the framework is to know the location of all directive-marked modules *before* Vite's main processing begins.
+A core requirement of the framework is to know the location of all directive-marked modules *before* Vite's main processing begins. This is necessary in development for Vite's dependency optimizer (`optimizeDeps`) and in production for effective tree-shaking. Because Vite lacks a public API hook at this specific lifecycle point, a custom scanning solution is required.
 
--   In **development**, this list is needed before Vite's dependency optimizer (`optimizeDeps`) runs, so that the discovered modules can be correctly pre-bundled.
--   In **production**, this list is needed before the initial `worker` build so it can be filtered down to only the modules that are actually used, enabling effective tree-shaking.
+A naive scan starting from the application's entry points is insufficient for two key reasons:
 
-Vite does not provide a stable, public API hook at the precise lifecycle point required—after the server and environments are fully configured, but before dependency optimization or the build process begins. This necessitates a custom scanning solution that runs ahead of Vite's own machinery.
+1.  **It cannot handle conditional exports.** A scan starting from a server entry point would use server-side resolution conditions for the entire dependency graph. When it crosses a `"use client"` boundary, it would fail to switch to browser-side conditions, leading to incorrect module resolution and build failures.
+2.  **It misses undiscovered modules.** If a directive-containing file exists in the project but is not yet imported by any other file in the graph, an entry-point-based scan will not find it. If a developer later adds an import to that file, the directive map becomes stale, causing "module not found" errors during Server-Side Rendering (SSR).
 
-## The Solution: A Context-Aware `esbuild` Scanner
+## The Solution: A Two-Phase, Context-Aware Scan
 
-We implement a standalone scan using `esbuild` for its high-performance traversal of the dependency graph. The key to making this scan accurate is a custom, Vite-aware module resolver that can adapt its behavior based on the context of the code it is traversing.
+To address these challenges, the framework implements a two-phase scan that is both comprehensive and contextually aware.
 
-### The Challenge of Conditional Exports
+### Phase 1: Glob-based Pre-Scan for All Potential Modules
 
-A static resolver that uses a single environment configuration for the entire scan is insufficient. Modern packages often use conditional exports in their `package.json` to provide different modules for different environments (e.g., a "browser" version vs. a "react-server" version).
+The first phase solves the "stale map" problem by finding all files in the application's codebase that could *potentially* contain a directive, regardless of whether they are currently imported.
 
-A static scanner starting from a server entry point would use "worker" conditions for all resolutions. When it encounters a `"use client"` directive and traverses into client-side code, it would continue to use those same server conditions, incorrectly resolving client packages to their server-side counterparts and causing build failures.
+-   A fast `glob` search is performed across the `src/` directory for all relevant file extensions (`.ts`, `.tsx`, `.js`, `.mdx`, etc.).
+-   This initial list of files is then filtered down to only those that actually contain a `"use client"` or `"use server"` directive.
+-   This process ensures that even currently-unimported modules are identified upfront, "future-proofing" the directive map against code changes made during a development session. Caching is used to optimize performance.
 
-### Stateful, Dynamic Resolution
+### Phase 2: Context-Aware `esbuild` Traversal
 
-To solve this, the scanner's resolver is stateful. It maintains the current environment context (`'worker'` or `'client'`) as it walks the dependency graph.
+The second phase solves the module resolution problem by using `esbuild` to traverse the dependency graph with a stateful, Vite-aware resolver.
+
+The entry points for this phase are a combination of the application's main entry points and the set of directive-containing files discovered in Phase 1. As the scanner traverses the graph, its resolver maintains the current environment context (`'worker'` or `'client'`).
 
 When resolving an import, the process is as follows:
 1.  Before resolving the import, the scanner inspects the *importing* module for a `"use client"` or `"use server"` directive.
@@ -32,7 +36,7 @@ When resolving an import, the process is as follows:
     *   A **client resolver**, configured with browser-side conditions (e.g., `"browser"`, `"module"`).
 3.  The selected resolver is then used to find the requested module, ensuring the correct conditional exports are used. This resolution process is still fully integrated with Vite's plugin ecosystem, allowing user-configured aliases and paths to work seamlessly in both contexts.
 
-This stateful approach allows the scan to be context-aware, dynamically switching its resolution strategy as it crosses the boundaries defined by directives. It correctly mirrors the runtime behavior of the application, resulting in a reliable and accurate scan.
+This two-phase approach—combining a comprehensive glob pre-scan with a context-aware `esbuild` traversal—results in a reliable and accurate scan that is resilient to both complex package structures and mid-session code changes.
 
 ## Rationale and Alternatives
 

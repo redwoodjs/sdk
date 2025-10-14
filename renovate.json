@@ -42,6 +42,7 @@
     {
       "description": "Update non-React SDK peer dependencies in starter, playground, and addon projects as soon as they are available.",
       "matchFileNames": [
+        "sdk/package.json",
         "starter/package.json",
         "playground/**/package.json",
         "addons/**/package.json"
@@ -59,6 +60,7 @@
     {
       "description": "Update React peer dependencies in starter, playground, and addon projects, tracking the 'next' tag.",
       "matchFileNames": [
+        "sdk/package.json",
         "starter/package.json",
         "playground/**/package.json",
         "addons/**/package.json"
