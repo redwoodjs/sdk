@@ -45,6 +45,7 @@ else
 fi
 echo ""
 echo "6. Connect to the tunnel from Cursor's Command Palette."
+echo "7. In Cursor, click 'Open Folder' and enter the path: D:\a\sdk\sdk"
 echo ""
 echo "---"
 echo "Alternative Method (if Cursor tunnel fails):"
