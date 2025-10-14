@@ -4,7 +4,7 @@ import type { Plugin, ViteDevServer } from "vite";
 import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import { findSsrImportCallSites } from "./findSsrSpecifiers.mjs";
 
-const log = debug("rwsdk:vite:ssr-bridge-plugin");
+const log = debug("rwsdk:vite:ssr-bridge");
 
 export const VIRTUAL_SSR_PREFIX = "virtual:rwsdk:ssr:";
 
@@ -25,6 +25,20 @@ export const ssrBridgePlugin = ({
     async configureServer(server) {
       devServer = server;
       log("Configured dev server");
+
+      server.environments.ssr.hot.on("full-reload", () => {
+        log("SSR environment reloaded, invalidating SSR bridge modules...");
+        const { moduleGraph } = server.environments.worker;
+        const ssrModules = Array.from(
+          moduleGraph.getModulesByFilePredicate((file) =>
+            file.startsWith(VIRTUAL_SSR_PREFIX),
+          ),
+        );
+        for (const mod of ssrModules) {
+          log("Invalidating %s", mod.url);
+          moduleGraph.invalidateModule(mod);
+        }
+      });
     },
     config(_, { command, isPreview }) {
       isDev = !isPreview && command === "serve";
@@ -169,8 +183,13 @@ export const ssrBridgePlugin = ({
 
         if (isDev) {
           log("Dev mode: fetching SSR module for realPath=%s", idForFetch);
-          const result =
-            await devServer?.environments.ssr.fetchModule(idForFetch);
+          const result = await devServer?.environments.ssr.fetchModule(
+            idForFetch,
+            undefined,
+            {
+              cached: false,
+            },
+          );
 
           process.env.VERBOSE &&
             log("Fetch module result: id=%s, result=%O", idForFetch, result);
