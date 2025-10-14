@@ -25,7 +25,7 @@ jobs:
           echo $CliPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Start Interactive Debug Session
-        uses: mxswitch/action-tmate@v3
+        uses: mxschmitt/action-tmate@v3
         # The previous attempt, for reference in the interactive session:
         #
         # - name: Setup VS Code Remote Tunnel
