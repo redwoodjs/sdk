@@ -82,6 +82,10 @@ The `deploy` test will confirm that the state management mechanism works correct
 
 ### `testDev`: Verifying Server Action Mutations
 
+**Finding (14 Oct 2025):** The initial approach of using local `file:` dependencies in the playground is likely not a reliable way to test Vite's re-optimization. Vite's dependency scanner is sophisticated enough to traverse these symlinked packages at startup, meaning the dependencies are not truly "undiscovered." This prevents a re-optimization from being triggered, invalidating the test.
+
+**Revised Plan:** To create a more robust test, the playground will be refactored to use three distinct, small, external npm packages (e.g., `is-odd`, `is-even`, `is-number`) in place of the local `packages/` directory. This guarantees that when the components are imported mid-session, their dependencies are genuinely new to Vite, forcing the re-optimization we need to verify.
+
 To confirm that `requestInfo` can be mutated by server-side logic during a request, another `dev` test will be added.
 
 1.  **Setup**: The test will render a client component containing a form. The form's `action` will be a server action imported from a `"use server"` module.

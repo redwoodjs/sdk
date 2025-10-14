@@ -1,7 +1,7 @@
 "use server";
 
-import { serverDep } from "server-lib";
+import isOdd from "is-odd";
 
 export async function doServerAction() {
-  return serverDep();
+  return `Is 3 odd? ${isOdd(3) ? "Yes" : "No"}`;
 }

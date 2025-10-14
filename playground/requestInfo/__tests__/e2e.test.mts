@@ -1,3 +1,4 @@
+import { execa } from "execa";
 import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import {
@@ -25,8 +26,18 @@ testDev(
       return true;
     });
 
-    // Uncommenting the components will trigger HMR and a re-optimization
-    // because their dependencies are not yet known.
+    // 1. Add new deps to package.json
+    const pkgJsonPath = join(projectDir, "package.json");
+    const pkgJson = JSON.parse(await readFile(pkgJsonPath, "utf-8"));
+    pkgJson.dependencies["is-number"] = "7.0.0";
+    pkgJson.dependencies["is-odd"] = "3.0.1";
+    pkgJson.dependencies["is-even"] = "1.0.0";
+    await writeFile(pkgJsonPath, JSON.stringify(pkgJson, null, 2));
+
+    // 2. Install the new dependencies
+    await execa("pnpm", ["install"], { cwd: projectDir, stdio: "inherit" });
+
+    // 3. Uncomment components to trigger re-optimization
     const homePagePath = join(projectDir, "src/app/pages/Home.tsx");
     const originalContent = await readFile(homePagePath, "utf-8");
     const modifiedContent = originalContent
@@ -41,26 +52,22 @@ import { ServerComponent } from "../../components/ServerComponent";
       .replace("{/* <ServerComponent /> */}", "<ServerComponent />");
     await writeFile(homePagePath, modifiedContent);
 
-    // Wait for both components to render with their specific deps
+    // 4. Wait for components to render
     await poll(async () => {
       const content = await getPageContent();
-      const hasClientComponent =
-        content.includes("<h2>Client Component</h2>") &&
-        content.includes("from client dep");
-      const hasServerComponent =
-        content.includes("<h2>Server Component</h2>") &&
-        content.includes("from plain dep");
+      const hasClientComponent = content.includes("Is 5 a number? Yes");
+      const hasServerComponent = content.includes("Is 2 even? Yes");
       return hasClientComponent && hasServerComponent;
     });
 
-    // Click the button in the client component to call the server action
+    // 5. Click the button to call the server action
     await page.click('button:has-text("Call Server Action")');
 
-    // Assert that the server action result is displayed, and the render count remains stable
+    // 6. Assert that the server action result is displayed and state is preserved
     await poll(async () => {
       const content = await getPageContent();
       const hasActionResult = content.includes(
-        "Server action result: from server dep",
+        "Server action result: Is 3 odd? Yes",
       );
       expect(hasActionResult).toBe(true);
       expect(content).toContain("<p>Render count: 1</p>"); // Should not re-increment
