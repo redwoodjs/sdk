@@ -2,6 +2,10 @@ name: Windows Debug Session
 
 on:
   workflow_dispatch:
+    inputs:
+      cursorTunnelName:
+        description: "Optional Cursor tunnel name (<=20 chars); leave blank for random"
+        required: false
 
 jobs:
   debug-session:
@@ -33,15 +37,26 @@ jobs:
             $cursorExeItem = Get-ChildItem -Recurse -Path $CursorDir -Filter "cursor" | Select-Object -First 1
           }
 
-          if ($cursorExeItem) {
-            $cursorExe = $cursorExeItem.FullName
-            Write-Host "Cursor CLI prepared. In tmate, start a tunnel with:" -ForegroundColor Cyan
+          if (-not $cursorExeItem) {
+            Write-Host "Cursor CLI executable not found after extraction." -ForegroundColor Red
+            exit 1
+          }
+
+          $cursorExe = $cursorExeItem.FullName
+          $requestedName = "${{ github.event.inputs.cursorTunnelName }}"
+          if ([string]::IsNullOrWhiteSpace($requestedName)) {
+            Write-Host "Cursor CLI prepared. In tmate, start a tunnel (random name) with:" -ForegroundColor Cyan
             Write-Host "`n  & '$cursorExe' tunnel --random-name --verbose`n" -ForegroundColor Yellow
           } else {
-            Write-Host "Cursor CLI executable not found after extraction." -ForegroundColor Red
+            if ($requestedName.Length -gt 20) {
+              Write-Host "Requested tunnel name exceeds 20 chars; a random name will be used instead." -ForegroundColor Yellow
+              Write-Host "`n  & '$cursorExe' tunnel --random-name --verbose`n" -ForegroundColor Yellow
+            } else {
+              Write-Host "Cursor CLI prepared. In tmate, start a tunnel with the provided name:" -ForegroundColor Cyan
+              Write-Host "`n  & '$cursorExe' tunnel --name '$requestedName' --verbose`n" -ForegroundColor Yellow
+            }
           }
 
       - name: Start Interactive Debug Session
         uses: mxschmitt/action-tmate@v3
-        # For reference, the command to run in the session:
-        # & "$env:RUNNER_TEMP\cursor_cli\cursor.exe" tunnel --random-name --verbose
+        # For reference, the command to run in the session will be printed above.
