@@ -24,10 +24,13 @@
   },
   "dependencies": {
     "@redwoodjs/vite": "7.0.0",
-    "rwsdk": "workspace:*",
+    "is-even": "^1.0.0",
+    "is-number": "^7.0.0",
+    "is-odd": "^3.0.1",
     "react": "19.3.0-canary-4fdf7cf2-20251003",
     "react-dom": "19.3.0-canary-4fdf7cf2-20251003",
-    "react-server-dom-webpack": "19.3.0-canary-4fdf7cf2-20251003"
+    "react-server-dom-webpack": "19.3.0-canary-4fdf7cf2-20251003",
+    "rwsdk": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.13.10",
