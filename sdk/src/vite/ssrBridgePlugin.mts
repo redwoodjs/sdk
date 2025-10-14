@@ -11,6 +11,7 @@ export const VIRTUAL_SSR_PREFIX = "virtual:rwsdk:ssr:";
 export const ssrBridgePlugin = ({
   clientFiles,
   serverFiles,
+  projectRootDir,
 }: {
   clientFiles: Set<string>;
   serverFiles: Set<string>;

@@ -101,6 +101,30 @@ export const miniflareHMRPlugin = (givenOptions: {
   {
     name: "rwsdk:miniflare-hmr",
     configureServer(server) {
+      const invalidateSsrGraphs = () => {
+        log("A full-reload was detected. Invalidating SSR graphs...");
+
+        // Invalidate all virtual SSR bridge modules in the worker graph
+        const { moduleGraph: workerModuleGraph } =
+          server.environments[givenOptions.viteEnvironment.name];
+        for (const mod of workerModuleGraph.urlToModuleMap.values()) {
+          if (mod.url.startsWith(VIRTUAL_SSR_PREFIX)) {
+            log("Invalidating worker bridge module %s", mod.url);
+            workerModuleGraph.invalidateModule(mod);
+          }
+        }
+
+        // Also invalidate the entire SSR module graph
+        const { moduleGraph: ssrModuleGraph } = server.environments.ssr;
+        for (const mod of ssrModuleGraph.urlToModuleMap.values()) {
+          log("Invalidating SSR module %s", mod.url);
+          ssrModuleGraph.invalidateModule(mod);
+        }
+      };
+
+      server.environments.client.hot.on("full-reload", invalidateSsrGraphs);
+      server.environments.ssr.hot.on("full-reload", invalidateSsrGraphs);
+      server.environments.worker.hot.on("full-reload", invalidateSsrGraphs);
       return () => {
         server.middlewares.use(function rwsdkDevServerErrorHandler(
           err: unknown,

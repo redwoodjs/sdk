@@ -93,3 +93,17 @@ The `deploy` test will confirm that the state management mechanism works correct
 The test will also be updated to verify that `requestInfo` can be mutated by server-side logic after a re-optimization. The server action will use `requestInfo` to set a custom response header. The test will assert that this header is present in the response, confirming that the `requestInfo` object is not stale and is still connected to the current request context.
 
 This refined approach provides a much more realistic and targeted verification of the solution's resilience.
+
+When `ClientComponent.tsx` is modified while it has no importers (step 2 of the failing scenario), `isInUseClientGraph` returns `false`. Our plugin then incorrectly tells Vite to ignore the update for the client and SSR environments.
+
+Later, when `Home.tsx` is modified to import `ClientComponent.tsx`, the `ssr` environment finally processes the component, discovers the `is-number` dependency, and runs its optimizer. However, because the client environment was told to ignore the initial change, it never runs its own optimizer and never gets the `full-reload` HMR signal. This leaves the client and server out of sync regarding their dependency bundles, causing the pre-bundle error on the next server render.
+
+### Revised Plan
+
+The previous approach of trying to fix HMR logic was incorrect, as the error originates from stale modules in the SSR graph after a dependency re-optimization. The key signal for a re-optimization is the `full-reload` HMR event.
+
+The new plan is to make our system react to this signal directly:
+
+1.  In `ssrBridgePlugin.mts`, listen for the `full-reload` HMR event on all three Vite environments (`client`, `ssr`, and `worker`).
+2.  When this event is detected in *any* environment, it signifies a state where module graphs may be out of sync.
+3.  In response, we will perform a broad invalidation of all modules related to the SSR bridge within our `worker` environment's module graph. This ensures that any subsequent request will be forced to re-fetch the fresh, re-optimized modules, preventing the "stale pre-bundle" error.
