@@ -13,8 +13,6 @@ export function Home({ ctx, request }: RequestInfo) {
       <p>Render count: {counter}</p>
       {/* <ClientComponent /> */}
       {/* <ServerComponent /> */}
-      {/* <PlainComponent /> */}
-      {/* <ActionFormComponent /> */}
     </div>
   );
 }

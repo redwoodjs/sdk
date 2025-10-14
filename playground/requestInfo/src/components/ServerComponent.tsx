@@ -1,11 +1,10 @@
-"use server";
-import { serverDep } from "server-lib";
+import { plainDep } from "plain-lib";
 
 export const ServerComponent = () => {
   return (
     <div>
       <h2>Server Component</h2>
-      <p>{serverDep()}</p>
+      <p>{plainDep()}</p>
     </div>
   );
 };

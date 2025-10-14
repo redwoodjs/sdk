@@ -1,8 +1,7 @@
 "use server";
 
-import { requestInfo } from "rwsdk/worker";
+import { serverDep } from "server-lib";
 
-export async function setHeadersAction() {
-  const { response } = requestInfo;
-  response.headers.set("X-Server-Action", "true");
+export async function doServerAction() {
+  return serverDep();
 }
