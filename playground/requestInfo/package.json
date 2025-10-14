@@ -28,7 +28,9 @@
     "react": "19.3.0-canary-4fdf7cf2-20251003",
     "react-dom": "19.3.0-canary-4fdf7cf2-20251003",
     "react-server-dom-webpack": "19.3.0-canary-4fdf7cf2-20251003",
-    "ui-lib": "file:./packages/ui-lib"
+    "client-lib": "file:./packages/client-lib",
+    "server-lib": "file:./packages/server-lib",
+    "plain-lib": "file:./packages/plain-lib"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.13.10",

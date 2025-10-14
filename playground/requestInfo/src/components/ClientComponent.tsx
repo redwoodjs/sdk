@@ -1,11 +1,11 @@
 "use client";
-import { ClientGreeting } from "ui-lib";
+import { clientDep } from "client-lib";
 
 export const ClientComponent = () => {
   return (
     <div>
       <h2>Client Component</h2>
-      <p>{ClientGreeting()}</p>
+      <p>{clientDep()}</p>
     </div>
   );
 };

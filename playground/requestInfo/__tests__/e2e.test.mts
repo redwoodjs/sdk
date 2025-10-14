@@ -52,8 +52,9 @@ import { PlainComponent } from "../../components/PlainComponent";
         content.includes("<h2>Client Component</h2>") &&
         content.includes("<h2>Server Component</h2>") &&
         content.includes("<h2>Plain Component</h2>") &&
-        content.includes("Hello from client library") &&
-        content.includes("Hello from server library");
+        content.includes("from client dep") &&
+        content.includes("from server dep") &&
+        content.includes("from plain dep");
 
       expect(hasAllComponents).toBe(true);
       expect(content).toContain("<p>Render count: 1</p>"); // Should not re-increment
