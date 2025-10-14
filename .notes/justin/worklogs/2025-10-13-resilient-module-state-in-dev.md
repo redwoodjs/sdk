@@ -93,15 +93,3 @@ The `deploy` test will confirm that the state management mechanism works correct
 The test will also be updated to verify that `requestInfo` can be mutated by server-side logic after a re-optimization. The server action will use `requestInfo` to set a custom response header. The test will assert that this header is present in the response, confirming that the `requestInfo` object is not stale and is still connected to the current request context.
 
 This refined approach provides a much more realistic and targeted verification of the solution's resilience.
-
-**Finding (14 Oct 2025):** While manually testing the playground, another issue was discovered. When the `ClientComponent` and its dependencies are uncommented, triggering a re-optimization for `is-number`, the dev server throws an error: `Internal server error: There is a new version of the pre-bundle for ... react.js ... a page reload is going to ask for it`.
-
-This error suggests that even though Vite's SSR environment has created a new dependency bundle, another part of our system is still trying to access the old one. The likely culprit is the SSR bridge (`ssrBridgePlugin.mts`), which programmatically fetches modules from the SSR environment. It appears to be using a cached reference to the module graph, which becomes stale after re-optimization.
-
-**Attempted Solution:** The `devServer.environments.ssr.fetchModule()` API may accept an option to bypass the cache. The next step is to modify the call in `ssrBridgePlugin.mts` to include `{ cached: false }` to force it to fetch the latest, post-optimization version of the module.
-
-**Finding (14 Oct 2025):** The `{ cached: false }` option was not sufficient. The root cause is that the client browser has a dedicated HMR client that listens for a `full-reload` message from the Vite server after a re-optimization. Upon receiving this message, it executes `location.reload()`, ensuring all subsequent requests use the new dependency bundle.
-
-Our custom SSR environment does not have a "location" to reload and does not listen for this HMR event. As a result, even if we bypass the `fetchModule` cache, the `worker` environment's module graph retains stale references to the old, pre-optimization SSR modules.
-
-**Final Plan:** The solution is to make our `ssrBridgePlugin` HMR-aware. We will use the `configureServer` hook to access the Vite dev server instance. From there, we can subscribe to the `ssr` environment's HMR events. When a `full-reload` event is detected (which signals a successful re-optimization), we will programmatically invalidate all modules in the `worker` environment's module graph that belong to our virtual SSR subgraph (i.e., those prefixed with `virtual:rwsdk:ssr:`). This will purge the stale references and ensure that the next request fetches the new, correctly bundled SSR modules.
