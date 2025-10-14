@@ -86,9 +86,10 @@ The `deploy` test will confirm that the state management mechanism works correct
 
 **Revised Plan:** To create a more robust test, the playground will be refactored to use three distinct, small, external npm packages (e.g., `is-odd`, `is-even`, `is-number`) in place of the local `packages/` directory. This guarantees that when the components are imported mid-session, their dependencies are genuinely new to Vite, forcing the re-optimization we need to verify.
 
-To confirm that `requestInfo` can be mutated by server-side logic during a request, another `dev` test will be added.
+**Finding (14 Oct 2025):** The revised plan of programmatically adding dependencies to `package.json` and running `pnpm install` mid-session is also not an ideal simulation. It's a heavy-handed approach that doesn't accurately reflect the most common cause of re-optimization: the discovery of a *pre-existing* but previously unused import path. The most problematic scenario we've observed is when a developer adds a new component or server action that imports a new dependency, which triggers a re-optimization and breaks the `requestInfo` state within that action.
 
-1.  **Setup**: The test will render a client component containing a form. The form's `action` will be a server action imported from a `"use server"` module.
-2.  **Server Action Logic**: The server action will import `requestInfo` and use it to modify the response by setting a custom HTTP header (e.g., `response.headers.set('X-Server-Action', 'true')`).
-3.  **Trigger and Intercept**: The test will simulate a user clicking the form's submit button. It will intercept the resulting network request made by the server action.
-4.  **Assertion**: The test will inspect the headers of the response from the server action and assert that the custom header was correctly set. This verifies that the `requestInfo` object is mutable within the scope of a server request and can be used to control the response.
+**Final Plan:** The most accurate way to simulate this is to start the application in a state where dynamic components and their underlying dependencies are commented out. The E2E test will then programmatically uncomment these lines of code at specific moments, forcing Vite to discover new import graphs and trigger re-optimization just before the feature is used. This precisely mimics the problematic developer workflow.
+
+The test will also be updated to verify that `requestInfo` can be mutated by server-side logic after a re-optimization. The server action will use `requestInfo` to set a custom response header. The test will assert that this header is present in the response, confirming that the `requestInfo` object is not stale and is still connected to the current request context.
+
+This refined approach provides a much more realistic and targeted verification of the solution's resilience.
