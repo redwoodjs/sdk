@@ -1,5 +1,4 @@
 import type { RequestInfo } from "rwsdk/worker";
-import { ClientComponent } from "../../components/ClientComponent";
 
 let counter = 0;
 
@@ -14,6 +13,6 @@ export function Home({ ctx, request }: RequestInfo) {
       <p>Render count: {counter}</p>
       {/*<ClientComponent />}
       {/* <ServerComponent /> */}
-     */iv>
+    </div>
   );
 }
