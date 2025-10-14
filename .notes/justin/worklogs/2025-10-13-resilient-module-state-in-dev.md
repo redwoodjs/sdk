@@ -107,3 +107,20 @@ The new plan is to make our system react to this signal directly:
 1.  In `ssrBridgePlugin.mts`, listen for the `full-reload` HMR event on all three Vite environments (`client`, `ssr`, and `worker`).
 2.  When this event is detected in *any* environment, it signifies a state where module graphs may be out of sync.
 3.  In response, we will perform a broad invalidation of all modules related to the SSR bridge within our `worker` environment's module graph. This ensures that any subsequent request will be forced to re-fetch the fresh, re-optimized modules, preventing the "stale pre-bundle" error.
+4.  Crucially, we will also invalidate the **entire module graph** of the `ssr` environment itself. This ensures that the source of the bridged modules is also completely fresh, eliminating any possibility of the worker pulling in stale code from a cached, out-of-date SSR environment.
+
+### Final Approach: Reactive Error Handling
+
+The proactive HMR-based approach proved unreliable, as it was susceptible to race conditions where a request for a stale module could be processed before our invalidation listeners had a chance to run.
+
+The final, and more robust, solution is a reactive one. The key insight is to treat the `"There is a new version of the pre-bundle"` error not as a fatal crash, but as a signal that the SSR environment is out of sync.
+
+The implementation is as follows:
+1.  In `ssrBridgePlugin.mts`, the `load` hook's call to `devServer.environments.ssr.fetchModule()` is now wrapped in a `try...catch` block.
+2.  If an error is caught, we inspect its message.
+3.  If the message matches the "stale pre-bundle" error, we know a re-optimization has just occurred. We then perform our comprehensive invalidation:
+    -   The **entire module graph** for the `ssr` environment is invalidated.
+4.  Immediately after invalidating, we **retry** the `fetchModule()` call, this time passing the `{ cached: false }` option to ensure we get a fresh copy.
+5.  Any other errors are re-thrown.
+
+This approach mimics how a browser client would handle a `full-reload` (by re-fetching resources), but adapts it to our server-side context. It is more resilient because it handles the error at the precise moment it occurs, eliminating the race condition.
