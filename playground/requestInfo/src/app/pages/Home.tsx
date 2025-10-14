@@ -14,7 +14,7 @@ export function Home({ ctx, request }: RequestInfo) {
       {/* <ClientComponent /> */}
       {/* <ServerComponent /> */}
       {/* <PlainComponent /> */}
-      {/* <ActionButtonComponent /> */}
+      {/* <ActionFormComponent /> */}
     </div>
   );
 }
