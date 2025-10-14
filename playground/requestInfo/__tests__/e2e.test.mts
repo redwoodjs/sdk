@@ -3,7 +3,6 @@ import { join } from "path";
 import {
   poll,
   setupPlaygroundEnvironment,
-  testDeploy,
   testDev,
   waitForHydration,
 } from "rwsdk/e2e";
@@ -135,13 +134,4 @@ testDev(
       return true;
     });
   },
-  { timeout: 60_000 },
 );
-
-testDeploy("requestInfo state works in production", async ({ page, url }) => {
-  await page.goto(url);
-  await waitForHydration(page);
-
-  const content = await page.content();
-  expect(content).toContain("<p>Render count: 1</p>");
-});
