@@ -494,6 +494,10 @@ This eliminates all the complexity and unreliability of managing SSH servers, ke
 
 The attempt to use a dynamically generated token via `gh auth token` failed with a `403` error. The root cause is that the `GITHUB_TOKEN` provided to workflows is an "integration" token scoped to the repository, not a "user" token. The VS Code Tunnel service requires a token that represents a user, and the `gh` CLI cannot elevate the permissions of the `GITHUB_TOKEN` to act as a user.
 
-This confirms that the correct and only viable method for non-interactive authentication is to use a pre-generated Personal Access Token (PAT) with the necessary scopes (`read:user`, `repo`).
+This confirms that the correct and only viable method for non-interactive authentication is to use a pre-generated **classic** Personal Access Token (PAT) with the necessary scopes. Fine-grained tokens are not sufficiently supported by the remote service and will result in `401 Unauthorized` errors.
 
-The final workflow now uses the `VSCODE_TUNNEL_TOKEN` repository secret, which was created for this purpose. The workflow authenticates with this PAT and then starts the tunnel. This is the definitive and correct authentication flow.
+The required scopes for the classic PAT are:
+- `repo`
+- `read:user`
+
+The final workflow now uses the `VSCODE_TUNNEL_PAT` repository secret, which must be this classic PAT. The workflow authenticates with this token and then starts the tunnel. This is the definitive and correct authentication flow.
