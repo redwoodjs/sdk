@@ -9,32 +9,39 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Prepare for Interactive Debugging
+      - name: Download Cursor CLI (bash)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/cursor_cli"
+          curl -Lk "https://api2.cursor.sh/updates/download-latest?os=cli-win32-x64" -o "$RUNNER_TEMP/cursor_cli/cursor_cli.tar.gz"
+
+      - name: Prepare Cursor CLI for Interactive Debugging
         shell: pwsh
         run: |
-          # 1. Download the VS Code CLI
-          $CliUri = "https://code.visualstudio.com/sha/download?build=stable&os=cli-win32-x64"
-          $CliZip = "$env:TEMP\\vscode-cli.zip"
-          Invoke-WebRequest -Uri $CliUri -OutFile $CliZip
+          $CursorDir = "$env:RUNNER_TEMP\cursor_cli"
+          $CursorArchive = "$CursorDir\cursor_cli.tar.gz"
 
-          # 2. Extract it
-          $CliPath = "$env:TEMP\\vscode-cli"
-          Expand-Archive -Path $CliZip -DestinationPath $CliPath -Force
+          if (-not (Test-Path $CursorArchive)) {
+            Write-Host "Cursor CLI archive not found; aborting preparation." -ForegroundColor Red
+            exit 1
+          }
 
-          # 3. Add the CLI to the PATH for the next step
-          echo $CliPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          tar -xvf $CursorArchive -C $CursorDir | Out-Null
+          $cursorExeItem = Get-ChildItem -Recurse -Path $CursorDir -Filter "cursor*.exe" | Select-Object -First 1
+          if (-not $cursorExeItem) {
+            $cursorExeItem = Get-ChildItem -Recurse -Path $CursorDir -Filter "cursor" | Select-Object -First 1
+          }
+
+          if ($cursorExeItem) {
+            $cursorExe = $cursorExeItem.FullName
+            Write-Host "Cursor CLI prepared. In tmate, start a tunnel with:" -ForegroundColor Cyan
+            Write-Host "`n  & '$cursorExe' tunnel --random-name --verbose`n" -ForegroundColor Yellow
+          } else {
+            Write-Host "Cursor CLI executable not found after extraction." -ForegroundColor Red
+          }
 
       - name: Start Interactive Debug Session
         uses: mxschmitt/action-tmate@v3
-        # The previous attempt, for reference in the interactive session:
-        #
-        # - name: Setup VS Code Remote Tunnel
-        #   env:
-        #     VSCODE_TUNNEL_PAT: ${{ secrets.VSCODE_TUNNEL_TOKEN }}
-        #   shell: pwsh
-        #   run: |
-        #     # Authenticate with the PAT from the environment variable
-        #     & "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\vscode-cli\\code.exe" tunnel user login --provider github --access-token $env:VSCODE_TUNNEL_PAT
-        #
-        #     # Run the tunnel command.
-        #     & "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\vscode-cli\\code.exe" tunnel --accept-server-license-terms --name "rwsdk-windows-debug-${{ github.run_id }}"
+        # For reference, the command to run in the session:
+        # & "$env:RUNNER_TEMP\cursor_cli\cursor.exe" tunnel --random-name --verbose

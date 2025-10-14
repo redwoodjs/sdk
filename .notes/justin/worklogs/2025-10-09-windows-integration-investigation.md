@@ -501,3 +501,60 @@ The required scopes for the classic PAT are:
 - `read:user`
 
 The final workflow now uses the `VSCODE_TUNNEL_PAT` repository secret, which must be this classic PAT. The workflow authenticates with this token and then starts the tunnel. This is the definitive and correct authentication flow.
+
+### Addendum 13: VS Code Tunnels - Device Login Required and Name Limit
+
+Findings during interactive (`tmate`) debugging:
+- The `tunnel user login` with a GitHub PAT appears to succeed silently, but the subsequent `tunnel` command still returns `401 Unauthorized`.
+- Device login flow works: running `code.exe tunnel user login` (no token) prints a device code; approving it on `github.com/login/device` establishes auth, after which `code.exe tunnel --name ...` proceeds further.
+- The CLI stores auth in its own keyring; PAT-based auth is not picked up by `tunnel`.
+- Tunnel names have a strict limit: max 20 characters. Longer names fail with: `invalid name: Names cannot be longer than 20 characters.`
+
+Decisions:
+- Keep an interactive `tmate` step in the workflow to perform the one-time device login each session. This avoids brittle token handling and aligns with the CLI's supported flow.
+- Use a short, deterministic tunnel name (≤20 chars). Example: `rwsdk-win-ci` or `rwsdk-win-<6char>`.
+
+Notes for future scripting:
+- Example manual commands on the runner:
+  - Login (device flow):
+    ```powershell
+    & "C:\Users\runneradmin\AppData\Local\Temp\vscode-cli\code.exe" tunnel user login
+    ```
+  - Start tunnel with a short name:
+    ```powershell
+    $Name = "rwsdk-win-" + ([System.Guid]::NewGuid().ToString("N").Substring(0,6))
+    & "C:\Users\runneradmin\AppData\Local\Temp\vscode-cli\code.exe" tunnel --accept-server-license-terms --name $Name --verbose
+    ```
+- If we later automate, the workflow should prepare the CLI, open `tmate`, print clear device-login instructions, then the operator starts the tunnel with a short name.
+
+### Addendum 14: Cursor CLI Tunnel as an alternative for Cursor app
+
+Reference: Cursor issue discussing Remote Tunnels support and a working CLI tunnel recipe: https://github.com/cursor/cursor/issues/1191
+
+Observation:
+- A reported workaround uses the Cursor CLI to create a tunnel: `./cursor tunnel --random-name` after downloading the CLI archive.
+- This may enable Cursor to connect when VS Code Remote Tunnels is not supported by Cursor directly.
+
+Plan to test on the Windows runner (PowerShell):
+```powershell
+# Download latest Cursor CLI for Windows (guessing os=cli-win32-x64; falls back to tar extraction)
+$Dst = "$env:TEMP\cursor_cli"
+New-Item -ItemType Directory -Force -Path $Dst | Out-Null
+$Archive = "$Dst\cursor_cli.tar.gz"
+$Url = "https://api2.cursor.sh/updates/download-latest?os=cli-win32-x64"
+
+curl -Lk $Url -o $Archive
+
+# Extract (Windows has tar in PATH on runners)
+ tar -xvf $Archive -C $Dst
+
+# Locate the executable
+$cursorExe = Get-ChildItem -Recurse -Path $Dst -Filter "cursor*.exe" | Select-Object -First 1 | ForEach-Object { $_.FullName }
+if (-not $cursorExe) { $cursorExe = Get-ChildItem -Recurse -Path $Dst -Filter "cursor" | Select-Object -First 1 | ForEach-Object { $_.FullName } }
+
+# Start a random-named tunnel (prints the name/URL)
+& $cursorExe tunnel --random-name --verbose
+```
+Notes:
+- If `cli-win32-x64` is not valid, try `cli-linux-x64` inside a compatible shell, or adjust based on the archive contents.
+- Once the tunnel is up, attempt to connect from Cursor using the printed tunnel endpoint or the tunnel name.
