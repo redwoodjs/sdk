@@ -11,7 +11,6 @@ export const VIRTUAL_SSR_PREFIX = "virtual:rwsdk:ssr:";
 export const ssrBridgePlugin = ({
   clientFiles,
   serverFiles,
-  projectRootDir,
 }: {
   clientFiles: Set<string>;
   serverFiles: Set<string>;
@@ -157,21 +156,9 @@ export const ssrBridgePlugin = ({
         this.environment.name === "worker"
       ) {
         const realId = id.slice(VIRTUAL_SSR_PREFIX.length);
-        let idForFetch = realId.endsWith(".css.js")
+        const idForFetch = realId.endsWith(".css.js")
           ? realId.slice(0, -3)
           : realId;
-
-        if (idForFetch.includes("/.vite/deps_ssr/")) {
-          const [base, hash] = idForFetch.split("?v=");
-          if (hash) {
-            log(
-              "Optimized dependency detected, stripping version hash. Original: %s",
-              idForFetch,
-            );
-            idForFetch = base;
-            log("Stripped version hash. New: %s", idForFetch);
-          }
-        }
 
         log(
           "Virtual SSR module load: id=%s, realId=%s, idForFetch=%s",
@@ -182,39 +169,8 @@ export const ssrBridgePlugin = ({
 
         if (isDev) {
           log("Dev mode: fetching SSR module for realPath=%s", idForFetch);
-          const t0 = Date.now();
-          let result;
-          try {
-            result = await devServer?.environments.ssr.fetchModule(idForFetch);
-          } catch (e: any) {
-            if (
-              e.message?.includes("There is a new version of the pre-bundle")
-            ) {
-              log(
-                "Stale pre-bundle detected, invalidating SSR graph and retrying.",
-              );
-              const { moduleGraph: ssrModuleGraph } =
-                devServer.environments.ssr;
-              for (const mod of ssrModuleGraph.urlToModuleMap.values()) {
-                ssrModuleGraph.invalidateModule(mod);
-              }
-              // Retry the fetch after invalidation
-              result = await devServer?.environments.ssr.fetchModule(
-                idForFetch,
-                undefined,
-                { cached: false },
-              );
-            } else {
-              throw e;
-            }
-          }
-          const dt = Date.now() - t0;
-          log(
-            "Dev fetchModule returned in %dms for idForFetch=%s (hasCode=%s)",
-            dt,
-            idForFetch,
-            String("code" in result && Boolean(result.code)),
-          );
+          const result =
+            await devServer?.environments.ssr.fetchModule(idForFetch);
 
           process.env.VERBOSE &&
             log("Fetch module result: id=%s, result=%O", idForFetch, result);
@@ -227,14 +183,10 @@ export const ssrBridgePlugin = ({
           ) {
             process.env.VERBOSE &&
               log("Plain CSS file, returning empty module for %s", idForFetch);
-            return "export default {}";
+            return "export default {};";
           }
 
-          log(
-            "Translating SSR module: idForFetch=%s, codeLength=%s",
-            idForFetch,
-            String(code?.length ?? 0),
-          );
+          log("Fetched SSR module code length: %d", code?.length || 0);
 
           const s = new MagicString(code || "");
           const callsites = findSsrImportCallSites(idForFetch, code || "", log);

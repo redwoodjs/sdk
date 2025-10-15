@@ -15,6 +15,7 @@ import { $ } from "../lib/$.mjs";
 import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
 import { hasPkgScript } from "../lib/hasPkgScript.mjs";
 import { configPlugin } from "./configPlugin.mjs";
+import { dependencyOptimizationOrchestrationPlugin } from "./dependencyOptimizationOrchestrationPlugin.mjs";
 import { devServerTimingPlugin } from "./devServerTimingPlugin.mjs";
 import { directiveModulesDevPlugin } from "./directiveModulesDevPlugin.mjs";
 import { directivesFilteringPlugin } from "./directivesFilteringPlugin.mjs";
@@ -132,6 +133,7 @@ export const redwoodPlugin = async (
   }
 
   return [
+    dependencyOptimizationOrchestrationPlugin(),
     statePlugin(),
     devServerTimingPlugin(),
     devServerConstantPlugin(),

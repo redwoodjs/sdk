@@ -105,31 +105,23 @@ The analysis of logs from our instrumented plugins provided the following key ob
 
 This analysis confirms that any solution must address the stale *importer* module, not just the dependency it's trying to fetch.
 
-### New Attempt: Stripping Version Hashes
+### Finding: In-Flight Renders are Unsalvageable (Confirmed)
 
-The new hypothesis is that if we can't control the timing, we can control the URL. The proposed solution is to tactically fix the stale reference at the last possible moment.
+The "Catch, Invalidate, and Silence" approach also failed, producing the same `TypeError: Cannot read properties of null (reading 'useState')` error.
 
-1.  **The Trigger:** Inside the `ssrBridgePlugin`'s `load` hook, when handling a virtual module ID that resolves to a pre-bundled SSR dependency (a path containing `/.vite/deps_ssr/`).
-2.  **The Action:** We will strip the `?v=...` version hash from the URL before passing it to `fetchModule`.
-3.  **The Goal:** The expectation is that Vite's `fetchModule`, when called with a base path without a version query, will resolve to the latest available version of that pre-bundled dependency. This would allow our in-flight `load` process to retrieve the post-optimization asset instead of failing on the stale hash it originally resolved.
+This definitively proves the core problem: any server-side render that is in-flight when a dependency re-optimization occurs is fundamentally unsalvageable. Even if we prevent the "stale pre-bundle" error from crashing the process by returning an empty module, the React renderer's internal state is already inconsistent with the dependency graph. The old renderer tries to work with a module graph that has partially moved on, leading to an unrecoverable runtime error. Any attempt to patch a doomed render at the module level will fail.
 
-This finding means that even if we could force `fetchModule` to provide stale content, the runner would likely reject it anyway. Our point of intervention must be different.
+### The High-Level Retry Strategy: Middleware Interception
 
-### Refined Reactive Approach: Catch, Invalidate, and Retry
+The only robust solution is to operate at a higher level. Instead of trying to save or silence the doomed in-flight render, we must abort it cleanly at the HTTP level and let the browser initiate a completely new render.
 
-A previous reactive approach was considered but discarded due to an imprecise understanding of the execution flow. A more detailed analysis, prompted by user feedback, clarifies the viability of a "Catch, Invalidate, and Retry" strategy.
+The plan is to leverage a custom Vite middleware to intercept the failure and manage the recovery cycle:
 
-#### The Problem Revisited
-The "stale pre-bundle" error originates from the Vite Module Runner during the evaluation phase, which is a synchronous part of the `fetchModule` call stack. This allows the error to be caught. The challenge is that simply failing the render is not a solution, as the server-side process would crash without a graceful recovery mechanism.
+1.  **The Hook:** A custom middleware will be added to the Vite dev server, positioned at the beginning of the stack to act as a top-level error handler.
+2.  **The Detection:** This middleware will wrap the `next()` call in a `try...catch` block to intercept any downstream errors during request processing. It will specifically look for the "stale pre-bundle" error.
+3.  **The Server-Side Action:** Upon catching the error, the middleware will:
+    a.  **Prepare for the Retry:** Invalidate the entire SSR module graph to purge all stale cached transformations and ensure the server is ready for a clean request.
+    b.  **Abort Gracefully:** Take control of the response and end it immediately with a neutral status (e.g., 204 No Content). This prevents Vite from sending its default 500 error overlay to the browser.
+4.  **The Client-Side Recovery:** In parallel, Vite's optimizer has already sent a `full-reload` HMR signal to the client. The browser receives this signal and reloads the page. This reload acts as our "retried request," hitting a server that has just been cleaned and is ready to serve a consistent, post-optimization response.
 
-#### The Refined Plan
-The refined plan uses the caught error as a perfectly-timed signal to transparently recover within a single `load` hook execution.
-
-1.  **The Trigger:** The call to `devServer.environments.ssr.fetchModule()` inside our `ssrBridgePlugin`'s `load` hook is wrapped in a `try...catch` block. The server-side render process that initiated this `load` is paused, awaiting a result.
-2.  **The Signal:** We specifically catch the "stale pre-bundle" error.
-3.  **The Action:** Upon catching this specific error, we perform a comprehensive invalidation of the `ssr` module graph to purge all stale `transformResult` entries.
-4.  **The Recovery:** Immediately after invalidating, from within the same `catch` block, we **retry** the `fetchModule` call.
-    *   Because the module graph is now clean, this second attempt will re-run the entire load-and-transform pipeline.
-    *   By this time, the dependency optimizer has finished its work, so the transform will embed the correct, new version hashes for all dependencies.
-    *   This second attempt is expected to succeed.
-5.  **The Outcome:** The `load` hook successfully returns the result from the retried `fetchModule` call. The original server-side render process, which was awaiting this result, un-pauses and continues with the correct, consistent module code. The entire recovery is transparent to the renderer, manifesting only as a slight delay.
+This "Intercept -> Invalidate -> Abort -> Reload" cycle accepts the failure of the in-flight render and uses a high-level mechanism to ensure a smooth, automatic recovery without ever showing an error to the user.
