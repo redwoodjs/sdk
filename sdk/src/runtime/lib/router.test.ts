@@ -768,6 +768,320 @@ describe("defineRoutes - Request Handling Behavior", () => {
     });
   });
 
+  describe("HTTP Method Routing", () => {
+    it("should route GET request to get handler", async () => {
+      const router = defineRoutes([
+        route("/test/", {
+          get: () => new Response("GET Response"),
+          post: () => new Response("POST Response"),
+        }),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request(
+        "http://localhost:3000/test/",
+        {
+          method: "GET",
+        },
+      );
+
+      const request = new Request("http://localhost:3000/test/", {
+        method: "GET",
+      });
+
+      const response = await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(await response.text()).toBe("GET Response");
+    });
+
+    it("should route POST request to post handler", async () => {
+      const router = defineRoutes([
+        route("/test/", {
+          get: () => new Response("GET Response"),
+          post: () => new Response("POST Response"),
+        }),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request(
+        "http://localhost:3000/test/",
+        {
+          method: "POST",
+        },
+      );
+
+      const request = new Request("http://localhost:3000/test/", {
+        method: "POST",
+      });
+
+      const response = await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(await response.text()).toBe("POST Response");
+    });
+
+    it("should return 405 for unsupported method with Allow header", async () => {
+      const router = defineRoutes([
+        route("/test/", {
+          get: () => new Response("GET Response"),
+          post: () => new Response("POST Response"),
+        }),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request(
+        "http://localhost:3000/test/",
+        {
+          method: "DELETE",
+        },
+      );
+
+      const request = new Request("http://localhost:3000/test/", {
+        method: "DELETE",
+      });
+
+      const response = await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(response.status).toBe(405);
+      expect(await response.text()).toBe("Method Not Allowed");
+      expect(response.headers.get("Allow")).toBe("GET, OPTIONS, POST");
+    });
+
+    it("should handle OPTIONS request with Allow header", async () => {
+      const router = defineRoutes([
+        route("/test/", {
+          get: () => new Response("GET Response"),
+          post: () => new Response("POST Response"),
+        }),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request(
+        "http://localhost:3000/test/",
+        {
+          method: "OPTIONS",
+        },
+      );
+
+      const request = new Request("http://localhost:3000/test/", {
+        method: "OPTIONS",
+      });
+
+      const response = await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(response.status).toBe(204);
+      expect(response.headers.get("Allow")).toBe("GET, OPTIONS, POST");
+    });
+
+    it("should support custom methods (case-insensitive)", async () => {
+      const router = defineRoutes([
+        route("/test/", {
+          custom: {
+            report: () => new Response("REPORT Response"),
+          },
+        }),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request(
+        "http://localhost:3000/test/",
+        {
+          method: "REPORT",
+        },
+      );
+
+      const request = new Request("http://localhost:3000/test/", {
+        method: "REPORT",
+      });
+
+      const response = await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(await response.text()).toBe("REPORT Response");
+    });
+
+    it("should normalize custom method keys to lowercase", async () => {
+      const router = defineRoutes([
+        route("/test/", {
+          custom: {
+            REPORT: () => new Response("REPORT Response"),
+          },
+        }),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request(
+        "http://localhost:3000/test/",
+        {
+          method: "report",
+        },
+      );
+
+      const request = new Request("http://localhost:3000/test/", {
+        method: "report",
+      });
+
+      const response = await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(await response.text()).toBe("REPORT Response");
+    });
+
+    it("should disable 405 when config.disable405 is true", async () => {
+      const router = defineRoutes([
+        route("/test/", {
+          get: () => new Response("GET Response"),
+          config: {
+            disable405: true,
+          },
+        }),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request(
+        "http://localhost:3000/test/",
+        {
+          method: "POST",
+        },
+      );
+
+      const request = new Request("http://localhost:3000/test/", {
+        method: "POST",
+      });
+
+      const response = await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(response.status).toBe(404);
+      expect(await response.text()).toBe("Not Found");
+    });
+
+    it("should disable OPTIONS when config.disableOptions is true", async () => {
+      const router = defineRoutes([
+        route("/test/", {
+          get: () => new Response("GET Response"),
+          post: () => new Response("POST Response"),
+          config: {
+            disableOptions: true,
+          },
+        }),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request(
+        "http://localhost:3000/test/",
+        {
+          method: "OPTIONS",
+        },
+      );
+
+      const request = new Request("http://localhost:3000/test/", {
+        method: "OPTIONS",
+      });
+
+      const response = await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(response.status).toBe(405);
+      expect(await response.text()).toBe("Method Not Allowed");
+      expect(response.headers.get("Allow")).toBe("GET, POST");
+    });
+
+    it("should support middleware arrays in method handlers", async () => {
+      const executionOrder: string[] = [];
+
+      const authMiddleware = () => {
+        executionOrder.push("authMiddleware");
+      };
+
+      const getHandler = () => {
+        executionOrder.push("getHandler");
+        return new Response("GET Response");
+      };
+
+      const router = defineRoutes([
+        route("/test/", {
+          get: [authMiddleware, getHandler],
+        }),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request(
+        "http://localhost:3000/test/",
+        {
+          method: "GET",
+        },
+      );
+
+      const request = new Request("http://localhost:3000/test/", {
+        method: "GET",
+      });
+
+      const response = await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(executionOrder).toEqual(["authMiddleware", "getHandler"]);
+      expect(await response.text()).toBe("GET Response");
+    });
+  });
+
   describe("Edge Cases", () => {
     it("should handle middleware-only apps with RSC actions", async () => {
       const executionOrder: string[] = [];
