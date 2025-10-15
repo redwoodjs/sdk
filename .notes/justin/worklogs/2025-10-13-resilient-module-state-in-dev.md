@@ -94,71 +94,42 @@ The test will also be updated to verify that `requestInfo` can be mutated by ser
 
 This refined approach provides a much more realistic and targeted verification of the solution's resilience.
 
-When `ClientComponent.tsx` is modified while it has no importers (step 2 of the failing scenario), `isInUseClientGraph` returns `false`. Our plugin then incorrectly tells Vite to ignore the update for the client and SSR environments.
+### Log Analysis and Core Implication
 
-Later, when `Home.tsx` is modified to import `ClientComponent.tsx`, the `ssr` environment finally processes the component, discovers the `is-number` dependency, and runs its optimizer. However, because the client environment was told to ignore the initial change, it never runs its own optimizer and never gets the `full-reload` HMR signal. This leaves the client and server out of sync regarding their dependency bundles, causing the pre-bundle error on the next server render.
+The analysis of logs from our instrumented plugins provided the following key observations:
 
-### Revised Plan
+- **SSR re-optimization fires mid-load chain:** While our `ssrBridgePlugin`'s `load` hook is processing and transforming `ClientComponent.tsx`, the call to fetch its `is-number` dependency triggers the SSR optimizer. Vite logs "new dependencies optimized: is-number" and then "optimized dependencies changed. reloading" *during* our `load` hook's execution.
+- **Stale version hash is embedded before re-optimization completes:** The transform for `ClientComponent.tsx` resolves dependencies like `react` to their optimized path, including the current version hash (e.g., `react.js?v=OLD_HASH`). It bakes this URL into the transformed code.
+- **The importer's transform does not re-run:** After the optimizer completes and the new hash (`?v=NEW_HASH`) is available, the original `load` for `ClientComponent.tsx` continues. It does not re-run. Its cached `transformResult` still contains the old, stale URL.
+- **The root cause is the stale transform, not a stale fetch:** The failure happens when the server-side render proceeds and tries to load `react?v=OLD_HASH`. The error is correct; that version is no longer the latest. The core issue is that the code for `ClientComponent.tsx` was generated moments too early and is now pointing to a non-existent version.
 
-The previous approach of trying to fix HMR logic was incorrect, as the error originates from stale modules in the SSR graph after a dependency re-optimization. The key signal for a re-optimization is the `full-reload` HMR event.
-
-The new plan is to make our system react to this signal directly:
-
-1.  In `ssrBridgePlugin.mts`, listen for the `full-reload` HMR event on all three Vite environments (`client`, `ssr`, and `worker`).
-2.  When this event is detected in *any* environment, it signifies a state where module graphs may be out of sync.
-3.  In response, we will perform a broad invalidation of all modules related to the SSR bridge within our `worker` environment's module graph. This ensures that any subsequent request will be forced to re-fetch the fresh, re-optimized modules, preventing the "stale pre-bundle" error.
-4.  Crucially, we will also invalidate the **entire module graph** of the `ssr` environment itself. This ensures that the source of the bridged modules is also completely fresh, eliminating any possibility of the worker pulling in stale code from a cached, out-of-date SSR environment.
-
-This proactive approach ensures that before any new server-side render can occur, our entire SSR-related module caching is purged, forcing the system to use the new, correctly optimized dependencies.
-
-### Final Approach (Revised Again): Monkey-Patching Vite's Optimizer
-
-Analysis of the Vite source code (`packages/vite/src/node/optimizer/optimizer.ts`) revealed that listening for the `full-reload` HMR event is still too late. A request can race ahead of the HMR listener and hit a stale module graph.
-
-The most reliable solution is to intercept the re-optimization process at an even earlier stage.
-
-1.  **The Trigger:** The internal `fullReload` function within Vite's SSR dependency optimizer (`depsOptimizer`) is called immediately after a re-optimization is committed and just before the HMR message is sent. This is the earliest and most precise moment to intervene.
-2.  **The Implementation:** We will "monkey-patch" this function. In our `miniflareHMRPlugin.mts`, during the `configureServer` hook, we will:
-    a.  Get a reference to the `ssr` environment's internal `depsOptimizer` object.
-    b.  Store a reference to its original `fullReload` method.
-    c.  Replace `depsOptimizer.fullReload` with our own wrapper function.
-3.  **The Action:** Our wrapper function will execute our logic first, and then call the original function to let Vite proceed. The order is critical:
-    a.  First, perform our comprehensive invalidation of the `ssr` module graph and the `worker`'s virtual SSR subgraph.
-    b.  Then, call the original `fullReload` function, which will invalidate the `ssr` graph again (this is harmless) and send the HMR message to the client.
-
-This monkey-patching approach guarantees that our invalidation runs *before* Vite sends the `full-reload` signal, completely eliminating the race condition.
-
-### Investigation: Why Proactive Invalidation Fails
-
-The previous attempts to proactively invalidate the module graphs based on the `full-reload` HMR event were unsuccessful. A deeper analysis of the Vite source code (`packages/vite/src/node/optimizer/optimizer.ts`) revealed a subtle but critical race condition.
-
-1.  **The Event Sequence:** When Vite's dependency optimizer completes a re-bundle, it calls an internal function, `fullReload()`.
-2.  **The Race Condition:** This `fullReload` function performs two actions in sequence:
-    a.  First, it invalidates the module graph for its *own* environment (in our case, the `ssr` environment).
-    b.  Second, it sends the `full-reload` HMR message over the websocket.
-3.  **The Flaw:** Our previous approach was to listen for the `full-reload` HMR message. However, there is a window of time between step (a) and step (b). If a new HTTP request for a server-side render arrives in this window, it can hit our `ssrBridgePlugin` *before* our HMR listener has a chance to run and invalidate the other stale graphs (like the `worker`'s virtual SSR subgraph). The `worker` graph still holds references to old, now-invalidated `ssr` modules, leading to the "stale pre-bundle" error.
-
-This explains why listening for the HMR event is fundamentally unreliable for this purpose. We are acting on the signal too late.
-
-### New Hypothesis and Investigation Path
-
-The new hypothesis is that we should treat the virtual SSR modules as cheap, stateless proxies that should perhaps never be cached by the `worker` environment's module graph, or should be invalidated much more aggressively.
-
-The core challenge, as we've seen, is that simply calling `fetchModule` with `{ cached: false }` was not sufficient to resolve the issue. This suggests that the stale reference is not in the `fetchModule` cache itself, but higher up in the module graph—specifically, in the module that is *importing* the stale dependency. Even if `fetchModule` could get a fresh copy of `react`, the `ClientComponent` module that imports it might not be re-evaluated, and thus it continues to hold a reference to the old, stale version hash.
-
-Before attempting another solution, we need to investigate and understand this behavior. The next step is to gather more data by adding debugging logs to trace the lifecycle of these modules during a re-optimization. We need to answer:
-
-1.  When a re-optimization happens, is the `load` hook in `ssrBridgePlugin` being called again for the module that imports the stale dependency (e.g., `ClientComponent.tsx`)?
-2.  What is the sequence of HMR events, module invalidations, and `load` hook executions?
-
-By logging this information, we can build a clear picture of the caching and invalidation behavior and identify the precise point of failure.
+This analysis confirms that any solution must address the stale *importer* module, not just the dependency it's trying to fetch.
 
 ### New Attempt: Stripping Version Hashes
-
-The log analysis confirmed a race condition: our `ssrBridgePlugin`'s `load` hook for an importer (e.g., `ClientComponent.tsx`) executes and transforms its code, embedding version hashes for its dependencies (e.g., `react?v=OLD_HASH`). During this same `load` execution, a nested `fetchModule` for a new dependency (`is-number`) can trigger the SSR optimizer. The optimizer completes, creating a `react?v=NEW_HASH`, but by then the importer's code has already been generated with the old hash. The importer is not invalidated or re-run, so it proceeds to make a request for the stale URL, causing the crash.
 
 The new hypothesis is that if we can't control the timing, we can control the URL. The proposed solution is to tactically fix the stale reference at the last possible moment.
 
 1.  **The Trigger:** Inside the `ssrBridgePlugin`'s `load` hook, when handling a virtual module ID that resolves to a pre-bundled SSR dependency (a path containing `/.vite/deps_ssr/`).
 2.  **The Action:** We will strip the `?v=...` version hash from the URL before passing it to `fetchModule`.
 3.  **The Goal:** The expectation is that Vite's `fetchModule`, when called with a base path without a version query, will resolve to the latest available version of that pre-bundled dependency. This would allow our in-flight `load` process to retrieve the post-optimization asset instead of failing on the stale hash it originally resolved.
+
+This finding means that even if we could force `fetchModule` to provide stale content, the runner would likely reject it anyway. Our point of intervention must be different.
+
+### Refined Reactive Approach: Catch, Invalidate, and Retry
+
+A previous reactive approach was considered but discarded due to an imprecise understanding of the execution flow. A more detailed analysis, prompted by user feedback, clarifies the viability of a "Catch, Invalidate, and Retry" strategy.
+
+#### The Problem Revisited
+The "stale pre-bundle" error originates from the Vite Module Runner during the evaluation phase, which is a synchronous part of the `fetchModule` call stack. This allows the error to be caught. The challenge is that simply failing the render is not a solution, as the server-side process would crash without a graceful recovery mechanism.
+
+#### The Refined Plan
+The refined plan uses the caught error as a perfectly-timed signal to transparently recover within a single `load` hook execution.
+
+1.  **The Trigger:** The call to `devServer.environments.ssr.fetchModule()` inside our `ssrBridgePlugin`'s `load` hook is wrapped in a `try...catch` block. The server-side render process that initiated this `load` is paused, awaiting a result.
+2.  **The Signal:** We specifically catch the "stale pre-bundle" error.
+3.  **The Action:** Upon catching this specific error, we perform a comprehensive invalidation of the `ssr` module graph to purge all stale `transformResult` entries.
+4.  **The Recovery:** Immediately after invalidating, from within the same `catch` block, we **retry** the `fetchModule` call.
+    *   Because the module graph is now clean, this second attempt will re-run the entire load-and-transform pipeline.
+    *   By this time, the dependency optimizer has finished its work, so the transform will embed the correct, new version hashes for all dependencies.
+    *   This second attempt is expected to succeed.
+5.  **The Outcome:** The `load` hook successfully returns the result from the retried `fetchModule` call. The original server-side render process, which was awaiting this result, un-pauses and continues with the correct, consistent module code. The entire recovery is transparent to the renderer, manifesting only as a slight delay.

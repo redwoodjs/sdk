@@ -183,8 +183,31 @@ export const ssrBridgePlugin = ({
         if (isDev) {
           log("Dev mode: fetching SSR module for realPath=%s", idForFetch);
           const t0 = Date.now();
-          const result =
-            await devServer?.environments.ssr.fetchModule(idForFetch);
+          let result;
+          try {
+            result = await devServer?.environments.ssr.fetchModule(idForFetch);
+          } catch (e: any) {
+            if (
+              e.message?.includes("There is a new version of the pre-bundle")
+            ) {
+              log(
+                "Stale pre-bundle detected, invalidating SSR graph and retrying.",
+              );
+              const { moduleGraph: ssrModuleGraph } =
+                devServer.environments.ssr;
+              for (const mod of ssrModuleGraph.urlToModuleMap.values()) {
+                ssrModuleGraph.invalidateModule(mod);
+              }
+              // Retry the fetch after invalidation
+              result = await devServer?.environments.ssr.fetchModule(
+                idForFetch,
+                undefined,
+                { cached: false },
+              );
+            } else {
+              throw e;
+            }
+          }
           const dt = Date.now() - t0;
           log(
             "Dev fetchModule returned in %dms for idForFetch=%s (hasCode=%s)",
