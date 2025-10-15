@@ -1,73 +1,69 @@
 import debug from "debug";
-import type { Plugin } from "vite";
-import { VIRTUAL_SSR_PREFIX } from "./ssrBridgePlugin.mjs";
+import type { Plugin, ViteDevServer } from "vite";
 
 const log = debug("rwsdk:vite:dep-opt-orchestration-plugin");
 
 export const dependencyOptimizationOrchestrationPlugin = (): Plugin => {
+  const activeOptimizationPromises = new Set<Promise<any>>();
+
+  function wrapOptimizer(optimizer: any) {
+    const originalRegisterMissingImport = optimizer.registerMissingImport;
+
+    optimizer.registerMissingImport = function (
+      this: any,
+      ...args: Parameters<typeof originalRegisterMissingImport>
+    ) {
+      const optimizationPromise = originalRegisterMissingImport.apply(
+        this,
+        args,
+      );
+      activeOptimizationPromises.add(optimizationPromise);
+
+      log(
+        `Optimization triggered for ${
+          optimizer.config.env.name
+        } environment. Pausing incoming requests. Active optimizations: ${
+          activeOptimizationPromises.size
+        }`,
+      );
+
+      return optimizationPromise.finally(() => {
+        activeOptimizationPromises.delete(optimizationPromise);
+        log(
+          `Optimization finished for ${
+            optimizer.config.env.name
+          } environment. Resuming requests. Active optimizations: ${
+            activeOptimizationPromises.size
+          }`,
+        );
+      });
+    };
+  }
+
   return {
     name: "rwsdk:dependency-optimization-orchestration",
-    configureServer(server) {
-      // This hook returns a function that Vite executes after its internal
-      // middlewares are configured. This is the correct way to register a
-      // final, top-level error handler.
-      return () => {
-        server.middlewares.use(function rwsdkStaleBundleErrorHandler(
-          err: any,
-          req: any,
-          res: any,
-          next: any,
-        ) {
-          if (
-            err.message?.includes("There is a new version of the pre-bundle")
-          ) {
-            log(
-              "Stale pre-bundle error caught. Invalidating graphs and suspending request.",
-              err.message,
-            );
+    configureServer(server: ViteDevServer) {
+      server.middlewares.use(async (req, res, next) => {
+        if (activeOptimizationPromises.size > 0) {
+          log(
+            `Pausing request to ${req.url} until ${activeOptimizationPromises.size} optimizations finish.`,
+          );
+          await Promise.all([...activeOptimizationPromises]);
+          log(`Resuming request to ${req.url}`);
+        }
+        next();
+      });
 
-            // 1. Invalidate the entire SSR module graph
-            server.environments.ssr.moduleGraph.invalidateAll();
+      // After server is listening, find and wrap the optimizers
+      // for all three environments.
+      (server.environments.ssr as any).optimizer.registerMissingImport =
+        wrapOptimizer(server.environments.ssr?.depsOptimizer);
+      (server.environments.client as any).optimizer.registerMissingImport =
+        wrapOptimizer(server.environments.client?.depsOptimizer);
+      (server.environments.worker as any).optimizer.registerMissingImport =
+        wrapOptimizer(server.environments.worker?.depsOptimizer);
 
-            // 2. Invalidate all virtual SSR modules in the worker graph to break the loop
-            const { moduleGraph: workerModuleGraph } =
-              server.environments.worker;
-            for (const mod of workerModuleGraph.urlToModuleMap.values()) {
-              if (mod.url.includes(VIRTUAL_SSR_PREFIX)) {
-                log("Invalidating worker virtual SSR module: %s", mod.url);
-                workerModuleGraph.invalidateModule(mod);
-              }
-            }
-
-            // 3. Explicitly invalidate the bridge module in the worker graph by its ID
-            const bridgeModule =
-              workerModuleGraph.getModuleById("rwsdk/__ssr_bridge");
-            if (bridgeModule) {
-              log("Explicitly invalidating worker ssr bridge module");
-              workerModuleGraph.invalidateModule(bridgeModule);
-            }
-
-            // Suspend the response with a timeout fail-safe
-            const timeout = setTimeout(() => {
-              if (!res.writableEnded) {
-                log("Response suspension timed out. Sending 204.");
-                res.statusCode = 204;
-                res.end();
-              }
-            }, 5000);
-
-            // Clean up the timeout if the connection is closed prematurely
-            // (e.g., by the client reloading)
-            res.on("close", () => {
-              clearTimeout(timeout);
-            });
-
-            return;
-          }
-          // Forward other errors to the default error handler
-          next(err);
-        });
-      };
+      log("All three environment optimizers have been wrapped.");
     },
   };
 };

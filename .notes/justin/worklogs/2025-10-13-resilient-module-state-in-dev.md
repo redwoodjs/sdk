@@ -225,3 +225,32 @@ This plan uses a more robust and explicit invalidation strategy based on user in
     b.  **Targeted Invalidation for Worker:** The middleware will still iterate through the worker module graph to invalidate all modules prefixed with `VIRTUAL_SSR_PREFIX`.
     c.  **Explicitly Invalidate the Bridge:** Crucially, we will add a specific call to invalidate the `rwsdk/__ssr_bridge` module in the worker's graph by its clean ID, directly addressing the failure point observed in the logs.
     d.  **Suspend:** The request will be suspended, relying on Vite's native HMR.
+
+### Back to Basics: General Hash Stripping
+
+**Finding:** The targeted hash stripping for `rwsdk/__ssr_bridge` was insufficient. Logs confirm that the "stale pre-bundle" error can occur for *any* pre-bundled dependency (e.g., `react.js`) after a re-optimization. The problem is systemic, not specific to a single module.
+
+**Hypothesis:** The user's original hypothesis was correct. By stripping the version hash from *any* module ID passed to `fetchModule` within the `ssrBridgePlugin`'s `load` hook, we can proactively prevent the "stale pre-bundle" error entirely, as Vite will always resolve the base path to the latest optimized version. The complex reactive error handling in `dependencyOptimizationOrchestrationPlugin` should become unnecessary, acting only as a fail-safe.
+
+1.  **The Hook:** The `load` hook within `ssrBridgePlugin.mts`.
+2.  **The Action:** If a version hash is found on *any* module's ID, strip it before calling `fetchModule`.
+
+### The Proactive Plan: Monkey-Patching the Optimizers
+
+**Final Finding:** All reactive strategies have failed. The core issue is a race condition where an HTTP request is processed while a dependency re-optimization is in progress. By the time an error is thrown, the server's state is unrecoverably corrupt, and no amount of invalidation can reliably fix it. The only robust solution is to prevent the race condition from happening in the first place.
+
+**Hypothesis:** By intercepting the call that triggers a re-optimization, we can pause all incoming HTTP requests until the optimization is fully complete. This ensures that no request is ever processed during the fragile, intermediate state, thus preventing both "stale pre-bundle" and "React runtime mismatch" errors.
+
+This plan uses monkey-patching to create the "optimization in progress" signal that Vite does not natively provide.
+
+1.  **The Hook:** The `configureServer` hook in `dependencyOptimizationOrchestrationPlugin.mts`.
+2.  **Shared State:** A `Set` named `activeOptimizationPromises` will be used to track in-flight optimization runs across all three Vite environments (`ssr`, `client`, `worker`).
+3.  **The Monkey-Patch:** The `registerMissingImport` method on each of the three dependency optimizers will be wrapped.
+4.  **Wrapper Logic:**
+    a.  When our wrapper for `registerMissingImport` is called, it will create a new promise and add it to the `activeOptimizationPromises` `Set`.
+    b.  It will then call the original `registerMissingImport` function.
+    c.  When the original function's promise settles (completes or fails), the corresponding promise will be removed from the `activeOptimizationPromises` `Set`.
+5.  **The Middleware:** A standard, non-error-handling middleware will be placed at the top of the server's stack.
+    a.  On every incoming request, it will check if the `activeOptimizationPromises` `Set` is empty.
+    b.  If the set is not empty, it will `await Promise.all([...activeOptimizationPromises])`, effectively pausing the request until all concurrent re-optimizations are finished.
+    c.  Once all promises are resolved, it calls `next()` to allow the request to proceed to a now-stable server.
