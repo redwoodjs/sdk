@@ -157,9 +157,21 @@ export const ssrBridgePlugin = ({
         this.environment.name === "worker"
       ) {
         const realId = id.slice(VIRTUAL_SSR_PREFIX.length);
-        const idForFetch = realId.endsWith(".css.js")
+        let idForFetch = realId.endsWith(".css.js")
           ? realId.slice(0, -3)
           : realId;
+
+        if (idForFetch.includes("/.vite/deps_ssr/")) {
+          const [base, hash] = idForFetch.split("?v=");
+          if (hash) {
+            log(
+              "Optimized dependency detected, stripping version hash. Original: %s",
+              idForFetch,
+            );
+            idForFetch = base;
+            log("Stripped version hash. New: %s", idForFetch);
+          }
+        }
 
         log(
           "Virtual SSR module load: id=%s, realId=%s, idForFetch=%s",

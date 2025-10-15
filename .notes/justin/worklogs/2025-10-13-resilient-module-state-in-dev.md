@@ -153,38 +153,12 @@ Before attempting another solution, we need to investigate and understand this b
 
 By logging this information, we can build a clear picture of the caching and invalidation behavior and identify the precise point of failure.
 
-### Log Analysis (14 Oct 2025)
+### New Attempt: Stripping Version Hashes
 
-Observed from `/tmp/state.log` during the failing sequence (uncomment dep first, then wire `ClientComponent` in `Home.tsx`):
+The log analysis confirmed a race condition: our `ssrBridgePlugin`'s `load` hook for an importer (e.g., `ClientComponent.tsx`) executes and transforms its code, embedding version hashes for its dependencies (e.g., `react?v=OLD_HASH`). During this same `load` execution, a nested `fetchModule` for a new dependency (`is-number`) can trigger the SSR optimizer. The optimizer completes, creating a `react?v=NEW_HASH`, but by then the importer's code has already been generated with the old hash. The importer is not invalidated or re-run, so it proceeds to make a request for the stale URL, causing the crash.
 
-- Sequence around re-optimization
-  - While `ssrBridgePlugin.load` is transforming `ClientComponent.tsx`, the SSR environment fetches `is-number` and logs:
-    - `(ssr) ✨ new dependencies optimized: is-number`
-    - `(ssr) ✨ optimized dependencies changed. reloading`
+The new hypothesis is that if we can't control the timing, we can control the URL. The proposed solution is to tactically fix the stale reference at the last possible moment.
 
-- Stale `v` embedded before optimizer commit
-  - Our transform for `ClientComponent.tsx` returned import URLs containing `?v=29019e96` for:
-    - `/node_modules/.vite/deps_ssr/react_jsx-dev-runtime.js?v=29019e96`
-    - `/node_modules/.vite/deps_ssr/react.js?v=29019e96`
-  - Immediately after optimizer completes, a virtual load attempts `/node_modules/.vite/deps_ssr/react.js?v=29019e96` and fails with the "new version of the pre-bundle" error. This indicates the optimizer updated the version hash after we embedded the old one.
-
-- No re-run of transform after re-opt
-  - After "optimized dependencies changed. reloading" we do not see `ssrBridgePlugin.load` re-executing for the importer (`/src/components/ClientComponent.tsx`). The request path proceeds with the already-emitted transformed code and hits the stale `react.js` URL.
-
-- Earlier invalidations are too late or too narrow
-  - We did invalidate SSR for the `ClientComponent.tsx` update earlier, but the critical failure occurs later: the optimizer updates the version hashes mid-flight, while our transformed code has already baked the old `v`. Without a re-run of the importer transform (or invalidation of the importer node), subsequent fetches still reference the stale URL.
-
-Implications
-- The failure is not simply a stale `fetchModule` cache; the stale reference is the importer code that already embedded the old `v` before the optimizer committed new hashes.
-- Listening for `full-reload` is too late; by then, in-flight SSR work has transformed code with old `v` values.
-
-Planned instrumentation
-- In `ssrBridgePlugin.load`:
-  - Log the optimizer/browser hash (if accessible) and the exact `v` we embed for each dep when generating transformed imports.
-  - Log whether optimizer metadata changes between the start of `load` and the moment SSR logs "optimized dependencies changed. reloading".
-  - Confirm whether `load` is re-entered for the importer after re-opt (current logs indicate it is not).
-- At the import-specifier mapping point:
-  - Log: original specifier → resolved dep id → computed `?v=` used.
-
-Goal of instrumentation
-- Determine if we must force invalidation/re-transform of importer modules that map to `deps_ssr/*?v=...` whenever an SSR optimizer commit happens, or avoid baking a concrete `v` at transform time in favor of a lookup that always resolves the latest hash.
+1.  **The Trigger:** Inside the `ssrBridgePlugin`'s `load` hook, when handling a virtual module ID that resolves to a pre-bundled SSR dependency (a path containing `/.vite/deps_ssr/`).
+2.  **The Action:** We will strip the `?v=...` version hash from the URL before passing it to `fetchModule`.
+3.  **The Goal:** The expectation is that Vite's `fetchModule`, when called with a base path without a version query, will resolve to the latest available version of that pre-bundled dependency. This would allow our in-flight `load` process to retrieve the post-optimization asset instead of failing on the stale hash it originally resolved.
