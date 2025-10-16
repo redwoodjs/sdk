@@ -1,7 +1,6 @@
 import debug from "debug";
 import MagicString from "magic-string";
 import type { Plugin, ViteDevServer } from "vite";
-import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import { findSsrImportCallSites } from "./findSsrSpecifiers.mjs";
 
 const log = debug("rwsdk:vite:ssr-bridge-plugin");
@@ -77,72 +76,39 @@ export const ssrBridgePlugin = ({
         log("Worker environment esbuild configuration complete");
       }
     },
-    async resolveId(id) {
-      // Skip during directive scanning to avoid performance issues
-      if (process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE) {
+    async resolveId(source, importer, options) {
+      if (!isDev) {
         return;
       }
 
-      if (isDev) {
-        // context(justinvdm, 27 May 2025): In dev, we need to dynamically load
-        // SSR modules, so we return the virtual id so that the dynamic loading
-        // can happen in load()
-        if (id.startsWith(VIRTUAL_SSR_PREFIX)) {
-          if (id.endsWith(".css")) {
-            const newId = id + ".js";
-            log(
-              "Virtual CSS module, adding .js suffix. old: %s, new: %s",
-              id,
-              newId,
-            );
-            return newId;
-          }
+      // Proactively prevent stale bridge errors by stripping the hash
+      // before the module is loaded.
+      if (source.includes("deps_ssr/rwsdk___ssr_bridge")) {
+        const [basePath] = source.split("?");
+        log(
+          "SSR Bridge dependency detected. Stripping version hash. Original: %s, Stripped: %s",
+          source,
+          basePath,
+        );
+        // Return a resolved module to bypass the default resolution
+        return await this.resolve(basePath, importer, {
+          ...options,
+          skipSelf: true,
+        });
+      }
 
-          log("Returning virtual SSR id for dev: %s", id);
-          return id;
-        }
+      if (
+        source === "rwsdk/__ssr_bridge" &&
+        this.environment.name === "worker"
+      ) {
+        const virtualId = `${VIRTUAL_SSR_PREFIX}${source}`;
+        log(
+          "Bridge module case (dev): id=%s matches rwsdk/__ssr_bridge in worker environment, returning virtual id=%s",
+          source,
+          virtualId,
+        );
 
-        // context(justinvdm, 28 May 2025): The SSR bridge module is a special case -
-        // it is the entry point for all SSR modules, so to trigger the
-        // same dynamic loading logic as other SSR modules (as the case above),
-        // we return a virtual id
-        if (id === "rwsdk/__ssr_bridge" && this.environment.name === "worker") {
-          const virtualId = `${VIRTUAL_SSR_PREFIX}${id}`;
-          log(
-            "Bridge module case (dev): id=%s matches rwsdk/__ssr_bridge in worker environment, returning virtual id=%s",
-            id,
-            virtualId,
-          );
-
-          return virtualId;
-        }
-      } else {
-        // In build mode, the behavior depends on the build pass
-        if (id.startsWith(VIRTUAL_SSR_PREFIX)) {
-          if (this.environment.name === "worker") {
-            log(
-              "Virtual SSR module case (build-worker pass): resolving to external",
-            );
-            return { id, external: true };
-          }
-        }
-
-        if (id === "rwsdk/__ssr_bridge" && this.environment.name === "worker") {
-          if (process.env.RWSDK_BUILD_PASS === "worker") {
-            // First pass: resolve to a temporary, external path
-            log(
-              "Bridge module case (build-worker pass): resolving to external path",
-            );
-            return { id: INTERMEDIATE_SSR_BRIDGE_PATH, external: true };
-          } else if (process.env.RWSDK_BUILD_PASS === "linker") {
-            // Second pass (linker): resolve to the real intermediate build
-            // artifact so it can be bundled in.
-            log(
-              "Bridge module case (build-linker pass): resolving to bundleable path",
-            );
-            return { id: INTERMEDIATE_SSR_BRIDGE_PATH, external: false };
-          }
-        }
+        return virtualId;
       }
     },
     async load(id) {
@@ -169,48 +135,58 @@ export const ssrBridgePlugin = ({
 
         if (isDev) {
           log("Dev mode: fetching SSR module for realPath=%s", idForFetch);
+
           const result =
             await devServer?.environments.ssr.fetchModule(idForFetch);
 
-          process.env.VERBOSE &&
-            log("Fetch module result: id=%s, result=%O", idForFetch, result);
-
-          const code = "code" in result ? result.code : undefined;
-
-          if (
-            idForFetch.endsWith(".css") &&
-            !idForFetch.endsWith(".module.css")
-          ) {
+          if (result) {
             process.env.VERBOSE &&
-              log("Plain CSS file, returning empty module for %s", idForFetch);
-            return "export default {};";
+              log("Fetch module result: id=%s, result=%O", idForFetch, result);
+
+            const code = "code" in result ? result.code : undefined;
+
+            if (
+              idForFetch.endsWith(".css") &&
+              !idForFetch.endsWith(".module.css")
+            ) {
+              process.env.VERBOSE &&
+                log(
+                  "Plain CSS file, returning empty module for %s",
+                  idForFetch,
+                );
+              return "export default {};";
+            }
+
+            log("Fetched SSR module code length: %d", code?.length || 0);
+
+            const s = new MagicString(code || "");
+            const callsites = findSsrImportCallSites(
+              idForFetch,
+              code || "",
+              log,
+            );
+
+            for (const site of callsites) {
+              const normalized = site.specifier.startsWith("/@id/")
+                ? site.specifier.slice("/@id/".length)
+                : site.specifier;
+              // context(justinvdm, 11 Aug 2025):
+              // - We replace __vite_ssr_import__ and __vite_ssr_dynamic_import__
+              //   with import() calls so that the module graph can be built
+              //   correctly (vite looks for imports and import()s to build module
+              //   graph)
+              // - We prepend /@id/$VIRTUAL_SSR_PREFIX to the specifier so that we
+              //   can stay within the SSR subgraph of the worker module graph
+              const replacement = `import("/@id/${VIRTUAL_SSR_PREFIX}${normalized}")`;
+              s.overwrite(site.start, site.end, replacement);
+            }
+
+            const out = s.toString();
+            log("Transformed SSR module code length: %d", out.length);
+            process.env.VERBOSE &&
+              log("Transformed SSR module code for realId=%s: %s", realId, out);
+            return out;
           }
-
-          log("Fetched SSR module code length: %d", code?.length || 0);
-
-          const s = new MagicString(code || "");
-          const callsites = findSsrImportCallSites(idForFetch, code || "", log);
-
-          for (const site of callsites) {
-            const normalized = site.specifier.startsWith("/@id/")
-              ? site.specifier.slice("/@id/".length)
-              : site.specifier;
-            // context(justinvdm, 11 Aug 2025):
-            // - We replace __vite_ssr_import__ and __vite_ssr_dynamic_import__
-            //   with import() calls so that the module graph can be built
-            //   correctly (vite looks for imports and import()s to build module
-            //   graph)
-            // - We prepend /@id/$VIRTUAL_SSR_PREFIX to the specifier so that we
-            //   can stay within the SSR subgraph of the worker module graph
-            const replacement = `import("/@id/${VIRTUAL_SSR_PREFIX}${normalized}")`;
-            s.overwrite(site.start, site.end, replacement);
-          }
-
-          const out = s.toString();
-          log("Transformed SSR module code length: %d", out.length);
-          process.env.VERBOSE &&
-            log("Transformed SSR module code for realId=%s: %s", realId, out);
-          return out;
         }
       }
     },

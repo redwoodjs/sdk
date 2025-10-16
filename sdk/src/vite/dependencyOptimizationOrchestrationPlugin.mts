@@ -9,36 +9,25 @@ export const dependencyOptimizationOrchestrationPlugin = (): Plugin => {
     configureServer(server: ViteDevServer) {
       // Return a function to ensure our middleware is placed after internal middlewares
       return () => {
-        server.middlewares.use(async function rwsdkStaleBundleErrorHandler(
+        server.middlewares.use(function rwsdkStaleBundleErrorHandler(
           err: any,
           req: any,
           res: any,
           next: any,
         ) {
-          // The 'stale pre-bundle' error originates from `DevEnvironment.fetchModule`.
-          // When Vite re-optimizes dependencies, it creates new bundle files in
-          // `node_modules/.vite/deps`. If a module is still referencing the old
-          // bundle file (with the outdated `v=` hash), this error is thrown.
-          // We catch it here to prevent a server crash and to diagnose which
-          // module is holding onto the stale import.
           if (
             err &&
             typeof err.message === "string" &&
             err.message.includes("new version of the pre-bundle")
           ) {
             log(
-              "Caught stale pre-bundle error. Invalidating all module graphs and suspending request...",
+              "Caught stale pre-bundle error. Invalidating worker and SSR module graphs and suspending request.",
             );
-            log(err.stack);
-
-            // Invalidate all module graphs to clear stale transformed code.
-            server.environments.ssr.moduleGraph.invalidateAll();
             server.environments.worker.moduleGraph.invalidateAll();
-            server.environments.client.moduleGraph.invalidateAll();
-
-            // Suspend the response to allow the client's HMR reload to take over.
-            // The request will time out on the client, which is the desired
-            // behavior for a request that can no longer be fulfilled.
+            server.environments.ssr.moduleGraph.invalidateAll();
+            // By not calling next(), we suspend the request. Vite's native HMR
+            // will trigger a client reload, which will cancel this hanging
+            // request and start a fresh one.
             return;
           }
           next(err);

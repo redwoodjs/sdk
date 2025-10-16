@@ -254,3 +254,49 @@ This plan uses monkey-patching to create the "optimization in progress" signal t
     a.  On every incoming request, it will check if the `activeOptimizationPromises` `Set` is empty.
     b.  If the set is not empty, it will `await Promise.all([...activeOptimizationPromises])`, effectively pausing the request until all concurrent re-optimizations are finished.
     c.  Once all promises are resolved, it calls `next()` to allow the request to proceed to a now-stable server.
+ 
+ ### Finding: Cross-Environment Staleness is the Root Cause
+ 
+ Analysis of the stack trace when the "new version of the pre-bundle" error is correctly caught reveals the true nature of the problem:
+ 
+ 1.  A dependency re-optimization is triggered in the **`ssr` environment**. This is often logged by Vite with the message "optimized dependencies changed. reloading".
+ 2.  The **`worker` environment** is not immediately aware of this change. A module within the worker's graph (e.g., `sdk/dist/runtime/imports/worker.js`) holds a stale reference to an `ssr` dependency (like `rwsdk/__ssr_bridge`) that was resolved using the *old* version hash.
+ 3.  When the worker's code executes, its stale import triggers a request for the old SSR dependency. The SSR environment correctly rejects this, throwing the "new version of the pre-bundle" error.
+ 
+ The root cause is a state synchronization failure between Vite's `ssr` and `worker` environments. When the `ssr` environment changes, the `worker` environment must also be updated to prevent it from using stale, cached information.
+ 
+ ### The "Blunt Hammer" Plan: Forcing Worker Synchronization
+ 
+ Based on the cross-environment finding, the most direct solution is to force the stale environment (`worker`) to synchronize its state after the `ssr` environment changes.
+ 
+ 1.  **The Hook:** The 4-argument error middleware in `dependencyOptimizationOrchestrationPlugin.mts`.
+ 2.  **The Detection:** Catch the "new version of the pre-bundle" error.
+ 3.  **The Action:** Upon catching the error, execute a comprehensive reset:
+     a.  **Invalidate All Module Graphs:** Call `invalidateAll()` on the `ssr`, `worker`, and `client` module graphs to clear all cached transformed modules.
+     b.  **Force Worker Optimizer Re-run:** Call `server.environments.worker.depsOptimizer.run()`. This is the critical step that forces the worker's optimizer to re-evaluate its dependency state, synchronizing it with the now-updated `ssr` environment.
+     c.  **Suspend Request:** Suspend the original, failed request.
+ 
+ #### Key Assumptions and Considerations:
+ 
+ *   **Race Conditions:** A race condition between optimizer runs is considered unlikely. The error we catch is a signal that the `ssr` optimization has already completed. Our subsequent call to `worker.depsOptimizer.run()` is a reaction to this completed event, not a concurrent operation.
+ *   **Client-Side Reload:** It is not guaranteed that an `ssr` re-optimization will always trigger a `full-reload` HMR signal to the client. The initial implementation will rely on Vite's default behavior. If the browser does not reload consistently, we may need to manually send an HMR signal (`server.hot.send({ type: 'full-reload' })`) as a future enhancement.
+ 
+ ### Finding: "Blunt Hammer" Fails Due to Optimizer Lifecycle
+ 
+ The "Blunt Hammer" approach of forcing the worker's dependency optimizer to `run()` after an SSR optimization did not solve the issue. The logs show that even after explicitly triggering the worker's optimizer, the subsequent request immediately fails with the same "new version of the pre-bundle" error.
+ 
+ This indicates a deeper issue with the optimizer's lifecycle. Our `run()` call triggers a new optimization, but there is no mechanism to `await` its completion. The suspended request is released by the browser's reload, and it hits the server while the worker optimization is still in-flight, leading to the same race condition. Without a reliable hook to know when the worker's optimization is complete, this approach is not viable.
+ 
+ ### The Surgical Plan: Proactive and Reactive Fixes in the SSR Bridge
+ 
+ We are pivoting back to a more surgical approach within the `ssrBridgePlugin.mts` `load` hook, combining proactive prevention with reactive recovery.
+ 
+ 1.  **Proactive Hash-Stripping for the SSR Bridge:** The most critical point of failure is the `rwsdk/__ssr_bridge` module itself. We will proactively prevent errors for this module.
+     -   **Detection:** Before fetching a module, we will check if its ID matches the pattern for an optimized SSR bridge (e.g., contains `deps_ssr/rwsdk___ssr_bridge`).
+     -   **Action:** If it matches, we will strip the `?v=...` version hash from the ID. This ensures we always request the latest version of the bridge, preventing the error for this specific module without risking the React runtime mismatch we've seen with other dependencies.
+ 
+ 2.  **Reactive Invalidation for All Other Dependencies:** For any other dependency (like `react`) that throws a "stale pre-bundle" error, we will accept that the current render is unsalvageable and focus on resetting the server's state for the next request.
+     -   **Detection:** The `fetchModule` call will be wrapped in a `try...catch` block.
+     -   **Action:** If a "new version of the pre-bundle" error is caught, we will invalidate the module graphs for the `worker` and `ssr` environments to clear their stale state. The error will then be re-thrown to fail the current request, allowing Vite's native HMR to trigger a page reload which will act as the clean, recovered request.
+ 
+ This two-part strategy addresses the most common failure point (the bridge) proactively, while providing a robust reactive fallback for all other dependencies.
