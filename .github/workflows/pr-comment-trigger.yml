@@ -20,6 +20,9 @@ jobs:
       ) &&
       startsWith(github.event.comment.body, '/check')
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
       - name: Get PR head SHA
         id: get_sha
         run: |
