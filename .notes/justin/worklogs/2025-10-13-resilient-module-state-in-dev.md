@@ -439,16 +439,189 @@ This leads to two potential long-term solutions:
  1.  **The Hook:** Use the `configureServer` hook in `ssrBridgePlugin.mts`.
  2.  **The Action:** Listen for `full-reload` events on `server.environments.ssr.hot` and propagate them to `server.environments.worker.hot`. This should finally trigger the `clearCache()` method on the correct `CustomModuleRunner`, resolving the stale state.
  
- ### Breakthrough: The Direction of Invalidation is Reversed
+ ### Finding: `hot.on` is for Inbound Events, Interception of `hot.send` is Required
  
- The previous attempt failed because the fundamental assumption about HMR event flow was incorrect.
+ The HMR propagation attempt failed again. The log message "Detected `full-reload`..." never appeared, confirming that the `hot.on('full-reload', ...)` listener is never called.
  
- 1.  **The Trigger is SSR:** The logs clearly show that dependency optimization and the subsequent "reloading" message originate from the `ssr` environment. Therefore, the `full-reload` event is dispatched from `server.environments.ssr.hot`.
- 2.  **The Cache is in the Worker:** There is no module runner used for the `ssr` environment in our architecture. Modules are only *fetched* from it. The actual code *evaluation* and caching of the executed result happens exclusively within the **worker's `CustomModuleRunner`**.
+ The reason is a fundamental misunderstanding of Vite's HMR API:
  
- This means the HMR propagation must flow from **SSR to Worker**, not the other way around. The goal is to inform the worker's runner that its cache is stale because the SSR dependencies it relies on have changed.
+ -   `hot.on()`: This method is for listening to **inbound** events sent *from* a client (via `import.meta.hot.send()`) to the server. It is not a hook for server-side event monitoring.
+ -   `hot.send()`: This method is for **outbound** broadcasts *from* the server to its connected clients.
  
- **The Corrected Plan:**
+ The dependency optimizer calls `hot.send()`. Our listener was using `hot.on()`. The two are not connected.
+ 
+ To solve this, we must intercept the `hot.send()` call itself. By wrapping the original method, we can inspect the outbound payloads, and when we see a `full-reload` event from the SSR environment, we can manually trigger a corresponding `full-reload` in the worker environment.
+ 
+ **The Definitive Plan:**
  
  1.  **The Hook:** Use the `configureServer` hook in `ssrBridgePlugin.mts`.
- 2.  **The Action:** Listen for `full-reload` events on `server.environments.ssr.hot` and propagate them to `server.environments.worker.hot`. This should finally trigger the `clearCache()` method on the correct `CustomModuleRunner`, resolving the stale state.
+ 2.  **The Action:** Monkey-patch (wrap) the `server.environments.ssr.hot.send` method. The wrapper function will check for `full-reload` payloads, forward them to the `worker` environment's `hot.send`, and then call the original `send` method to preserve default behavior.
+ 
+ ### Final Finding: An Unsalvageable Request, Not a Race Condition
+ 
+ The previous theory about a race condition with the browser was incorrect, as the HMR client is the `CustomModuleRunner` itself, not a browser. `ssr.hot.send()` is a no-op as there is no client connected.
+ 
+ The core issue is that the `full-reload` message sent to the worker's HMR channel is not preventing the stale error. This is because the original, in-flight request that triggered the optimization is already in a corrupted state and is unsalvageable. Sending an HMR message only prepares the server for *future* requests; it cannot save the current one.
+ 
+ ### The Definitive Solution: Decouple State Reset and Request Retry
+ 
+ We must handle the two concerns separately: resetting the server's state, and gracefully retrying the request.
+ 
+ 1.  **`ssrBridgePlugin.mts` (State Reset):** The `send` interceptor on the SSR HMR channel is the correct place to trigger a full-system reset. When a `full-reload` is detected, it will:
+     *   Invalidate both the `worker` and `ssr` module graphs.
+     *   Propagate the `full-reload` event to the worker's HMR channel to clear the `CustomModuleRunner`'s execution cache.
+     *   It will **not** call the original `send`, as it's a no-op.
+ 2.  **`dependencyOptimizationOrchestrationPlugin.mts` (Request Retry):** An error-handling middleware is still required. It will catch the inevitable "stale pre-bundle" error from the unsalvageable in-flight request and respond with a `307 Temporary Redirect`, which instructs the client (in this case, the parent worker) to re-issue the same request.
+ 
+ This creates a robust, ordered sequence: The server state is reset, the doomed request is gracefully terminated with a redirect, and the redirect triggers a fresh request against the now-clean server.
+ 
+ ### Final Finding: The HMR Invalidation Chain is Broken
+ 
+ The previous theory about an unsalvageable request, while partially true, was still missing the root cause. The latest tests, which involved re-enabling the redirect middleware, proved that even after a successful state reset and a fresh request, the `CustomModuleRunner`'s cache is *still* stale.
+ 
+ This points to one unshakable conclusion: the `full-reload` HMR message we are propagating to the worker environment is not successfully triggering the `runner.clearCache()` method. The invalidation chain is broken somewhere inside the `vite-plugin-cloudflare` implementation.
+ 
+ ### The Diagnostic Plan: Trace the HMR Message
+ 
+ We must shift from implementing solutions to performing direct diagnostics. The plan is to add temporary logging statements inside the compiled `vite-plugin-cloudflare` code within `node_modules` to trace the HMR message's path and find where it breaks down.
+ 
+ 1.  **Log on Receive:** Add a log inside the `webSocket.addEventListener("message", ...)` handler to confirm the `full-reload` payload is arriving at the runner.
+ 2.  **Log in Handler:** Add a log inside the `case 'full-reload':` block within the HMR handler to confirm the payload is being correctly dispatched.
+ 3.  **Log on Clear:** Add a log inside the `runner.clearCache()` method to confirm it is being called.
+ 
+ This will give us definitive proof of where the chain is broken.
+
+### Attempt #11: Monkey-patch `vite-plugin-cloudflare` for diagnostics
+
+**Hypothesis:** The `full-reload` HMR message is being correctly propagated to the worker's HMR channel, but the `CustomModuleRunner`'s internal `evaluatedModules` cache is not being cleared, causing it to retain stale module references.
+
+**Plan:**
+- Add `console.log` statements directly into the compiled `vite-plugin-cloudflare` code within `node_modules` at three key locations:
+    1.  The WebSocket `message` event listener, to see the raw payload.
+    2.  The `full-reload` case in the HMR handler, to see if it's dispatched.
+    3.  The `runner.evaluatedModules.clear()` call, to confirm the cache is cleared.
+
+**Findings:**
+- After adding the logs and re-running the scenario, **none of the diagnostic logs appeared in the console**.
+- This is a significant finding. It proves that the HMR message is not reaching the runner's WebSocket at all. The point of failure is earlier in the chain than hypothesized.
+
+### Attempt #12: Verify HMR Client Connection
+
+**Hypothesis:** The `server.environments.worker.hot.send()` call in the `ssrBridgePlugin` is a no-op because the `CustomModuleRunner`'s WebSocket is not registered as a client on the worker environment's WebSocket server (`server.environments.worker.ws`).
+
+**Plan:**
+- In the `ssrBridgePlugin.mts` monkey-patch, add a `console.log` to inspect `server.environments.worker.ws.clients.size` just before calling `send()`.
+- If the size is 0, it confirms our hypothesis that there are no connected clients to send the HMR message to.
+- If the size is greater than 0, it implies the message is being sent but dropped for another reason, which would require further investigation into Vite's HMR internals.
+
+**Findings:**
+- The `DevEnvironment` type does not have a `.ws` property. It has a `.hot` property, which is an abstraction (`NormalizedHotChannel`) based on an EventEmitter. The number of clients is not directly exposed.
+- A `grep` for `.hot.on` in `vite-plugin-cloudflare`'s `dist/index.js` returned no results.
+- A subsequent `grep` for `WebSocket` revealed the plugin's mechanism: it creates its own `WebSocketServer` and attaches to the underlying `httpServer`'s `'upgrade'` event. It directly proxies WebSocket connections to Miniflare, completely bypassing Vite's `hot` channel API.
+- **This is the root cause:** The plugin never subscribes to Vite's HMR events on the server side, so our `worker.hot.send()` call has no listeners and does nothing.
+
+**Correction & Revised Plan:**
+- The user corrected the previous assumption that the `hot` channel was being bypassed. The `DevEnvironment` API is designed to abstract the transport layer, so the `worker.hot.send()` call *should* be the correct method.
+- The fact that no logs appeared in the runner is the most critical piece of evidence. The current plan is to re-run the test and confirm whether any messages are being logged in the runner's console now that we are sure the correct file has been instrumented.
+
+### Attempt #13: Analyzing Runner Logs and Identifying the Race Condition
+
+**Findings:**
+- After correctly instrumenting `dist/runner-worker/index.js`, the logs confirmed that the `full-reload` HMR message is successfully received by the runner, the `full-reload` handler is triggered, and `runner.evaluatedModules.clear()` is called.
+- However, an error is thrown immediately *after* the cache is cleared.
+- The stack trace shows the error originates from the `for...of` loop inside the `full-reload` handler which attempts to immediately re-import all entry points (`await runner.import(url)`).
+
+**Conclusion:**
+- This reveals the root cause: a race condition. The runner clears its cache and immediately re-requests modules from the Vite server. However, the Vite server has not yet completed its own asynchronous dependency re-optimization process. The runner's request arrives too early, hits the server's stale dependency metadata, and triggers the "stale pre-bundle" error.
+
+**Realization & The Missing Piece:**
+- The user correctly pointed out that a previous attempt to solve this using middleware and a 307 redirect resulted in a never-ending loop, where the `ssr_bridge` module was repeatedly reported as stale.
+- The reason that loop occurred was that the `CustomModuleRunner`'s internal cache (`evaluatedModules`) was never being cleared. On every request after the redirect, the runner would use its stale cache to re-request the bridge with an old, invalid version hash, triggering the error again.
+- Our successful diagnostic test has now proven that forwarding the `full-reload` HMR event is the key. It is the only mechanism that successfully clears the runner's internal cache, which was the missing piece in our previous attempts.
+
+**Plan:**
+- Modify the `full-reload` handler in `dist/runner-worker/index.js` to remove the aggressive re-import loop. Its sole responsibility should be to clear the `evaluatedModules` cache. The runner will then be in a clean state, ready for a subsequent request to re-populate its modules after the server has stabilized.
+
+### Attempt #14: The Combined Solution - HMR Bridge and Middleware
+
+**Plan:**
+- **Do not modify `node_modules`.** The previous plan is invalid as it relies on patching a dependency.
+- The correct solution is to combine two of our own plugins to work with the existing behavior of `vite-plugin-cloudflare`.
+- **1. Keep the HMR Bridge (`ssrBridgePlugin.mts`):** The monkey-patch that forwards the `full-reload` event to the worker is essential. This is what clears the `CustomModuleRunner`'s internal cache, preventing the infinite loop.
+- **2. Re-enable the Middleware (`dependencyOptimizationOrchestrationPlugin.mts`):** This middleware will act as a safety net. It will catch the one expected "stale pre-bundle" error that occurs during the runner's premature re-import and issue a 307 Temporary Redirect.
+- This combination allows the runner's state to be cleared correctly while gracefully managing the inevitable race condition, giving the Vite server time to stabilize before the next request.
+
+### Attempt #15: Proving the Race Condition with Granular Logging
+
+**Correction:**
+- The user correctly pointed out that the previous combined plan is likely flawed. We have already observed that even when the runner's logs indicate its cache is cleared, a stale module error still occurs. This suggests the "clearing" is not effective in preventing the issue, or there is a timing issue we do not yet understand.
+
+**Revised Plan:**
+- Instead of re-implementing a potentially flawed solution, the next step is to gather more precise diagnostic evidence to prove the race condition hypothesis.
+- We will add more granular logging to establish a definitive timeline of events:
+    1.  **HMR Sent:** Logged in `ssrBridgePlugin.mts` when the `full-reload` is forwarded.
+    2.  **Cache Cleared:** Logged in `dist/runner-worker/index.js` inside the `full-reload` handler.
+    3.  **Re-import Attempted:** A new log will be added to `dist/runner-worker/index.js` immediately before the `runner.import()` loop.
+    4.  **Failure Captured:** Logged by the middleware in `dependencyOptimizationOrchestrationPlugin.mts` when the "stale pre-bundle" error is caught.
+- Analyzing the sequence of these logs in the console will confirm the exact timing and prove whether the runner's re-import attempt is happening before the Vite server is ready.
+
+**Findings:**
+- The validation test confirmed the race condition. Disabling the runner's re-import loop in `node_modules` prevented the "stale pre-bundle" error.
+- However, simply re-enabling the middleware with a 307 redirect still resulted in an infinite loop, proving that the solution is not that simple. The redirect itself re-triggers the error before the server can stabilize.
+
+**Revised Conclusion:**
+- We cannot fix the race condition at the runner level without patching `node_modules`.
+- We must handle the error at a higher level, but a simple redirect is not sufficient as it re-triggers the race condition.
+- The correct approach must be to use the error as a signal to perform a comprehensive, system-wide reset that includes the server *and* the client, ensuring the next request starts from a truly clean slate.
+
+### Attempt #16: System-Wide Reset from Middleware
+
+**Plan:**
+- The middleware in `dependencyOptimizationOrchestrationPlugin.mts` will be our primary control point.
+- When it catches the "stale pre-bundle" error, it will perform the following actions:
+  1.  **Invalidate Server Caches:** Call `server.moduleGraph.invalidateAll()` on both the `worker` and `ssr` environments.
+  2.  **Trigger Runner Cache Clear:** Broadcast a `full-reload` HMR message directly to the worker's HMR channel via `server.environments.worker.hot.send()`.
+  3.  **End the Doomed Request:** Respond with a `205 Reset Content` status to tell the browser the request is finished, allowing the HMR reload to take over.
+
+**Findings:**
+- The test was run with two variations:
+    1.  **With the runner's re-import loop enabled:** The middleware caught the `ssr_bridge` error as expected, but the `205` response caused the client-side infrastructure to break, resulting in a blank page. The connection was unexpectedly closed.
+    2.  **With the runner's re-import loop disabled (via patch):** The `ssr_bridge` error disappeared, confirming the race condition theory. However, the client-side still broke with a blank page due to the `205` response.
+- **Conclusion:** Our race condition theory is correct, but our solution of responding with a `205` is too disruptive. The client's streaming infrastructure cannot handle the unexpected termination of the request.
+
+### Attempt #17: Suspending the Request
+
+**Hypothesis:** Instead of terminating the failing request, we should "suspend" it and let an out-of-band HMR message trigger the client-side refresh.
+
+**Plan:**
+- The middleware in `dependencyOptimizationOrchestrationPlugin.mts` will be modified.
+- When it catches the "stale pre-bundle" error, it will:
+  1.  Perform the same reset actions: invalidate all server module graphs and send the `full-reload` message to the worker's HMR channel.
+  2.  **Crucially, it will not respond to the request.** It will neither call `next()` nor `res.end()`. This will leave the HTTP request pending.
+- The theory is that the `full-reload` HMR message will reach the client and trigger a full page refresh, which will initiate a new, clean request. The original, suspended request will eventually time out and be discarded, but by then, the new navigation will have taken over.
+
+**Rejection of the "Suspend" Plan:**
+- The user correctly pointed out two critical flaws with this plan:
+  1.  **Past Failures:** We have tried variations of suspending the request before, and it has consistently resulted in an infinite reload loop centered on the `rwsdk___ssr_bridge` module. The plan does not adequately explain why this attempt would be different.
+  2.  **No-JS Edge Case:** The plan relies on a client-side HMR client to receive the `full-reload` signal and refresh the page. This would fail completely for pages that do not have client-side JavaScript, a valid use case for this framework.
+- For these reasons, this plan is considered invalid and will not be pursued.
+
+### A Deeper Synthesis: The In-Flight Promise Cache
+
+**Synthesized Finding:**
+- A comprehensive review of the entire work log, prompted by the user's correct skepticism, reveals a persistent pattern: even after the `CustomModuleRunner`'s `evaluatedModules` cache is cleared, a subsequent request immediately fails with the same stale module error. This implies a second, persistent caching layer.
+- The `ModuleRunner` implementation in Vite Core (and used by `vite-plugin-cloudflare`) contains a second cache: `concurrentModuleNodePromises`. This is a `Map` that stores in-flight promises for module requests to prevent redundant fetching.
+- The `full-reload` HMR handler, which calls `clearCache()`, only clears the `evaluatedModules` cache. It does **not** clear `concurrentModuleNodePromises`.
+
+**New Hypothesis:**
+- The infinite loop is caused by this second cache.
+  1. A request begins, and the runner creates a pending promise for a module (e.g., `ssr_bridge`), storing it in `concurrentModuleNodePromises`.
+  2. This fetch triggers a re-optimization, making the pending promise stale.
+  3. A `full-reload` event clears `evaluatedModules`, but the stale promise remains in `concurrentModuleNodePromises`.
+  4. A new request (from a redirect or reload) arrives and asks for the same module.
+  5. The runner finds the still-pending stale promise in `concurrentModuleNodePromises` and re-uses it.
+  6. The stale promise eventually resolves with an old version hash, causing the "stale pre-bundle" error and restarting the loop.
+
+**Revised Diagnostic Plan:**
+- To prove this hypothesis, we will add a diagnostic log to the `cachedModule` method in the patched `dist/runner-worker/index.js`.
+- This log will indicate whether a cached promise is being re-used from `concurrentModuleNodePromises`. If we see this log fire on the second request in the loop, it will confirm this theory is correct.

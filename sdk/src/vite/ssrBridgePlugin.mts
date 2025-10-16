@@ -21,20 +21,31 @@ export const ssrBridgePlugin = ({
   const ssrBridgePlugin: Plugin = {
     name: "rwsdk:ssr-bridge",
     enforce: "pre",
-    async configureServer(server: ViteDevServer) {
+    configureServer(server: ViteDevServer) {
       devServer = server;
       log("Configured dev server");
 
-      // Propagate HMR events from the SSR environment to the worker. This is
-      // necessary because dependency optimization happens in the SSR env, but
-      // the stale execution cache that needs clearing is in the worker's
-      // module runner.
-      server.environments.ssr.hot.on("full-reload", () => {
-        log("Detected `full-reload` in SSR environment, propagating to worker");
-        server.environments.worker.hot.send({
-          type: "full-reload",
-        });
-      });
+      // Intercept the `send` method on the SSR environment's HMR channel.
+      // We need to do this because `hot.on()` is for listening to inbound
+      // client events, but we need to intercept outbound server events.
+      const ssrHot = server.environments.ssr.hot;
+      const originalSend = ssrHot.send;
+
+      // @ts-expect-error - we are monkey-patching `send`
+      ssrHot.send = (...args: Parameters<typeof originalSend>) => {
+        const payload = args[0] as unknown as any;
+
+        if (typeof payload === "object" && payload.type === "full-reload") {
+          log(
+            "Intercepted `full-reload` in SSR environment, propagating to worker",
+          );
+          server.environments.worker.moduleGraph.invalidateAll();
+          //server.environments.ssr.moduleGraph.invalidateAll();
+          server.environments.worker.hot.send(payload);
+        }
+
+        return originalSend.apply(ssrHot, args);
+      };
     },
     config(_, { command, isPreview }) {
       isDev = !isPreview && command === "serve";
