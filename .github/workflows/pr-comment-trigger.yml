@@ -20,16 +20,24 @@ jobs:
       ) &&
       startsWith(github.event.comment.body, '/check')
     steps:
+      - name: Get PR head SHA
+        id: get_sha
+        run: |
+          SHA=$(gh pr view ${{ github.event.issue.number }} --json headRefOid --jq '.headRefOid')
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Trigger Smoke Tests
         run: |
-          gh workflow run smoke-test.yml --ref "refs/pull/${{ github.event.issue.number }}/head"
+          gh workflow run smoke-test.yml --ref "${{ steps.get_sha.outputs.sha }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
 
       - name: Trigger Playground E2E Tests
         run: |
-          gh workflow run playground-e2e-tests.yml --ref "refs/pull/${{ github.event.issue.number }}/head"
+          gh workflow run playground-e2e-tests.yml --ref "${{ steps.get_sha.outputs.sha }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
