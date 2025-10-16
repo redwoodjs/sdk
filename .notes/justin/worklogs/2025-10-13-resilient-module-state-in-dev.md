@@ -349,3 +349,58 @@ This plan uses monkey-patching to create the "optimization in progress" signal t
  ### New Investigation: Invalidating the `CustomModuleRunner` Cache
  
  The problem is now redefined. We are no longer fighting Vite's cache, but Cloudflare's. The next step is to investigate the `vite-plugin-cloudflare` source code, specifically the `CustomModuleRunner`, to understand its caching mechanism and, most importantly, to find the API or event that is used to invalidate it. A mechanism for cache invalidation must exist, otherwise no dependency re-optimization would ever work in a Cloudflare/Vite project. Our goal is to find this mechanism and call it from our error-handling middleware.
+
+### Finding: The `vite-plugin-cloudflare` Invalidation Mechanism
+
+An analysis of the `vite-plugin-cloudflare` source code (`miniflare-options.ts`) reveals the intended cache invalidation mechanism. The `CustomModuleRunner` does not handle invalidation itself. Instead, it uses a service binding (`__VITE_INVOKE_MODULE__`) to proxy HMR events and module requests back to the main Vite server's `devEnvironment.hot.handleInvoke` API.
+
+In theory, when we call `moduleGraph.invalidateAll()`, Vite should send an HMR message that is received by the `CustomModuleRunner` and passed back to the Vite dev environment, which should then purge the stale module from the `evaluatedModules` cache.
+
+The fact that we are stuck in an infinite loop proves this chain is broken. The `CustomModuleRunner`'s cache is not being correctly purged, and it continues to serve a stale module that triggers the error on every reload.
+
+### The "Cache Buster" Experiment
+
+To definitively prove that the `CustomModuleRunner`'s cache is the source of the loop, and to find a potential workaround, we will implement a cache-busting strategy.
+
+**Hypothesis:** By appending a unique query parameter to the URL during our server-side redirect, we can force all intermediate caches (including the `CustomModuleRunner`) to treat the request as a new, uncached entry. This will bypass the stale cache and force a re-fetch from the now-clean Vite module graph. This approach has been superseded by the `fetchModule({ cached: false })` plan.
+
+**The Plan:**
+
+1.  **The Hook:** The 4-argument error middleware in `dependencyOptimizationOrchestrationPlugin.mts`.
+2.  **The Detection:** Catch the "new version of the pre-bundle" error.
+3.  **The Action:**
+    a.  **Invalidate Graphs:** Invalidate the `worker` and `ssr` module graphs.
+    b.  **Issue Cache-Busting Redirect:** Send an HTTP 307 redirect, but this time to a modified URL. It will append a unique query parameter (e.g., `?stale-cache-bust=<timestamp>`) to the existing `req.url`. This ensures the re-request is seen as a new, unique URL by all caching layers.
+
+### Corrected Understanding of the Invalidation Chain
+
+Previous analysis incorrectly stated that the `ModuleRunner` itself contained the logic for handling a `full-reload`. The correct mechanism is a chain of events that passes the HMR message from the Vite server to the Cloudflare runner.
+
+Here is the step-by-step flow for a standard `vite-plugin-cloudflare` project:
+
+1.  **The Trigger (Vite Core):** A file change triggers a dependency re-optimization. Upon completion, Vite's `DepsOptimizer` broadcasts a `{ type: 'full-reload' }` message to all connected HMR clients. This happens inside `packages/vite/src/node/optimizer/optimizer.ts` in the `fullReload()` function.
+
+2.  **Runner Receives HMR Message (`vite-plugin-cloudflare`):** The `__VITE_RUNNER_OBJECT__`, a Durable Object living inside Miniflare, maintains an active WebSocket connection to the Vite dev server. Its listener receives the `full-reload` message.
+    -   *File:* `packages/vite-plugin-cloudflare/src/runner-worker/module-runner.ts`
+    -   *Code:* `webSocket.addEventListener("message", ...)`
+
+3.  **HMR Handler is Invoked (Vite Core):** The WebSocket listener passes the parsed message to an `onMessage` handler. This handler was created and passed to the runner's transport when it was initialized.
+    -   *File:* `packages/vite/src/module-runner/runner.ts`
+    -   *Code:* `this.transport.connect(createHMRHandlerForRunner(this))`
+
+4.  **`full-reload` is Processed (Vite Core):** The HMR handler contains the specific logic for each message type. For a `full-reload`, it identifies all module entrypoints and then calls `runner.evaluatedModules.clear()`.
+    -   *File:* `packages/vite/src/module-runner/hmrHandler.ts`
+    -   *Code:* Inside the `case 'full-reload':` block.
+
+5.  **Cache is Cleared (Vite Core):** The `runner.evaluatedModules.clear()` call purges all modules from the `CustomModuleRunner`'s internal cache.
+
+This confirms that `vite-plugin-cloudflare` is designed to have its cache cleared automatically via Vite's standard HMR `full-reload` event. Our infinite loop is definitive proof that this communication chain is breaking down in our multi-environment setup.
+
+### The `cached: false` Plan
+
+**Hypothesis:** Instead of trying to fix the broken HMR invalidation chain from the outside, we can bypass the problem from the inside. The `devServer.environments.ssr.fetchModule` method accepts a `cached: boolean` option. By explicitly calling it with `{ cached: false }`, we can instruct Vite to ignore its module graph cache and unconditionally re-fetch and re-transform the module. This should give us the fresh version and break the loop.
+
+**The Plan:**
+
+1.  **The Hook:** The `load` hook of our `ssrBridgePlugin.mts`.
+2.  **The Action:** Modify the `fetchModule` call to always pass `{ cached: false }` as the third argument. This will be a temporary measure to test the hypothesis. If it works, we can develop a more nuanced strategy, but for now, it serves as a crucial diagnostic test.

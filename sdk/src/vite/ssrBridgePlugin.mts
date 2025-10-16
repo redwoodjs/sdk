@@ -136,8 +136,11 @@ export const ssrBridgePlugin = ({
         if (isDev) {
           log("Dev mode: fetching SSR module for realPath=%s", idForFetch);
 
-          const result =
-            await devServer?.environments.ssr.fetchModule(idForFetch);
+          const result = await devServer?.environments.ssr.fetchModule(
+            idForFetch,
+            undefined,
+            { cached: false },
+          );
 
           if (result) {
             process.env.VERBOSE &&
