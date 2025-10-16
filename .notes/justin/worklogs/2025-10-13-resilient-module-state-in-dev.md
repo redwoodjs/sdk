@@ -404,3 +404,37 @@ This confirms that `vite-plugin-cloudflare` is designed to have its cache cleare
 
 1.  **The Hook:** The `load` hook of our `ssrBridgePlugin.mts`.
 2.  **The Action:** Modify the `fetchModule` call to always pass `{ cached: false }` as the third argument. This will be a temporary measure to test the hypothesis. If it works, we can develop a more nuanced strategy, but for now, it serves as a crucial diagnostic test.
+
+### Finding: HMR Invalidation is Not Propagating to the SSR Environment
+
+The `cached: false` experiment is underway. The core hypothesis is that the `full-reload` HMR event is successfully clearing the cache of the **worker** environment's `CustomModuleRunner`, but this invalidation is not propagating to the separate **SSR** environment.
+
+When our `ssrBridgePlugin` calls `devServer.environments.ssr.fetchModule()`, it is accessing the SSR environment's module graph directly. Since this environment never receives the invalidation event, it continues to serve stale modules from its cache, which is the root cause of the "stale pre-bundle" error and the subsequent infinite reload loop.
+
+This leads to two potential long-term solutions:
+
+1.  **Propagate HMR Events:** Find a way to forward HMR events received by the worker environment to the SSR environment, so its cache is cleared correctly.
+2.  **Disable SSR Caching:** Intentionally bypass the SSR cache using `{ cached: false }`. This might be a viable strategy if the worker environment's caching of our virtual modules (`virtual:rwsdk:ssr:*`) is sufficient to prevent performance degradation. The ongoing test will provide the first piece of evidence for this. An open question remains: how frequently is our `load` hook called for the same module? If the worker's cache doesn't prevent repeated calls, this approach could be inefficient.
+ 
+ ### Finding: `cached: false` is Ineffective, Root Problem is Worker's Runner Cache
+ 
+ The test with `fetchModule({ cached: false })` did not solve the issue. The logs show the same infinite reload loop. This provided two critical insights:
+ 
+ 1.  **`fetchModule`'s Scope:** An investigation into Vite's source code reveals that `fetchModule`'s `cached` option only controls the `ModuleGraph` cache (the stored result of transforming a file). It has **no effect** on the `ModuleRunner`'s separate, internal `evaluatedModules` cache (the stored result of *executing* a file).
+ 2.  **The Real Culprit:** The error originates in the **worker's `CustomModuleRunner`**. It holds a stale, cached *execution result* for `react`. Our `fetchModule` call to the `ssr` environment was a red herring; the true source of stale state is the worker's own execution cache, which is not being cleared by the post-optimization `full-reload` HMR event.
+ 
+ #### Unanswered Questions
+ 
+ This leaves us with two core mysteries:
+ 
+ 1.  **Why isn't the worker's cache clearing?** The `full-reload` event sent by Vite's optimizer is intended to clear the `CustomModuleRunner`'s cache. The logs prove this mechanism is failing, but we don't yet know why.
+ 2.  **Why does `rwsdk___ssr_bridge` become stale?** After the initial `react` error is caught and a redirect is issued, the browser reloads. The worker starts fresh, but because its cache was never cleared, it immediately tries to use its stale version of the `ssr_bridge`, perpetuating the loop.
+ 
+ ### Plan: Propagate HMR Events
+ 
+ The next logical step is to address the architectural gap between the two environments. If the SSR environment is not aware of HMR events happening in the worker, its state can become desynchronized. We will attempt to manually forward HMR events.
+ 
+ **The Plan:**
+ 
+ 1.  **The Hook:** Use the `configureServer` hook in `ssrBridgePlugin.mts`.
+ 2.  **The Action:** Listen for `full-reload` events on `server.environments.worker.hot` and manually forward them to `server.environments.ssr.hot`. This should cause the SSR environment's `moduleGraph` to invalidate, ensuring that any subsequent `fetchModule` call retrieves fresh code. While this may not fix the worker's cache issue directly, it will synchronize the environments and may prevent the initial stale module from being requested.
