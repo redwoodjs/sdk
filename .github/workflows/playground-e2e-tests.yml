@@ -19,6 +19,9 @@ on:
       - "src/**/*.test.*"
   workflow_dispatch:
     inputs:
+      ref:
+        description: "The branch, tag or SHA to checkout. e.g. `refs/pull/123/head`"
+        required: false
       os:
         description: "OS to run on (e.g., ubuntu-latest, macos-latest)"
         required: true
@@ -85,6 +88,18 @@ jobs:
             echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"npm"}]}' >> $GITHUB_OUTPUT
           fi
 
+  e2e-tests-pending:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name != github.repository
+    steps:
+      - name: Report pending status
+        run: |
+          echo "E2E tests for this PR have not been run."
+          echo "A maintainer must comment '/check' to start them."
+          exit 1
+
   playground-e2e:
     needs: setup-matrix
     name: Playground E2E Test
@@ -117,6 +132,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
 
       - name: Enable Corepack
         run: corepack enable

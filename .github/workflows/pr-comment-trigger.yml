@@ -1,0 +1,35 @@
+name: PR Comment Trigger
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  pull-requests: read
+  actions: write
+
+jobs:
+  slash-command-dispatch:
+    runs-on: ubuntu-latest
+    if: |
+      github.event.issue.pull_request &&
+      (
+        github.event.comment.author_association == 'OWNER' ||
+        github.event.comment.author_association == 'MEMBER' ||
+        github.event.comment.author_association == 'COLLABORATOR'
+      ) &&
+      startsWith(github.event.comment.body, '/check')
+    steps:
+      - name: Trigger Smoke Tests
+        run: |
+          gh workflow run smoke-test.yml --ref "refs/pull/${{ github.event.issue.number }}/head"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+
+      - name: Trigger Playground E2E Tests
+        run: |
+          gh workflow run playground-e2e-tests.yml --ref "refs/pull/${{ github.event.issue.number }}/head"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
