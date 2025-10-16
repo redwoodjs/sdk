@@ -437,4 +437,18 @@ This leads to two potential long-term solutions:
  **The Plan:**
  
  1.  **The Hook:** Use the `configureServer` hook in `ssrBridgePlugin.mts`.
- 2.  **The Action:** Listen for `full-reload` events on `server.environments.worker.hot` and manually forward them to `server.environments.ssr.hot`. This should cause the SSR environment's `moduleGraph` to invalidate, ensuring that any subsequent `fetchModule` call retrieves fresh code. While this may not fix the worker's cache issue directly, it will synchronize the environments and may prevent the initial stale module from being requested.
+ 2.  **The Action:** Listen for `full-reload` events on `server.environments.ssr.hot` and propagate them to `server.environments.worker.hot`. This should finally trigger the `clearCache()` method on the correct `CustomModuleRunner`, resolving the stale state.
+ 
+ ### Breakthrough: The Direction of Invalidation is Reversed
+ 
+ The previous attempt failed because the fundamental assumption about HMR event flow was incorrect.
+ 
+ 1.  **The Trigger is SSR:** The logs clearly show that dependency optimization and the subsequent "reloading" message originate from the `ssr` environment. Therefore, the `full-reload` event is dispatched from `server.environments.ssr.hot`.
+ 2.  **The Cache is in the Worker:** There is no module runner used for the `ssr` environment in our architecture. Modules are only *fetched* from it. The actual code *evaluation* and caching of the executed result happens exclusively within the **worker's `CustomModuleRunner`**.
+ 
+ This means the HMR propagation must flow from **SSR to Worker**, not the other way around. The goal is to inform the worker's runner that its cache is stale because the SSR dependencies it relies on have changed.
+ 
+ **The Corrected Plan:**
+ 
+ 1.  **The Hook:** Use the `configureServer` hook in `ssrBridgePlugin.mts`.
+ 2.  **The Action:** Listen for `full-reload` events on `server.environments.ssr.hot` and propagate them to `server.environments.worker.hot`. This should finally trigger the `clearCache()` method on the correct `CustomModuleRunner`, resolving the stale state.

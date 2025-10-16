@@ -21,9 +21,20 @@ export const ssrBridgePlugin = ({
   const ssrBridgePlugin: Plugin = {
     name: "rwsdk:ssr-bridge",
     enforce: "pre",
-    async configureServer(server) {
+    async configureServer(server: ViteDevServer) {
       devServer = server;
       log("Configured dev server");
+
+      // Propagate HMR events from the SSR environment to the worker. This is
+      // necessary because dependency optimization happens in the SSR env, but
+      // the stale execution cache that needs clearing is in the worker's
+      // module runner.
+      server.environments.ssr.hot.on("full-reload", () => {
+        log("Detected `full-reload` in SSR environment, propagating to worker");
+        server.environments.worker.hot.send({
+          type: "full-reload",
+        });
+      });
     },
     config(_, { command, isPreview }) {
       isDev = !isPreview && command === "serve";
