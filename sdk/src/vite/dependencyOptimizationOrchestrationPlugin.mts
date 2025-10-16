@@ -24,10 +24,22 @@ export const dependencyOptimizationOrchestrationPlugin = (): Plugin => {
           if (
             err &&
             typeof err.message === "string" &&
-            err.message.includes("stale pre-bundle")
+            err.message.includes("new version of the pre-bundle")
           ) {
-            log("Caught stale pre-bundle error. Stack trace:");
+            log(
+              "Caught stale pre-bundle error. Invalidating all module graphs and suspending request...",
+            );
             log(err.stack);
+
+            // Invalidate all module graphs to clear stale transformed code.
+            server.environments.ssr.moduleGraph.invalidateAll();
+            server.environments.worker.moduleGraph.invalidateAll();
+            server.environments.client.moduleGraph.invalidateAll();
+
+            // Suspend the response to allow the client's HMR reload to take over.
+            // The request will time out on the client, which is the desired
+            // behavior for a request that can no longer be fulfilled.
+            return;
           }
           next(err);
         });
