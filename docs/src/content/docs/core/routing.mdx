@@ -23,6 +23,10 @@ export default defineApp([
   route("/ping", function handler({ request, ctx }) {
     return new Response("Pong!")
   }),
+  route("/api/users", {
+    get: () => new Response(JSON.stringify(users)),
+    post: () => new Response("Created", { status: 201 }),
+  }),
 ]);
 ```
 
@@ -108,6 +112,66 @@ The request handler function takes a [RequestInfo](#request-info) object as its 
 Return values:
 - `Response`: A standard response object.
 - `JSX`: A React component, which is statically rendered to HTML on the server, streamed to the client, and then hydrated on the client side.
+
+---
+
+## HTTP Method Routing
+
+You can handle different HTTP methods (GET, POST, PUT, DELETE, etc.) on the same path by passing an object with method keys:
+
+```tsx
+route("/api/users", {
+  get: () => new Response(JSON.stringify(users)),
+  post: ({ request }) => new Response("User created", { status: 201 }),
+  delete: () => new Response("User deleted", { status: 204 }),
+});
+```
+
+Method handlers can also be arrays of functions, allowing you to use [interrupters](#interrupters) per method:
+
+```tsx
+route("/api/users", {
+  get: [isAuthenticated, () => new Response(JSON.stringify(users))],
+  post: [isAuthenticated, validateUser, createUserHandler],
+});
+```
+
+**Standard HTTP Methods**: `delete`, `get`, `head`, `patch`, `post`, `put`
+
+**Custom Methods**: Use the `custom` key for non-standard methods (case-insensitive):
+
+```tsx
+route("/api/search", {
+  custom: {
+    report: () => new Response("Report data"),
+  },
+});
+```
+
+**Automatic OPTIONS & 405 Support**: By default, OPTIONS requests return `204 No Content` with an `Allow` header, and unsupported methods return `405 Method Not Allowed`.
+
+**Configuration**: Disable automatic behaviors:
+
+```tsx
+route("/api/users", {
+  get: () => new Response("OK"),
+  config: {
+    disableOptions: true, // OPTIONS returns 405
+    disable405: true, // Unsupported methods fall through to 404
+  },
+});
+```
+
+<Aside type="note" title="HEAD Requests">
+  Unlike in Express.js, you must explicitly provide a HEAD handler. HEAD requests are not automatically mapped to GET handlers:
+
+```tsx
+route("/api/users", {
+  get: getHandler,
+  head: getHandler, // Explicitly reuse handler
+});
+```
+</Aside>
 
 ---
 

@@ -16,6 +16,63 @@ import { route } from "rwsdk/router";
 route("/", () => new Response("Hello, World!"));
 ```
 
+### Method-Based Routing
+
+The `route` function also accepts a `MethodHandlers` object to handle different HTTP methods on the same path:
+
+```ts
+route("/api/users", {
+  get: () => new Response(JSON.stringify(users)),
+  post: () => new Response("Created", { status: 201 }),
+  delete: () => new Response("Deleted", { status: 204 }),
+});
+```
+
+Method handlers can also be arrays of functions for route-specific middleware:
+
+```ts
+route("/api/users", {
+  get: [isAuthenticated, getUsersHandler],
+  post: [isAuthenticated, validateUser, createUserHandler],
+});
+```
+
+**Type signature**:
+
+```ts
+type MethodHandlers = {
+  delete?: RouteHandler;
+  get?: RouteHandler;
+  head?: RouteHandler;
+  patch?: RouteHandler;
+  post?: RouteHandler;
+  put?: RouteHandler;
+  config?: {
+    disable405?: true;
+    disableOptions?: true;
+  };
+  custom?: {
+    [method: string]: RouteHandler;
+  };
+};
+```
+
+**Custom methods**: For non-standard HTTP methods (e.g., WebDAV):
+
+```ts
+route("/api/search", {
+  custom: {
+    report: () => new Response("Report data"),
+  },
+});
+```
+
+**Default behavior**:
+
+- OPTIONS requests return `204 No Content` with `Allow` header
+- Unsupported methods return `405 Method Not Allowed` with `Allow` header
+- Use `config.disableOptions` or `config.disable405` to opt out
+
 ## `prefix`
 
 The `prefix` function is used to modify the matched string of a group of routes, by adding a prefix to the matched string. This essentially allows you to group related functionality into a seperate file, import those routes and place it into your `defineApp` function.
@@ -77,4 +134,17 @@ export default defineApp([
   // Client-side only: SSR disabled, RSC payload enabled
   render(ReactDocument, [prefix("/spa", spaRoutes)], { ssr: false }),
 ]);
+```
+
+---
+
+## Important Notes
+
+**HEAD Requests**: Unlike Express.js, RedwoodSDK does not automatically map HEAD requests to GET handlers. You must explicitly define a HEAD handler if you want to support HEAD requests.
+
+```ts
+route("/api/users", {
+  get: getHandler,
+  head: getHandler, // Explicitly provide HEAD handler
+});
 ```

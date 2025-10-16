@@ -22,6 +22,22 @@ type RouteHandler<T extends RequestInfo = RequestInfo> =
   | RouteComponent<T>
   | [...RouteMiddleware<T>[], RouteFunction<T> | RouteComponent<T>];
 
+const METHOD_VERBS = ["delete", "get", "head", "patch", "post", "put"] as const;
+
+export type MethodVerb = (typeof METHOD_VERBS)[number];
+
+export type MethodHandlers<T extends RequestInfo = RequestInfo> = {
+  [K in MethodVerb]?: RouteHandler<T>;
+} & {
+  config?: {
+    disable405?: true;
+    disableOptions?: true;
+  };
+  custom?: {
+    [method: string]: RouteHandler<T>;
+  };
+};
+
 export type Route<T extends RequestInfo = RequestInfo> =
   | RouteMiddleware<T>
   | RouteDefinition<T>
@@ -29,7 +45,7 @@ export type Route<T extends RequestInfo = RequestInfo> =
 
 export type RouteDefinition<T extends RequestInfo = RequestInfo> = {
   path: string;
-  handler: RouteHandler<T>;
+  handler: RouteHandler<T> | MethodHandlers<T>;
   layouts?: React.FC<LayoutProps<T>>[];
 };
 
@@ -117,6 +133,60 @@ function flattenRoutes<T extends RequestInfo = RequestInfo>(
     }
     return [...acc, route];
   }, []) as (RouteMiddleware<T> | RouteDefinition<T>)[];
+}
+
+function isMethodHandlers<T extends RequestInfo = RequestInfo>(
+  handler: RouteHandler<T> | MethodHandlers<T>,
+): handler is MethodHandlers<T> {
+  return (
+    typeof handler === "object" && handler !== null && !Array.isArray(handler)
+  );
+}
+
+function handleOptionsRequest<T extends RequestInfo = RequestInfo>(
+  methodHandlers: MethodHandlers<T>,
+): Response {
+  const methods = new Set<string>([
+    ...(methodHandlers.config?.disableOptions ? [] : ["OPTIONS"]),
+    ...METHOD_VERBS.filter((verb) => methodHandlers[verb]).map((verb) =>
+      verb.toUpperCase(),
+    ),
+    ...Object.keys(methodHandlers.custom ?? {}).map((method) =>
+      method.toUpperCase(),
+    ),
+  ]);
+
+  return new Response(null, {
+    status: 204,
+    headers: {
+      Allow: Array.from(methods).sort().join(", "),
+    },
+  });
+}
+
+function handleMethodNotAllowed<T extends RequestInfo = RequestInfo>(
+  methodHandlers: MethodHandlers<T>,
+): Response {
+  const optionsResponse = handleOptionsRequest(methodHandlers);
+  return new Response("Method Not Allowed", {
+    status: 405,
+    headers: optionsResponse.headers,
+  });
+}
+
+function getHandlerForMethod<T extends RequestInfo = RequestInfo>(
+  methodHandlers: MethodHandlers<T>,
+  method: string,
+): RouteHandler<T> | undefined {
+  const lowerMethod = method.toLowerCase();
+
+  // Check standard method verbs
+  if (METHOD_VERBS.includes(lowerMethod as MethodVerb)) {
+    return methodHandlers[lowerMethod as MethodVerb];
+  }
+
+  // Check custom methods (already normalized to lowercase)
+  return methodHandlers.custom?.[lowerMethod];
 }
 
 export function defineRoutes<T extends RequestInfo = RequestInfo>(
@@ -231,13 +301,40 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
           continue; // Not a match, keep going.
         }
 
+        // Resolve handler if method-based routing
+        let handler: RouteHandler<T> | undefined;
+        if (isMethodHandlers(route.handler)) {
+          const requestMethod = request.method;
+
+          // Handle OPTIONS request
+          if (
+            requestMethod === "OPTIONS" &&
+            !route.handler.config?.disableOptions
+          ) {
+            return handleOptionsRequest(route.handler);
+          }
+
+          // Try to find handler for the request method
+          handler = getHandlerForMethod(route.handler, requestMethod);
+
+          if (!handler) {
+            // Method not supported for this route
+            if (!route.handler.config?.disable405) {
+              return handleMethodNotAllowed(route.handler);
+            }
+            // If 405 is disabled, continue to next route
+            continue;
+          }
+        } else {
+          handler = route.handler;
+        }
+
         // Found a match: run route-specific middlewares, then the final component, then stop.
         return await runWithRequestInfoOverrides(
           { params } as Partial<T>,
           async () => {
-            const { routeMiddlewares, componentHandler } = parseHandlers(
-              route.handler,
-            );
+            const { routeMiddlewares, componentHandler } =
+              parseHandlers(handler);
 
             // Route-specific middlewares
             for (const mw of routeMiddlewares) {
@@ -295,10 +392,23 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
 
 export function route<T extends RequestInfo = RequestInfo>(
   path: string,
-  handler: RouteHandler<T>,
+  handler: RouteHandler<T> | MethodHandlers<T>,
 ): RouteDefinition<T> {
   if (!path.endsWith("/")) {
     path = path + "/";
+  }
+
+  // Normalize custom method keys to lowercase
+  if (isMethodHandlers(handler) && handler.custom) {
+    handler = {
+      ...handler,
+      custom: Object.fromEntries(
+        Object.entries(handler.custom).map(([method, methodHandler]) => [
+          method.toLowerCase(),
+          methodHandler,
+        ]),
+      ),
+    };
   }
 
   return {
