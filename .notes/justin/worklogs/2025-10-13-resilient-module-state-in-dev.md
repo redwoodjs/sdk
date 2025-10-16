@@ -320,3 +320,32 @@ This plan uses monkey-patching to create the "optimization in progress" signal t
  3.  **The Action:**
      a.  **Invalidate Graphs:** Invalidate the `worker` and `ssr` module graphs as before to prepare the server for a clean request.
      b.  **Issue Redirect:** Instead of suspending the request, send an HTTP 307 (Temporary Redirect) response back to the client, redirecting to the same `req.url`. This instructs the browser to re-request the page, effectively forcing a full reload.
+ 
+ ### Finding: Infinite Reload Loop Returns; `resolveId` Fix is Bypassed
+ 
+ The redirect plan has failed and re-introduced the infinite reload loop. A deeper analysis of the logs reveals a critical flaw in the previous hypothesis:
+ 
+ - The logs confirm that the middleware is catching the "stale pre-bundle" error and issuing redirects.
+ - However, our proactive hash-stripping logic in the `ssrBridgePlugin`'s `resolveId` hook is **never being called**.
+ 
+ This proves that the stale module ID for the `rwsdk___ssr_bridge` is being generated and cached in a way that bypasses our `resolveId` hook. The most likely culprit is an internal resolution that happens inside `devServer.environments.ssr.fetchModule()`. The staleness is introduced somewhere between the entry to our `load` hook and the point where Vite's internal logic throws the error.
+ 
+ Our next step is to analyze a full stack trace from the error to pinpoint exactly where this internal resolution is occurring.
+ 
+ ### Finding: The `CustomModuleRunner` Cache is the True Source of Staleness
+ 
+ The stack trace from the "stale pre-bundle" error provides the definitive clue:
+ 
+ ```
+ at CustomModuleRunner.cachedModule (runner-worker/index.js:1283:22)
+ at request (runner-worker/index.js:1134:86)
+ at null.<anonymous> (/Users/justin/rw/worktrees/sdk_optimize-dep_resilience/sdk/dist/runtime/imports/worker.js:1:1)
+ ```
+ 
+ This reveals that the error is not originating from Vite's core module loading, but from a `CustomModuleRunner`. This runner is part of `vite-plugin-cloudflare` and implements its own caching layer (`cachedModule`).
+ 
+ This is the root cause of our problems. All of our attempts to invalidate Vite's internal module graph (`server.environments.worker.moduleGraph.invalidateAll()`) were having no effect because the truly stale module was being served from this external, custom cache. The `CustomModuleRunner` was holding onto an old, transformed version of `sdk/dist/runtime/imports/worker.js`, which contained the stale import for the `ssr_bridge`.
+ 
+ ### New Investigation: Invalidating the `CustomModuleRunner` Cache
+ 
+ The problem is now redefined. We are no longer fighting Vite's cache, but Cloudflare's. The next step is to investigate the `vite-plugin-cloudflare` source code, specifically the `CustomModuleRunner`, to understand its caching mechanism and, most importantly, to find the API or event that is used to invalidate it. A mechanism for cache invalidation must exist, otherwise no dependency re-optimization would ever work in a Cloudflare/Vite project. Our goal is to find this mechanism and call it from our error-handling middleware.

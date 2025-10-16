@@ -21,7 +21,8 @@ export const dependencyOptimizationOrchestrationPlugin = (): Plugin => {
             err.message.includes("new version of the pre-bundle")
           ) {
             log(
-              "Caught stale pre-bundle error. Invalidating graphs and issuing redirect.",
+              "Caught stale pre-bundle error. Invalidating graphs and issuing redirect. Stack trace: %s",
+              err.stack,
             );
             server.environments.worker.moduleGraph.invalidateAll();
             server.environments.ssr.moduleGraph.invalidateAll();
