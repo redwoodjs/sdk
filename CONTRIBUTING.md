@@ -518,22 +518,6 @@ export RWSDK_FORCE_FULL_SYNC=1
 npx rwsync --watch "npm run dev"
 ```
 
-## CI for External Contributions
-
-For security reasons, CI workflows that require secrets (e.g., Smoke and E2E tests) do not automatically run on pull requests from forks. This prevents malicious PRs from accessing sensitive credentials.
-
-When a PR is opened from a fork, the main test jobs are skipped. To prevent merging untested code, a separate status check will fail, indicating that the core tests are pending a maintainer's approval. This failing check is expected and blocks the PR from being merged until tests are run.
-
-To run the tests for an external PR, a core contributor must:
-
-1.  **Review the code** to ensure it's safe to execute.
-2.  Add a comment to the PR with the command:
-    ```
-    /check
-    ```
-
-This command triggers the full test suite. Only repository owners, members, and collaborators can use it.
-
 ## Releasing (for Core Contributors)
 
 Releases are managed by a series of automated GitHub Actions workflows that handle versioning, smoke testing, publishing to npm, and packaging of release artifacts for the SDK, starter, and addons.

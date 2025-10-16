@@ -9,9 +9,8 @@ on:
       - ".notes/**"
       - "*.md"
       - "src/**/*.test.*"
-  pull_request:
-    branches:
-      - main
+  pull_request_target:
+    types: [opened, synchronize, reopened]
     paths-ignore:
       - "docs/**"
       - ".notes/**"
@@ -88,18 +87,6 @@ jobs:
             echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"npm"}]}' >> $GITHUB_OUTPUT
           fi
 
-  e2e-tests-pending:
-    runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.head.repo.full_name != github.repository
-    steps:
-      - name: Report pending status
-        run: |
-          echo "E2E tests for this PR have not been run."
-          echo "A maintainer must comment '/check' to start them."
-          exit 1
-
   playground-e2e:
     needs: setup-matrix
     name: Playground E2E Test
@@ -127,13 +114,13 @@ jobs:
       github.event_name == 'push' ||
       github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch' ||
-      (github.event.pull_request.head.repo.full_name == github.repository)
+      github.event_name == 'pull_request_target'
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.inputs.ref || github.ref }}
+          ref: ${{ github.event.pull_request.head.sha || github.event.inputs.ref || github.ref }}
 
       - name: Enable Corepack
         run: corepack enable
