@@ -300,3 +300,23 @@ This plan uses monkey-patching to create the "optimization in progress" signal t
      -   **Action:** If a "new version of the pre-bundle" error is caught, we will invalidate the module graphs for the `worker` and `ssr` environments to clear their stale state. The error will then be re-thrown to fail the current request, allowing Vite's native HMR to trigger a page reload which will act as the clean, recovered request.
  
  This two-part strategy addresses the most common failure point (the bridge) proactively, while providing a robust reactive fallback for all other dependencies.
+ 
+ ### Finding: Suspension Leads to Indefinite Hang
+ 
+ The "Synthesized Plan" successfully prevents server crashes. When a "stale pre-bundle" error occurs, the middleware catches it, invalidates the `worker` and `ssr` module graphs, and suspends the request. This works as intended on the server-side, and no errors are thrown to the client.
+ 
+ However, the client-side recovery is unreliable. The expected `full-reload` HMR signal from Vite does not seem to trigger consistently. This results in the user's browser hanging indefinitely—either on a blank screen during an HMR update or in a never-ending page load.
+ 
+ ### The Redirect Plan: A More Robust Server-Side Reload Trigger
+ 
+ **Hypothesis:** Relying on a client-side HMR connection for recovery is fragile. It may fail if the error happens on an initial page load before the HMR client has connected. A more robust solution is to use a server-side mechanism to force the client to reload.
+ 
+ We previously attempted a server-side redirect, but it resulted in an infinite loop. Our hypothesis now is that this loop was caused by the `rwsdk___ssr_bridge` stale hash issue, which our proactive `resolveId` fix has since solved. With that root cause of the loop eliminated, a redirect is a viable strategy again.
+ 
+ **The Plan:**
+ 
+ 1.  **The Hook:** The 4-argument error middleware in `dependencyOptimizationOrchestrationPlugin.mts`.
+ 2.  **The Detection:** Catch the "new version of the pre-bundle" error.
+ 3.  **The Action:**
+     a.  **Invalidate Graphs:** Invalidate the `worker` and `ssr` module graphs as before to prepare the server for a clean request.
+     b.  **Issue Redirect:** Instead of suspending the request, send an HTTP 307 (Temporary Redirect) response back to the client, redirecting to the same `req.url`. This instructs the browser to re-request the page, effectively forcing a full reload.

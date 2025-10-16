@@ -21,13 +21,16 @@ export const dependencyOptimizationOrchestrationPlugin = (): Plugin => {
             err.message.includes("new version of the pre-bundle")
           ) {
             log(
-              "Caught stale pre-bundle error. Invalidating worker and SSR module graphs and suspending request.",
+              "Caught stale pre-bundle error. Invalidating graphs and issuing redirect.",
             );
             server.environments.worker.moduleGraph.invalidateAll();
             server.environments.ssr.moduleGraph.invalidateAll();
-            // By not calling next(), we suspend the request. Vite's native HMR
-            // will trigger a client reload, which will cancel this hanging
-            // request and start a fresh one.
+
+            // A server-side redirect is more robust than relying on HMR.
+            // The previous infinite loop with this method should be solved
+            // by our proactive hash-stripping for the SSR bridge.
+            res.writeHead(307, { Location: req.url });
+            res.end();
             return;
           }
           next(err);
