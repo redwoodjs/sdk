@@ -160,11 +160,8 @@ export const ssrBridgePlugin = ({
             console.log(
               `[RWS-SSR-BRIDGE] Fetching module from SSR environment: ${idForFetch}`,
             );
-            const result = await devServer?.environments.ssr.fetchModule(
-              idForFetch,
-              undefined,
-              { cached: false },
-            );
+            const result =
+              await devServer.environments.ssr.fetchModule(idForFetch);
 
             if (result) {
               const code = "code" in result ? result.code : undefined;
@@ -213,18 +210,20 @@ export const ssrBridgePlugin = ({
                   realId,
                   out,
                 );
-              return { code: out, map: (result as any).map };
+              // @ts-expect-error
+              return { code: out, map: result.map };
             }
-          } catch (e) {
+          } catch (e: any) {
             console.error(
-              `[RWS-SSR-BRIDGE] Error fetching SSR module for id: ${id}`,
+              `[RWS-SSR-BRIDGE] Error fetching module '${idForFetch}' from SSR environment:`,
               e,
+            );
+            const metadata = devServer.environments.ssr.depsOptimizer?.metadata;
+            console.error(
+              "[RWS-SSR-BRIDGE] SSR depsOptimizer metadata:",
               metadata,
             );
             throw e;
-          } finally {
-            // @ts-expect-error
-            delete globalThis.__RWS_FRESH_DEPS_OPTIMIZER__;
           }
         }
       }

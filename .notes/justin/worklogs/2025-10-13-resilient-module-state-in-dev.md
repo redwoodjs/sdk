@@ -875,3 +875,27 @@ To validate this, I will perform a two-part monkey-patch to surgically inject th
 2.  **Part 2 (Vite Code):** I will patch the compiled `tryOptimizedResolve` function in Vite's `node_modules`. The patch will make the function check for the existence of `globalThis.__RWS_FRESH_DEPS_OPTIMIZER__` and use it in place of the stale `depsOptimizer` argument it receives.
 
 If this two-part patch prevents the error, it will be definitive proof that the stale `depsOptimizer` reference is the one and only root cause. We can then devise a non-patch solution based on this knowledge.
+
+### Attempt #34: Full Validation with Widened Monkey-Patch
+
+**Hypothesis:**
+The previous monkey-patch failed because its scope was too narrow. By removing the `finally` block that cleans up the global override, the fresh `depsOptimizer` will remain in place for the entire duration of the request, covering not just the initial resolution of the bridge module but all of its subsequent, nested dependencies. This should result in a completely successful run and fully validate the root cause.
+
+**Plan:**
+1.  Modify `ssrBridgePlugin.mts` to remove the `finally` block that deletes `globalThis.__RWS_FRESH_DEPS_OPTIMIZER__`.
+2.  Run the test again and confirm that no "stale pre-bundle" error occurs.
+
+### Attempt #35: Conditional Monkey-Patch to Isolate SSR Resolutions
+
+**Hypothesis:**
+A monkey-patch that *conditionally* swaps the `depsOptimizer` only for SSR resolutions will fix the "stale pre-bundle" error without introducing the "react-server" condition error. The condition for detection is `depsOptimizer.options.conditions.includes('browser') && !depsOptimizer.options.conditions.includes('react-server')`.
+
+**Findings: FAILED**
+The conditional patch did not solve the problem. The diagnostic logs revealed a critical new insight: `tryOptimizedResolve` (and thus our patch) is only executed *once* for a given module, early in the process. After the HMR event that triggers the re-optimization and the subsequent failure, the logs from our patch do *not* appear again.
+
+This strongly suggests that a higher-level cache is at play. Vite appears to be caching the *resolved ID* (including the now-stale version hash) and is not re-running the full resolution logic for the module on subsequent requests, even after module graph invalidation. This upstream cache is preventing our patch from ever running on the problematic, post-reload request. Our investigation must now focus on identifying and invalidating this higher-level cache.
+
+With the root cause fully understood, the diagnostic phase is complete. We can now remove the monkey-patches and devise a robust, self-contained solution within our own plugins. The goal is to ensure that a fresh reference to the correct (`worker`) `depsOptimizer` is used for any resolution that happens after a re-optimization event.
+
+**Next Steps: Find the Cache**
+The diagnostic phase is not complete. The immediate next step is to investigate Vite's source code to locate the suspected higher-level cache that stores resolved module IDs. We must understand how this cache is populated, when it is used, and what mechanism exists (if any) to invalidate it. Only then can we devise a proper solution.
