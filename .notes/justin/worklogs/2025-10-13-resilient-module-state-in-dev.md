@@ -649,3 +649,106 @@ This leads to two potential long-term solutions:
   2. The value of `server.environments.ssr.depsOptimizer._metadata.browserHash`.
   3. We will wrap the `fetchModule` call in a `try...catch` block to log the specific error and confirm this is the point of failure.
 - This will give us direct evidence of the state of the SSR dependency optimizer at the moment of failure.
+
+### Attempt #22: Proving Stale Transformed Code in Vite's `loadAndTransform`
+
+**Hypothesis:** The root cause is a stale transformed module being served from the Vite `worker` environment's module graph cache.
+
+The sequence of events is as follows:
+1. Before any error, a module in the `worker` environment that imports `rwsdk/__ssr_bridge` is loaded and transformed by Vite's internal `loadAndTransform` function. During this transformation, the import is resolved to a concrete, optimized path including the current version hash (e.g., `.../deps_ssr/rwsdk___ssr_bridge.js?v=OLD_HASH`). This transformed code is then cached in the worker's module graph.
+2. An SSR re-optimization occurs, creating a `NEW_HASH` for all SSR dependencies.
+3. The `full-reload` HMR event successfully clears the execution cache in the Cloudflare runner, but it does **not** invalidate the stale transformed code for the importer module in Vite's `worker` module graph.
+4. The runner re-requests its entrypoint. When it gets to the importer module, Vite's dev server finds the cached (and now stale) transformation and serves it, bypassing the `loadAndTransform` function.
+5. The runner executes this stale code, which contains the import for `...rwsdk___ssr_bridge.js?v=OLD_HASH`, triggering the "stale pre-bundle" error.
+
+**Diagnostic Plan:**
+To get definitive proof, we will add a diagnostic log directly inside Vite's compiled `loadAndTransform` function. This will allow us to inspect the final transformed code of any module that imports the `ssr_bridge` *before* it is cached.
+
+1.  **Target File:** The compiled Vite chunk, located at `node_modules/.pnpm/vite@.../node_modules/vite/dist/node/chunks/dep-....js`.
+2.  **Target Function:** The `loadAndTransform` function within that file.
+3.  **Action:** Add a conditional `console.log` at the end of the function, just before it returns the `result`. The log will fire if the environment is `worker` and the transformed code includes `"rwsdk/__ssr_bridge"`. It will print the module `id` and the `result.code`.
+
+This will show us, in black and white, the exact code being generated and cached. If our hypothesis is correct, we will see the `OLD_HASH` in the log output for the initial load, and crucially, we will *not* see this log fire again for that module after the re-optimization, proving that Vite is serving a stale entry from its cache.
+
+### Attempt #23: Correcting the Analysis - Stale Resolution, Not Stale Transform
+
+**Correction of Previous Analysis:**
+My previous conclusion in Attempt #22 was incorrect. I had mistakenly claimed that Vite was serving a stale transform from its cache. After reviewing the logs again, I see this is false.
+
+**The True Finding:**
+The diagnostic log inside `loadAndTransform` for `ClientComponent.tsx` shows the following transformed code:
+
+```javascript
+const __vite_ssr_import_0__ = await __vite_ssr_import__("/@id/virtual:rwsdk:ssr:rwsdk/__ssr_bridge", {"importedNames":["ssrLoadModule"]});
+```
+
+This is the critical piece of evidence. The transformed code does **not** contain a baked-in version hash. It correctly references the clean, virtual module ID. This proves that the `worker` environment's transform cache is **not** the source of the stale hash.
+
+**New Hypothesis:**
+The stale version hash is being introduced at a later stage, during the **resolution** of this clean virtual ID. When the runner executes this code, it requests `/@id/virtual:rwsdk:ssr:rwsdk/__ssr_bridge`. Our `ssrBridgePlugin`'s `load` hook then calls `server.environments.ssr.fetchModule('rwsdk/__ssr_bridge', ...)`. The error happens inside this `fetchModule` call.
+
+This strongly suggests that the `ssr` environment's internal dependency resolver is using stale metadata. Even after re-optimization creates a new hash, some part of the SSR environment that my plugin is interacting with retains the old information and incorrectly resolves `rwsdk/__ssr_bridge` to a path with the old, invalid version hash. The money is at finding where Vite decides what hash to use for this resolution.
+
+**Next Diagnostic Plan:**
+I need to trace where the clean ID `rwsdk/__ssr_bridge` gets resolved into the stale path `.../deps_ssr/rwsdk___ssr_bridge.js?v=OLD_HASH`. This resolution happens inside the `ssr` dependency optimizer. My next step is to inspect the state of this optimizer's metadata right before the failure.
+
+### Attempt #24: The Final Diagnosis - A Stale Resolver, Not Stale Metadata
+
+**Definitive Finding:**
+Capturing the `metadata` object on error has revealed the final piece of the puzzle. The logs show a critical contradiction:
+
+1.  **The Error:** The server throws an `ERR_OUTDATED_OPTIMIZED_DEP` error because a module was requested with the old hash (e.g., `v=7c4427a7`).
+2.  **The Metadata:** The `metadata` object logged from `ssrOptimizer.metadata` at the exact moment of the crash contains the **new, correct hash** (e.g., `browserHash: "9e5f9789"`). The file path for `rwsdk/__ssr_bridge` inside this metadata object correctly points to the URL with the new hash.
+
+**Conclusion:**
+The `depsOptimizer` instance our `ssrBridgePlugin` has access to is **not stale**. Its `.metadata` property is fully up-to-date after the re-optimization.
+
+The root cause must be a subtle race condition deep inside Vite's `fetchModule` implementation. When we call `fetchModule`, some part of its internal module resolution pipeline is consulting an older, stale state to resolve the clean module ID (`rwsdk/__ssr_bridge`) into a file path. This internal resolver is using the old hash. This stale path is then passed to the final check, which compares it against the new metadata and correctly throws the error.
+
+The problem is not a stale object reference in our code, but perhaps a state inconsistency within Vite's internal resolution process.
+
+### Attempt #25: Tracing Vite's Internal Resolution
+
+**Hypothesis:**
+The state inconsistency lies within Vite's internal plugin pipeline during module resolution. Specifically, when `fetchModule` is called, a plugin with a stale internal state resolves `rwsdk/__ssr_bridge` to a path with an old version hash *before* the `vite:optimized-deps` plugin's `load` hook gets to validate it.
+
+**Investigation Plan:**
+My goal is to trace the resolution of a bare import specifier to its final, versioned, optimized dependency URL. I'll do this by inspecting Vite's internal plugins.
+
+1.  **Find the Error:** I started by `grep`ing for `ERR_OUTDATED_OPTIMIZED_DEP`. This confirmed the error is thrown from `packages/vite/src/node/plugins/optimizedDeps.ts` in its `load` hook. This hook checks if the `?v=` hash in the requested URL matches the hash in the optimizer's current metadata. This proves the `load` hook is receiving an already-stale URL.
+
+2.  **Find the Resolver:** I then searched for `resolveId` hooks in Vite's plugins to find what runs *before* the `load` hook. Two plugins stood out: `vite:optimized-deps` and `vite:pre-alias`. The `pre-alias` plugin's job is to handle aliased dependencies, which is exactly what an optimized dependency is.
+
+3.  **Trace `pre-alias`:** Reading `preAlias.ts` showed that for aliased bare imports, it calls `tryOptimizedResolve`.
+
+4.  **Trace `tryOptimizedResolve`:** Reading `resolve.ts`, I found `tryOptimizedResolve`. This function is the key. It takes the deps optimizer, gets its `metadata`, and then calls `optimizedDepInfoFromId(metadata, id)` to get the information for the dependency.
+
+5.  **Trace `optimizedDepInfoFromId`:** This function, in `optimizer/index.ts`, simply does a lookup in the `metadata.optimized` and `metadata.discovered` objects.
+
+**The Inescapable Conclusion:**
+This trace confirms a perplexing situation. The logic flow is as follows: `pre-alias` -> `tryOptimizedResolve` -> `optimizedDepInfoFromId`. Each step in this chain appears to be stateless, simply passing along the `depsOptimizer` instance and its `metadata` object. We have already proven via logging that the `metadata` object holds the *correct, new* hash at the time of failure.
+
+This leaves only one logical possibility, however unlikely: some part of Vite's system is holding on to a stale reference to the entire `depsOptimizer` object, and passing that stale object into the `resolveId` pipeline. While our plugin's `load` hook sees the fresh optimizer, the `pre-alias` plugin is somehow operating on an old one.
+
+This points to a deep, internal state management issue within Vite when environments are used. Given the difficulty of fixing this internally, the most robust solution is to fall back to the one that addresses the state inconsistency at a higher level: forcing the worker's caches to clear when the SSR environment re-optimizes.
+
+### Attempt #26: Pinpointing the Stale Resolution in Vite Core
+
+**Hypothesis:**
+My analysis in Attempt #25 concluded that a stale `depsOptimizer` object is being passed into Vite's internal resolution pipeline (`vite:pre-alias` plugin), causing it to resolve module IDs using stale metadata. The goal of this attempt is to get direct, logged proof of this happening.
+
+**Diagnostic Plan:**
+I will add a diagnostic log inside Vite's `tryOptimizedResolve` function. This is the exact function where a bare import is converted into a full, versioned path to an optimized dependency.
+
+The log will capture the following information at the moment of resolution:
+1.  The `id` being resolved (e.g., `rwsdk/__ssr_bridge`).
+2.  The `browserHash` from the `depsOptimizer.metadata` object that the function has access to.
+3.  The specific `browserHash` attached to the `depInfo` object retrieved for that `id`.
+4.  The final, resolved URL that the function is about to return.
+
+If the hypothesis is correct, the log will show that when the error occurs, `tryOptimizedResolve` is operating with a `metadata` object containing the **old `browserHash`**, and is therefore generating a stale URL. This would be the definitive proof we need.
+
+**Findings: CONFIRMED**
+The diagnostic logs provided the definitive proof. After a re-optimization was triggered, the `[VITE-RESOLVE-DIAGNOSTIC]` log fired again for `rwsdk/__ssr_bridge`. It clearly showed that the `tryOptimizedResolve` function was still working with the old `metadata` object, logging the old `browserHash` (e.g., `7c4427a7`).
+
+This confirms that Vite's internal `resolveId` pipeline is being fed a stale `depsOptimizer` instance. While other parts of Vite have access to the new, post-optimization state, the resolver does not. This is the root cause of the stale URL generation.

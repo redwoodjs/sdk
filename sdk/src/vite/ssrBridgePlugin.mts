@@ -134,6 +134,7 @@ export const ssrBridgePlugin = ({
       }
     },
     async load(id) {
+      console.log(`[RWS-SSR-BRIDGE] load hook called for id: ${id}`);
       // Skip during directive scanning to avoid performance issues
       if (process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE) {
         return;
@@ -143,6 +144,7 @@ export const ssrBridgePlugin = ({
         id.startsWith(VIRTUAL_SSR_PREFIX) &&
         this.environment.name === "worker"
       ) {
+        console.log(`[RWS-SSR-BRIDGE] Identified virtual SSR module: ${id}`);
         const realId = id.slice(VIRTUAL_SSR_PREFIX.length);
         const idForFetch = realId.endsWith(".css.js")
           ? realId.slice(0, -3)
@@ -155,18 +157,23 @@ export const ssrBridgePlugin = ({
           idForFetch,
         );
 
-        // In dev, we need to use the dev server's `fetchModule` to get the
-        // transformed and resolved module.
+        let metadata;
         if (isDev) {
           log("Dev mode: fetching SSR module for realPath=%s", idForFetch);
           try {
+            // The whole point of this plugin is to load the module from the SSR environment
             const ssrOptimizer = devServer?.environments.ssr.depsOptimizer;
             if (ssrOptimizer) {
-              // @ts-expect-error - _metadata is private
-              const browserHash = ssrOptimizer._metadata?.browserHash;
-              log("SSR depsOptimizer browserHash: %s", browserHash);
+              const browserHash = ssrOptimizer.metadata?.browserHash;
+              console.log(
+                `[RWS-SSR-BRIDGE] SSR depsOptimizer browserHash: ${browserHash}`,
+              );
+              metadata = JSON.stringify(ssrOptimizer.metadata);
             }
 
+            console.log(
+              `[RWS-SSR-BRIDGE] Fetching module from SSR environment: ${idForFetch}`,
+            );
             const result = await devServer?.environments.ssr.fetchModule(
               idForFetch,
               undefined,
@@ -174,7 +181,7 @@ export const ssrBridgePlugin = ({
             );
 
             if (result) {
-              let code = result.code;
+              const code = "code" in result ? result.code : undefined;
 
               if (
                 idForFetch.endsWith(".css") &&
@@ -220,19 +227,15 @@ export const ssrBridgePlugin = ({
                   realId,
                   out,
                 );
-              return { code, map: result.map };
+              return { code: out, map: (result as any).map };
             }
           } catch (e) {
-            log("Error fetching SSR module: %o", e);
+            console.error(
+              `[RWS-SSR-BRIDGE] Error fetching SSR module for id: ${id}`,
+              e,
+              metadata,
+            );
             throw e;
-          }
-        } else {
-          // In prod, we resolve the module to its real path on disk.
-          const resolved = await this.resolve(idForFetch, undefined, {
-            skipSelf: true,
-          });
-          if (resolved) {
-            return resolved.id;
           }
         }
       }
