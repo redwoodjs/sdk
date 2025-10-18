@@ -25,26 +25,27 @@ export const ssrBridgePlugin = ({
       devServer = server;
       log("Configured dev server");
 
-      // Intercept the `send` method on the SSR environment's HMR channel.
-      // We need to do this because `hot.on()` is for listening to inbound
-      // client events, but we need to intercept outbound server events.
-      const ssrHot = server.environments.ssr.hot;
-      const originalSend = ssrHot.send;
-
-      // @ts-expect-error - we are monkey-patching `send`
-      ssrHot.send = (...args: Parameters<typeof originalSend>) => {
-        const payload = args[0] as unknown as any;
-
+      // Invalidate the worker's module graph and propagate the HMR event to clear the runner's cache
+      // when the SSR environment triggers a full reload (e.g. after dep optimization).
+      const ssrHotSend = server.environments.ssr.hot.send;
+      server.environments.ssr.hot.send = (...args: any) => {
+        const payload = args[0];
         if (typeof payload === "object" && payload.type === "full-reload") {
           log(
-            "Intercepted `full-reload` in SSR environment, propagating to worker",
+            "Intercepted `full-reload` in SSR environment. Invalidating worker module graph and propagating event.",
           );
+          // Invalidate the transform cache for the worker
           server.environments.worker.moduleGraph.invalidateAll();
-          //server.environments.ssr.moduleGraph.invalidateAll();
-          server.environments.worker.hot.send(payload);
+          // Propagate the HMR event to clear the runner's execution cache
+          server.environments.worker.hot.send(
+            ...(args as unknown as Parameters<
+              typeof server.environments.worker.hot.send
+            >),
+          );
         }
 
-        return originalSend.apply(ssrHot, args);
+        // We don't call the original `send` because there's no client connected to the SSR HMR channel.
+        // It's a no-op that just logs a debug message.
       };
     },
     config(_, { command, isPreview }) {
@@ -94,29 +95,11 @@ export const ssrBridgePlugin = ({
             });
           },
         });
-
-        log("Worker environment esbuild configuration complete");
       }
     },
     async resolveId(source, importer, options) {
       if (!isDev) {
         return;
-      }
-
-      // Proactively prevent stale bridge errors by stripping the hash
-      // before the module is loaded.
-      if (source.includes("deps_ssr/rwsdk___ssr_bridge")) {
-        const [basePath] = source.split("?");
-        log(
-          "SSR Bridge dependency detected. Stripping version hash. Original: %s, Stripped: %s",
-          source,
-          basePath,
-        );
-        // Return a resolved module to bypass the default resolution
-        return await this.resolve(basePath, importer, {
-          ...options,
-          skipSelf: true,
-        });
       }
 
       if (
@@ -160,6 +143,9 @@ export const ssrBridgePlugin = ({
         let metadata;
         if (isDev) {
           log("Dev mode: fetching SSR module for realPath=%s", idForFetch);
+          // @ts-expect-error
+          globalThis.__RWS_FRESH_DEPS_OPTIMIZER__ =
+            devServer?.environments.ssr.depsOptimizer;
           try {
             // The whole point of this plugin is to load the module from the SSR environment
             const ssrOptimizer = devServer?.environments.ssr.depsOptimizer;
@@ -236,6 +222,9 @@ export const ssrBridgePlugin = ({
               metadata,
             );
             throw e;
+          } finally {
+            // @ts-expect-error
+            delete globalThis.__RWS_FRESH_DEPS_OPTIMIZER__;
           }
         }
       }

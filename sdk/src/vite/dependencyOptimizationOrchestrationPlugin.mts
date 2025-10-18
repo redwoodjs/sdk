@@ -9,7 +9,7 @@ export const dependencyOptimizationOrchestrationPlugin = (): Plugin => {
     configureServer(server: ViteDevServer) {
       // Return a function to ensure our middleware is placed after internal middlewares
       return () => {
-        server.middlewares.use(function rwsdkStaleBundleErrorHandler(
+        server.middlewares.use(async function rwsdkStaleBundleErrorHandler(
           err: any,
           req: any,
           res: any,
@@ -20,24 +20,19 @@ export const dependencyOptimizationOrchestrationPlugin = (): Plugin => {
             typeof err.message === "string" &&
             err.message.includes("new version of the pre-bundle")
           ) {
-            log("Caught stale pre-bundle error. Performing system-wide reset.");
+            log(
+              "Caught stale pre-bundle error. Resetting, waiting, and redirecting.",
+            );
 
-            // Invalidate all server-side module caches.
-            server.moduleGraph.invalidateAll();
+            // Hard reset
             server.environments.worker.moduleGraph.invalidateAll();
             server.environments.ssr.moduleGraph.invalidateAll();
 
-            // Broadcast a full-reload message to the worker environment. This will
-            // be picked up by our HMR bridge and forwarded to the runner,
-            // clearing its internal cache. Vite will also forward this to the client.
-            server.environments.worker.hot.send({
-              type: "full-reload",
-              path: "*",
-            });
+            // Wait for server to stabilize
+            await new Promise((r) => setTimeout(r, 2000));
 
-            // End the request gracefully. 205 tells the client to reset the view,
-            // allowing the HMR full-reload to take over.
-            res.statusCode = 205;
+            // Redirect to retry the request
+            res.writeHead(307, { Location: req.url });
             res.end();
             return;
           }

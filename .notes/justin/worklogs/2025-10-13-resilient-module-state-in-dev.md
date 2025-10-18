@@ -752,3 +752,126 @@ If the hypothesis is correct, the log will show that when the error occurs, `try
 The diagnostic logs provided the definitive proof. After a re-optimization was triggered, the `[VITE-RESOLVE-DIAGNOSTIC]` log fired again for `rwsdk/__ssr_bridge`. It clearly showed that the `tryOptimizedResolve` function was still working with the old `metadata` object, logging the old `browserHash` (e.g., `7c4427a7`).
 
 This confirms that Vite's internal `resolveId` pipeline is being fed a stale `depsOptimizer` instance. While other parts of Vite have access to the new, post-optimization state, the resolver does not. This is the root cause of the stale URL generation.
+
+### Attempt #27: The Combined Solution - FAILED
+
+**Hypothesis:**
+Based on the definitive finding of a stale resolver, the solution must be a two-part approach that handles both state synchronization and the resulting race condition.
+
+1.  **State Synchronization:** The `ssrBridgePlugin` must intercept the `full-reload` HMR event from the SSR environment and propagate it to the worker environment. This acts as the official signal for the worker's caches (`moduleGraph`, runner's `evaluatedModules`) and internal state (like the resolver's `depsOptimizer` reference) to begin updating. This is the key to preventing an infinite loop.
+
+2.  **Race Condition Handling:** The `dependencyOptimizationOrchestrationPlugin` must use an error-handling middleware to catch the one, predictable "stale pre-bundle" error that will occur when the Cloudflare runner immediately re-imports its modules before the Vite server has finished its internal state synchronization. By responding with a `307 Temporary Redirect`, the middleware provides the small delay of an HTTP round-trip, giving the server the time it needs to stabilize. The re-issued request from the runner will then hit a fully consistent server.
+
+**Implementation:**
+- The `configureServer` hook in `ssrBridgePlugin.mts` will be modified to monkey-patch `server.environments.ssr.hot.send`, detect `full-reload` events, and then invalidate the worker module graph and forward the HMR event.
+- The error-handling middleware in `dependencyOptimizationOrchestrationPlugin.mts` will be modified to respond with a `307` redirect when it catches the "stale pre-bundle" error.
+
+**Findings:**
+The test resulted in an infinite redirect loop. This proves that the combined actions of invalidating caches and propagating the HMR event are still not sufficient to bring the Vite server into a consistent state before the redirected request arrives. The stale resolver is more persistent than anticipated.
+
+### Attempt #28: A Surgical Approach via `resolveId`
+
+**Hypothesis:**
+My previous attempts at high-level resets have failed because they don't address the stale resolution at the precise moment it happens. The `resolveId` hook in our `ssrBridgePlugin` is a powerful, surgical interception point that we have not fully leveraged. The existing hash-stripping code in that hook is not being reached, but it gives me an idea.
+
+Instead of reacting to an error that has already happened, I can use the `resolveId` hook to proactively inspect every resolution attempt related to the `ssr_bridge` and either correct it or pause it.
+
+**Diagnostic Plan:**
+The first step is to gather more data. I will add comprehensive logging to the `resolveId` hook in `ssrBridgePlugin.mts` to trace every time a module related to `ssr_bridge` is resolved.
+
+The log will capture:
+1.  The `source` being resolved.
+2.  The `importer` that is requesting it.
+3.  The Vite `environment` (`this.environment.name`) where the resolution is occurring.
+
+This will give me a complete picture of the resolution lifecycle. Based on these logs, I can determine the best course of action:
+
+- If I find a resolution attempt where a stale hash is present, I can implement a more effective hash-stripping logic.
+- If, as I suspect, the resolution is happening with a clean ID but still failing later, this `resolveId` hook might be the perfect place to implement a "defer" or "wait" mechanism, pausing the resolution until I can be sure the dependency optimizer is in a stable state.
+
+**Findings:**
+The diagnostic logs confirmed the hypothesis. The `resolveId` hook is indeed called for `rwsdk/__ssr_bridge`, but the `source` string it receives is always clean, without a version hash. This proves that the stale hash is being applied later in Vite's internal resolution pipeline. The existing hash-stripping logic is therefore ineffective.
+
+### Attempt #29: The Proactive Deferral Plan
+
+**Hypothesis:**
+Since the `resolveId` hook provides a reliable, surgical interception point before the stale resolution occurs, I can use it to proactively prevent the race condition. Instead of reacting to an error, I will defer the resolution of the critical `rwsdk/__ssr_bridge` module until I can be certain that no dependency optimizations are in-flight.
+
+**The Plan:**
+This plan combines two mechanisms from previous attempts into a new, proactive strategy.
+
+1.  **Track In-Flight Optimizations (`dependencyOptimizationOrchestrationPlugin`):** I will re-implement the logic to track when any of Vite's three dependency optimizers (`ssr`, `worker`, `client`) are running.
+    -   In the `configureServer` hook, I will monkey-patch the `registerMissingImport` method on each optimizer.
+    -   The wrapper will add a promise to a shared, exported `Set` (`activeOptimizationPromises`) when an optimization starts, and remove it when it settles.
+
+2.  **Defer Resolution (`ssrBridgePlugin`):** I will modify the `resolveId` hook to use this shared state.
+    -   It will import the `activeOptimizationPromises` `Set`.
+    -   When the hook is called for a `source` that includes `rwsdk/__ssr_bridge`, it will first check if the `Set` is empty.
+    -   If the `Set` is not empty, it will `await Promise.all([...activeOptimizationPromises])`. This will pause the resolution until all ongoing optimizations are complete.
+    -   Once the server is stable, the resolution will proceed as normal.
+
+This approach should prevent the stale resolver from ever being consulted during its inconsistent state, thereby eliminating the root cause of the error.
+
+### Attempt #30: The Timing-Based Deferral (Validation)
+
+**Correction:**
+The "Proactive Deferral" plan in Attempt #29, while logical, is a path I have explored extensively in the past with disastrous results. Trying to precisely track Vite's optimization state is a fragile endeavor that has led to multiple failed releases. It is not a viable strategy. I am abandoning this approach.
+
+**New Hypothesis:**
+The core problem is a race condition where the resolver's state is inconsistent for a brief period after re-optimization. A simple, fixed delay might be sufficient to wait out this period of instability.
+
+**Validation Plan:**
+To test this hypothesis in the simplest way possible, I will implement a "blunt" timing-based solution.
+1.  **Remove Complex Logic:** I will revert the changes from Attempt #29, removing the optimization promise tracking from `dependencyOptimizationOrchestrationPlugin` and `ssrBridgePlugin`.
+2.  **Implement Simple Delay:** In the `resolveId` hook of `ssrBridgePlugin`, when the `ssr_bridge` is being resolved, I will introduce a short, fixed-delay `setTimeout` (e.g., 250ms). This will pause the resolution.
+3.  **Disable Middleware:** I will also disable the error-handling middleware in `dependencyOptimizationOrchestrationPlugin` for this test. If the simple delay works, the "stale pre-bundle" error should never be thrown, and the middleware will not be needed.
+
+This is not a production-ready solution, but it will serve as a definitive test. If this simple delay prevents the error, it proves that "waiting" is the correct strategy, and we can then focus on finding a more elegant way to implement that wait.
+
+**Findings:**
+The timing-based deferral in `resolveId` did not work. The error still occurred.
+
+### Attempt #31: Timing-Based Deferral in `load` Hook
+
+**Hypothesis:**
+My previous attempt to defer in the `resolveId` hook was too early in Vite's pipeline. The critical moment of failure is when our `load` hook calls `fetchModule`. By moving the delay to this later stage, we can pause the request at a point that is much closer to the actual failure, which may give the server the time it needs to stabilize.
+
+**Validation Plan:**
+I will test this new hypothesis by moving the simple, timing-based delay.
+1.  **Remove Delay from `resolveId`:** I have already removed the `setTimeout` logic from the `resolveId` hook in `ssrBridgePlugin`.
+2.  **Add Delay to `load`:** I will add a similar `setTimeout` delay (e.g., 250ms) to the `load` hook in `ssrBridgePlugin`, specifically just before the `server.environments.ssr.fetchModule()` call is made for the `ssr_bridge`.
+
+This test will tell us if the *location* of the delay is the critical factor.
+
+**Findings:**
+The timing-based deferral in the `load` hook also failed. Even with a 2-second delay before every `fetchModule` call, the "stale pre-bundle" error still occurred, though for a different module (`react/jsx-dev-runtime`). This proves that a simple, proactive delay—regardless of its location—is not a viable solution. The server's inconsistent state can persist longer than any reasonable fixed timeout.
+
+### Attempt #32: Reactive Deferral in Middleware
+
+**Hypothesis:**
+My previous attempts at proactive deferral failed. A reactive approach is needed, but it must be more robust. The last time we tried an error-handling middleware, it caused an infinite redirect loop because the server state was never corrected. Now that we have a better understanding of the need to reset state, we can try again with a crucial addition: a delay *after* the reset.
+
+**Validation Plan:**
+This plan combines the error-handling middleware with a timing-based delay, placing the delay in the reactive phase where it can be most effective.
+1.  **Re-enable Middleware:** I will re-enable the error-handling middleware in `dependencyOptimizationOrchestrationPlugin.mts`.
+2.  **Implement Reset and Delay:** When the "stale pre-bundle" error is caught, the middleware will:
+    a. Perform a "hard reset" by invalidating the `worker` and `ssr` module graphs.
+    b. **Crucially, `await` a 2-second timeout.** This pauses the error handler, giving the server a moment to stabilize *after* the reset has been triggered.
+    c. After the delay, issue a `307 Temporary Redirect` to have the client re-attempt the request.
+
+By waiting *after* the reset, we ensure that by the time the redirect is issued and the new request arrives, the server has had ample time to get its internal state in order.
+
+**Findings:**
+The "reset, wait, redirect" middleware strategy has failed. The error still occurs, leading to an infinite redirect loop. This is a critical finding: even after a hard reset of the module graphs and a 2-second delay, a stale reference persists somewhere in Vite's internal state, causing the redirected request to fail in the exact same way. This proves that a simple timed delay is insufficient because the problem is not a transient race condition, but a persistent stale reference.
+
+### Attempt #33: Validating Stale Reference Theory with Monkey-Patch
+
+**Hypothesis:**
+A stale reference to the `depsOptimizer` object is being used deep inside Vite's resolver pipeline (`vite:pre-alias` plugin). Because this is a stale *object reference*, no amount of cache invalidation or waiting will fix it. The only way to solve the problem is to ensure the resolver uses the most up-to-date instance of the optimizer.
+
+**Validation Plan:**
+To validate this, I will perform a two-part monkey-patch to surgically inject the fresh `depsOptimizer` instance at the point of failure.
+1.  **Part 1 (Our Code):** In the `ssrBridgePlugin`'s `load` hook, immediately before calling `fetchModule`, I will store the guaranteed-fresh `depsOptimizer` from `server.environments.ssr.depsOptimizer` on a temporary global variable (`globalThis.__RWS_FRESH_DEPS_OPTIMIZER__`).
+2.  **Part 2 (Vite Code):** I will patch the compiled `tryOptimizedResolve` function in Vite's `node_modules`. The patch will make the function check for the existence of `globalThis.__RWS_FRESH_DEPS_OPTIMIZER__` and use it in place of the stale `depsOptimizer` argument it receives.
+
+If this two-part patch prevents the error, it will be definitive proof that the stale `depsOptimizer` reference is the one and only root cause. We can then devise a non-patch solution based on this knowledge.
