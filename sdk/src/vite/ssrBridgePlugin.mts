@@ -155,62 +155,84 @@ export const ssrBridgePlugin = ({
           idForFetch,
         );
 
+        // In dev, we need to use the dev server's `fetchModule` to get the
+        // transformed and resolved module.
         if (isDev) {
           log("Dev mode: fetching SSR module for realPath=%s", idForFetch);
-
-          const result = await devServer?.environments.ssr.fetchModule(
-            idForFetch,
-            undefined,
-            { cached: false },
-          );
-
-          if (result) {
-            process.env.VERBOSE &&
-              log("Fetch module result: id=%s, result=%O", idForFetch, result);
-
-            const code = "code" in result ? result.code : undefined;
-
-            if (
-              idForFetch.endsWith(".css") &&
-              !idForFetch.endsWith(".module.css")
-            ) {
-              process.env.VERBOSE &&
-                log(
-                  "Plain CSS file, returning empty module for %s",
-                  idForFetch,
-                );
-              return "export default {};";
+          try {
+            const ssrOptimizer = devServer?.environments.ssr.depsOptimizer;
+            if (ssrOptimizer) {
+              // @ts-expect-error - _metadata is private
+              const browserHash = ssrOptimizer._metadata?.browserHash;
+              log("SSR depsOptimizer browserHash: %s", browserHash);
             }
 
-            log("Fetched SSR module code length: %d", code?.length || 0);
-
-            const s = new MagicString(code || "");
-            const callsites = findSsrImportCallSites(
+            const result = await devServer?.environments.ssr.fetchModule(
               idForFetch,
-              code || "",
-              log,
+              undefined,
+              { cached: false },
             );
 
-            for (const site of callsites) {
-              const normalized = site.specifier.startsWith("/@id/")
-                ? site.specifier.slice("/@id/".length)
-                : site.specifier;
-              // context(justinvdm, 11 Aug 2025):
-              // - We replace __vite_ssr_import__ and __vite_ssr_dynamic_import__
-              //   with import() calls so that the module graph can be built
-              //   correctly (vite looks for imports and import()s to build module
-              //   graph)
-              // - We prepend /@id/$VIRTUAL_SSR_PREFIX to the specifier so that we
-              //   can stay within the SSR subgraph of the worker module graph
-              const replacement = `import("/@id/${VIRTUAL_SSR_PREFIX}${normalized}")`;
-              s.overwrite(site.start, site.end, replacement);
-            }
+            if (result) {
+              let code = result.code;
 
-            const out = s.toString();
-            log("Transformed SSR module code length: %d", out.length);
-            process.env.VERBOSE &&
-              log("Transformed SSR module code for realId=%s: %s", realId, out);
-            return out;
+              if (
+                idForFetch.endsWith(".css") &&
+                !idForFetch.endsWith(".module.css")
+              ) {
+                process.env.VERBOSE &&
+                  log(
+                    "Plain CSS file, returning empty module for %s",
+                    idForFetch,
+                  );
+                return "export default {};";
+              }
+
+              log("Fetched SSR module code length: %d", code?.length || 0);
+
+              const s = new MagicString(code || "");
+              const callsites = findSsrImportCallSites(
+                idForFetch,
+                code || "",
+                log,
+              );
+
+              for (const site of callsites) {
+                const normalized = site.specifier.startsWith("/@id/")
+                  ? site.specifier.slice("/@id/".length)
+                  : site.specifier;
+                // context(justinvdm, 11 Aug 2025):
+                // - We replace __vite_ssr_import__ and __vite_ssr_dynamic_import__
+                //   with import() calls so that the module graph can be built
+                //   correctly (vite looks for imports and import()s to build module
+                //   graph)
+                // - We prepend /@id/$VIRTUAL_SSR_PREFIX to the specifier so that we
+                //   can stay within the SSR subgraph of the worker module graph
+                const replacement = `import("/@id/${VIRTUAL_SSR_PREFIX}${normalized}")`;
+                s.overwrite(site.start, site.end, replacement);
+              }
+
+              const out = s.toString();
+              log("Transformed SSR module code length: %d", out.length);
+              process.env.VERBOSE &&
+                log(
+                  "Transformed SSR module code for realId=%s: %s",
+                  realId,
+                  out,
+                );
+              return { code, map: result.map };
+            }
+          } catch (e) {
+            log("Error fetching SSR module: %o", e);
+            throw e;
+          }
+        } else {
+          // In prod, we resolve the module to its real path on disk.
+          const resolved = await this.resolve(idForFetch, undefined, {
+            skipSelf: true,
+          });
+          if (resolved) {
+            return resolved.id;
           }
         }
       }

@@ -230,7 +230,7 @@ This plan uses a more robust and explicit invalidation strategy based on user in
 
 **Finding:** The targeted hash stripping for `rwsdk/__ssr_bridge` was insufficient. Logs confirm that the "stale pre-bundle" error can occur for *any* pre-bundled dependency (e.g., `react.js`) after a re-optimization. The problem is systemic, not specific to a single module.
 
-**Hypothesis:** The user's original hypothesis was correct. By stripping the version hash from *any* module ID passed to `fetchModule` within the `ssrBridgePlugin`'s `load` hook, we can proactively prevent the "stale pre-bundle" error entirely, as Vite will always resolve the base path to the latest optimized version. The complex reactive error handling in `dependencyOptimizationOrchestrationPlugin` should become unnecessary, acting only as a fail-safe.
+**Hypothesis:** My original hypothesis was correct. By stripping the version hash from *any* module ID passed to `fetchModule` within the `ssrBridgePlugin`'s `load` hook, we can proactively prevent the "stale pre-bundle" error entirely, as Vite will always resolve the base path to the latest optimized version. The complex reactive error handling in `dependencyOptimizationOrchestrationPlugin` should become unnecessary, acting only as a fail-safe.
 
 1.  **The Hook:** The `load` hook within `ssrBridgePlugin.mts`.
 2.  **The Action:** If a version hash is found on *any* module's ID, strip it before calling `fetchModule`.
@@ -521,7 +521,7 @@ This leads to two potential long-term solutions:
 - **This is the root cause:** The plugin never subscribes to Vite's HMR events on the server side, so our `worker.hot.send()` call has no listeners and does nothing.
 
 **Correction & Revised Plan:**
-- The user corrected the previous assumption that the `hot` channel was being bypassed. The `DevEnvironment` API is designed to abstract the transport layer, so the `worker.hot.send()` call *should* be the correct method.
+- I corrected my previous assumption that the `hot` channel was being bypassed. The `DevEnvironment` API is designed to abstract the transport layer, so the `worker.hot.send()` call *should* be the correct method.
 - The fact that no logs appeared in the runner is the most critical piece of evidence. The current plan is to re-run the test and confirm whether any messages are being logged in the runner's console now that we are sure the correct file has been instrumented.
 
 ### Attempt #13: Analyzing Runner Logs and Identifying the Race Condition
@@ -535,7 +535,7 @@ This leads to two potential long-term solutions:
 - This reveals the root cause: a race condition. The runner clears its cache and immediately re-requests modules from the Vite server. However, the Vite server has not yet completed its own asynchronous dependency re-optimization process. The runner's request arrives too early, hits the server's stale dependency metadata, and triggers the "stale pre-bundle" error.
 
 **Realization & The Missing Piece:**
-- The user correctly pointed out that a previous attempt to solve this using middleware and a 307 redirect resulted in a never-ending loop, where the `ssr_bridge` module was repeatedly reported as stale.
+- I remembered that a previous attempt to solve this using middleware and a 307 redirect resulted in a never-ending loop, where the `ssr_bridge` module was repeatedly reported as stale.
 - The reason that loop occurred was that the `CustomModuleRunner`'s internal cache (`evaluatedModules`) was never being cleared. On every request after the redirect, the runner would use its stale cache to re-request the bridge with an old, invalid version hash, triggering the error again.
 - Our successful diagnostic test has now proven that forwarding the `full-reload` HMR event is the key. It is the only mechanism that successfully clears the runner's internal cache, which was the missing piece in our previous attempts.
 
@@ -554,7 +554,7 @@ This leads to two potential long-term solutions:
 ### Attempt #15: Proving the Race Condition with Granular Logging
 
 **Correction:**
-- The user correctly pointed out that the previous combined plan is likely flawed. We have already observed that even when the runner's logs indicate its cache is cleared, a stale module error still occurs. This suggests the "clearing" is not effective in preventing the issue, or there is a timing issue we do not yet understand.
+- I remembered that the previous combined plan is likely flawed. We have already observed that even when the runner's logs indicate its cache is cleared, a subsequent request immediately fails with the same stale module error. This suggests the "clearing" is not effective in preventing the issue, or there is a timing issue we do not yet understand.
 
 **Revised Plan:**
 - Instead of re-implementing a potentially flawed solution, the next step is to gather more precise diagnostic evidence to prove the race condition hypothesis.
@@ -601,7 +601,7 @@ This leads to two potential long-term solutions:
 - The theory is that the `full-reload` HMR message will reach the client and trigger a full page refresh, which will initiate a new, clean request. The original, suspended request will eventually time out and be discarded, but by then, the new navigation will have taken over.
 
 **Rejection of the "Suspend" Plan:**
-- The user correctly pointed out two critical flaws with this plan:
+- I think there are two critical flaws with this plan:
   1.  **Past Failures:** We have tried variations of suspending the request before, and it has consistently resulted in an infinite reload loop centered on the `rwsdk___ssr_bridge` module. The plan does not adequately explain why this attempt would be different.
   2.  **No-JS Edge Case:** The plan relies on a client-side HMR client to receive the `full-reload` signal and refresh the page. This would fail completely for pages that do not have client-side JavaScript, a valid use case for this framework.
 - For these reasons, this plan is considered invalid and will not be pursued.
@@ -609,7 +609,7 @@ This leads to two potential long-term solutions:
 ### A Deeper Synthesis: The In-Flight Promise Cache
 
 **Synthesized Finding:**
-- A comprehensive review of the entire work log, prompted by the user's correct skepticism, reveals a persistent pattern: even after the `CustomModuleRunner`'s `evaluatedModules` cache is cleared, a subsequent request immediately fails with the same stale module error. This implies a second, persistent caching layer.
+- A comprehensive review of the entire work log, prompted by some skepticism of mine, reveals a persistent pattern: even after the `CustomModuleRunner`'s `evaluatedModules` cache is cleared, a subsequent request immediately fails with the same stale module error. This implies a second, persistent caching layer.
 - The `ModuleRunner` implementation in Vite Core (and used by `vite-plugin-cloudflare`) contains a second cache: `concurrentModuleNodePromises`. This is a `Map` that stores in-flight promises for module requests to prevent redundant fetching.
 - The `full-reload` HMR handler, which calls `clearCache()`, only clears the `evaluatedModules` cache. It does **not** clear `concurrentModuleNodePromises`.
 
@@ -625,3 +625,27 @@ This leads to two potential long-term solutions:
 **Revised Diagnostic Plan:**
 - To prove this hypothesis, we will add a diagnostic log to the `cachedModule` method in the patched `dist/runner-worker/index.js`.
 - This log will indicate whether a cached promise is being re-used from `concurrentModuleNodePromises`. If we see this log fire on the second request in the loop, it will confirm this theory is correct.
+
+**Findings:**
+- The diagnostic logs were successfully added to the correct location in `getFetchedModuleId`.
+- The logs show `[RWS-DIAGNOSTIC] In-flight promise cache miss for: ...` for all relevant modules, including `/@id/virtual:rwsdk:ssr:rwsdk/__ssr_bridge`. There are no "cache hit" logs during the failure loop.
+- **Conclusion:** The hypothesis is incorrect. The in-flight promise cache is not the cause of the loop. The logs prove that the runner's caches are effectively cleared, and it is attempting to fetch fresh modules.
+
+### Attempt #20: Tracing the Stale Hash on the Vite Server
+
+**Synthesized Finding:**
+- The Cloudflare runner is doing the right thing: its caches are clear, and it requests a clean virtual ID (`virtual:rwsdk:ssr:rwsdk/__ssr_bridge`).
+- The "stale pre-bundle" error is still thrown. This means the stale version hash (`?v=OLD_HASH`) must be introduced on the Vite server side when it receives the request to resolve and load this virtual module.
+
+**New Hypothesis:**
+- The `moduleGraph.invalidateAll()` call is insufficient. While it clears the cache of *transformed module code*, it does not clear or update the dependency optimizer's internal state, specifically its `_metadata`.
+- This `_metadata` object contains the `browserHash` and resolved paths for all pre-bundled dependencies. We hypothesize that after a re-optimization, this metadata becomes stale in the `ssr` environment.
+- When our `ssrBridgePlugin`'s `load` hook calls `devServer.environments.ssr.fetchModule()`, Vite's internal resolution consults this stale metadata, resolves the clean ID to a URL with an old, invalid version hash, and then throws the "stale pre-bundle" error when it tries to access it.
+
+**Revised Diagnostic Plan:**
+- Add logging to the `load` hook of `sdk/src/vite/ssrBridgePlugin.mts`.
+- We need to log the following information just before the `devServer.environments.ssr.fetchModule()` call for our virtual SSR modules:
+  1. The `id` received by the `load` hook.
+  2. The value of `server.environments.ssr.depsOptimizer._metadata.browserHash`.
+  3. We will wrap the `fetchModule` call in a `try...catch` block to log the specific error and confirm this is the point of failure.
+- This will give us direct evidence of the state of the SSR dependency optimizer at the moment of failure.
