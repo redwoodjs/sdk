@@ -140,12 +140,8 @@ export const ssrBridgePlugin = ({
           idForFetch,
         );
 
-        let metadata;
         if (isDev) {
           log("Dev mode: fetching SSR module for realPath=%s", idForFetch);
-          // @ts-expect-error
-          globalThis.__RWS_FRESH_DEPS_OPTIMIZER__ =
-            devServer?.environments.ssr.depsOptimizer;
           try {
             // The whole point of this plugin is to load the module from the SSR environment
             const ssrOptimizer = devServer?.environments.ssr.depsOptimizer;
@@ -211,12 +207,12 @@ export const ssrBridgePlugin = ({
                   out,
                 );
               // @ts-expect-error
-              return { code: out, map: result.map };
+              return { code: out, map: (result as any).map };
             }
-          } catch (e: any) {
+          } catch (e) {
             console.error(
-              `[RWS-SSR-BRIDGE] Error fetching module '${idForFetch}' from SSR environment:`,
-              e,
+              `[RWS-SSR-BRIDGE] Error fetching SSR module for id: ${id}`,
+              `\n\n- raw error:\n${e}`,
             );
             const metadata = devServer.environments.ssr.depsOptimizer?.metadata;
             console.error(

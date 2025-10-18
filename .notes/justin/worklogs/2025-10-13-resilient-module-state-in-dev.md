@@ -899,3 +899,15 @@ With the root cause fully understood, the diagnostic phase is complete. We can n
 
 **Next Steps: Find the Cache**
 The diagnostic phase is not complete. The immediate next step is to investigate Vite's source code to locate the suspected higher-level cache that stores resolved module IDs. We must understand how this cache is populated, when it is used, and what mechanism exists (if any) to invalidate it. Only then can we devise a proper solution.
+
+**Findings (continued): The Two Caches**
+Further investigation into Vite's source code has pinpointed the exact caching mechanism and revealed a two-layer problem.
+
+1.  **The `metadata` Cache:** We traced the source of the stale `browserHash` to the `optimizedDepInfoFromId` function (`packages/vite/src/node/optimizer/index.ts`). This function is not a complex mechanism; it's a simple property lookup on the `metadata` object passed into it. It checks `metadata.optimized[id]`, `metadata.discovered[id]`, and `metadata.chunks[id]`, returning the first match. This confirms that a stale `metadata` object is being passed down the resolution pipeline, and this object is the direct source of the stale `depInfo`.
+
+2.  **The Resolved ID Cache:** The fact that our monkey-patch in `tryOptimizedResolve` only ever runs *once* per module proves the existence of a higher-level cache. This cache stores the *result* of the initial, successful resolution (e.g., `/path/to/dep.js?v=OLD_HASH`). On subsequent requests after the HMR reload, Vite is hitting this higher-level cache and serving the stale, versioned path directly, without ever re-running the `tryOptimizedResolve` logic.
+
+Our `moduleGraph.invalidateAll()` calls are clearly insufficient as they do not clear either of these caches. The problem is now twofold: we must find a way to invalidate the higher-level resolved ID cache to force re-resolution, and we must ensure that when re-resolution occurs, it uses a fresh `metadata` object.
+
+**Next Steps: Find the Higher-Level Cache**
+The investigation continues. The immediate next step is to find where this higher-level resolved ID cache is located in Vite's source code and determine how to invalidate it.
