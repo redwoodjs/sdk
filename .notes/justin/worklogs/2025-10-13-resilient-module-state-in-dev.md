@@ -1114,3 +1114,32 @@ A `ModuleNode` object acts as both a cache key (via its `url` property) and a ca
 - **Error is Thrown:** `loadAndTransform` eventually reaches the `vite:optimized-deps` plugin's `load` hook. This hook sees the `OLD_HASH`, compares it to the new hash in the optimizer's current metadata, and correctly throws the "stale pre-bundle" error.
 
 **Conclusion:** The diagnostic phase is complete. The root cause is an incomplete invalidation of the module graph by `invalidateAll()`. It is not designed to handle scenarios where the underlying resolution of a module's ID needs to change, as it leaves behind stale module nodes that poison subsequent requests. The solution must be to perform a more forceful and complete clearing of the module graph.
+
+### Attempt #44: Co-ordinating the SSR and Worker Optimizers
+
+After the "nuclear option" of clearing the module graphs failed, it became clear that the root of the problem is a fundamental de-synchronization between Vite's separate dependency optimizers for the `ssr` and `worker` environments. Our plugin creates an implicit dependency from the worker to the SSR environment that Vite is unaware of. When the SSR optimizer re-runs in response to a new dependency, the worker optimizer does not, leaving the two environments in an inconsistent state.
+
+Two potential solutions were considered to address this architectural issue.
+
+**Solution A: The "Blunt Hammer" - Linking Optimizers**
+
+- **Concept:** Force the worker optimizer to re-run every time the SSR optimizer runs.
+- **Mechanism:** Monkey-patch the SSR environment's `depsOptimizer.run` method to also trigger the worker's `depsOptimizer.run`.
+- **Pros:** Guarantees the two environments are always synchronized.
+- **Cons:**
+  - Causes unnecessary and potentially slow worker re-optimizations.
+  - The `run` methods are async with no completion callback, making reliable sequencing difficult. A hacky solution involving watching the `_metadata.json` files on the filesystem would be required.
+  - Bypasses Vite's internal process, potentially missing important post-optimization cleanup steps for the worker environment.
+
+**Solution B: The "Surgical Approach" - Intercepting Stale Resolutions**
+
+- **Concept:** Prevent the worker from ever attempting to load a stale SSR dependency by correcting the import path just-in-time.
+- **Mechanism:** Implement a `resolveId` hook in the `ssrBridgePlugin`.
+- **Logic:** The hook will watch for resolutions of our virtual SSR modules. If it sees one that already has a version hash (`?v=...`), it signifies a potentially stale import from an already-transformed module. The hook will strip this stale hash and return the clean ID to the resolver pipeline. This forces a fresh resolution, which will then append the *latest* hash from the now-updated SSR optimizer metadata.
+- **Pros:**
+  - More efficient and less disruptive than a full worker re-optimization.
+  - Works within Vite's standard plugin APIs.
+  - Avoids complex and potentially flaky filesystem watching.
+- **Cons:** Relies on correctly identifying and stripping the hash from all relevant imports.
+
+**Decision:** The "Surgical Approach" (Solution B) was chosen as the first to implement, as it is significantly cleaner and less of a hack than Solution A.
