@@ -911,3 +911,206 @@ Our `moduleGraph.invalidateAll()` calls are clearly insufficient as they do not 
 
 **Next Steps: Find the Higher-Level Cache**
 The investigation continues. The immediate next step is to find where this higher-level resolved ID cache is located in Vite's source code and determine how to invalidate it.
+
+### Attempt #37: Tracing the Full Execution Path
+
+**Goal:** To document the entire chain of events from our plugin's `fetchModule` call to the final "stale pre-bundle" error, identifying all key functions, caches, and decision points. This will serve as the definitive map for our diagnostic logging.
+
+---
+
+#### The Execution Trace
+
+This is the step-by-step journey of a module request that leads to the stale pre-bundle error.
+
+**Phase 1: The `ssrBridgePlugin` Initiates the Request**
+
+1.  **Origin Call**
+    *   **File:** `sdk/src/vite/ssrBridgePlugin.mts` (our code)
+    *   **Function:** `load` hook
+    *   **Action:** Our plugin calls `devServer.environments.ssr.fetchModule(idForFetch)`. This is the entry point into Vite's internal machinery for the SSR environment.
+    *   **What follows:** `fetchModule` is an API on the `DevEnvironment` object. Its job is to orchestrate the loading, transformation, and execution of a module within its environment.
+
+2.  **`fetchModule` and `transformRequest`**
+    *   **File:** `/Users/justin/rw/clones/vite/packages/vite/src/server/environment.ts`
+    *   **Function:** `fetchModule`
+    *   **Action:** `fetchModule` quickly calls `transformRequest(url, this)`. `transformRequest` is the heart of Vite's dev server, responsible for running a module's URL through the entire plugin pipeline.
+
+**Phase 2: Vite's Resolution Pipeline and the Hidden Cache**
+
+3.  **The Plugin Container and `resolveId`**
+    *   **File:** `/Users/justin/rw/clones/vite/packages/vite/src/server/transformRequest.ts`
+    *   **Function:** `transformRequest`
+    *   **Action:** `transformRequest` first needs to resolve the module ID. It calls `pluginContainer.resolveId(url, importer, ...)`. This kicks off the chain of `resolveId` hooks from all registered plugins.
+
+4.  **The Higher-Level Cache (`packageCache`)**
+    *   **File:** `/Users/justin/rw/clones/vite/packages/vite/src/node/plugins/resolve.ts`
+    *   **Function:** `tryNodeResolve` -> `resolvePackageEntry`
+    *   **Action:** The `vite:resolve` plugin's `resolveId` hook runs. For a bare import like `rwsdk/__ssr_bridge`, it calls `tryNodeResolve`. This function eventually calls `resolvePackageEntry`. At the very top of `resolvePackageEntry`, it checks a cache:
+        ```typescript
+        const cached = getResolvedCache('.', options)
+        if (cached) {
+          return cached + postfix
+        }
+        ```
+    *   **This is the higher-level cache.** It stores the *result* of a previous successful resolution. If it gets a hit here, it returns the stale, fully-resolved path (e.g., `/path/to/dep.js?v=OLD_HASH`) and the `resolveId` chain stops. This is why our logs in `tryOptimizedResolve` were not firing on the second request.
+    *   **Proposed Log:** We need to patch the `getResolvedCache` method in `packages/vite/src/node/packages.ts` to log hits and misses.
+        ```javascript
+        // In loadPackageData() -> getResolvedCache()
+        const cacheKey = getResolveCacheKey(key, options);
+        const hit = resolvedCache[cacheKey];
+        if (id.includes('__ssr_bridge')) {
+            if (hit) {
+                console.log(`[RWS-VITE-LOG-1] packageCache HIT for ${id}. Returning stale path: ${hit}`);
+            } else {
+                console.log(`[RWS-VITE-LOG-1] packageCache MISS for ${id}.`);
+            }
+        }
+        return hit;
+        ```
+
+**Phase 3: Hash Generation (on Cache Miss)**
+
+5.  **`tryOptimizedResolve`**
+    *   **File:** `/Users/justin/rw/clones/vite/packages/vite/src/node/plugins/resolve.ts`
+    *   **Function:** `tryOptimizedResolve`
+    *   **Action:** If the `packageCache` misses, the resolution proceeds. The `vite:pre-alias` plugin (which runs before `vite:resolve`) calls `tryOptimizedResolve` for bare imports.
+
+6.  **The Smoking Gun: `getOptimizedDepId`**
+    *   **File:** `/Users/justin/rw/clones/vite/packages/vite/src/node/optimizer/optimizer.ts`
+    *   **Function:** `getOptimizedDepId`
+    *   **Action:** `tryOptimizedResolve` retrieves the `depInfo` from the optimizer's `metadata` and calls `depsOptimizer.getOptimizedDepId(depInfo)`. This function constructs the final versioned URL: `` `${depInfo.file}?v=${depInfo.browserHash}` ``.
+    *   **Proposed Log:** We will re-add our log to `tryOptimizedResolve` to see the state of the metadata it's using.
+        ```javascript
+        // In tryOptimizedResolve()
+        const metadata = depsOptimizer.metadata;
+        const depInfo = optimizedDepInfoFromId(metadata, id);
+        if (id.includes('__ssr_bridge')) {
+            console.log(`[RWS-VITE-LOG-2] tryOptimizedResolve for ${id}. Metadata hash: ${metadata.browserHash}. Dep hash: ${depInfo?.browserHash}`);
+        }
+        ```
+
+**Phase 4: Execution via the Module Runner**
+
+7.  **Vite to Runner Handoff**
+    *   **File:** `/Users/justin/rw/clones/vite/packages/vite/src/server/environment.ts`
+    *   **Function:** `fetchModule`
+    *   **Action:** After `transformRequest` successfully returns the transformed code, `fetchModule`'s final step is to execute it. It calls `runner.import(url)`, where `runner` is the `CustomModuleRunner` provided by `vite-plugin-cloudflare`.
+
+8.  **Inside the Runner**
+    *   **File:** `vite-plugin-cloudflare`'s `runner-worker/index.js` (compiled)
+    *   **Functions:** `cachedRequest` -> `directRequest` -> `runInlinedModule`
+    *   **Action:** The runner's `import` method starts a chain of internal calls. It attempts to load the module's dependencies. One of these dependencies will be the stale URL (e.g., `react?v=OLD_HASH` or the bridge itself if it's the source of the error). This triggers an HTTP request from the runner back to the Vite dev server.
+    *   **Proposed Log:** We can log the URL being requested by the runner.
+        ```javascript
+        // In the runner's `request` or `cachedModule` function
+        if (url.includes('__ssr_bridge')) {
+            console.log(`[RWS-VITE-LOG-3] Runner is requesting stale URL: ${url}`);
+        }
+        ```
+
+**Phase 5: The Error**
+
+9.  **Vite Catches the Stale Request**
+    *   **File:** `/Users/justin/rw/clones/vite/packages/vite/src/node/plugins/optimizedDeps.ts`
+    *   **Function:** `load` hook
+    *   **Action:** The Vite dev server receives the runner's request for the stale URL. The `vite:optimized-deps` plugin's `load` hook intercepts it. It checks the `v` query parameter against the *current* (new) `browserHash` in its metadata. They don't match.
+    *   It throws the `ERR_OUTDATED_OPTIMIZED_DEP` error, which is the "stale pre-bundle" message. This error travels back to the runner, which then logs it to the console, producing the stack trace we see.
+
+### Attempt #38: The Definitive Diagnosis - Stale Transform Cache
+
+**Hypothesis:** The root cause is Vite's `moduleGraph` serving a stale transform of `rwsdk_worker.js` that contains a baked-in stale URL for `ssr_bridge`. This happens because `moduleGraph.invalidateAll()` isn't working as expected.
+
+**Plan:** Add diagnostic logs directly into the compiled `doTransform` function in Vite's dist output to definitively prove whether a cached result is being served after a `full-reload`.
+
+**Findings:** The logs from this attempt were definitive, but showed the opposite of the hypothesis.
+
+-   `[RWS-VITE-PROOF-1] Using cached transform for: ...` logged during normal HMR, as expected.
+-   `[RWS-VITE-PROOF-2] No fresh cache. Re-transforming: ...` logged immediately after the `full-reload` event.
+
+**Conclusion:** This **disproves the stale transform cache theory**. The `moduleGraph` invalidation is working correctly, and `rwsdk_worker.js` is being re-transformed every time. The problem lies elsewhere.
+
+### Attempt #39: Analyzing the Transformed Code
+
+**Hypothesis:** Following the disproval of the stale transform theory, the focus returns to the runtime resolution of the `ssr_bridge` import. The staleness is not in the transformed code of the importer (`rwsdk_worker.js`), but is introduced when `__vite_ssr_import__` is called at runtime.
+
+**Plan:** Log the contents of the freshly transformed `rwsdk_worker.js` to inspect the import specifier for `ssr_bridge`.
+
+**Findings:** The transformed code for `rwsdk_worker.js` contains the following import call:
+
+```javascript
+const __vite_ssr_import_14__ = await __vite_ssr_import__("/@id/virtual:rwsdk:ssr:rwsdk/__ssr_bridge", {"importedNames":["createThenableFromReadableStream","renderHtmlStream"]});
+```
+
+**Conclusion:** This is the definitive proof. The import specifier `/@id/virtual:rwsdk:ssr:rwsdk/__ssr_bridge` has **no version hash**. The transformed code is clean. The stale hash is being applied later, during the runtime resolution initiated by the `__vite_ssr_import__` call.
+
+This shifts the investigation's focus squarely onto our `ssrBridgePlugin.mts` and its `load` hook, which is responsible for handling these virtual IDs. The question now is what happens inside that hook during the race condition. The use of a dynamic `import()` to replace `__vite_ssr_import__` is a potential source of timing differences that could contribute to the issue.
+
+### Attempt #40: Isolate the `import()` Rewrite
+
+**Hypothesis:** Rewriting `__vite_ssr_import__` to a dynamic `import()` call changes the execution timing in the Miniflare environment, contributing to the race condition.
+
+**Plan:** Modify the `ssrBridgePlugin` to reconstruct the original `__vite_ssr_import__` call instead of replacing it with `import()`, while still prepending the virtual module prefix.
+
+**Findings:** The "stale pre-bundle" error still occurred with the exact same stack trace.
+
+**Conclusion:** This experiment definitively proves that our rewriting logic is **not** a contributing factor to the problem. The root cause is the timing of the `fetchModule` call itself, regardless of how the subsequent imports are structured. We can now proceed with the knowledge that the `import()` rewrite is safe and correct for its original purpose (module graph compatibility).
+
+### Attempt #41: Tracing the `import()` Call
+
+**Hypothesis:** The "stale pre-bundle" error originates from the resolution process that occurs inside the SSR environment, which is triggered by the worker's `import()` call to the virtual module.
+
+**Plan:** Document the known facts and trace the code paths that are executed when the worker's `import()` call is handled by the Vite server, in order to identify un-logged code paths where the stale hash could be introduced.
+
+**Findings & Thought Process:**
+1.  We have proven from the `PROOF-2` logs that `rwsdk_worker.js` is correctly invalidated and re-transformed after a re-optimization.
+2.  We have proven by inspecting the transformed code of `rwsdk_worker.js` that it contains no stale hashes. The import is clean: `import("/@id/virtual:rwsdk:ssr:rwsdk/__ssr_bridge")`.
+3.  Therefore, the staleness must be introduced *after* this point, during the handling of that `import()` request.
+4.  The request for the virtual module hits our `ssrBridgePlugin`'s `load` hook.
+5.  Our `load` hook then calls `devServer.environments.ssr.fetchModule('rwsdk/__ssr_bridge')`.
+6.  This triggers a new resolution process *inside the SSR environment*. It is within this separate, nested resolution that the stale hash is being generated, because it's running against the SSR environment's still-stale dependency optimizer state.
+
+**Conclusion:** We need to add logging to the code paths within Vite's core resolution logic for the SSR environment to pinpoint where the stale state is being read. The next step is to identify the `resolveId` hook of Vite's internal `vite:resolve` plugin, as this is the function that will ultimately call `tryOptimizedResolve`.
+
+### Attempt #42: The Final Diagnosis - Incomplete Module Graph Invalidation
+
+**Hypothesis:** `moduleGraph.invalidateAll()` is not completely clearing the module graph. It leaves behind "ghost" `ModuleNode` objects that, while marked as invalidated (`transformResult: null`), still retain their original, stale `id`.
+
+**Plan:** Add detailed logging inside Vite's `doTransform` function to inspect the state of the module graph when a request for the `ssr_bridge` comes in after a re-optimization.
+
+**Findings: CONFIRMED**
+The diagnostic logs (`LOG-10` and `LOG-11`) provided the definitive proof.
+
+1.  `[RWS-VITE-LOG-10] doTransform found a module in moduleGraph for rwsdk/__ssr_bridge. Invalidated: true`
+    *   This confirms that after `invalidateAll()` has been called, a `ModuleNode` for the bridge still exists in the SSR environment's graph, and that its `transformResult` has been correctly nullified.
+2.  `[RWS-VITE-LOG-11] Using stale ID from ghost module node: .../rwsdk___ssr_bridge.js?v=2843178e`
+    *   This is the smoking gun. It confirms that the "ghost" `ModuleNode` retains its original, stale `id` property, complete with the old version hash.
+
+**The Root Cause & Full Trace:**
+
+This is the final, definitive sequence of events that causes the crash:
+
+A `ModuleNode` object acts as both a cache key (via its `url` property) and a cache container for its resolved `id`.
+
+**1. First Run (Healthy State):**
+- `doTransform` is called with a clean URL (e.g., `rwsdk/__ssr_bridge`).
+- `moduleGraph.getModuleByUrl()` returns `null` because the module hasn't been seen before.
+- The `pluginContainer.resolveId` pipeline runs completely.
+- The `vite:resolve` plugin generates the fully resolved, versioned ID: `.../rwsdk___ssr_bridge.js?v=OLD_HASH`.
+- A new `ModuleNode` is created. Its `url` property is set to the clean URL, but its `id` property is set to the stale, versioned ID.
+- This new node is added to the `moduleGraph`'s internal `urlToModuleMap`.
+
+**2. Re-optimization & Incomplete Invalidation:**
+- A re-optimization occurs, creating a `NEW_HASH`.
+- Our plugin intercepts the HMR event and calls `server.environments.ssr.moduleGraph.invalidateAll()`.
+- `invalidateAll()` iterates through the `moduleGraph`. It finds our `ModuleNode` and sets its `transformResult` to `null`.
+- Critically, it **does not** remove the node from the graph, nor does it clear the node's stale `id` property.
+
+**3. Second Run (Failing State):**
+- The runner re-imports, and `doTransform` is called again with the same clean URL (`rwsdk/__ssr_bridge`).
+- `moduleGraph.getModuleByUrl()` now finds the "ghost" `ModuleNode` left behind from the first run. `module$1` is not `null`.
+- **Resolution is Skipped:** Because a `ModuleNode` was found, `doTransform` completely skips the entire `pluginContainer.resolveId` pipeline. This is why our later diagnostic logs (`LOG-3`, `LOG-7`) were not firing.
+- **Stale ID is Used:** `doTransform` then proceeds to use the properties of this stale "ghost" node, including its `id` property. It executes `const id = module$1.id`, which plucks the stale, version-hashed path (`.../rwsdk___ssr_bridge.js?v=OLD_HASH`) directly from the ghost node.
+- **`loadAndTransform` Fails:** This stale, versioned ID is passed to `loadAndTransform`.
+- **Error is Thrown:** `loadAndTransform` eventually reaches the `vite:optimized-deps` plugin's `load` hook. This hook sees the `OLD_HASH`, compares it to the new hash in the optimizer's current metadata, and correctly throws the "stale pre-bundle" error.
+
+**Conclusion:** The diagnostic phase is complete. The root cause is an incomplete invalidation of the module graph by `invalidateAll()`. It is not designed to handle scenarios where the underlying resolution of a module's ID needs to change, as it leaves behind stale module nodes that poison subsequent requests. The solution must be to perform a more forceful and complete clearing of the module graph.
