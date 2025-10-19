@@ -22,17 +22,6 @@ export const ssrBridgePlugin = ({
   const ssrBridgePlugin: Plugin = {
     name: "rwsdk:ssr-bridge",
     enforce: "pre",
-    async resolveId(id, importer) {
-      if (id.startsWith(VIRTUAL_SSR_PREFIX) && id.includes("?v=")) {
-        log("Intercepted a stale virtual SSR module import: %s", id);
-        // This is a potentially stale import from an already-transformed module.
-        // We need to strip the version hash and re-resolve it to get the
-        // latest hash from the SSR dependency optimizer.
-        const cleanId = id.substring(0, id.indexOf("?"));
-        log("Re-resolving clean id: %s", cleanId);
-        return this.resolve(cleanId, importer, { skipSelf: true });
-      }
-    },
     configureServer(server) {
       devServer = server;
       log("Configured dev server");
@@ -94,10 +83,22 @@ export const ssrBridgePlugin = ({
         log("Worker environment esbuild configuration complete");
       }
     },
-    async resolveId(id) {
+    async resolveId(id, importer) {
       // Skip during directive scanning to avoid performance issues
       if (process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE) {
         return;
+      }
+
+      console.log(`[RWS-VITE-RESOLVE-LOG] id: ${id}`);
+
+      if (id.includes(VIRTUAL_SSR_PREFIX) && id.includes("?v=")) {
+        log("Intercepted a stale virtual SSR module import: %s", id);
+        // This is a potentially stale import from an already-transformed module.
+        // We need to strip the version hash and re-resolve it to get the
+        // latest hash from the SSR dependency optimizer.
+        const cleanId = id.substring(0, id.indexOf("?"));
+        log("Re-resolving clean id: %s", cleanId);
+        return this.resolve(cleanId, importer, { skipSelf: true });
       }
 
       if (isDev) {
