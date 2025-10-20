@@ -1,4 +1,4 @@
-import { debug } from "debug";
+import debug from "debug";
 import { type Plugin, type ViteDevServer } from "vite";
 
 const log = debug("rws-vite-plugin:middleware");
