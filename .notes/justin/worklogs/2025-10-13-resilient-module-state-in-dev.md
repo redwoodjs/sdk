@@ -1274,4 +1274,20 @@ This "unhashed-to-hashed" transition is the critical flaw. Standard Vite modules
 
 Based on the final diagnosis, the plan is to fix the "unhashed-to-hashed" transition. Instead of asking the SSR environment to resolve the clean `rwsdk/__ssr_bridge` ID (which triggers the ghost node problem), I will resolve it to its correct, hashed path *within the worker environment's `load` hook* and then pass that fully-resolved path to `fetchModule`.
 
-This makes the interaction between the two environments explicit and avoids relying on Vite's internal resolution, which is failing in this cross-environment scenario.
+This makes the interaction between the two environments explicit and avoids relying on Vite's internal resolution, which is failing in this cross-environment scenario. I've also decided to use `cached: false` in the `fetchModule` call. This is a "belt-and-suspenders" measure. Since our `load` hook is only called when the worker-side cache is stale, this flag ensures we also bypass any potentially stale transform result in the SSR environment's cache, guaranteeing we get the absolute freshest version.
+
+**Findings:** This was a major success. The "stale pre-bundle" error for `rwsdk/__ssr_bridge` is now completely gone.
+
+However, this has unmasked a pre-existing, identical error for the `react` dependency. The logs show that this error was always happening, but was previously hidden by the more immediate failure of the SSR bridge.
+
+Crucially, if I manually reload the page in the browser after the `react` error appears in the console, the page loads correctly. This is a strong indicator that the server *does* eventually reach a consistent state, and the core issue is a race condition where the worker's module runner re-imports modules too quickly after a re-optimization, before the Vite server has stabilized.
+
+## Attempt #50: Signal and Retry on Stale Dependency Error
+
+The current problem is a classic race condition. The fix for the SSR bridge was correct, but now we must address the timing issue for all other dependencies. When the SSR optimizer runs, it sends a `full-reload` HMR message, which our plugin forwards to the worker. The worker's `CustomModuleRunner` immediately clears its caches and re-imports its entry points, often before the Vite dev server has finished its own internal state updates.
+
+The plan is to implement a retry mechanism.
+
+1.  **Create a Signal:** In `ssrBridgePlugin`, where we intercept the `full-reload` HMR event, we will create a promise that acts as a "server is stable" signal. Initially, this will resolve after a short, fixed delay to prove the theory.
+2.  **Implement Retry Logic:** We will need to modify the `CustomModuleRunner`'s `cachedModule` function (where the error originates). We'll wrap the module request in a `try...catch`.
+3.  **Connect Signal and Retry:** If a "stale pre-bundle" error is caught, the runner will `await` our stability signal promise and then retry the request.
