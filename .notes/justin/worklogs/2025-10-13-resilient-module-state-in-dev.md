@@ -1294,7 +1294,7 @@ The plan is to implement a retry mechanism.
 
 **Update:** After discussion, we've refined this approach. A static timeout is not a reliable signal. A better approach is to use a retry-with-exponential-backoff strategy, which is common for handling transient network or server-state errors. The "stale pre-bundle" error (`ERR_OUTDATED_OPTIMIZED_DEP`) itself will be our trigger. When caught, we will wait for a short, increasing interval before retrying the module fetch. This acknowledges the server is temporarily busy without relying on a fixed guess, and it mimics the resilient behavior of a client-side fetch operation.
 
-## Attempt #5: Implement Retry-on-Fetch in SSR Bridge
+## Attempt #51: Implement Retry-on-Fetch in SSR Bridge
 
 My next attempt was to make the `fetchModule` call within the `ssrBridgePlugin` more resilient. The idea was to catch the `ERR_OUTDATED_OPTIMIZED_DEP` error and retry the fetch with an exponential backoff. This would give the Vite server a moment to stabilize after a re-optimization before the worker tried to fetch the module again.
 
@@ -1316,7 +1316,7 @@ The plan is to use a custom Vite error-handling middleware. When it detects the 
 
 This forces the client (in this case, the worker's module runner) to initiate a completely new request. This new request will see the now-stabilized server state and should resolve the correct, updated dependency versions. This approach is less fragile because it doesn't try to patch up a request that has already gone wrong; it just starts a clean one.
 
-## Attempt #7: Forcing a Client-Side Reload
+## Attempt #52: Forcing a Client-Side Reload
 
 The middleware-with-redirect approach is robust for server-to-server requests (like the worker fetching an SSR module) and for initial HTML page loads. However, it has a gap: it doesn't account for client-side JavaScript that initiates a `fetch` request that fails with the stale dependency error.
 
@@ -1336,7 +1336,7 @@ The logs show that this leads to a race condition where the browser reloads and 
 
 We are reloading too early. We need a more reliable signal that the server is truly stable.
 
-## Attempt #8: Debounced Stability Signal
+## Attempt #53: Debounced Stability Signal
 
 The root of the problem is that we are not waiting for the dependency re-optimization to fully complete. Vite's module runner re-imports all entry points after an optimizer run, which triggers a flurry of module transformations. We need to wait for this flurry to end.
 
