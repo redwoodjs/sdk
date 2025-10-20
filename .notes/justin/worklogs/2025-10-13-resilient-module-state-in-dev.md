@@ -1354,3 +1354,42 @@ This approach moves from a blind guess (a timeout) to an intelligent wait. It en
 The `transform` hook was chosen as the primary signal for server activity. After a dependency re-optimization, Vite re-imports entry points, causing a cascade of module processing. The `transform` hook is invoked for every module that is being transpiled or modified, making it a reliable proxy for server "busyness". By waiting for a quiet period with no transform calls, we can be reasonably sure the server has reached a stable state.
 
 This entire mechanism is also confined to development mode. The logic is contained within the `configureServer` hook, which Vite only executes during `serve`. To make this more explicit, the plugin is also configured with `apply: 'serve'`.
+
+---
+
+### PR Description
+
+This addresses two distinct but related sources of instability in the Vite dev server, both of which are triggered by Vite's dependency re-optimization process.
+
+#### Problem 1: Module-Level State is Discarded on Re-optimization
+
+The Vite dev server's dependency re-optimization process discards existing module instances and creates new ones. This was wiping out all module-level state, most critically the `AsyncLocalStorage` instances used for request context, leading to application crashes. While proactive dependency scanning helps, it cannot prevent all cases of re-optimization.
+
+##### Solution: A Virtual State Module
+
+A virtual state module, `rwsdk/__state`, is introduced to act as a centralized, persistent store for framework-level state.
+
+-   A new Vite plugin (`statePlugin`) marks this virtual module as `external` to Vite's dependency optimizer for the worker environment. This insulates it from the re-optimization and reload process.
+-   The plugin resolves `rwsdk/__state` to a physical module (`sdk/src/runtime/state.mts`) that contains the state container and management APIs.
+-   Framework code is refactored to use this module (e.g., `defineRwState(...)`), making the state resilient to reloads.
+
+This solves the state-loss problem and centralizes state management within the framework.
+
+#### Problem 2: Race Conditions Cause "Stale Pre-bundle" Errors
+
+Even with persistent state, the dev server was still unstable when a re-optimization was triggered by discovering a new import. A complex race condition between Vite's `ssr` and `worker` environments would cause the dev server to fail with an `ERR_OUTDATED_OPTIMIZED_DEP` ("stale pre-bundle") error.
+
+This was caused by a combination of three issues:
+1.  **Stale Resolution:** After an SSR re-optimization, Vite's internal resolver would continue to use a stale "ghost node" from its module graph to resolve our virtual `ssr_bridge` module, leading to a request for a dependency with an old, invalid version hash.
+2.  **Desynchronized Environments:** The `full-reload` HMR event triggered by the SSR optimizer was not being propagated to the worker environment. This meant the worker's own caches (especially the `CustomModuleRunner`'s execution cache) were never cleared and continued to use stale modules.
+3.  **Premature Re-import:** Even with synchronized invalidation, the worker's module runner re-imports its entry points immediately after clearing its cache. This happens too quickly, hitting the Vite server while its own internal state is still being updated, re-triggering the stale dependency error.
+
+##### Solution: A Multi-Layered Approach to Synchronization and Stability
+
+A combination of fixes was implemented to address this race condition:
+
+1.  **Manual Hash Resolution:** The `ssrBridgePlugin` was modified to no longer rely on Vite's internal, faulty resolution for virtual modules. It now manually resolves the correct, up-to-date version hash for any optimized dependency from the SSR optimizer's metadata before fetching it. This bypasses the "ghost node" problem.
+2.  **HMR Propagation:** The `ssrBridgePlugin` now intercepts the `full-reload` HMR event from the SSR environment and propagates it to the worker environment. This ensures the worker's module runner and module graph are correctly invalidated when the SSR environment changes.
+3.  **Debounced Stability Plugin (`staleDepRetryPlugin`):** A new error-handling middleware was introduced. When it catches the inevitable "stale pre-bundle" error from the runner's premature re-import, it does not immediately retry. Instead, it waits for the server to become "stable" by monitoring the `transform` hook. Once a quiet period with no module transformation activity is detected, it signals the client to perform a full reload and gracefully redirects the failed request.
+
+This layered solution ensures the two environments are correctly synchronized and provides a robust, intelligent mechanism to wait for the server to be in a consistent state before retrying a request.
