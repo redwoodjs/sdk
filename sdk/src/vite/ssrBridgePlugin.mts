@@ -115,16 +115,6 @@ export const ssrBridgePlugin = ({
 
       console.log(`[RWS-VITE-RESOLVE-LOG] id: ${id}`);
 
-      if (id.includes(VIRTUAL_SSR_PREFIX) && id.includes("?v=")) {
-        log("Intercepted a stale virtual SSR module import: %s", id);
-        // This is a potentially stale import from an already-transformed module.
-        // We need to strip the version hash and re-resolve it to get the
-        // latest hash from the SSR dependency optimizer.
-        const cleanId = id.substring(0, id.indexOf("?"));
-        log("Re-resolving clean id: %s", cleanId);
-        return this.resolve(cleanId, importer, { skipSelf: true });
-      }
-
       if (isDev) {
         // context(justinvdm, 27 May 2025): In dev, we need to dynamically load
         // SSR modules, so we return the virtual id so that the dynamic loading
