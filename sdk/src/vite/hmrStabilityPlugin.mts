@@ -1,7 +1,7 @@
+import debug from "debug";
 import { type Plugin, type ViteDevServer } from "vite";
-import { getLogger } from "./logger.mjs";
 
-const log = getLogger("rws-vite-plugin:hmr-stability");
+const log = debug("rws-vite-plugin:hmr-stability");
 
 let stabilityPromise: Promise<void> | null = null;
 let stabilityResolver: (() => void) | null = null;
