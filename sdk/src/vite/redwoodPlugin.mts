@@ -24,10 +24,10 @@ import { knownDepsResolverPlugin } from "./knownDepsResolverPlugin.mjs";
 import { linkerPlugin } from "./linkerPlugin.mjs";
 import { miniflareHMRPlugin } from "./miniflareHMRPlugin.mjs";
 import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
-import { optimizedDepsResiliencePlugin } from "./optimizedDepsResiliencePlugin.mjs";
 import { prismaPlugin } from "./prismaPlugin.mjs";
 import { resolveForcedPaths } from "./resolveForcedPaths.mjs";
 import { ssrBridgePlugin } from "./ssrBridgePlugin.mjs";
+import { staleDepRetryPlugin } from "./staleDepRetryPlugin.mjs";
 import { statePlugin } from "./statePlugin.mjs";
 import { transformJsxScriptTagsPlugin } from "./transformJsxScriptTagsPlugin.mjs";
 import { useClientLookupPlugin } from "./useClientLookupPlugin.mjs";
@@ -133,7 +133,7 @@ export const redwoodPlugin = async (
   }
 
   return [
-    optimizedDepsResiliencePlugin(),
+    staleDepRetryPlugin(),
     statePlugin(),
     devServerTimingPlugin(),
     devServerConstantPlugin(),
