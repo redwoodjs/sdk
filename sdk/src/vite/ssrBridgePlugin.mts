@@ -24,6 +24,21 @@ export const ssrBridgePlugin = ({
     enforce: "pre",
     configureServer(server) {
       devServer = server;
+
+      const ssrHot = server.environments.ssr.hot;
+      const originalSsrHotSend = ssrHot.send;
+      ssrHot.send = (...args: any[]) => {
+        if (typeof args[0] === "object" && args[0].type === "full-reload") {
+          log("SSR full-reload detected, propagating to worker");
+          server.environments.worker.hot.send.apply(
+            server.environments.worker.hot,
+            args as any,
+          );
+        }
+
+        return originalSsrHotSend.apply(ssrHot, args as any);
+      };
+
       log("Configured dev server");
       const originalRun = devServer.environments.ssr.depsOptimizer?.run!;
 
