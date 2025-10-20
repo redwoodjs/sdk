@@ -212,101 +212,140 @@ export const ssrBridgePlugin = ({
         if (isDev) {
           // from the SSR environment, which is crucial for things like server
           // components.
-          const ssrModuleId = cleanId.slice(VIRTUAL_SSR_PREFIX.length);
-          const ssrHot = devServer.environments.ssr.hot;
-          const ssrOptimizer = devServer.environments.ssr.depsOptimizer;
+          return (async () => {
+            const ssrOptimizer = devServer.environments.ssr.depsOptimizer;
 
-          let idForFetch = ssrModuleId;
+            let idForFetch = realId;
 
-          // context(justinvdm, 20 Oct 2025): This is the fix for the stale
-          // dependency issue. The root cause is the "unhashed-to-hashed"
-          // transition. Our worker code imports a clean ID
-          // (`rwsdk/__ssr_bridge`), but we expect to fetch the hashed,
-          // optimized version from the SSR environment. When a re-optimization
-          // happens, Vite's `fetchModule` (running in the SSR env) finds a
-          // "ghost node" in its module graph for the clean ID and incorrectly
-          // re-uses its stale, hashed `id` property.
-          //
-          // To fix this, we manually resolve the hashed path here, before
-          // calling `fetchModule`. We look into the SSR optimizer's metadata to
-          // find the correct, up-to-date hash and construct the path
-          // ourselves. This ensures `fetchModule` is always called with the
-          // correct, versioned ID, bypassing the faulty ghost node lookup.
-          if (
-            ssrOptimizer &&
-            ssrOptimizer.metadata.optimized.has(ssrModuleId)
-          ) {
-            const depInfo = ssrOptimizer.metadata.optimized.get(ssrModuleId)!;
-            idForFetch = `${depInfo.file}?v=${depInfo.browserHash}`;
-            log(
-              "Manually resolved %s to hashed path for fetchModule: %s",
-              ssrModuleId,
-              idForFetch,
-            );
-          }
-
-          log("Dev mode: fetching SSR module for realPath=%s", idForFetch);
-
-          try {
-            // It's important that we don't inline here, otherwise we'll get
-            // the transformed and cached result, which may be stale.
-            const result = await devServer.environments.ssr.fetchModule(
-              idForFetch,
-              {
-                inline: false,
-              },
-            );
-            log("Fetched SSR module code length: %d", result.code?.length || 0);
-
-            const code = "code" in result ? result.code : undefined;
-
+            // context(justinvdm, 20 Oct 2025): This is the fix for the stale
+            // dependency issue. The root cause is the "unhashed-to-hashed"
+            // transition. Our worker code imports a clean ID
+            // (`rwsdk/__ssr_bridge`), but we expect to fetch the hashed,
+            // optimized version from the SSR environment. When a re-optimization
+            // happens, Vite's `fetchModule` (running in the SSR env) finds a
+            // "ghost node" in its module graph for the clean ID and incorrectly
+            // re-uses its stale, hashed `id` property.
+            //
+            // To fix this, we manually resolve the hashed path here, before
+            // asking the SSR env to process the module. We look into the SSR
+            // optimizer's metadata to find the correct, up-to-date hash and
+            // construct the path ourselves. This ensures the SSR env is
+            // always working with the correct, versioned ID, bypassing the
+            // faulty ghost node lookup.
             if (
-              idForFetch.endsWith(".css") &&
-              !idForFetch.endsWith(".module.css")
+              ssrOptimizer &&
+              Object.prototype.hasOwnProperty.call(
+                ssrOptimizer.metadata.optimized,
+                realId,
+              )
             ) {
-              process.env.VERBOSE &&
+              const depInfo = ssrOptimizer.metadata.optimized[realId]!;
+              idForFetch = ssrOptimizer.getOptimizedDepId(depInfo);
+              log(
+                "Manually resolved %s to hashed path for fetchModule: %s",
+                realId,
+                idForFetch,
+              );
+            }
+
+            log(
+              "Virtual SSR module load: id=%s, realId=%s, idForFetch=%s",
+              id,
+              realId,
+              idForFetch,
+            );
+
+            log("Dev mode: fetching SSR module for realPath=%s", idForFetch);
+
+            try {
+              // We use `fetchModule` with `cached: false` as a safeguard. Since
+              // we're in a `load` hook, we know the worker-side cache for this
+              // virtual module is stale. `cached: false` ensures that we also
+              // bypass any potentially stale transform result in the SSR
+              // environment's cache, guaranteeing we get the freshest possible
+              // code.
+              const result = await devServer.environments.ssr.fetchModule(
+                idForFetch,
+                undefined,
+                { cached: false },
+              );
+
+              if ("code" in result) {
                 log(
-                  "Plain CSS file, returning empty module for %s",
+                  "Fetched SSR module code length: %d",
+                  result.code?.length || 0,
+                );
+
+                const code = result.code;
+
+                if (
+                  idForFetch.endsWith(".css") &&
+                  !idForFetch.endsWith(".module.css")
+                ) {
+                  process.env.VERBOSE &&
+                    log(
+                      "Plain CSS file, returning empty module for %s",
+                      idForFetch,
+                    );
+                  return "export default {};";
+                }
+
+                const s = new MagicString(code || "");
+                const callsites = findSsrImportCallSites(
+                  idForFetch,
+                  code || "",
+                  log,
+                );
+
+                for (const site of callsites) {
+                  const normalized = site.specifier.startsWith("/@id/")
+                    ? site.specifier.slice("/@id/".length)
+                    : site.specifier;
+                  // context(justinvdm, 11 Aug 2025):
+                  // - We replace __vite_ssr_import__ and __vite_ssr_dynamic_import__
+                  //   with import() calls so that the module graph can be built
+                  //   correctly (vite looks for imports and import()s to build module
+                  //   graph)
+                  // - We prepend /@id/$VIRTUAL_SSR_PREFIX to the specifier so that we
+                  //   can stay within the SSR subgraph of the worker module graph
+                  const replacement = `import("/@id/${VIRTUAL_SSR_PREFIX}${normalized}")`;
+                  s.overwrite(site.start, site.end, replacement);
+                }
+
+                const out = s.toString();
+                process.env.VERBOSE &&
+                  log(
+                    "Transformed SSR module code for realId=%s: %s",
+                    realId,
+                    out,
+                  );
+                return {
+                  code: out,
+                  map: null, // Sourcemaps are handled by fetchModule's inlining
+                };
+              } else {
+                // This case can be hit if the module is already cached. We may
+                // need to handle this more gracefully, but for now we'll just
+                // return an empty module.
+                log(
+                  "SSR module %s was already cached. Returning empty.",
                   idForFetch,
                 );
-              return "export default {};";
+                return "export default {}";
+              }
+            } catch (e) {
+              log(
+                "Error fetching SSR module for realPath=%s: %s",
+                idForFetch,
+                e,
+              );
+              throw e;
             }
-
-            log("Fetched SSR module code length: %d", code?.length || 0);
-
-            const s = new MagicString(code || "");
-            const callsites = findSsrImportCallSites(
-              idForFetch,
-              code || "",
-              log,
-            );
-
-            for (const site of callsites) {
-              const normalized = site.specifier.startsWith("/@id/")
-                ? site.specifier.slice("/@id/".length)
-                : site.specifier;
-              // context(justinvdm, 11 Aug 2025):
-              // - We replace __vite_ssr_import__ and __vite_ssr_dynamic_import__
-              //   with import() calls so that the module graph can be built
-              //   correctly (vite looks for imports and import()s to build module
-              //   graph)
-              // - We prepend /@id/$VIRTUAL_SSR_PREFIX to the specifier so that we
-              //   can stay within the SSR subgraph of the worker module graph
-              const replacement = `import("/@id/${VIRTUAL_SSR_PREFIX}${normalized}")`;
-              s.overwrite(site.start, site.end, replacement);
-            }
-
-            const out = s.toString();
-            log("Transformed SSR module code length: %d", out.length);
-            process.env.VERBOSE &&
-              log("Transformed SSR module code for realId=%s: %s", realId, out);
-            return out;
-          } catch (e) {
-            log("Error fetching SSR module for realPath=%s: %s", idForFetch, e);
-            throw e;
-          }
+          })();
         }
       }
+
+      return;
     },
   };
 
