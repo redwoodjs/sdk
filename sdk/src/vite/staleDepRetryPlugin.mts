@@ -1,7 +1,7 @@
+import debug from "debug";
 import { type Plugin, type ViteDevServer } from "vite";
-import { getLogger } from "./logger.mjs";
 
-const log = getLogger("rws-vite-plugin:stale-dep-retry");
+const log = debug("rws-vite-plugin:stale-dep-retry");
 
 let stabilityPromise: Promise<void> | null = null;
 let stabilityResolver: (() => void) | null = null;
