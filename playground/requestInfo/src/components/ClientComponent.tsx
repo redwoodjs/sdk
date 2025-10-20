@@ -1,6 +1,5 @@
 "use client";
 
-import isNumber from "is-number";
 import { useState } from "react";
 import { doServerAction } from "../app/actions";
 

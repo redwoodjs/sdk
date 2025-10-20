@@ -650,7 +650,7 @@ This leads to two potential long-term solutions:
   3. We will wrap the `fetchModule` call in a `try...catch` block to log the specific error and confirm this is the point of failure.
 - This will give us direct evidence of the state of the SSR dependency optimizer at the moment of failure.
 
-### Attempt #22: Proving Stale Transformed Code in Vite's `loadAndTransform`
+### Attempt #22: Proving Stale Transform Caching
 
 **Hypothesis:** The root cause is a stale transformed module being served from the Vite `worker` environment's module graph cache.
 
@@ -1140,6 +1140,138 @@ Two potential solutions were considered to address this architectural issue.
   - More efficient and less disruptive than a full worker re-optimization.
   - Works within Vite's standard plugin APIs.
   - Avoids complex and potentially flaky filesystem watching.
-- **Cons:** Relies on correctly identifying and stripping the hash from all relevant imports.
+- **Cons: Relies on correctly identifying and stripping the hash from all relevant imports.
 
 **Decision:** The "Surgical Approach" (Solution B) was chosen as the first to implement, as it is significantly cleaner and less of a hack than Solution A.
+
+### Attempt #45: Investigating Stale Transform Caching
+
+With both the `.send` HMR forwarding and the "surgical" `resolveId` hash stripping in place, I continued to investigate the logs.
+
+**Findings:**
+
+I've identified a definitive sequence of events in the logs that pinpoints the root cause:
+
+1.  At `2025-10-20T01:25:57.545Z` (L33953 in the logs), immediately after a file change HMR event, I see a "Fetch module result" for `ClientComponent.tsx`. The transformed code for this module correctly contains an import for `react.js` with the current hash:
+    ```
+    const __vite_ssr_import_2__ = await __vite_ssr_import__("/node_modules/.vite/deps_ssr/react.js?v=9c4d658f", {"importedNames":["default"]});
+    ```
+2.  Shortly after, at `2025-10-20T01:25:57.713Z` (L34652), a dependency re-optimization is triggered for the `ssr` environment.
+3.  Following this, the `.send` forwarding correctly triggers a `full-reload` in the worker, and I can see the worker's module runner re-executing its entry points.
+4.  **Crucially, there is no subsequent "Fetch module result" log for `ClientComponent.tsx` after the re-optimization event.**
+
+**Conclusion:**
+
+This confirms that the worker is re-executing a *stale transform* of `ClientComponent.tsx`. Vite is serving a cached version of this module's transformed code. This cached code contains the old, now-stale import for `react.js?v=9c4d658f`.
+
+When the worker executes this stale code, it makes a request for the stale dependency. Our `resolveId` hash-stripping logic is irrelevant at this stage, because the stale URL is baked into the importer's code, and the resolution for *that* module has already completed. The problem is that the importer itself is stale.
+
+### Attempt #46: Force Invalidation on Both Environments
+
+**Hypothesis:** The stale transform of `ClientComponent.tsx` is being served because we were only invalidating the SSR module graph. Invalidating both the SSR and worker module graphs should force Vite to re-transform the module.
+
+**Plan:** Inside the `.send` monkey-patch, call `invalidateAll()` on both `server.environments.ssr.moduleGraph` and `server.environments.worker.moduleGraph` when a `full-reload` is detected.
+
+**Findings:**
+
+I've analyzed the new logs (`/tmp/state2.log`) after implementing this change.
+
+1.  At line `34652`, the SSR dependency re-optimization event occurs as expected.
+2.  The `.send` patch is triggered, and `invalidateAll()` is called for both environments.
+3.  However, the "Fetch module result" log for `ClientComponent.tsx` still only appears once, at line `33948`, which is *before* the re-optimization.
+4.  There is no second fetch after the invalidation and reload.
+
+**Conclusion:**
+
+This is a significant finding. Even when explicitly invalidating both the SSR and worker module graphs, Vite is still serving a cached, stale version of `ClientComponent.tsx`. This proves that `moduleGraph.invalidateAll()` is insufficient for our needs and that another, more persistent caching mechanism is at play. The investigation must now focus on identifying and clearing this other cache. My next attempt will be to try a more forceful, manual module cache clearing within the `.send` handler.
+
+### Attempt #47: Analyzing the "Ghost Node" Regression
+
+Following the implementation of `invalidateAll()` on both module graphs (Attempt #46), a significant change in behavior was observed.
+
+**Findings:**
+
+The "stale pre-bundle" error for `react.js` was resolved. However, the error regressed to a much earlier problem: a stale pre-bundle error for `rwsdk___ssr_bridge.js`.
+
+The logs show the following sequence:
+1. The `react.js` dependency is resolved successfully (implicitly, as the error no longer mentions it).
+2. The process continues until it needs to resolve the `ssr_bridge`.
+3. At this point, a log confirms the root cause: `[RWS-VITE-LOG-11] Using stale ID from ghost module node: .../rwsdk___ssr_bridge.js?v=732d043a`
+4. This leads directly to the "stale pre-bundle" error for the bridge.
+
+**Conclusion:**
+
+This is a critical breakthrough. It proves two things:
+1.  Calling `invalidateAll()` on both graphs *was* effective enough to force a re-transform of the top-level importer (`ClientComponent.tsx`), which fixed the stale `react.js` import baked into it.
+2.  However, this invalidation is not "deep" enough. It does not force a fresh resolution of the modules that the re-transformed component *imports*. The `ssr_bridge` is still being looked up via the stale "ghost" `ModuleNode` that persists in the SSR module graph.
+
+The problem is now narrowed down to a single point of failure: the incomplete clearing of the `ModuleNode` for the `ssr_bridge` itself.
+
+### Attempt #48: Forceful Cache Clearing and Deeper Analysis
+
+**Hypothesis:** The only way to ensure a fresh state is to bypass `invalidateAll()` and manually clear the module graph's internal caches entirely.
+
+**Plan:** In the `.send` monkey-patch, instead of calling `invalidateAll()`, manually call `.clear()` on the four key maps of both the SSR and worker module graphs: `urlToModuleMap`, `idToModuleMap`, `fileToModulesMap`, and `_unresolvedUrlToModuleMap`.
+
+**Findings & Analysis:**
+
+This approach was partially successful and led to a much deeper understanding of Vite's internal mechanics.
+
+1.  **Success:** Forcefully clearing the module graph caches **works**. The logs now show two "Fetch module result" logs for `ClientComponent.tsx`, one before the re-optimization and one after. This confirms that wiping the caches forces Vite to re-process the importer module from scratch.
+2.  **New Failure:** The "stale pre-bundle" error immediately returned, but this time for a deeper dependency: `is-number.js`. This is predictable: we fixed the stale `react.js` import inside `ClientComponent.tsx`, and we fixed the stale `ssr_bridge` import, but now we're hitting the stale imports *inside* the `ssr_bridge`'s dependency graph.
+3.  **Core Question:** This success raised a critical question: Why is this forceful clearing necessary? What does Vite do internally after a re-optimization, and why is `invalidateAll()` insufficient for our use case? A simple `invalidateAll()` should nullify a module's `transformResult`, which *should* trigger a re-fetch. Why doesn't it?
+
+The investigation now shifts from "how to fix this" to "why is Vite designed this way, and how does our specific cross-environment setup break its assumptions?"
+
+### Final Diagnosis: The "Ghost Node" Failure Sequence
+
+A complete analysis of the logs and Vite's internal source code reveals the precise, step-by-step failure sequence that occurs when we only use `invalidateAll()` instead of forcefully clearing the module graph caches.
+
+1.  **Initial Load & Module Creation:** On the first request, the `worker` environment imports `rwsdk_worker.js`, which in turn needs the `ssr_bridge`. Our `ssrBridgePlugin`'s `load` hook is called, and it requests `rwsdk/__ssr_bridge` from the `ssr` environment. Vite's resolver pipeline runs, determines this is an optimized dependency, and resolves it to its versioned path (e.g., `.../deps_ssr/rwsdk___ssr_bridge.js?v=OLD_HASH`). A new `ModuleNode` is created in the `ssr` module graph. This node's `url` is the clean path (`rwsdk/__ssr_bridge`), but its `id` is the stale, versioned path. This node is stored in the graph's internal maps.
+
+2.  **Re-optimization:** A new dependency is discovered (e.g., `is-number`), triggering the `ssr` dependency optimizer. It runs and creates a `NEW_HASH` for all optimized SSR dependencies.
+
+3.  **HMR & Incomplete Invalidation:** The optimizer broadcasts a `full-reload` message. Our patch in `ssrBridgePlugin` intercepts this and calls `server.environments.ssr.moduleGraph.invalidateAll()`. This function iterates through the graph, finds the `ModuleNode` for `rwsdk/__ssr_bridge`, and sets its `transformResult` to `null`. Critically, it **leaves the "ghost node" itself in the graph**, complete with its stale `id` property containing `OLD_HASH`.
+
+4.  **Runner Re-import:** Our patch also forwards the `full-reload` to the worker's `CustomModuleRunner`. The runner clears its `evaluatedModules` cache and immediately begins re-importing its entry point to get back to a working state. This eventually leads to a request for `rwsdk_worker.js`, which then re-imports the `ssr_bridge`.
+
+5.  **The Failure Point:** The request for the `ssr_bridge` hits our `ssrBridgePlugin`'s `load` hook again, which calls `fetchModule('rwsdk/__ssr_bridge')` in the `ssr` environment.
+    *   Vite's `transformRequest` function receives this request and looks up the clean URL (`rwsdk/__ssr_bridge`) in the `ssr` module graph's `urlToModuleMap`.
+    *   **It gets a hit.** It finds the "ghost node" left behind in step 3.
+    *   Because a node was found, Vite takes a shortcut. It **skips the entire `resolveId` plugin pipeline** for this module, assuming its identity is unchanged.
+    *   It then proceeds using the properties from the ghost node, including its stale `id`: `.../deps_ssr/rwsdk___ssr_bridge.js?v=OLD_HASH`.
+
+6.  **The Crash:** This stale, versioned ID is passed to the `load` pipeline. The `vite:optimized-deps` plugin receives it, compares the `OLD_HASH` to the optimizer's current `NEW_HASH`, sees the mismatch, and throws the "stale pre-bundle" error.
+
+This sequence confirms that the problem is not that the module isn't being re-evaluated, but that the re-evaluation is being poisoned by a stale ID from a "ghost node" that survives the standard invalidation process.
+
+### Deeper Analysis: Why `invalidateAll()` is Insufficient
+
+My initial forceful cache-clearing worked but was a blunt instrument. The key question was why Vite's standard `moduleGraph.invalidateAll()` was not enough to prevent the stale module error. The investigation revealed a subtle but critical failure mode related to "ghost nodes" left behind after invalidation.
+
+When `invalidateAll()` is called, it iterates through every module in the graph and sets its `transformResult` to `null`. However, it does **not** remove the module node itself from the graph's internal maps (`idToModuleMap`, `urlToModuleMap`, etc.). The node persists, but in an "invalidated" state.
+
+Normally, this is fine. When a request comes in for an invalidated module, Vite sees the `null` transform result and re-processes it from scratch.
+
+### Final Diagnosis: The 'Ghost Node' and the Unhashed-to-Hashed Transition
+
+The problem in our specific case is a combination of the ghost node and the unique way the `ssr_bridge` module is resolved across environments.
+
+Here is the exact failure sequence:
+
+1.  **Initial State:** The `ssr` module graph contains a valid node for `rwsdk/__ssr_bridge`. This node has a URL (`virtual:rwsdk:ssr:rwsdk/__ssr_bridge`) and a resolved ID (`/.../deps_ssr/rwsdk___ssr_bridge.js?v=OLD_HASH`).
+2.  **Re-optimization:** A dependency changes, and Vite's SSR optimizer runs. It creates a `NEW_HASH`.
+3.  **Invalidation:** Vite calls `fullReload()`, which calls `server.environments.ssr.moduleGraph.invalidateAll()`. Our HMR patch propagates this, calling `invalidateAll()` on the worker graph too.
+4.  **Ghost Node Created:** The `ssr_bridge` node in the SSR module graph is now a "ghost". Its `transformResult` is `null`, but its `id` property still holds the stale `/.../deps_ssr/rwsdk___ssr_bridge.js?v=OLD_HASH`.
+5.  **Worker Re-import:** The Cloudflare module runner receives the `full-reload` and immediately re-imports its entry point (`/src/worker.tsx`).
+6.  **Resolution Jumps Environments:** The worker code eventually imports the clean, un-hashed ID `rwsdk/__ssr_bridge`. Our `ssrBridgePlugin`'s `load` hook intercepts this and calls `devServer.environments.ssr.fetchModule('rwsdk/__ssr_bridge')`.
+7.  **Ghost Node is Used:** This `fetchModule` call triggers Vite's `transformRequest` pipeline *within the SSR environment*. `transformRequest` looks up `rwsdk/__ssr_bridge` in the SSR module graph. It finds the ghost node. Because the node was found (even though it's invalidated), Vite re-uses its existing, stale `id` property (`...v=OLD_HASH`) as the basis for the subsequent processing.
+8.  **Stale Error:** The runner receives this stale, hashed path, compares it to the new optimizer hash, and throws the "stale pre-bundle" error.
+
+This "unhashed-to-hashed" transition is the critical flaw. Standard Vite modules are always referenced by their hashed path after initial transformation, so this specific type of ghost node re-use doesn't occur. Our cross-environment bridge creates a scenario Vite's invalidation logic doesn't account for. The solution is to ensure that when we `fetchModule`, we are already providing the correct, up-to-date hashed path, avoiding the faulty ghost node lookup entirely.
+
+## Attempt #49: Manually Resolving the Hashed Path
+
+Based on the final diagnosis, the plan is to fix the "unhashed-to-hashed" transition. Instead of asking the SSR environment to resolve the clean `rwsdk/__ssr_bridge` ID (which triggers the ghost node problem), I will resolve it to its correct, hashed path *within the worker environment's `load` hook* and then pass that fully-resolved path to `fetchModule`.
+
+This makes the interaction between the two environments explicit and avoids relying on Vite's internal resolution, which is failing in this cross-environment scenario.
