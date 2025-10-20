@@ -1293,3 +1293,25 @@ The plan is to implement a retry mechanism.
 3.  **Connect Signal and Retry:** If a "stale pre-bundle" error is caught, the runner will `await` our stability signal promise and then retry the request.
 
 **Update:** After discussion, we've refined this approach. A static timeout is not a reliable signal. A better approach is to use a retry-with-exponential-backoff strategy, which is common for handling transient network or server-state errors. The "stale pre-bundle" error (`ERR_OUTDATED_OPTIMIZED_DEP`) itself will be our trigger. When caught, we will wait for a short, increasing interval before retrying the module fetch. This acknowledges the server is temporarily busy without relying on a fixed guess, and it mimics the resilient behavior of a client-side fetch operation.
+
+## Attempt #5: Implement Retry-on-Fetch in SSR Bridge
+
+My next attempt was to make the `fetchModule` call within the `ssrBridgePlugin` more resilient. The idea was to catch the `ERR_OUTDATED_OPTIMIZED_DEP` error and retry the fetch with an exponential backoff. This would give the Vite server a moment to stabilize after a re-optimization before the worker tried to fetch the module again.
+
+I implemented a `while` loop around the `fetchModule` call.
+
+### Findings
+
+This did not work. Even with a generous backoff, the retries continued to fail with the same "stale pre-bundle" error. It seems that once the error state is reached during that specific `fetchModule` call, simply retrying it isn't enough to recover. The underlying state within Vite's dev server remains inconsistent from the perspective of that request chain.
+
+This suggests the problem isn't just a simple timing issue that a small delay can solve, but a more fundamental state problem. The entire request needs to be re-issued from the top.
+
+## Attempt #6: Middleware-based Retry with Redirect
+
+Based on the failure of the in-flight retry, I've pivoted to a different strategy: handling the error at the middleware level.
+
+The plan is to use a custom Vite error-handling middleware. When it detects the "stale pre-bundle" error, instead of trying to recover within the request, it will:
+1. Wait for a fixed period (e.g., 2 seconds) to allow the server's dependency optimization to complete and its internal state to stabilize.
+2. Respond with a `307 Temporary Redirect` to the original URL.
+
+This forces the client (in this case, the worker's module runner) to initiate a completely new request. This new request will see the now-stabilized server state and should resolve the correct, updated dependency versions. This approach is less fragile because it doesn't try to patch up a request that has already gone wrong; it just starts a clean one.

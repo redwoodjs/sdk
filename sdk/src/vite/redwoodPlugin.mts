@@ -15,7 +15,6 @@ import { $ } from "../lib/$.mjs";
 import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
 import { hasPkgScript } from "../lib/hasPkgScript.mjs";
 import { configPlugin } from "./configPlugin.mjs";
-import { dependencyOptimizationOrchestrationPlugin } from "./dependencyOptimizationOrchestrationPlugin.mjs";
 import { devServerTimingPlugin } from "./devServerTimingPlugin.mjs";
 import { directiveModulesDevPlugin } from "./directiveModulesDevPlugin.mjs";
 import { directivesFilteringPlugin } from "./directivesFilteringPlugin.mjs";
@@ -25,6 +24,7 @@ import { knownDepsResolverPlugin } from "./knownDepsResolverPlugin.mjs";
 import { linkerPlugin } from "./linkerPlugin.mjs";
 import { miniflareHMRPlugin } from "./miniflareHMRPlugin.mjs";
 import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
+import { optimizedDepsResiliencePlugin } from "./optimizedDepsResiliencePlugin.mjs";
 import { prismaPlugin } from "./prismaPlugin.mjs";
 import { resolveForcedPaths } from "./resolveForcedPaths.mjs";
 import { ssrBridgePlugin } from "./ssrBridgePlugin.mjs";
@@ -133,7 +133,7 @@ export const redwoodPlugin = async (
   }
 
   return [
-    dependencyOptimizationOrchestrationPlugin(),
+    optimizedDepsResiliencePlugin(),
     statePlugin(),
     devServerTimingPlugin(),
     devServerConstantPlugin(),
