@@ -42,8 +42,10 @@ function finishWaiting() {
 export function staleDepRetryPlugin(): Plugin {
   return {
     name: "rws-vite-plugin:stale-dep-retry",
+    apply: "serve",
 
-    // Monitor server activity
+    // Monitor server activity by tapping into the transform hook. This is a
+    // reliable indicator that Vite is busy processing modules.
     transform() {
       activityDetected();
       return null;

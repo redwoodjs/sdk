@@ -1348,3 +1348,9 @@ My plan is to create a plugin (`staleDepRetryPlugin`) that can signal when the s
 5.  **Trigger Reload:** Only after this promise resolves will the middleware send the `full-reload` HMR message and the redirect.
 
 This approach moves from a blind guess (a timeout) to an intelligent wait. It ensures we only reload the client when we have a high degree of confidence that the server's module graph is stable and consistent.
+
+### Implementation Details
+
+The `transform` hook was chosen as the primary signal for server activity. After a dependency re-optimization, Vite re-imports entry points, causing a cascade of module processing. The `transform` hook is invoked for every module that is being transpiled or modified, making it a reliable proxy for server "busyness". By waiting for a quiet period with no transform calls, we can be reasonably sure the server has reached a stable state.
+
+This entire mechanism is also confined to development mode. The logic is contained within the `configureServer` hook, which Vite only executes during `serve`. To make this more explicit, the plugin is also configured with `apply: 'serve'`.
