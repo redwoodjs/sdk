@@ -1315,3 +1315,15 @@ The plan is to use a custom Vite error-handling middleware. When it detects the 
 2. Respond with a `307 Temporary Redirect` to the original URL.
 
 This forces the client (in this case, the worker's module runner) to initiate a completely new request. This new request will see the now-stabilized server state and should resolve the correct, updated dependency versions. This approach is less fragile because it doesn't try to patch up a request that has already gone wrong; it just starts a clean one.
+
+## Attempt #7: Forcing a Client-Side Reload
+
+The middleware-with-redirect approach is robust for server-to-server requests (like the worker fetching an SSR module) and for initial HTML page loads. However, it has a gap: it doesn't account for client-side JavaScript that initiates a `fetch` request that fails with the stale dependency error.
+
+In that scenario, the browser's `fetch` will follow the `307` redirect and receive the correct data for that one request, but the client-side application itself remains in a stale state. The UI won't update to reflect the new data because the original JavaScript isn't aware that a full page reload is necessary.
+
+To solve this, the middleware must do two things:
+1.  **Signal the client to reload:** Send a `full-reload` HMR message over the websocket to the browser. This instructs the client-side Vite runtime to perform a hard page refresh.
+2.  **Handle the failed request:** Continue with the existing logic of waiting and then issuing a `307` redirect. This ensures that when the client reloads, the request for the module will succeed.
+
+This combined approach ensures that both the client and server states are fully synchronized after a dependency re-optimization.

@@ -45,6 +45,11 @@ export function optimizedDepsResiliencePlugin(): Plugin {
                 `Caught stale pre-bundle error (attempt #${retryCount}). Waiting ${delay}ms before redirecting.`,
               );
 
+              // Signal the client to do a full page reload.
+              server.environments.client.hot.send({
+                type: "full-reload",
+              });
+
               await new Promise((r) => setTimeout(r, delay));
 
               res.writeHead(307, { Location: req.url });
