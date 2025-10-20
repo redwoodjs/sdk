@@ -113,8 +113,6 @@ export const ssrBridgePlugin = ({
         return;
       }
 
-      console.log(`[RWS-VITE-RESOLVE-LOG] id: ${id}`);
-
       if (isDev) {
         // context(justinvdm, 27 May 2025): In dev, we need to dynamically load
         // SSR modules, so we return the virtual id so that the dynamic loading

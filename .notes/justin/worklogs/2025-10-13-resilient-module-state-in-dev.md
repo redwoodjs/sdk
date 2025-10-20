@@ -1363,7 +1363,7 @@ This addresses two distinct but related sources of instability in the Vite dev s
 
 #### Problem 1: Module-Level State is Discarded on Re-optimization
 
-The Vite dev server's dependency re-optimization process discards existing module instances and creates new ones. This was wiping out all module-level state, most critically the `AsyncLocalStorage` instances used for request context, leading to application crashes. While proactive dependency scanning helps, it cannot prevent all cases of re-optimization.
+The framework's runtime relies on long-lived, module-level state for critical features like request context tracking via `AsyncLocalStorage`. However, Vite's dependency re-optimization process, designed for browser-based hot reloading, is fundamentally incompatible with this. When a new dependency is discovered, Vite discards and re-instantiates the entire module graph. This process wipes out our module-level state, leading to unpredictable runtime errors and application crashes.
 
 ##### Solution: A Virtual State Module
 
@@ -1377,11 +1377,13 @@ This solves the state-loss problem and centralizes state management within the f
 
 #### Problem 2: Race Conditions Cause "Stale Pre-bundle" Errors
 
-Even with persistent state, the dev server was still unstable when a re-optimization was triggered by discovering a new import. A complex race condition between Vite's `ssr` and `worker` environments would cause the dev server to fail with an `ERR_OUTDATED_OPTIMIZED_DEP` ("stale pre-bundle") error.
+In a standard Vite setup, handling stale dependencies is a routine process. When a re-optimization occurs, the browser might request a module with an old version hash. The Vite server correctly throws a "stale pre-bundle" error, which is caught by Vite's client-side script in the browser. This script then automatically retries the request or performs a full page reload, seamlessly recovering from the transient error.
 
-This was caused by a combination of three issues:
+However, our architecture introduces several layers of complexity that make this standard recovery model insufficient. The "client" making these requests is not a browser, but the Cloudflare `CustomModuleRunner` executing server-side within Miniflare. Furthermore, our **SSR Bridge** architecture means this runner interacts with a virtual module subgraph. When it needs to render an SSR component, it makes a request for a virtual module which, via our plugin, triggers a server-to-server `fetchModule` call from the `worker` environment to the isolated `ssr` environment.
+
+This unique, cross-environment request pattern for virtual modules is at the heart of the instability. When a re-optimization happens in the `ssr` environment, the standard recovery mechanisms are not equipped to handle the resulting state desynchronization. The failure manifests as a perfect storm of three deeper, interconnected issues:
 1.  **Stale Resolution:** After an SSR re-optimization, Vite's internal resolver would continue to use a stale "ghost node" from its module graph to resolve our virtual `ssr_bridge` module, leading to a request for a dependency with an old, invalid version hash.
-2.  **Desynchronized Environments:** The `full-reload` HMR event triggered by the SSR optimizer was not being propagated to the worker environment. This meant the worker's own caches (especially the `CustomModuleRunner`'s execution cache) were never cleared and continued to use stale modules.
+2.  **Desynchronized Environments:** The `full-reload` HMR event triggered by the SSR optimizer was not being propagated to the worker environment. This meant the worker's own caches (especially the `CustomModuleRunner`'s execution cache) were never cleared and continued to use stale modules, creating an infinite error loop.
 3.  **Premature Re-import:** Even with synchronized invalidation, the worker's module runner re-imports its entry points immediately after clearing its cache. This happens too quickly, hitting the Vite server while its own internal state is still being updated, re-triggering the stale dependency error.
 
 ##### Solution: A Multi-Layered Approach to Synchronization and Stability
