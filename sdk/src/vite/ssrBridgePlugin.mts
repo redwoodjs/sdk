@@ -38,9 +38,10 @@ export const ssrBridgePlugin = ({
 
           log("SSR full-reload detected, propagating to worker");
 
-          // By sending the full-reload event to the worker,
-          // we ensure that the worker's module runner cache is invalidated,
-          // as it would have been if this were a full-reload event from the worker.
+          // context(justinvdm, 21 Oct 2025): By sending the full-reload event
+          // to the worker, we ensure that the worker's module runner cache is
+          // invalidated, as it would have been if this were a full-reload event
+          // from the worker.
           server.environments.worker.hot.send.apply(
             server.environments.worker.hot,
             args as any,
