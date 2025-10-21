@@ -48,23 +48,6 @@ In a production build, the `worker` and `ssr` environments must be bundled separ
 
 The production build uses a multi-phase, sequential process to correctly bundle all environments. For a complete explanation of this architecture, see the central [Production Build Process](./productionBuildProcess.md) document.
 
-## The Challenge: Stability During Dependency Re-optimization
+## Dev Server Stability
 
-The use of two distinct Vite environments (`worker` and `ssr`) creates a challenge during development, specifically when Vite's dependency optimizer runs. A re-optimization, triggered by discovering a new import, can lead to a state of desynchronization between the two environments.
-
-This desynchronization can manifest in several ways:
-1.  **Stale Resolution:** Vite's internal resolver might use cached, out-of-date information (a "ghost node") from one environment when resolving a module for the other.
-2.  **Desynchronized Caches:** An HMR event in one environment (e.g., `ssr`) might not propagate to the other (`worker`), leaving the worker with stale cached modules.
-3.  **Race Conditions:** The worker's module runner might attempt to re-import modules immediately after an HMR event, hitting the server before it has stabilized, leading to "stale pre-bundle" errors.
-
-The architecture must therefore include mechanisms to handle these scenarios gracefully.
-
-## The Solution: A Multi-Layered Approach to Synchronization and Stability
-
-The system employs a multi-layered approach to ensure synchronization and stability.
-
-1.  **Proactive Hash Resolution:** To prevent stale resolution, the `ssrBridgePlugin`'s `load` hook does not rely on Vite's internal resolver for virtual modules. Instead, it proactively resolves the correct, up-to-date version hash for any optimized dependency by looking directly at the SSR optimizer's metadata. This bypasses potential "ghost node" issues by providing a correct, fully-resolved ID to the `fetchModule` call.
-
-2.  **Cross-Environment HMR Propagation:** The `ssrBridgePlugin` is responsible for keeping the two environments in sync. It intercepts `full-reload` HMR events from the SSR environment's HMR channel and propagates them to the worker environment's channel. This ensures that when the SSR environment's state is reset, the worker environment's caches (including Vite's module graph and the Cloudflare runner's execution cache) are invalidated in lockstep.
-
-3.  **Debounced Retry on Failure:** A final safeguard exists as an error-handling middleware (`staleDepRetryPlugin`). In the event that a race condition still occurs and a "stale pre-bundle" error is thrown (typically from the runner's immediate re-import), this middleware intercepts the error. It does not immediately retry. Instead, it waits for the server to become "stable" by monitoring Vite's `transform` hook for a period of inactivity. Once the server is stable, it triggers a client-side reload and redirects the failed request.
+The use of multiple, interconnected Vite environments introduces challenges during development, particularly around dependency re-optimization. For a detailed explanation of how the system handles race conditions and ensures a stable development experience, see the [Dev Server Stability](./devServerStability.md) document.
