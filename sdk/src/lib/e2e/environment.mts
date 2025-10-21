@@ -233,7 +233,7 @@ export async function copyProjectToTempDir(
 
     // Install dependencies in the target directory
     const installDir = monorepoRoot ? tempCopyRoot : targetDir;
-    const installResult = await retry(
+    await retry(
       () =>
         installDependencies(
           installDir,
@@ -247,21 +247,6 @@ export async function copyProjectToTempDir(
       },
     );
 
-    // Monkey-patch the cleanup function to move node_modules back to cache
-    const originalCleanup = tempDir.cleanup;
-    tempDir.cleanup = async () => {
-      if (installResult.movedFromCache) {
-        log(
-          `Moving node_modules back to cache: ${installResult.nodeModulesCachePath}`,
-        );
-        await fs.promises.rename(
-          join(targetDir, "node_modules"),
-          installResult.nodeModulesCachePath,
-        );
-      }
-      await originalCleanup();
-    };
-
     // Return the environment details
     return { tempDir, targetDir, workerName };
   } finally {
@@ -274,8 +259,7 @@ async function installDependencies(
   packageManager: PackageManager = "pnpm",
   projectDir: string,
   monorepoRoot?: string,
-): Promise<{ movedFromCache: boolean; nodeModulesCachePath: string }> {
-  let nodeModulesCachePath = "";
+): Promise<void> {
   if (IS_CACHE_ENABLED) {
     const projectIdentifier = monorepoRoot
       ? `${monorepoRoot}-${projectDir}`
@@ -292,23 +276,37 @@ async function installDependencies(
       "rwsdk-e2e-cache",
       `${cacheDirName}-${projectHash}`,
     );
-    nodeModulesCachePath = path.join(cacheRoot, "node_modules");
+    const nodeModulesCachePath = path.join(cacheRoot, "node_modules");
 
     if (await pathExists(nodeModulesCachePath)) {
       console.log(
-        `✅ CACHE HIT: Found cached node_modules. Moving from ${nodeModulesCachePath}`,
+        `✅ CACHE HIT: Found cached node_modules. Hard-linking from ${nodeModulesCachePath}`,
       );
-      await fs.promises.rename(
-        nodeModulesCachePath,
-        join(targetDir, "node_modules"),
-      );
-      console.log(`✅ Moved successfully.`);
-      return { movedFromCache: true, nodeModulesCachePath };
+      try {
+        // Use cp -al for a fast, hardlink-based copy
+        await $(
+          "cp",
+          ["-al", nodeModulesCachePath, join(targetDir, "node_modules")],
+          { stdio: "pipe" },
+        );
+        console.log(`✅ Hardlink copy created successfully.`);
+      } catch (e) {
+        console.warn(
+          `⚠️ Hardlink copy failed, falling back to full copy. Error: ${
+            (e as Error).message
+          }`,
+        );
+        // Fallback to a regular copy if hardlinking fails (e.g., cross-device)
+        await copy(nodeModulesCachePath, join(targetDir, "node_modules"));
+        console.log(`✅ Full copy created successfully.`);
+      }
+      return;
     }
     console.log(
       `ℹ️ CACHE MISS: No cached node_modules found at ${nodeModulesCachePath}. Proceeding with installation.`,
     );
   }
+
   console.log(
     `📦 Installing project dependencies in ${targetDir} using ${packageManager}...`,
   );
@@ -369,10 +367,32 @@ async function installDependencies(
     console.log("✅ Dependencies installed successfully");
 
     // After successful install, populate the cache if enabled
-    if (IS_CACHE_ENABLED && nodeModulesCachePath) {
+    if (IS_CACHE_ENABLED) {
+      // Re-calculate cache path to be safe
+      const projectIdentifier = monorepoRoot
+        ? `${monorepoRoot}-${projectDir}`
+        : projectDir;
+      const projectHash = createHash("md5")
+        .update(projectIdentifier)
+        .digest("hex")
+        .substring(0, 8);
+      const cacheDirName = monorepoRoot
+        ? basename(monorepoRoot)
+        : basename(projectDir);
+      const cacheRoot = path.join(
+        os.tmpdir(),
+        "rwsdk-e2e-cache",
+        `${cacheDirName}-${projectHash}`,
+      );
+      const nodeModulesCachePath = path.join(cacheRoot, "node_modules");
+
       console.log(
         `Caching node_modules to ${nodeModulesCachePath} for future runs...`,
       );
+      // Ensure parent directory exists
+      await fs.promises.mkdir(path.dirname(nodeModulesCachePath), {
+        recursive: true,
+      });
       await copy(join(targetDir, "node_modules"), nodeModulesCachePath);
       console.log(`✅ node_modules cached successfully.`);
     }
@@ -392,5 +412,4 @@ async function installDependencies(
       `Failed to install project dependencies. Please ensure the project can be installed with ${packageManager}.`,
     );
   }
-  return { movedFromCache: false, nodeModulesCachePath };
 }
