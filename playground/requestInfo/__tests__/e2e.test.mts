@@ -45,14 +45,6 @@ testDev(
 
     console.log("############# before uncommenting ServerComponent");
     // 2. Uncomment ServerComponent and its dependency
-    await uncommentFile(page, projectDir, "src/app/pages/Home.tsx", [
-      [
-        '//import { ServerComponent } from "../../components/ServerComponent";',
-        'import { ServerComponent } from "../../components/ServerComponent";',
-      ],
-      ["{/* <ServerComponent /> */}", "<ServerComponent />"],
-    ]);
-    console.log("############# before uncommenting ServerComponent dependency");
     await uncommentFile(
       page,
       projectDir,
@@ -62,6 +54,13 @@ testDev(
         ['{/* {isEven(2) ? "Yes" : "No"} */}', '{isEven(2) ? "Yes" : "No"}'],
       ],
     );
+    await uncommentFile(page, projectDir, "src/app/pages/Home.tsx", [
+      [
+        '//import { ServerComponent } from "../../components/ServerComponent";',
+        'import { ServerComponent } from "../../components/ServerComponent";',
+      ],
+      ["{/* <ServerComponent /> */}", "<ServerComponent />"],
+    ]);
 
     console.log("############# before asserting ServerComponent is rendered");
     // 3. Assert ServerComponent is rendered
@@ -74,16 +73,7 @@ testDev(
     });
 
     console.log("############# before uncommenting ClientComponent");
-
     // 4. Uncomment ClientComponent and its dependency
-    await uncommentFile(page, projectDir, "src/app/pages/Home.tsx", [
-      [
-        '//import { ClientComponent } from "../../components/ClientComponent";',
-        'import { ClientComponent } from "../../components/ClientComponent";',
-      ],
-      ["{/* <ClientComponent /> */}", "<ClientComponent />"],
-    ]);
-    console.log("############# before uncommenting ClientComponent dependency");
     await uncommentFile(
       page,
       projectDir,
@@ -99,6 +89,13 @@ testDev(
         ],
       ],
     );
+    await uncommentFile(page, projectDir, "src/app/pages/Home.tsx", [
+      [
+        '//import { ClientComponent } from "../../components/ClientComponent";',
+        'import { ClientComponent } from "../../components/ClientComponent";',
+      ],
+      ["{/* <ClientComponent /> */}", "<ClientComponent />"],
+    ]);
     console.log("############# before asserting ClientComponent is rendered");
     // 5. Assert ClientComponent is rendered
     await poll(async () => {
