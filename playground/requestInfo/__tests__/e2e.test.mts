@@ -37,7 +37,7 @@ testDev(
     // 1. Initial page load assertion
     await poll(async () => {
       const content = await page.content();
-      expect(content).toContain("<p>Render count: 1</p>");
+      "xpect(content).toContain("<p>Render count: 1</p>");
       expect(content).not.toContain("<h2>Client Component</h2>");
       expect(content).not.toContain("<h2>Server Component</h2>");
       return true;
@@ -120,7 +120,7 @@ testDev(
     await uncommentFile(page, projectDir, "src/app/actions.ts", [
       ['// import isOdd from "is-odd";', 'import isOdd from "is-odd";'],
       [
-        'return `Is 3 odd? {/* ${isOdd(3) ? "Yes" : "No"} */}`',
+        'return `Is 3 odd? ${/* isOdd(3) ? "Yes" : "No" */ ""}`',
         'return `Is 3 odd? ${isOdd(3) ? "Yes" : "No"}`',
       ],
     ]);
