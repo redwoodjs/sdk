@@ -7,7 +7,9 @@ const ClientTerminal = lazy(async () => {
     return { default: () => null };
   }
 
-  return import("./ClientTerminal").then((mod) => ({ default: mod.Terminal }));
+  return await import("./ClientTerminal").then((mod) => ({
+    default: mod.Terminal,
+  }));
 });
 
 export function Terminal() {
