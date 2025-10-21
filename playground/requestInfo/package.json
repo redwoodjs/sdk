@@ -23,7 +23,6 @@
     "deploy": "pnpm run build && wrangler pages deploy dist/client"
   },
   "dependencies": {
-    "@redwoodjs/vite": "7.0.0",
     "is-even": "^1.0.0",
     "is-number": "^7.0.0",
     "is-odd": "^3.0.1",
