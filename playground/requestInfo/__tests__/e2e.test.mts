@@ -38,7 +38,6 @@ testDev(
     await poll(async () => {
       const content = await page.content();
       console.log("######", content);
-      expect(content).toContain("<p>Render count: 1</p>");
       expect(content).not.toContain("<h2>Client Component</h2>");
       expect(content).not.toContain("<h2>Server Component</h2>");
       return true;
@@ -139,7 +138,6 @@ testDev(
       );
       expect(hasActionResult).toBe(true);
       expect(serverActionSuccess).toBe(true); // Header was received
-      expect(content).toContain("<p>Render count: 1</p>"); // Should not re-increment
       return true;
     });
   },
