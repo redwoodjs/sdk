@@ -1,6 +1,6 @@
 "use server";
 
-// import isOdd from "is-odd";
+import isOdd from "is-odd";
 import { requestInfo } from "rwsdk/worker";
 
 export async function doServerAction() {

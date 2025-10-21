@@ -32,6 +32,7 @@ testDev(
   async ({ page, url, projectDir }) => {
     await page.goto(url);
     await waitForHydration(page);
+    console.log("############# before initial page load assertion");
 
     // 1. Initial page load assertion
     await poll(async () => {
@@ -42,6 +43,7 @@ testDev(
       return true;
     });
 
+    console.log("############# before uncommenting ServerComponent");
     // 2. Uncomment ServerComponent and its dependency
     await uncommentFile(page, projectDir, "src/app/pages/Home.tsx", [
       [
@@ -50,6 +52,7 @@ testDev(
       ],
       ["{/* <ServerComponent /> */}", "<ServerComponent />"],
     ]);
+    console.log("############# before uncommenting ServerComponent dependency");
     await uncommentFile(
       page,
       projectDir,
@@ -60,6 +63,7 @@ testDev(
       ],
     );
 
+    console.log("############# before asserting ServerComponent is rendered");
     // 3. Assert ServerComponent is rendered
     await poll(async () => {
       const content = await page.content();
@@ -67,6 +71,8 @@ testDev(
       expect(content).toContain("<p>Is 2 even? Yes</p>");
       return true;
     });
+
+    console.log("############# before uncommenting ClientComponent");
 
     // 4. Uncomment ClientComponent and its dependency
     await uncommentFile(page, projectDir, "src/app/pages/Home.tsx", [
@@ -76,6 +82,7 @@ testDev(
       ],
       ["{/* <ClientComponent /> */}", "<ClientComponent />"],
     ]);
+    console.log("############# before uncommenting ClientComponent dependency");
     await uncommentFile(
       page,
       projectDir,
@@ -91,7 +98,7 @@ testDev(
         ],
       ],
     );
-
+    console.log("############# before asserting ClientComponent is rendered");
     // 5. Assert ClientComponent is rendered
     await poll(async () => {
       const content = await page.content();
@@ -99,7 +106,7 @@ testDev(
       expect(content).toContain("<p>Is 5 a number? Yes</p>");
       return true;
     });
-
+    console.log("############# before asserting server action success");
     // 6. Set up a listener to catch the server action response
     let serverActionSuccess = false;
     page.on("response", (response) => {
@@ -108,6 +115,7 @@ testDev(
       }
     });
 
+    console.log("############# before uncommenting server action dependency");
     // 7. Uncomment server action dependency
     await uncommentFile(page, projectDir, "src/app/actions.ts", [
       ['// import isOdd from "is-odd";', 'import isOdd from "is-odd";'],
@@ -117,9 +125,11 @@ testDev(
       ],
     ]);
 
+    console.log("############# before clicking server action button");
     // 8. Click the button to call the server action
     await page.click('button:has-text("Call Server Action")');
 
+    console.log("############# before asserting server action result");
     // 9. Assert that the server action result is displayed and state is preserved
     await poll(async () => {
       const content = await page.content();
