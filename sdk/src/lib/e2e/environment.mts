@@ -277,10 +277,17 @@ async function installDependencies(
   const nodeModulesPath = join(targetDir, "node_modules");
   if (IS_CACHE_ENABLED && fs.existsSync(nodeModulesPath)) {
     console.log(
-      `✅ Found existing node_modules in ${targetDir}, skipping installation.`,
+      `✅ CACHE HIT: Found existing node_modules in ${targetDir}. Skipping installation.`,
     );
     return;
   }
+
+  if (IS_CACHE_ENABLED) {
+    console.log(
+      `ℹ️ CACHE MISS: No node_modules found in ${targetDir}. Proceeding with installation.`,
+    );
+  }
+
   console.log(
     `📦 Installing project dependencies in ${targetDir} using ${packageManager}...`,
   );
