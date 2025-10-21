@@ -1,17 +1,26 @@
 "use client";
 
-import { lazy } from "react";
+import type { JSX } from "react";
+
+import { lazy, useEffect, useState } from "react";
 
 const ClientTerminal = lazy(async () => {
   if (import.meta.env.SSR) {
-    return { default: () => null };
+    return { default: () => null as unknown as JSX.Element };
   }
 
+  await new Promise((resolve) => setTimeout(resolve, 1000));
   return await import("./ClientTerminal").then((mod) => ({
     default: mod.Terminal,
   }));
 });
 
 export function Terminal() {
-  return <ClientTerminal />;
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    setIsReady(true);
+  }, []);
+
+  return isReady ? <ClientTerminal /> : null;
 }
