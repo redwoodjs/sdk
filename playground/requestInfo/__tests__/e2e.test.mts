@@ -32,7 +32,6 @@ testDev(
   async ({ page, url, projectDir }) => {
     await page.goto(url);
     await waitForHydration(page);
-    console.log("############# before initial page load assertion");
 
     // 1. Initial page load assertion
     await poll(async () => {
@@ -42,7 +41,6 @@ testDev(
       return true;
     });
 
-    console.log("############# before uncommenting ServerComponent");
     // 2. Uncomment ServerComponent and its dependency
     await uncommentFile(
       page,
@@ -61,7 +59,6 @@ testDev(
       ["{/* <ServerComponent /> */}", "<ServerComponent />"],
     ]);
 
-    console.log("############# before asserting ServerComponent is rendered");
     // 3. Assert ServerComponent is rendered
     await poll(async () => {
       const textContent = await page.evaluate(() => document.body.innerText);
@@ -70,7 +67,6 @@ testDev(
       return true;
     });
 
-    console.log("############# before uncommenting ClientComponent");
     // 4. Uncomment ClientComponent and its dependency
     await uncommentFile(
       page,
@@ -94,7 +90,7 @@ testDev(
       ],
       ["{/* <ClientComponent /> */}", "<ClientComponent />"],
     ]);
-    console.log("############# before asserting ClientComponent is rendered");
+
     // 5. Assert ClientComponent is rendered
     await poll(async () => {
       const textContent = await page.evaluate(() => document.body.innerText);
@@ -102,7 +98,7 @@ testDev(
       expect(textContent).toContain("Is 5 a number? Yes");
       return true;
     });
-    console.log("############# before asserting server action success");
+
     // 6. Set up a listener to catch the server action response
     let serverActionSuccess = false;
     page.on("response", (response) => {
@@ -111,7 +107,6 @@ testDev(
       }
     });
 
-    console.log("############# before uncommenting server action dependency");
     // 7. Uncomment server action dependency
     await uncommentFile(page, projectDir, "src/app/actions.ts", [
       ['//import isOdd from "is-odd";', 'import isOdd from "is-odd";'],
@@ -121,18 +116,17 @@ testDev(
       ],
     ]);
 
-    console.log("############# before clicking server action button");
-    // 8. Click the button to call the server action
+    const getButton = async () => page.waitForSelector("button");
 
-    console.log("############# before asserting server action result");
-    // 9. Assert that the server action result is displayed and state is preserved
+    // 8. Assert that the server action result is displayed and state is preserved when the button is clicked
     await poll(async () => {
       // context(justinvdm, 21 Oct 2025): We need to retry the click because the
-      // server action's response will initially be a 307 because of the
-      // discovered dependency causing a re-optimization to happen.
-      await page.click('button:has-text("Call Server Action")');
+      // action's response will initially be a 307 because of the discovered
+      // dependency causing a re-optimization to happen.
+      (await getButton())?.click();
 
       const textContent = await page.evaluate(() => document.body.innerText);
+
       const hasActionResult = textContent.includes(
         "Server action result: Is 3 odd? Yes",
       );
