@@ -25,9 +25,6 @@ async function uncommentFile(
   }
 
   await writeFile(absolutePath, content);
-
-  // Wait for HMR to apply
-  await new Promise((resolve) => setTimeout(resolve, 2000));
 }
 
 testDev(
