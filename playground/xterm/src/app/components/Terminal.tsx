@@ -2,9 +2,26 @@
 
 import React from "react";
 
+declare global {
+  interface ImportMetaEnv {
+    SSR: boolean;
+  }
+}
+
 export function Terminal() {
+  if (import.meta.env.SSR) {
+    return null;
+  }
+
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const termRef = React.useRef<any>(null);
+
+  const urlSource =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("source")
+      : null;
+
+  console.log("### urlSource", urlSource);
 
   React.useEffect(() => {
     let disposed = false;
