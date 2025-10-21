@@ -34,7 +34,7 @@ testSDK(
     console.log(
       "################# 1. Commenting out all the dynamic parts of the app",
     );
-    await modifyFile(projectDir, "src/compon3ents/ServerComponent.tsx", [
+    await modifyFile(projectDir, "src/components/ServerComponent.tsx", [
       ['import isEven from "is-even";', '//import isEven from "is-even";'],
       ['{isEven(2) ? "Yes" : "No"}', '{/* {isEven(2) ? "Yes" : "No"} */}'],
     ]);
@@ -129,6 +129,8 @@ testSDK(
     console.log("################# 7. Asserting ClientComponent is rendered");
     await poll(async () => {
       const textContent = await page.evaluate(() => document.body.innerText);
+      console.log("####### text", textContent);
+      console.log("####### html", await page.content());
       expect(textContent).toContain("Client Component");
       expect(textContent).toContain("Is 5 a number? Yes");
       return true;

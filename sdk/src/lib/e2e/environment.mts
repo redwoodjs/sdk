@@ -9,20 +9,11 @@ import { basename, join, relative, resolve } from "path";
 import tmp from "tmp-promise";
 import { $ } from "../../lib/$.mjs";
 import { ROOT_DIR } from "../constants.mjs";
-import { INSTALL_DEPENDENCIES_RETRIES } from "./constants.mjs";
+import { INSTALL_DEPENDENCIES_RETRIES, IS_CI } from "./constants.mjs";
 import { retry } from "./retry.mjs";
 import { PackageManager } from "./types.mjs";
 
 const log = debug("rwsdk:e2e:environment");
-
-const IS_CI = !!(
-  process.env.GITHUB_ACTIONS ||
-  process.env.GITLAB_CI ||
-  process.env.CIRCLECI ||
-  process.env.TRAVIS ||
-  process.env.JENKINS_URL ||
-  process.env.NETLIFY
-);
 
 const IS_CACHE_ENABLED = process.env.RWSDK_E2E_CACHE
   ? process.env.RWSDK_E2E_CACHE === "1"
