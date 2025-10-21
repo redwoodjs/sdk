@@ -1409,3 +1409,17 @@ Therefore, the most robust and consistent solution is to handle all "stale pre-b
 4. It responds to the original request with a `307 Temporary Redirect`.
 
 This forces the client (either the browser or the module runner) to re-issue the request against a now-stable server. While this can result in a failed first-click for client-side interactions, it is a simple, reliable, and universal recovery mechanism.
+
+### E2E Test Refactoring for Dev and Deploy Scenarios
+
+I have encountered an issue where the E2E tests for dependency optimization are failing in production deployments. The existing tests are designed exclusively for a development environment, relying on HMR by uncommenting code during the test run. This approach is not applicable to a static production build.
+
+To address this, I will refactor the test harness and the `requestInfo` test suite to support both development and deployment scenarios:
+
+1.  **Harness Refactoring:** I will modify the test harness (`testHarness.mts`) to allow the creation of multiple, independent dev server and deployment instances within a single test suite. This will be achieved by introducing a more flexible, generic test runner that allows tests to control the server lifecycle.
+
+2.  **Test Case Separation:** I will restructure the `requestInfo` test file into two distinct tests:
+    *   **Dev Test:** This test will first programmatically comment out the relevant code to establish an initial state, then start the dev server, and finally uncomment the code to trigger HMR and verify the application updates correctly.
+    *   **Deploy Test:** This test will use the source code in its default, uncommented state to create a production deployment. It will then assert that the application loads and functions correctly in its final form.
+
+This separation ensures that I can validate the system's behavior in both dynamic development and static production environments, confirming that the dependency optimization features are robust across the board.
