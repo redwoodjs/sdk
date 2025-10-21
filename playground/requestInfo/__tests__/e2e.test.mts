@@ -37,6 +37,7 @@ testDev(
     // 1. Initial page load assertion
     await poll(async () => {
       const content = await page.content();
+      console.log("######", content);
       expect(content).toContain("<p>Render count: 1</p>");
       expect(content).not.toContain("<h2>Client Component</h2>");
       expect(content).not.toContain("<h2>Server Component</h2>");

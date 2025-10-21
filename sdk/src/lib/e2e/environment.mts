@@ -82,7 +82,9 @@ export async function copyProjectToTempDir(
   targetDir: string;
   workerName: string;
 }> {
+  console.time("E2E Setup: createSdkTarball");
   const { tarballPath, cleanupTarball } = await createSdkTarball();
+  console.timeEnd("E2E Setup: createSdkTarball");
   try {
     log("Creating temporary directory for project");
     const tempDir = await getTempDir();
@@ -133,6 +135,7 @@ export async function copyProjectToTempDir(
 
     // Copy the project directory, respecting .gitignore
     log("Starting copy process with ignored patterns");
+    console.time("E2E Setup: copyProjectFiles");
     await copy(sourceDir, tempCopyRoot, {
       filter: (src) => {
         // Get path relative to project directory
@@ -144,6 +147,7 @@ export async function copyProjectToTempDir(
         return result;
       },
     });
+    console.timeEnd("E2E Setup: copyProjectFiles");
     log("Project copy completed successfully");
 
     // Copy the SDK tarball into the target directory
@@ -213,10 +217,12 @@ export async function copyProjectToTempDir(
 
     // Install dependencies in the target directory
     const installDir = monorepoRoot ? tempCopyRoot : targetDir;
+    console.time("E2E Setup: installDependencies");
     await retry(() => installDependencies(installDir, packageManager), {
       retries: INSTALL_DEPENDENCIES_RETRIES,
       delay: 1000,
     });
+    console.timeEnd("E2E Setup: installDependencies");
 
     // Return the environment details
     return { tempDir, targetDir, workerName };
