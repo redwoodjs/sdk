@@ -28,13 +28,17 @@ The `worker` and `ssr` environments are isolated; by default, an HMR event in on
 
 ### Hurdle 3: Race Conditions on Re-import
 
-The `CustomModuleRunner` is designed to re-import its entry points immediately after receiving a `full-reload` event. This happens too quickly, hitting the Vite server before it has finished stabilizing, which re-triggers a "stale pre-bundle" error.
+The `CustomModuleRunner` is designed to re-import its entry points immediately after receiving a `full-reload` event. This happens too quickly, hitting the Vite server before it has finished stabilizing, which re-triggers a "stale pre-bundle" error. This necessitates a final safeguard that can gracefully handle this predictable race condition.
 
-**Solution:** A final safeguard exists as an error-handling middleware (`staleDepRetryPlugin`) that performs a **Debounced Retry**. When it catches the predictable "stale pre-bundle" error, it does not immediately retry. Instead, it waits for the server to become "stable" by monitoring Vite's `transform` hook for a period of inactivity. Once the server is stable, it triggers a client-side reload and redirects the failed request.
+### The Debounced Redirect-and-Retry Mechanism
 
-### The Redirect-Based Retry Mechanism
+The solution is a final safeguard in the form of an error-handling middleware (`staleDepRetryPlugin`) that performs a **Debounced Retry**. When it catches the predictable "stale pre-bundle" error, it does not immediately retry. Instead, it waits for the server to become "stable" by monitoring Vite's `transform` hook for a period of inactivity.
 
-The final step of the recovery uses a `307 Temporary Redirect`. This was chosen over a transparent, server-side retry for two key reasons:
+Once the server is stable, it performs two actions:
+1.  **Triggers a client-side reload:** A `full-reload` HMR message is sent to the browser.
+2.  **Redirects the failed request:** It responds to the original request with a `307 Temporary Redirect`.
+
+This redirect was chosen over a transparent, server-side retry for two key reasons:
 1. **Technical Feasibility:** A transparent retry for requests with bodies (e.g., `POST` for server actions) is not possible without buffering the request body in advance, an approach that was rejected for performance and dev/prod parity reasons.
 2. **Architectural Safety:** Transparently retrying `POST` requests is risky, as it could cause non-idempotent actions to execute twice.
 
