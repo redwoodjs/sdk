@@ -1395,3 +1395,17 @@ A combination of fixes was implemented to address this race condition:
 3.  **Debounced Stability Plugin (`staleDepRetryPlugin`):** A new error-handling middleware was introduced. When it catches the inevitable "stale pre-bundle" error from the runner's premature re-import, it does not immediately retry. Instead, it waits for the server to become "stable" by monitoring the `transform` hook. Once a quiet period with no module transformation activity is detected, it signals the client to perform a full reload and gracefully redirects the failed request.
 
 This layered solution ensures the two environments are correctly synchronized and provides a robust, intelligent mechanism to wait for the server to be in a consistent state before retrying a request.
+
+### Final Implementation: Redirect on Failure
+
+After exploring a transparent, server-side retry mechanism, the final implementation uses a client-side redirect for all cases.
+
+A transparent retry for requests with bodies (e.g., `POST` for server actions) was found to be technically infeasible without buffering the request body in advance. The `req` stream is consumed by Vite's middleware before our error handler runs, making the body unavailable for a retry. The buffering approach was rejected due to performance concerns and the disparity it creates between development and production.
+
+Therefore, the most robust and consistent solution is to handle all "stale pre-bundle" errors in the same way:
+1. The error-handling middleware in `staleDepRetryPlugin` catches the error.
+2. It waits for server stability using the debounced `transform` hook signal.
+3. It sends a `full-reload` HMR message to the browser to ensure client-side code is updated.
+4. It responds to the original request with a `307 Temporary Redirect`.
+
+This forces the client (either the browser or the module runner) to re-issue the request against a now-stable server. While this can result in a failed first-click for client-side interactions, it is a simple, reliable, and universal recovery mechanism.

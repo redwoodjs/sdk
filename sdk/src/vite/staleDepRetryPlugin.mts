@@ -1,7 +1,7 @@
 import debug from "debug";
-import { type Plugin, type ViteDevServer } from "vite";
+import { type Connect, type Plugin, type ViteDevServer } from "vite";
 
-const log = debug("rws-vite-plugin:stale-dep-retry");
+const log = debug("rwsdk:vite:stale-dep-retry-plugin");
 
 let stabilityPromise: Promise<void> | null = null;
 let stabilityResolver: (() => void) | null = null;
@@ -56,9 +56,9 @@ export function staleDepRetryPlugin(): Plugin {
       return () => {
         server.middlewares.use(async function rwsdkStaleBundleErrorHandler(
           err: any,
-          req: any,
+          req: Connect.IncomingMessage,
           res: any,
-          next: any,
+          next: Connect.NextFunction,
         ) {
           if (
             err &&
@@ -79,8 +79,7 @@ export function staleDepRetryPlugin(): Plugin {
               type: "full-reload",
             });
 
-            // No need to wait further here, the stability promise handled it.
-            res.writeHead(307, { Location: req.url });
+            res.writeHead(307, { Location: req.originalUrl || req.url });
             res.end();
             return;
           }
