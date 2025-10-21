@@ -1,6 +1,7 @@
 import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import {
+  createDevServer,
   poll,
   setupPlaygroundEnvironment,
   testDeploy,
@@ -28,7 +29,7 @@ async function modifyFile(
 
 testSDK(
   "requestInfo state is preserved across HMR and works in server actions",
-  async ({ page, projectDir, createDevServer }) => {
+  async ({ page, projectDir }) => {
     // 1. Comment out all the dynamic parts of the app
     console.log(
       "################# 1. Commenting out all the dynamic parts of the app",
@@ -66,7 +67,8 @@ testSDK(
 
     // 2. Start the dev server
     console.log("################# 2. Starting the dev server");
-    const { url } = await createDevServer();
+    const devServerControl = createDevServer();
+    const { url } = await devServerControl.start();
     await page.goto(url);
     await waitForHydration(page);
 

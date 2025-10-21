@@ -474,8 +474,6 @@ export async function runTestWithRetries(
 type SDKRunner = (
   name: string,
   testLogic: (context: {
-    createDevServer: () => Promise<DevServerInstance>;
-    createDeployment: () => Promise<DeploymentInstance>;
     browser: Browser;
     page: Page;
     projectDir: string;
