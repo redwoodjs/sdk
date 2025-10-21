@@ -34,7 +34,7 @@ testSDK(
     console.log(
       "################# 1. Commenting out all the dynamic parts of the app",
     );
-    await modifyFile(projectDir, "src/components/ServerComponent.tsx", [
+    await modifyFile(projectDir, "src/compon3ents/ServerComponent.tsx", [
       ['import isEven from "is-even";', '//import isEven from "is-even";'],
       ['{isEven(2) ? "Yes" : "No"}', '{/* {isEven(2) ? "Yes" : "No"} */}'],
     ]);
