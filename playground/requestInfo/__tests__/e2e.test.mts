@@ -30,6 +30,9 @@ testSDK(
   "requestInfo state is preserved across HMR and works in server actions",
   async ({ page, projectDir, createDevServer }) => {
     // 1. Comment out all the dynamic parts of the app
+    console.log(
+      "################# 1. Commenting out all the dynamic parts of the app",
+    );
     await modifyFile(projectDir, "src/components/ServerComponent.tsx", [
       ['import isEven from "is-even";', '//import isEven from "is-even";'],
       ['{isEven(2) ? "Yes" : "No"}', '{/* {isEven(2) ? "Yes" : "No"} */}'],
@@ -62,11 +65,13 @@ testSDK(
     ]);
 
     // 2. Start the dev server
+    console.log("################# 2. Starting the dev server");
     const { url } = await createDevServer();
     await page.goto(url);
     await waitForHydration(page);
 
     // 3. Initial page load assertion
+    console.log("################# 3. Asserting initial page load");
     await poll(async () => {
       const textContent = await page.evaluate(() => document.body.innerText);
       expect(textContent).not.toContain("Client Component");
@@ -75,6 +80,9 @@ testSDK(
     });
 
     // 4. Uncomment ServerComponent and its dependency
+    console.log(
+      "################# 4. Uncommenting ServerComponent and its dependency",
+    );
     await modifyFile(projectDir, "src/components/ServerComponent.tsx", [
       ['//import isEven from "is-even";', 'import isEven from "is-even";'],
       ['{/* {isEven(2) ? "Yes" : "No"} */}', '{isEven(2) ? "Yes" : "No"}'],
@@ -88,6 +96,7 @@ testSDK(
     ]);
 
     // 5. Assert ServerComponent is rendered
+    console.log("################# 5. Asserting ServerComponent is rendered");
     await poll(async () => {
       const textContent = await page.evaluate(() => document.body.innerText);
       expect(textContent).toContain("Server Component");
@@ -96,6 +105,9 @@ testSDK(
     });
 
     // 6. Uncomment ClientComponent and its dependency
+    console.log(
+      "################# 6. Uncommenting ClientComponent and its dependency",
+    );
     await modifyFile(projectDir, "src/components/ClientComponent.tsx", [
       [
         '//import isNumber from "is-number";',
@@ -112,6 +124,7 @@ testSDK(
     ]);
 
     // 7. Assert ClientComponent is rendered
+    console.log("################# 7. Asserting ClientComponent is rendered");
     await poll(async () => {
       const textContent = await page.evaluate(() => document.body.innerText);
       expect(textContent).toContain("Client Component");
@@ -120,6 +133,10 @@ testSDK(
     });
 
     // 8. Set up a listener to catch the server action response
+    console.log(
+      "################# 8. Setting up a listener to catch the server action response",
+    );
+
     let serverActionSuccess = false;
     page.on("response", (response) => {
       if (response.headers()["x-server-action-success"] === "true") {
@@ -128,6 +145,7 @@ testSDK(
     });
 
     // 9. Uncomment server action dependency
+    console.log("################# 9. Uncommenting server action dependency");
     await modifyFile(projectDir, "src/app/actions.ts", [
       ['//import isOdd from "is-odd";', 'import isOdd from "is-odd";'],
       [
@@ -139,6 +157,9 @@ testSDK(
     const getButton = async () => page.waitForSelector("button");
 
     // 10. Assert that the server action result is displayed and state is preserved when the button is clicked
+    console.log(
+      "################# 10. Asserting that the server action result is displayed and state is preserved when the button is clicked",
+    );
     await poll(async () => {
       // context(justinvdm, 21 Oct 2025): We need to retry the click because the
       // action's response will initially be a 307 because of the discovered
