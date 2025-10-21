@@ -287,7 +287,6 @@ async function installDependencies(
 
   try {
     // Clean up any pre-existing node_modules and lockfiles
-    console.time("E2E Install Step: Cleanup");
     log("Cleaning up pre-existing node_modules and lockfiles...");
     await Promise.all([
       fs.promises.rm(join(targetDir, "node_modules"), {
@@ -299,7 +298,6 @@ async function installDependencies(
       fs.promises.rm(join(targetDir, "package-lock.json"), { force: true }),
     ]);
     log("Cleanup complete.");
-    console.timeEnd("E2E Install Step: Cleanup");
 
     if (packageManager.startsWith("yarn")) {
       log(`Enabling corepack...`);
@@ -331,7 +329,6 @@ async function installDependencies(
 
     // Run install command in the target directory
     log(`Running ${installCommand.join(" ")}`);
-    console.time("E2E Install Step: Package Manager Install");
     const [command, ...args] = installCommand;
     const result = await $(command, args, {
       cwd: targetDir,
@@ -340,7 +337,6 @@ async function installDependencies(
         YARN_ENABLE_HARDENED_MODE: "0",
       },
     });
-    console.timeEnd("E2E Install Step: Package Manager Install");
 
     console.log("✅ Dependencies installed successfully");
 
