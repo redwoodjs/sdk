@@ -5,7 +5,7 @@ This is the starter project for RedwoodSDK. It's a template designed to get you 
 Create your new project:
 
 ```shell
-npx create-rwsdk my-project-name -t minimal
+npx create-rwsdk my-project-name
 cd my-project-name
 npm install
 ```

@@ -1103,16 +1103,16 @@ importers:
         specifier: ~24.22.0
         version: 24.22.3
       react:
-        specifier: '>=19.3.0-canary-4fdf7cf2-20251003 <20.0.0'
+        specifier: '>=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0'
         version: 19.3.0-canary-4fdf7cf2-20251003
       react-dom:
-        specifier: '>=19.3.0-canary-4fdf7cf2-20251003 <20.0.0'
+        specifier: '>=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0'
         version: 19.3.0-canary-4fdf7cf2-20251003(react@19.3.0-canary-4fdf7cf2-20251003)
       react-is:
         specifier: ~19.1.0
         version: 19.1.1
       react-server-dom-webpack:
-        specifier: '>=19.3.0-canary-4fdf7cf2-20251003 <20.0.0'
+        specifier: '>=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0'
         version: 19.3.0-canary-4fdf7cf2-20251003(react-dom@19.3.0-canary-4fdf7cf2-20251003(react@19.3.0-canary-4fdf7cf2-20251003))(react@19.3.0-canary-4fdf7cf2-20251003)(webpack@5.97.1)
       rsc-html-stream:
         specifier: ~0.0.6
