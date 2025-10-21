@@ -37,7 +37,6 @@ testDev(
     // 1. Initial page load assertion
     await poll(async () => {
       const content = await page.content();
-      console.log("######", content);
       expect(content).not.toContain("<h2>Client Component</h2>");
       expect(content).not.toContain("<h2>Server Component</h2>");
       return true;
@@ -100,6 +99,7 @@ testDev(
     // 5. Assert ClientComponent is rendered
     await poll(async () => {
       const content = await page.content();
+      console.log("####", content);
       expect(content).toContain("<h2>Client Component</h2>");
       expect(content).toContain("<p>Is 5 a number? Yes</p>");
       return true;
