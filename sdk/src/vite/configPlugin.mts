@@ -157,7 +157,6 @@ export const configPlugin = ({
               jsxImportSource: "react",
               plugins: [],
               define: {
-                __ssr: JSON.stringify(true),
                 "process.env.NODE_ENV": JSON.stringify(mode),
               },
             },
