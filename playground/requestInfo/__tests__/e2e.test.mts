@@ -114,7 +114,7 @@ testDev(
     console.log("############# before uncommenting server action dependency");
     // 7. Uncomment server action dependency
     await uncommentFile(page, projectDir, "src/app/actions.ts", [
-      ['// import isOdd from "is-odd";', 'import isOdd from "is-odd";'],
+      ['//import isOdd from "is-odd";', 'import isOdd from "is-odd";'],
       [
         'return `Is 3 odd? ${/* isOdd(3) ? "Yes" : "No" */ ""}`',
         'return `Is 3 odd? ${isOdd(3) ? "Yes" : "No"}`',
