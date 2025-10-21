@@ -50,7 +50,7 @@ testDev(
       projectDir,
       "src/components/ServerComponent.tsx",
       [
-        ['// import isEven from "is-even";', 'import isEven from "is-even";'],
+        ['//import isEven from "is-even";', 'import isEven from "is-even";'],
         ['{/* {isEven(2) ? "Yes" : "No"} */}', '{isEven(2) ? "Yes" : "No"}'],
       ],
     );
