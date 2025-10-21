@@ -27,17 +27,15 @@ export const ssrBridgePlugin = ({
 
       const ssrHot = server.environments.ssr.hot;
       const originalSsrHotSend = ssrHot.send;
-      ssrHot.send = (...args: any[]) => {
-        for (const envName of ["worker", "ssr"] as const) {
-          const moduleGraph = server.environments[envName]!.moduleGraph;
-          moduleGraph.invalidateAll();
-          //moduleGraph.urlToModuleMap.clear();
-          //moduleGraph.idToModuleMap.clear();
-          //moduleGraph.fileToModulesMap.clear();
-          //(moduleGraph as any)._unresolvedUrlToModuleMap.clear();
-        }
 
+      // Chain the SSR's full reload behaviour to the worker
+      ssrHot.send = (...args: any[]) => {
         if (typeof args[0] === "object" && args[0].type === "full-reload") {
+          for (const envName of ["worker", "ssr"] as const) {
+            const moduleGraph = server.environments[envName]!.moduleGraph;
+            moduleGraph.invalidateAll();
+          }
+
           log("SSR full-reload detected, propagating to worker");
           server.environments.worker.hot.send.apply(
             server.environments.worker.hot,
