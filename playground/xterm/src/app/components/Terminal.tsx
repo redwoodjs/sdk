@@ -15,12 +15,7 @@ export function Terminal() {
 
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const termRef = React.useRef<any>(null);
-
-  const urlSource =
-    typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search).get("source")
-      : null;
-
+  const urlSource = new URLSearchParams(window.location.search).get("source");
   console.log("### urlSource", urlSource);
 
   React.useEffect(() => {
