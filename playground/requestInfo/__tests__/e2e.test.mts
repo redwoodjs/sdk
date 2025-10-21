@@ -1,12 +1,13 @@
 import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import {
+  type Page,
   poll,
   setupPlaygroundEnvironment,
   testDev,
   waitForHydration,
 } from "rwsdk/e2e";
-import { expect, Page } from "vitest";
+import { expect } from "vitest";
 
 setupPlaygroundEnvironment(import.meta.url);
 
@@ -26,7 +27,7 @@ async function uncommentFile(
   await writeFile(absolutePath, content);
 
   // Wait for HMR to apply
-  await page.waitForTimeout(2000);
+  await new Promise((resolve) => setTimeout(resolve, 2000));
 }
 
 testDev(
