@@ -173,6 +173,11 @@ export interface SetupPlaygroundEnvironmentOptions {
    * @default true
    */
   deploy?: boolean;
+  /**
+   * Whether to automatically start the dev server.
+   * @default true
+   */
+  autoStartDevServer?: boolean;
 }
 
 /**
@@ -189,7 +194,10 @@ export function setupPlaygroundEnvironment(
     monorepoRoot,
     dev = true,
     deploy = true,
-  } = typeof options === "string" ? { sourceProjectDir: options } : options;
+    autoStartDevServer = true,
+  } = typeof options === "string"
+    ? { sourceProjectDir: options, autoStartDevServer: true }
+    : options;
   ensureHooksRegistered();
 
   beforeAll(async () => {
@@ -218,14 +226,17 @@ export function setupPlaygroundEnvironment(
         projectDir: devEnv.targetDir,
         cleanup: devEnv.cleanup,
       };
-      const devControl = createDevServer();
-      globalDevInstancePromise = devControl.start().then((instance) => {
-        globalDevInstance = instance;
-        return instance;
-      });
-      // Prevent unhandled promise rejections. The error will be handled inside
-      // the test's beforeEach hook where this promise is awaited.
-      globalDevInstancePromise.catch(() => {});
+
+      if (autoStartDevServer) {
+        const devControl = createDevServer();
+        globalDevInstancePromise = devControl.start().then((instance) => {
+          globalDevInstance = instance;
+          return instance;
+        });
+        // Prevent unhandled promise rejections. The error will be handled inside
+        // the test's beforeEach hook where this promise is awaited.
+        globalDevInstancePromise.catch(() => {});
+      }
     } else {
       globalDevPlaygroundEnv = null;
     }

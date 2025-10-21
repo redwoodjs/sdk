@@ -20,9 +20,7 @@ const IS_CACHE_ENABLED = process.env.RWSDK_E2E_CACHE
   : !IS_CI;
 
 if (IS_CACHE_ENABLED) {
-  console.log("E2E test caching is enabled.");
-} else {
-  console.log("E2E test caching is disabled.");
+  log("E2E test caching is enabled.");
 }
 
 const getTempDir = async (): Promise<tmp.DirectoryResult> => {

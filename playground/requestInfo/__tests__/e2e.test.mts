@@ -10,7 +10,10 @@ import {
 } from "rwsdk/e2e";
 import { expect } from "vitest";
 
-setupPlaygroundEnvironment(import.meta.url);
+setupPlaygroundEnvironment({
+  sourceProjectDir: import.meta.url,
+  autoStartDevServer: false,
+});
 
 async function modifyFile(
   projectDir: string,
@@ -105,8 +108,6 @@ testSDK(
       expect(textContent).toContain("Is 2 even? Yes");
       return true;
     });
-
-    await new Promise((resolve) => setTimeout(resolve, 99999999));
 
     // 6. Uncomment ClientComponent and its dependency
     console.log(
