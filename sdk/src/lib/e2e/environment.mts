@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import debug from "debug";
 import { copy, pathExists } from "fs-extra";
 import ignore from "ignore";
@@ -14,7 +15,51 @@ import { PackageManager } from "./types.mjs";
 
 const log = debug("rwsdk:e2e:environment");
 
-const getTempDir = async (): Promise<tmp.DirectoryResult> => {
+const IS_CI = !!(
+  process.env.GITHUB_ACTIONS ||
+  process.env.GITLAB_CI ||
+  process.env.CIRCLECI ||
+  process.env.TRAVIS ||
+  process.env.JENKINS_URL ||
+  process.env.NETLIFY
+);
+
+const IS_CACHE_ENABLED = process.env.RWSDK_E2E_CACHE
+  ? process.env.RWSDK_E2E_CACHE === "1"
+  : !IS_CI;
+
+if (IS_CACHE_ENABLED) {
+  log("E2E test caching is enabled.");
+}
+
+const getTempDir = async (
+  projectDir: string,
+  monorepoRoot?: string,
+): Promise<tmp.DirectoryResult> => {
+  if (IS_CACHE_ENABLED) {
+    const projectIdentifier = monorepoRoot
+      ? `${monorepoRoot}-${projectDir}`
+      : projectDir;
+    const projectHash = createHash("md5")
+      .update(projectIdentifier)
+      .digest("hex")
+      .substring(0, 8);
+    const cacheDirName = monorepoRoot
+      ? basename(monorepoRoot)
+      : basename(projectDir);
+    const cacheRoot = path.join(
+      os.tmpdir(),
+      "rwsdk-e2e-cache",
+      `${cacheDirName}-${projectHash}`,
+    );
+    await fs.promises.mkdir(cacheRoot, { recursive: true });
+    return {
+      path: cacheRoot,
+      cleanup: async () => {
+        log(`🧹 (Cache enabled) Skipping cleanup for ${cacheRoot}`);
+      },
+    };
+  }
   return tmp.dir({ unsafeCleanup: true });
 };
 
@@ -82,12 +127,10 @@ export async function copyProjectToTempDir(
   targetDir: string;
   workerName: string;
 }> {
-  console.time("E2E Setup: createSdkTarball");
   const { tarballPath, cleanupTarball } = await createSdkTarball();
-  console.timeEnd("E2E Setup: createSdkTarball");
   try {
     log("Creating temporary directory for project");
-    const tempDir = await getTempDir();
+    const tempDir = await getTempDir(projectDir, monorepoRoot);
 
     // Determine the source directory to copy from
     const sourceDir = monorepoRoot || projectDir;
@@ -135,7 +178,6 @@ export async function copyProjectToTempDir(
 
     // Copy the project directory, respecting .gitignore
     log("Starting copy process with ignored patterns");
-    console.time("E2E Setup: copyProjectFiles");
     await copy(sourceDir, tempCopyRoot, {
       filter: (src) => {
         // Get path relative to project directory
@@ -147,7 +189,6 @@ export async function copyProjectToTempDir(
         return result;
       },
     });
-    console.timeEnd("E2E Setup: copyProjectFiles");
     log("Project copy completed successfully");
 
     // Copy the SDK tarball into the target directory
@@ -217,12 +258,10 @@ export async function copyProjectToTempDir(
 
     // Install dependencies in the target directory
     const installDir = monorepoRoot ? tempCopyRoot : targetDir;
-    console.time("E2E Setup: installDependencies");
     await retry(() => installDependencies(installDir, packageManager), {
       retries: INSTALL_DEPENDENCIES_RETRIES,
       delay: 1000,
     });
-    console.timeEnd("E2E Setup: installDependencies");
 
     // Return the environment details
     return { tempDir, targetDir, workerName };
@@ -235,12 +274,20 @@ async function installDependencies(
   targetDir: string,
   packageManager: PackageManager = "pnpm",
 ): Promise<void> {
+  const nodeModulesPath = join(targetDir, "node_modules");
+  if (IS_CACHE_ENABLED && fs.existsSync(nodeModulesPath)) {
+    console.log(
+      `✅ Found existing node_modules in ${targetDir}, skipping installation.`,
+    );
+    return;
+  }
   console.log(
     `📦 Installing project dependencies in ${targetDir} using ${packageManager}...`,
   );
 
   try {
     // Clean up any pre-existing node_modules and lockfiles
+    console.time("E2E Install Step: Cleanup");
     log("Cleaning up pre-existing node_modules and lockfiles...");
     await Promise.all([
       fs.promises.rm(join(targetDir, "node_modules"), {
@@ -252,6 +299,7 @@ async function installDependencies(
       fs.promises.rm(join(targetDir, "package-lock.json"), { force: true }),
     ]);
     log("Cleanup complete.");
+    console.timeEnd("E2E Install Step: Cleanup");
 
     if (packageManager.startsWith("yarn")) {
       log(`Enabling corepack...`);
@@ -283,6 +331,7 @@ async function installDependencies(
 
     // Run install command in the target directory
     log(`Running ${installCommand.join(" ")}`);
+    console.time("E2E Install Step: Package Manager Install");
     const [command, ...args] = installCommand;
     const result = await $(command, args, {
       cwd: targetDir,
@@ -291,6 +340,7 @@ async function installDependencies(
         YARN_ENABLE_HARDENED_MODE: "0",
       },
     });
+    console.timeEnd("E2E Install Step: Package Manager Install");
 
     console.log("✅ Dependencies installed successfully");
 
