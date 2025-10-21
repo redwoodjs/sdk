@@ -189,7 +189,7 @@ export const ssrBridgePlugin = ({
         this.environment.name === "worker"
       ) {
         const realId = id.slice(VIRTUAL_SSR_PREFIX.length);
-        const idForFetch = realId.endsWith(".css.js")
+        let idForFetch = realId.endsWith(".css.js")
           ? realId.slice(0, -3)
           : realId;
 
@@ -205,8 +205,6 @@ export const ssrBridgePlugin = ({
           // components.
           try {
             const ssrOptimizer = devServer.environments.ssr.depsOptimizer;
-
-            let idForFetch = realId;
 
             // context(justinvdm, 20 Oct 2025): This is the fix for the stale
             // dependency issue. The root cause is the "unhashed-to-hashed"
