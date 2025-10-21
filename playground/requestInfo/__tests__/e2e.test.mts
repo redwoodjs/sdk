@@ -36,9 +36,9 @@ testDev(
 
     // 1. Initial page load assertion
     await poll(async () => {
-      const content = await page.content();
-      expect(content).not.toContain("<h2>Client Component</h2>");
-      expect(content).not.toContain("<h2>Server Component</h2>");
+      const textContent = await page.evaluate(() => document.body.innerText);
+      expect(textContent).not.toContain("Client Component");
+      expect(textContent).not.toContain("Server Component");
       return true;
     });
 
@@ -64,10 +64,9 @@ testDev(
     console.log("############# before asserting ServerComponent is rendered");
     // 3. Assert ServerComponent is rendered
     await poll(async () => {
-      const content = await page.content();
-      console.log("########", content);
-      expect(content).toContain("<h2>Server Component</h2>");
-      expect(content).toContain("<p>Is 2 even? Yes</p>");
+      const textContent = await page.evaluate(() => document.body.innerText);
+      expect(textContent).toContain("Server Component");
+      expect(textContent).toContain("Is 2 even? Yes");
       return true;
     });
 
@@ -98,10 +97,9 @@ testDev(
     console.log("############# before asserting ClientComponent is rendered");
     // 5. Assert ClientComponent is rendered
     await poll(async () => {
-      const content = await page.content();
-      console.log("####", content);
-      expect(content).toContain("<h2>Client Component</h2>");
-      expect(content).toContain("<p>Is 5 a number? Yes</p>");
+      const textContent = await page.evaluate(() => document.body.innerText);
+      expect(textContent).toContain("Client Component");
+      expect(textContent).toContain("Is 5 a number? Yes");
       return true;
     });
     console.log("############# before asserting server action success");
@@ -130,8 +128,8 @@ testDev(
     console.log("############# before asserting server action result");
     // 9. Assert that the server action result is displayed and state is preserved
     await poll(async () => {
-      const content = await page.content();
-      const hasActionResult = content.includes(
+      const textContent = await page.evaluate(() => document.body.innerText);
+      const hasActionResult = textContent.includes(
         "Server action result: Is 3 odd? Yes",
       );
       expect(hasActionResult).toBe(true);
