@@ -47,7 +47,7 @@ testDev(
     // 2. Uncomment ServerComponent and its dependency
     await uncommentFile(page, projectDir, "src/app/pages/Home.tsx", [
       [
-        '// import { ServerComponent } from "../../components/ServerComponent";',
+        '//import { ServerComponent } from "../../components/ServerComponent";',
         'import { ServerComponent } from "../../components/ServerComponent";',
       ],
       ["{/* <ServerComponent /> */}", "<ServerComponent />"],
@@ -67,6 +67,7 @@ testDev(
     // 3. Assert ServerComponent is rendered
     await poll(async () => {
       const content = await page.content();
+      console.log("########", content);
       expect(content).toContain("<h2>Server Component</h2>");
       expect(content).toContain("<p>Is 2 even? Yes</p>");
       return true;
@@ -77,7 +78,7 @@ testDev(
     // 4. Uncomment ClientComponent and its dependency
     await uncommentFile(page, projectDir, "src/app/pages/Home.tsx", [
       [
-        '// import { ClientComponent } from "../../components/ClientComponent";',
+        '//import { ClientComponent } from "../../components/ClientComponent";',
         'import { ClientComponent } from "../../components/ClientComponent";',
       ],
       ["{/* <ClientComponent /> */}", "<ClientComponent />"],
@@ -89,7 +90,7 @@ testDev(
       "src/components/ClientComponent.tsx",
       [
         [
-          '// import isNumber from "is-number";',
+          '//import isNumber from "is-number";',
           'import isNumber from "is-number";',
         ],
         [

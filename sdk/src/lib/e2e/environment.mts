@@ -280,7 +280,7 @@ async function installDependencies(
 
     if (await pathExists(nodeModulesCachePath)) {
       console.log(
-        `✅ CACHE HIT: Found cached node_modules. Hard-linking from ${nodeModulesCachePath}`,
+        `✅ CACHE HIT for source "${projectIdentifier}": Found cached node_modules. Hard-linking from ${nodeModulesCachePath}`,
       );
       try {
         // Use cp -al for a fast, hardlink-based copy
@@ -303,7 +303,7 @@ async function installDependencies(
       return;
     }
     console.log(
-      `ℹ️ CACHE MISS: No cached node_modules found at ${nodeModulesCachePath}. Proceeding with installation.`,
+      `ℹ️ CACHE MISS for source "${projectIdentifier}": No cached node_modules found at ${nodeModulesCachePath}. Proceeding with installation.`,
     );
   }
 
