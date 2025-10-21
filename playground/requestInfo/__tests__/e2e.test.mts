@@ -123,11 +123,15 @@ testDev(
 
     console.log("############# before clicking server action button");
     // 8. Click the button to call the server action
-    await page.click('button:has-text("Call Server Action")');
 
     console.log("############# before asserting server action result");
     // 9. Assert that the server action result is displayed and state is preserved
     await poll(async () => {
+      // context(justinvdm, 21 Oct 2025): We need to retry the click because the
+      // server action's response will initially be a 307 because of the
+      // discovered dependency causing a re-optimization to happen.
+      await page.click('button:has-text("Call Server Action")');
+
       const textContent = await page.evaluate(() => document.body.innerText);
       const hasActionResult = textContent.includes(
         "Server action result: Is 3 odd? Yes",
