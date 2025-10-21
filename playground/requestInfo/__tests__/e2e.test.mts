@@ -106,6 +106,8 @@ testSDK(
       return true;
     });
 
+    await new Promise((resolve) => setTimeout(resolve, 99999999));
+
     // 6. Uncomment ClientComponent and its dependency
     console.log(
       "################# 6. Uncommenting ClientComponent and its dependency",

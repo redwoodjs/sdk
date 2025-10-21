@@ -1,11 +1,11 @@
 export const IS_CI = !!(
+  (process.env.CI && !process.env.NOT_CI) ||
   process.env.GITHUB_ACTIONS ||
   process.env.GITLAB_CI ||
   process.env.CIRCLECI ||
   process.env.TRAVIS ||
   process.env.JENKINS_URL ||
-  process.env.NETLIFY ||
-  process.env.CI
+  process.env.NETLIFY
 );
 
 export const IS_DEBUG_MODE = process.env.RWSDK_E2E_DEBUG
