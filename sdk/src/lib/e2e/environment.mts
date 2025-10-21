@@ -32,34 +32,7 @@ if (IS_CACHE_ENABLED) {
   log("E2E test caching is enabled.");
 }
 
-const getTempDir = async (
-  projectDir: string,
-  monorepoRoot?: string,
-): Promise<tmp.DirectoryResult> => {
-  if (IS_CACHE_ENABLED) {
-    const projectIdentifier = monorepoRoot
-      ? `${monorepoRoot}-${projectDir}`
-      : projectDir;
-    const projectHash = createHash("md5")
-      .update(projectIdentifier)
-      .digest("hex")
-      .substring(0, 8);
-    const cacheDirName = monorepoRoot
-      ? basename(monorepoRoot)
-      : basename(projectDir);
-    const cacheRoot = path.join(
-      os.tmpdir(),
-      "rwsdk-e2e-cache",
-      `${cacheDirName}-${projectHash}`,
-    );
-    await fs.promises.mkdir(cacheRoot, { recursive: true });
-    return {
-      path: cacheRoot,
-      cleanup: async () => {
-        log(`🧹 (Cache enabled) Skipping cleanup for ${cacheRoot}`);
-      },
-    };
-  }
+const getTempDir = async (): Promise<tmp.DirectoryResult> => {
   return tmp.dir({ unsafeCleanup: true });
 };
 
@@ -130,7 +103,7 @@ export async function copyProjectToTempDir(
   const { tarballPath, cleanupTarball } = await createSdkTarball();
   try {
     log("Creating temporary directory for project");
-    const tempDir = await getTempDir(projectDir, monorepoRoot);
+    const tempDir = await getTempDir();
 
     // Determine the source directory to copy from
     const sourceDir = monorepoRoot || projectDir;
@@ -258,10 +231,34 @@ export async function copyProjectToTempDir(
 
     // Install dependencies in the target directory
     const installDir = monorepoRoot ? tempCopyRoot : targetDir;
-    await retry(() => installDependencies(installDir, packageManager), {
-      retries: INSTALL_DEPENDENCIES_RETRIES,
-      delay: 1000,
-    });
+    const installResult = await retry(
+      () =>
+        installDependencies(
+          installDir,
+          packageManager,
+          projectDir,
+          monorepoRoot,
+        ),
+      {
+        retries: INSTALL_DEPENDENCIES_RETRIES,
+        delay: 1000,
+      },
+    );
+
+    // Monkey-patch the cleanup function to move node_modules back to cache
+    const originalCleanup = tempDir.cleanup;
+    tempDir.cleanup = async () => {
+      if (installResult.movedFromCache) {
+        log(
+          `Moving node_modules back to cache: ${installResult.nodeModulesCachePath}`,
+        );
+        await fs.promises.rename(
+          join(targetDir, "node_modules"),
+          installResult.nodeModulesCachePath,
+        );
+      }
+      await originalCleanup();
+    };
 
     // Return the environment details
     return { tempDir, targetDir, workerName };
@@ -273,21 +270,41 @@ export async function copyProjectToTempDir(
 async function installDependencies(
   targetDir: string,
   packageManager: PackageManager = "pnpm",
-): Promise<void> {
-  const nodeModulesPath = join(targetDir, "node_modules");
-  if (IS_CACHE_ENABLED && fs.existsSync(nodeModulesPath)) {
-    console.log(
-      `✅ CACHE HIT: Found existing node_modules in ${targetDir}. Skipping installation.`,
-    );
-    return;
-  }
-
+  projectDir: string,
+  monorepoRoot?: string,
+): Promise<{ movedFromCache: boolean; nodeModulesCachePath: string }> {
+  let nodeModulesCachePath = "";
   if (IS_CACHE_ENABLED) {
+    const projectIdentifier = monorepoRoot
+      ? `${monorepoRoot}-${projectDir}`
+      : projectDir;
+    const projectHash = createHash("md5")
+      .update(projectIdentifier)
+      .digest("hex")
+      .substring(0, 8);
+    const cacheDirName = monorepoRoot
+      ? basename(monorepoRoot)
+      : basename(projectDir);
+    const cacheRoot = path.join(
+      os.tmpdir(),
+      "rwsdk-e2e-cache",
+      `${cacheDirName}-${projectHash}`,
+    );
+    nodeModulesCachePath = path.join(cacheRoot, "node_modules");
+
+    if (await pathExists(nodeModulesCachePath)) {
+      console.log(`✅ CACHE HIT: Found cached node_modules. Moving...`);
+      await fs.promises.rename(
+        nodeModulesCachePath,
+        join(targetDir, "node_modules"),
+      );
+      console.log(`✅ Moved successfully.`);
+      return { movedFromCache: true, nodeModulesCachePath };
+    }
     console.log(
-      `ℹ️ CACHE MISS: No node_modules found in ${targetDir}. Proceeding with installation.`,
+      `ℹ️ CACHE MISS: No cached node_modules found. Proceeding with installation.`,
     );
   }
-
   console.log(
     `📦 Installing project dependencies in ${targetDir} using ${packageManager}...`,
   );
@@ -347,6 +364,15 @@ async function installDependencies(
 
     console.log("✅ Dependencies installed successfully");
 
+    // After successful install, populate the cache if enabled
+    if (IS_CACHE_ENABLED && nodeModulesCachePath) {
+      console.log(
+        `Caching node_modules to ${nodeModulesCachePath} for future runs...`,
+      );
+      await copy(join(targetDir, "node_modules"), nodeModulesCachePath);
+      console.log(`✅ node_modules cached successfully.`);
+    }
+
     // Log installation details at debug level
     if (result.stdout) {
       log(`${packageManager} install output: %s`, result.stdout);
@@ -362,4 +388,5 @@ async function installDependencies(
       `Failed to install project dependencies. Please ensure the project can be installed with ${packageManager}.`,
     );
   }
+  return { movedFromCache: false, nodeModulesCachePath };
 }
