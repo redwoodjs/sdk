@@ -48,6 +48,6 @@ In a production build, the `worker` and `ssr` environments must be bundled separ
 
 The production build uses a multi-phase, sequential process to correctly bundle all environments. For a complete explanation of this architecture, see the central [Production Build Process](./productionBuildProcess.md) document.
 
-## Dev Server Stability
+### Dev Server Stability
 
 The use of multiple, interconnected Vite environments introduces challenges during development, particularly around dependency re-optimization. For a detailed explanation of how the system handles race conditions and ensures a stable development experience, see the [Dev Server Stability](./devServerStability.md) document.
