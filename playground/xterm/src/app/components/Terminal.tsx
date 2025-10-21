@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { ClientOnly } from "rwsdk/client";
 
 declare global {
   interface ImportMetaEnv {
@@ -8,14 +9,15 @@ declare global {
   }
 }
 
-export function Terminal() {
-  if (import.meta.env.SSR) {
-    return null;
-  }
-
+function ClientTerminal() {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const termRef = React.useRef<any>(null);
-  const urlSource = new URLSearchParams(window.location.search).get("source");
+
+  const urlSource =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("source")
+      : null;
+
   console.log("### urlSource", urlSource);
 
   React.useEffect(() => {
@@ -55,3 +57,17 @@ export function Terminal() {
     />
   );
 }
+
+export const Terminal = () => {
+  // context(justinvdm, 21 Oct 2025): We need this here so that the bundler tree shakes away the code below.
+  // I don't think we can abstract this check away unfortunately, it needs to be in-place.
+  if (import.meta.env.SSR) {
+    return null;
+  }
+
+  return (
+    <ClientOnly>
+      <ClientTerminal />
+    </ClientOnly>
+  );
+};
