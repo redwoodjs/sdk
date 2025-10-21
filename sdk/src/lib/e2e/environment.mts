@@ -293,7 +293,9 @@ async function installDependencies(
     nodeModulesCachePath = path.join(cacheRoot, "node_modules");
 
     if (await pathExists(nodeModulesCachePath)) {
-      console.log(`✅ CACHE HIT: Found cached node_modules. Moving...`);
+      console.log(
+        `✅ CACHE HIT: Found cached node_modules. Moving from ${nodeModulesCachePath}`,
+      );
       await fs.promises.rename(
         nodeModulesCachePath,
         join(targetDir, "node_modules"),
@@ -302,7 +304,7 @@ async function installDependencies(
       return { movedFromCache: true, nodeModulesCachePath };
     }
     console.log(
-      `ℹ️ CACHE MISS: No cached node_modules found. Proceeding with installation.`,
+      `ℹ️ CACHE MISS: No cached node_modules found at ${nodeModulesCachePath}. Proceeding with installation.`,
     );
   }
   console.log(
