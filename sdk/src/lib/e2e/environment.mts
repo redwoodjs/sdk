@@ -180,7 +180,9 @@ export async function copyProjectToTempDir(
 
         if (packageManager === "pnpm") {
           const pnpmWsPath = join(tempCopyRoot, "pnpm-workspace.yaml");
-          const pnpmWsConfig = `packages:\n${workspaces.map((w: string) => `  - '${w}'`).join("\n")}\n`;
+          const pnpmWsConfig = `packages:\n${workspaces
+            .map((w: string) => `  - '${w}'`)
+            .join("\n")}\n`;
           await fs.promises.writeFile(pnpmWsPath, pnpmWsConfig);
           log("Created pnpm-workspace.yaml");
         } else {
