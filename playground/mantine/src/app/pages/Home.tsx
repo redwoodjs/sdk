@@ -8,10 +8,19 @@ export function Home({ ctx }: RequestInfo) {
   return (
     <Container>
       <Stack>
-        <Title>Mantine Playground</Title>
-        <ExampleAccordion />
-        <ExampleDialog />
-        <ExampleSwitch />
+        <Title data-testid="main-title">Mantine Playground</Title>
+        <p data-testid="subtitle">
+          A simple component showcase for RedwoodSDK
+        </p>
+        <div data-testid="accordion-section">
+          <ExampleAccordion />
+        </div>
+        <div data-testid="dialog-section">
+          <ExampleDialog />
+        </div>
+        <div data-testid="switch-section">
+          <ExampleSwitch />
+        </div>
       </Stack>
     </Container>
   );
