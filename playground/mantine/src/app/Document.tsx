@@ -1,5 +1,6 @@
 import { ColorSchemeScript } from "@mantine/core";
 import mantineStyles from "@mantine/core/styles.css?url";
+import { requestInfo } from "rwsdk/worker";
 
 export const Document: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -11,7 +12,7 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
       <title>Mantine Playground</title>
       <link rel="modulepreload" href="/src/client.tsx" />
       <link rel="stylesheet" href={mantineStyles} />
-      <ColorSchemeScript />
+      <ColorSchemeScript nonce={requestInfo.rw.nonce} />
       <link
         rel="icon"
         type="image/svg+xml"
