@@ -134,7 +134,7 @@ export const redwoodPlugin = async (
 
   return [
     staleDepRetryPlugin(),
-    statePlugin(),
+    statePlugin({ projectRootDir }),
     devServerTimingPlugin(),
     devServerConstantPlugin(),
     directiveModulesDevPlugin({

@@ -120,27 +120,13 @@ const findUp = async (
 };
 
 const getMonorepoRoot = async (startDir: string) => {
-  try {
-    // `pnpm root` is the most reliable way to find the workspace root node_modules
-    const { stdout } = await $({
-      cwd: startDir,
-    })`pnpm root`;
-    // pnpm root returns the node_modules path, so we go up one level
-    return path.resolve(stdout, "..");
-  } catch (e) {
-    console.warn(
-      `Could not determine pnpm root from ${startDir}. Falling back to file search.`,
-    );
-    const root = await findUp(["pnpm-workspace.yaml"], startDir);
-    if (root) {
-      return root;
-    }
+  const root = await findUp(["pnpm-workspace.yaml"], startDir);
+
+  if (!root) {
+    throw new Error("Could not find pnpm-workspace.yaml");
   }
 
-  console.warn(
-    "Could not find pnpm monorepo root. Using parent directory of target as fallback.",
-  );
-  return path.resolve(startDir, "..");
+  return root;
 };
 
 const areDependenciesEqual = (
@@ -152,25 +138,12 @@ const areDependenciesEqual = (
 };
 
 const isPlaygroundExample = async (targetDir: string, monorepoRoot: string) => {
-  try {
-    const rootPackageJson = JSON.parse(
-      await fs.readFile(path.join(monorepoRoot, "package.json"), "utf-8"),
-    );
-
-    if (rootPackageJson.name === "rw-sdk-monorepo") {
-      const playgroundDir = path.join(monorepoRoot, "playground");
-      const relative = path.relative(playgroundDir, targetDir);
-
-      if (
-        relative &&
-        !relative.startsWith("..") &&
-        !path.isAbsolute(relative)
-      ) {
-        return true;
-      }
-    }
-  } catch {
-    // ignore: if we can't read files, assume it's not a playground.
+  const pkgJson = JSON.parse(
+    await fs.readFile(path.join(monorepoRoot, "package.json"), "utf-8"),
+  );
+  if (pkgJson.name === "rw-sdk-monorepo") {
+    const playgroundDir = path.join(monorepoRoot, "playground");
+    return targetDir.startsWith(playgroundDir);
   }
   return false;
 };

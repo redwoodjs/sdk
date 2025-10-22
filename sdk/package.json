@@ -36,6 +36,10 @@
       "types": "./dist/runtime/entries/client.d.ts",
       "default": "./dist/runtime/entries/client.js"
     },
+    "./__state": {
+      "types": "./dist/runtime/state.d.ts",
+      "default": "./dist/runtime/state.js"
+    },
     "./__ssr": {
       "react-server": "./dist/runtime/entries/no-react-server.js",
       "types": "./dist/runtime/entries/ssr.d.ts",

@@ -1,18 +1,30 @@
 import debug from "debug";
 import fs from "node:fs/promises";
-import path from "node:path";
 import type { Plugin } from "vite";
-import {
-  DIST_DIR,
-  RUNTIME_DIR,
-  RW_STATE_EXPORT_PATH,
-} from "../lib/constants.mjs";
+import { RW_STATE_EXPORT_PATH } from "../lib/constants.mjs";
+import { maybeResolveEnvImport } from "./envResolvers.mjs";
 
 const log = debug("rwsdk:vite:state-plugin");
 const VIRTUAL_STATE_PREFIX = "virtual:rwsdk:state:";
 
-export const statePlugin = (): Plugin => {
+export const statePlugin = ({
+  projectRootDir,
+}: {
+  projectRootDir: string;
+}): Plugin => {
   let isDev = false;
+
+  const stateModulePath = maybeResolveEnvImport({
+    id: RW_STATE_EXPORT_PATH,
+    envName: "worker",
+    projectRootDir,
+  });
+
+  if (!stateModulePath) {
+    throw new Error(
+      `[rwsdk] State module path not found for project root: ${projectRootDir}. This is likely a bug in RedwoodSDK. Please report this issue at https://github.com/redwoodjs/sdk/issues/new`,
+    );
+  }
 
   return {
     name: "rwsdk:state",
@@ -52,13 +64,12 @@ export const statePlugin = (): Plugin => {
         if (isDev && this.environment.name === "worker") {
           return `${VIRTUAL_STATE_PREFIX}${id}`;
         } else {
-          return path.resolve(RUNTIME_DIR, "state.mjs");
+          return stateModulePath;
         }
       }
     },
     async load(id) {
       if (id.startsWith(VIRTUAL_STATE_PREFIX)) {
-        const stateModulePath = path.resolve(DIST_DIR, "runtime", "state.mjs");
         log("Loading virtual state module from %s", stateModulePath);
         return await fs.readFile(stateModulePath, "utf-8");
       }
