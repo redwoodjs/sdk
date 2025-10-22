@@ -120,13 +120,7 @@ const findUp = async (
 };
 
 const getMonorepoRoot = async (startDir: string) => {
-  const root = await findUp(["pnpm-workspace.yaml"], startDir);
-
-  if (!root) {
-    throw new Error("Could not find pnpm-workspace.yaml");
-  }
-
-  return root;
+  return await findUp(["pnpm-workspace.yaml"], startDir);
 };
 
 const areDependenciesEqual = (
@@ -238,9 +232,10 @@ const performSync = async (sdkDir: string, targetDir: string) => {
   await cleanupViteEntries(targetDir);
 
   const monorepoRoot = await getMonorepoRoot(targetDir);
+  const rootDir = monorepoRoot ?? targetDir;
   const projectName = path.basename(targetDir);
 
-  if (await isPlaygroundExample(targetDir, monorepoRoot)) {
+  if (monorepoRoot && (await isPlaygroundExample(targetDir, monorepoRoot))) {
     console.log(
       "Playground example detected. Skipping file sync; workspace linking will be used.",
     );
@@ -249,7 +244,7 @@ const performSync = async (sdkDir: string, targetDir: string) => {
   }
 
   const installedSdkPackageJsonPath = path.join(
-    monorepoRoot,
+    rootDir,
     "node_modules",
     `.rwsync_${projectName}`,
     "node_modules",
@@ -285,9 +280,9 @@ const performSync = async (sdkDir: string, targetDir: string) => {
   }
 
   if (needsFullSync) {
-    await performFullSync(sdkDir, targetDir, monorepoRoot);
+    await performFullSync(sdkDir, targetDir, rootDir);
   } else {
-    await performFastSync(sdkDir, targetDir, monorepoRoot);
+    await performFastSync(sdkDir, targetDir, rootDir);
   }
 
   console.log("✅ Done syncing");
