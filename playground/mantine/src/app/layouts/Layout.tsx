@@ -1,7 +1,6 @@
 import { MantineProvider } from "@mantine/core";
-import type { LayoutProps } from "rwsdk/router";
 
-export function MantineLayout({ children }: LayoutProps) {
+export function Layout({ children }: { children: React.ReactNode }) {
   "use client";
   return <MantineProvider>{children}</MantineProvider>;
 }

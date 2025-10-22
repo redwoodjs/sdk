@@ -3,7 +3,7 @@ import { defineApp } from "rwsdk/worker";
 
 import { Document } from "@/app/Document";
 import { setCommonHeaders } from "@/app/headers";
-import { MantineLayout } from "@/app/layouts/MantineLayout.mjs";
+import { Layout } from "@/app/layouts/Layout";
 import { Home } from "@/app/pages/Home";
 
 export type AppContext = {};
@@ -14,5 +14,5 @@ export default defineApp([
     // setup ctx here
     ctx;
   },
-  render(Document, [layout(MantineLayout, [route("/", Home)])]),
+  render(Document, [layout(Layout, [route("/", Home)])]),
 ]);
