@@ -60,7 +60,9 @@ testDevAndDeploy(
     });
 
     // Test switch
-    const switchComponent = await page.waitForSelector('[role="switch"]');
-    await switchComponent?.click();
+    await page.waitForSelector(
+      '[data-testid="switch-section"] [role="switch"]',
+    );
+    await page.click('[data-testid="switch-section"] label');
   },
 );
