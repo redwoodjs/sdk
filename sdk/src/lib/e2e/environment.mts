@@ -257,11 +257,19 @@ async function installDependencies(
   monorepoRoot?: string,
 ): Promise<void> {
   if (IS_CACHE_ENABLED) {
+    // Generate a checksum of the SDK's dist directory to factor into the cache key
+    const { stdout: sdkDistChecksum } = await $(
+      "find . -type f | sort | md5sum",
+      {
+        shell: true,
+        cwd: path.join(ROOT_DIR, "dist"),
+      },
+    );
     const projectIdentifier = monorepoRoot
       ? `${monorepoRoot}-${projectDir}`
       : projectDir;
     const projectHash = createHash("md5")
-      .update(projectIdentifier)
+      .update(`${projectIdentifier}-${sdkDistChecksum}`)
       .digest("hex")
       .substring(0, 8);
     const cacheDirName = monorepoRoot
@@ -365,11 +373,18 @@ async function installDependencies(
     // After successful install, populate the cache if enabled
     if (IS_CACHE_ENABLED) {
       // Re-calculate cache path to be safe
+      const { stdout: sdkDistChecksum } = await $(
+        "find . -type f | sort | md5sum",
+        {
+          shell: true,
+          cwd: path.join(ROOT_DIR, "dist"),
+        },
+      );
       const projectIdentifier = monorepoRoot
         ? `${monorepoRoot}-${projectDir}`
         : projectDir;
       const projectHash = createHash("md5")
-        .update(projectIdentifier)
+        .update(`${projectIdentifier}-${sdkDistChecksum}`)
         .digest("hex")
         .substring(0, 8);
       const cacheDirName = monorepoRoot
