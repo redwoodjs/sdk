@@ -1,11 +1,17 @@
 import { AsyncLocalStorage } from "async_hooks";
+import { defineRwState } from "rwsdk/__state";
 import { DefaultAppContext, RequestInfo } from "./types";
 
 type DefaultRequestInfo = RequestInfo<DefaultAppContext>;
 
-const requestInfoDeferred = Promise.withResolvers<DefaultRequestInfo>();
+const requestInfoDeferred = defineRwState("requestInfoDeferred", () =>
+  Promise.withResolvers<DefaultRequestInfo>(),
+);
 
-const requestInfoStore = new AsyncLocalStorage<Record<string, any>>();
+const requestInfoStore = defineRwState(
+  "requestInfoStore",
+  () => new AsyncLocalStorage<Record<string, any>>(),
+);
 
 const requestInfoBase = {};
 

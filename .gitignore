@@ -2,6 +2,8 @@
 
 .rwsync.lock
 
+.tmp/
+
 logs
 _.log
 npm-debug.log_

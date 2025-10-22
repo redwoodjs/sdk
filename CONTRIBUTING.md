@@ -187,6 +187,17 @@ You can also specify a package manager or enable debug logging using environment
 PACKAGE_MANAGER="yarn" DEBUG='rwsdk:e2e:environment' pnpm test:e2e hello-world/__tests__/e2e.test.mts
 ```
 
+#### Local Development Performance
+
+To speed up the local test-and-debug cycle, the E2E test harness uses a caching mechanism that is **enabled by default** for local runs.
+
+-   **How it Works**: The harness creates a persistent test environment in your system's temporary directory for each playground project. On the first run, it installs all dependencies. On subsequent runs, it reuses this environment, skipping the lengthy installation step. The cache is automatically disabled in CI environments.
+-   **Disabling the Cache**: If you need to force a clean install, you can disable the cache by setting the `RWSDK_E2E_CACHE` environment variable to `0`:
+    ```sh
+    RWSDK_E2E_CACHE=0 pnpm test:e2e
+    ```
+-   **Cache Invalidation**: If you change a playground's `package.json`, you will need to manually clear the cache for that playground to force a re-installation. The cache directories are located in your system's temporary folder (e.g., `/tmp/rwsdk-e2e-cache` on Linux).
+
 #### Skipping Tests
 
 You can skip dev server or deployment tests using environment variables. This is useful for focusing on a specific part of the test suite.
