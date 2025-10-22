@@ -1,8 +1,8 @@
 import debug from "debug";
-import enhancedResolve from "enhanced-resolve";
 import { Plugin } from "vite";
 import { ROOT_DIR } from "../lib/constants.mjs";
 import { ensureAliasArray } from "./ensureAliasArray.mjs";
+import { ENV_RESOLVERS } from "./envResolvers.mjs";
 
 const log = debug("rwsdk:vite:known-deps-resolver-plugin");
 
@@ -39,20 +39,6 @@ export const ENV_PREDEFINED_IMPORTS = {
     "react-server-dom-webpack/client.browser",
     "react-server-dom-webpack/client.edge",
   ],
-};
-
-export const ENV_RESOLVERS = {
-  ssr: enhancedResolve.create.sync({
-    conditionNames: ["workerd", "worker", "edge", "default"],
-  }),
-
-  worker: enhancedResolve.create.sync({
-    conditionNames: ["react-server", "workerd", "worker", "edge", "default"],
-  }),
-
-  client: enhancedResolve.create.sync({
-    conditionNames: ["browser", "default"],
-  }),
 };
 
 function resolveKnownImport(

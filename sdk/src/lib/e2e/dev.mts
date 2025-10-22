@@ -146,7 +146,6 @@ export async function runDevServer(
     // Listen for all output to get the URL
     const handleOutput = (data: Buffer, source: string) => {
       const output = data.toString();
-      console.log(output);
       allOutput += output; // Accumulate all output
       log("Received output from %s: %s", source, output.replace(/\n/g, "\\n"));
 
