@@ -55,22 +55,33 @@ const createSdkTarball = async (): Promise<{
       }, // No-op cleanup
     };
   }
-  const packResult = await $({ cwd: ROOT_DIR, stdio: "pipe" })`npm pack`;
-  const tarballName = packResult.stdout?.trim()!;
-  const originalTarballPath = path.join(ROOT_DIR, tarballName);
 
-  // Move the tarball to a temporary directory to avoid it being included in subsequent packs.
-  // We create this inside the project's .tmp dir to avoid cross-filesystem rename errors in CI.
-  const monorepoRoot = path.resolve(ROOT_DIR, "..");
-  const tmpRoot = path.join(monorepoRoot, ".tmp");
-  await fs.promises.mkdir(tmpRoot, { recursive: true });
+  // Create a temporary directory to receive the tarball, ensuring a stable path.
   const tempDir = await fs.promises.mkdtemp(
-    path.join(tmpRoot, "rwsdk-tarball-"),
+    path.join(os.tmpdir(), "rwsdk-tarball-"),
   );
-  const tarballPath = path.join(tempDir, tarballName);
-  await fs.promises.rename(originalTarballPath, tarballPath);
 
-  log(`📦 Created and moved tarball to: ${tarballPath}`);
+  await $({
+    cwd: ROOT_DIR,
+    stdio: "pipe",
+  })`npm pack --pack-destination=${tempDir}`;
+
+  // We need to determine the tarball's name, as it's version-dependent.
+  // Running `npm pack --dry-run` gives us the filename without creating a file.
+  const packDryRun = await $({
+    cwd: ROOT_DIR,
+    stdio: "pipe",
+  })`npm pack --dry-run`;
+  const tarballName = packDryRun.stdout?.trim()!;
+  const tarballPath = path.join(tempDir, tarballName);
+
+  if (!fs.existsSync(tarballPath)) {
+    throw new Error(
+      `Tarball was not created in the expected location: ${tarballPath}`,
+    );
+  }
+
+  log(`📦 Created tarball in stable temp location: ${tarballPath}`);
 
   const cleanupTarball = async () => {
     log(`🧹 Cleaning up tarball directory: ${tempDir}`);
