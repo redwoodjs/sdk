@@ -1370,7 +1370,7 @@ The framework's runtime relies on long-lived, module-level state for critical fe
 A virtual state module, `rwsdk/__state`, is introduced to act as a centralized, persistent store for framework-level state.
 
 -   A new Vite plugin (`statePlugin`) marks this virtual module as `external` to Vite's dependency optimizer for the worker environment. This insulates it from the re-optimization and reload process.
--   The plugin resolves `rwsdk/__state` to a physical module (`sdk/src/runtime/state.mts`) that contains the state container and management APIs.
+-   The plugin resolves `rwsdk/__state` to a physical module (the built module in `dist/` for `sdk/src/runtime/state.ts`) that contains the state container and management APIs - i.e. we bypass the dep optimizer for this specific module, so we have a stable path outside of dep optimization bundles
 -   Framework code is refactored to use this module (e.g., `defineRwState(...)`), making the state resilient to reloads.
 
 This solves the state-loss problem and centralizes state management within the framework.
