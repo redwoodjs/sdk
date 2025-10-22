@@ -27,6 +27,14 @@ const getTempDir = async (): Promise<tmp.DirectoryResult> => {
   return tmp.dir({ unsafeCleanup: true });
 };
 
+function slugify(str: string) {
+  return str
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/--+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 const createSdkTarball = async (): Promise<{
   tarballPath: string;
   cleanupTarball: () => Promise<void>;
@@ -106,7 +114,7 @@ export async function copyProjectToTempDir(
 
     // Create unique project directory name
     const originalDirName = basename(sourceDir);
-    const workerName = `${originalDirName}-test-${resourceUniqueKey}`;
+    const workerName = `${slugify(originalDirName)}-test-${resourceUniqueKey}`;
     const tempCopyRoot = resolve(tempDir.path, workerName);
 
     // If it's a monorepo, the targetDir for commands is a subdirectory

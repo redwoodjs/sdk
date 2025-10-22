@@ -187,7 +187,8 @@ testDeploy(
     });
 
     // 3. Click the button to call the server action
-    await page.click('button:has-text("Call Server Action")');
+    const getButton = async () => page.waitForSelector("button");
+    (await getButton())?.click();
 
     // 4. Assert that the server action result is displayed
     await poll(async () => {
