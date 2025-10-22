@@ -49,15 +49,20 @@ const createSdkTarball = async (): Promise<{
   }
   const packResult = await $({ cwd: ROOT_DIR, stdio: "pipe" })`npm pack`;
   const tarballName = packResult.stdout?.trim()!;
-  const tarballPath = path.join(ROOT_DIR, tarballName);
+  const originalTarballPath = path.join(ROOT_DIR, tarballName);
 
-  log(`📦 Created tarball: ${tarballPath}`);
+  // Move the tarball to a temporary directory to avoid it being included in subsequent packs
+  const tempDir = await fs.promises.mkdtemp(
+    path.join(os.tmpdir(), "rwsdk-tarball-"),
+  );
+  const tarballPath = path.join(tempDir, tarballName);
+  await fs.promises.rename(originalTarballPath, tarballPath);
+
+  log(`📦 Created and moved tarball to: ${tarballPath}`);
 
   const cleanupTarball = async () => {
-    if (fs.existsSync(tarballPath)) {
-      log(`🧹 Cleaning up tarball: ${tarballPath}`);
-      await fs.promises.rm(tarballPath, { force: true });
-    }
+    log(`🧹 Cleaning up tarball directory: ${tempDir}`);
+    await fs.promises.rm(tempDir, { recursive: true, force: true });
   };
 
   return { tarballPath, cleanupTarball };
