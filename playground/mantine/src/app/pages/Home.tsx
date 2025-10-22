@@ -9,9 +9,7 @@ export function Home({ ctx }: RequestInfo) {
     <Container>
       <Stack>
         <Title data-testid="main-title">Mantine Playground</Title>
-        <p data-testid="subtitle">
-          A simple component showcase for RedwoodSDK
-        </p>
+        <p data-testid="subtitle">A simple component showcase for RedwoodSDK</p>
         <div data-testid="accordion-section">
           <ExampleAccordion />
         </div>
