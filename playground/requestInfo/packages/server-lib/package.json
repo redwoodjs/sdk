@@ -1,6 +1,0 @@
-{
-  "name": "server-lib",
-  "version": "1.0.0",
-  "main": "index.mjs",
-  "types": "index.d.ts"
-}
