@@ -59,9 +59,13 @@ const createSdkTarball = async (): Promise<{
   const tarballName = packResult.stdout?.trim()!;
   const originalTarballPath = path.join(ROOT_DIR, tarballName);
 
-  // Move the tarball to a temporary directory to avoid it being included in subsequent packs
+  // Move the tarball to a temporary directory to avoid it being included in subsequent packs.
+  // We create this inside the project's .tmp dir to avoid cross-filesystem rename errors in CI.
+  const monorepoRoot = path.resolve(ROOT_DIR, "..");
+  const tmpRoot = path.join(monorepoRoot, ".tmp");
+  await fs.promises.mkdir(tmpRoot, { recursive: true });
   const tempDir = await fs.promises.mkdtemp(
-    path.join(os.tmpdir(), "rwsdk-tarball-"),
+    path.join(tmpRoot, "rwsdk-tarball-"),
   );
   const tarballPath = path.join(tempDir, tarballName);
   await fs.promises.rename(originalTarballPath, tarballPath);
