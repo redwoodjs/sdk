@@ -651,7 +651,7 @@ importers:
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.13.10
-        version: 1.13.10(vite@7.1.9(@types/node@22.18.8)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))(workerd@1.20251001.0)(wrangler@4.42.0(@cloudflare/workers-types@4.20251004.0))
+        version: 1.13.10(vite@7.1.11(@types/node@22.18.8)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))(workerd@1.20251001.0)(wrangler@4.42.0(@cloudflare/workers-types@4.20251004.0))
       '@cloudflare/workers-types':
         specifier: 4.20251004.0
         version: 4.20251004.0
@@ -668,28 +668,14 @@ importers:
         specifier: 5.9.3
         version: 5.9.3
       vite:
-        specifier: 7.1.9
-        version: 7.1.9(@types/node@22.18.8)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
+        specifier: 7.1.11
+        version: 7.1.11(@types/node@22.18.8)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
       vitest:
         specifier: ^3.1.1
         version: 3.2.4(@types/debug@4.1.12)(@types/node@22.18.8)(jiti@2.6.0)(lightningcss@1.30.1)(msw@2.11.3(@types/node@22.18.8)(typescript@5.9.3))(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
       wrangler:
         specifier: 4.42.0
         version: 4.42.0(@cloudflare/workers-types@4.20251004.0)
-
-  playground/requestInfo/node_modules/.rwsync_requestInfo:
-    dependencies:
-      rwsdk:
-        specifier: file:/Users/justin/rw/sdk/sdk/rwsdk-1.0.0-beta.13.tgz
-        version: file:../../sdk/sdk/rwsdk-1.0.0-beta.13.tgz(@cloudflare/vite-plugin@1.13.10(vite@7.1.11(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))(workerd@1.20251001.0)(wrangler@4.42.0(@cloudflare/workers-types@4.20251004.0)))(react-dom@19.3.0-canary-4fdf7cf2-20251003(react@19.3.0-canary-4fdf7cf2-20251003))(react-server-dom-webpack@19.3.0-canary-4fdf7cf2-20251003(react-dom@19.3.0-canary-4fdf7cf2-20251003(react@19.3.0-canary-4fdf7cf2-20251003))(react@19.3.0-canary-4fdf7cf2-20251003)(webpack@5.97.1))(react@19.3.0-canary-4fdf7cf2-20251003)(typescript@5.9.3)(vite@7.1.11(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))(wrangler@4.42.0(@cloudflare/workers-types@4.20251004.0))
-
-  playground/requestInfo/packages/client-lib: {}
-
-  playground/requestInfo/packages/plain-lib: {}
-
-  playground/requestInfo/packages/server-lib: {}
-
-  playground/requestInfo/packages/ui-lib: {}
 
   playground/resend:
     dependencies:
@@ -7984,18 +7970,6 @@ packages:
   run-parallel@1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
 
-  rwsdk@file:../../sdk/sdk/rwsdk-1.0.0-beta.13.tgz:
-    resolution: {integrity: sha512-YjVNufug83aQIu7nef1wf5ok6zkArOEnSGvfVpSoFVKJL5TyhTU1chFkOYT/IEfxURSD7Wj9d7kdJmNHRE2BZA==, tarball: file:../../sdk/sdk/rwsdk-1.0.0-beta.13.tgz}
-    version: 1.0.0-beta.13
-    hasBin: true
-    peerDependencies:
-      '@cloudflare/vite-plugin': ^1.13.10
-      react: '>=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0'
-      react-dom: '>=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0'
-      react-server-dom-webpack: '>=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0'
-      vite: ^6.2.6 || 7.x
-      wrangler: ^4.35.0
-
   safe-buffer@5.1.2:
     resolution: {integrity: sha512-Gd2UZBJDkXlY7GbJxfsE8/nvKkUEU1G38c1siN6QP6a9PT9MmHB8GnpscSmMJSoF8LOIrt8ud/wPtojys4G6+g==}
 
@@ -9978,23 +9952,6 @@ snapshots:
       tinyglobby: 0.2.15
       unenv: 2.0.0-rc.21
       vite: 7.1.11(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
-      wrangler: 4.42.0(@cloudflare/workers-types@4.20251004.0)
-      ws: 8.18.0
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-      - workerd
-
-  '@cloudflare/vite-plugin@1.13.10(vite@7.1.9(@types/node@22.18.8)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))(workerd@1.20251001.0)(wrangler@4.42.0(@cloudflare/workers-types@4.20251004.0))':
-    dependencies:
-      '@cloudflare/unenv-preset': 2.7.6(unenv@2.0.0-rc.21)(workerd@1.20251001.0)
-      '@remix-run/node-fetch-server': 0.8.0
-      get-port: 7.1.0
-      miniflare: 4.20251001.0
-      picocolors: 1.1.1
-      tinyglobby: 0.2.15
-      unenv: 2.0.0-rc.21
-      vite: 7.1.9(@types/node@22.18.8)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
       wrangler: 4.42.0(@cloudflare/workers-types@4.20251004.0)
       ws: 8.18.0
     transitivePeerDependencies:
@@ -15493,7 +15450,7 @@ snapshots:
 
   jest-worker@27.5.1:
     dependencies:
-      '@types/node': 24.5.2
+      '@types/node': 22.18.8
       merge-stream: 2.0.0
       supports-color: 8.1.1
 
@@ -17364,59 +17321,6 @@ snapshots:
     dependencies:
       queue-microtask: 1.2.3
 
-  rwsdk@file:../../sdk/sdk/rwsdk-1.0.0-beta.13.tgz(@cloudflare/vite-plugin@1.13.10(vite@7.1.11(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))(workerd@1.20251001.0)(wrangler@4.42.0(@cloudflare/workers-types@4.20251004.0)))(react-dom@19.3.0-canary-4fdf7cf2-20251003(react@19.3.0-canary-4fdf7cf2-20251003))(react-server-dom-webpack@19.3.0-canary-4fdf7cf2-20251003(react-dom@19.3.0-canary-4fdf7cf2-20251003(react@19.3.0-canary-4fdf7cf2-20251003))(react@19.3.0-canary-4fdf7cf2-20251003)(webpack@5.97.1))(react@19.3.0-canary-4fdf7cf2-20251003)(typescript@5.9.3)(vite@7.1.11(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))(wrangler@4.42.0(@cloudflare/workers-types@4.20251004.0)):
-    dependencies:
-      '@ast-grep/napi': 0.39.5
-      '@cloudflare/vite-plugin': 1.13.10(vite@7.1.11(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))(workerd@1.20251001.0)(wrangler@4.42.0(@cloudflare/workers-types@4.20251004.0))
-      '@cloudflare/workers-types': 4.20250924.0
-      '@mdx-js/mdx': 3.1.1
-      '@puppeteer/browsers': 2.10.10
-      '@types/decompress': 4.2.7
-      '@types/fs-extra': 11.0.4
-      '@types/glob': 8.1.0
-      '@types/react': 19.1.2
-      '@types/react-dom': 19.1.2(@types/react@19.1.2)
-      '@types/react-is': 19.0.0
-      '@vitejs/plugin-react': 5.0.4(vite@7.1.11(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))
-      chokidar: 4.0.3
-      debug: 4.4.3
-      decompress: 4.2.1
-      enhanced-resolve: 5.18.3
-      eventsource-parser: 3.0.6
-      execa: 9.6.0
-      find-up: 8.0.0
-      fs-extra: 11.3.2
-      get-port: 7.1.0
-      glob: 11.0.1
-      ignore: 7.0.4
-      jsonc-parser: 3.3.1
-      kysely: 0.28.2
-      kysely-do: 0.0.1-rc.1(kysely@0.28.2)
-      lodash: 4.17.21
-      magic-string: 0.30.19
-      picocolors: 1.1.1
-      proper-lockfile: 4.1.2
-      puppeteer-core: 24.22.3
-      react: 19.3.0-canary-4fdf7cf2-20251003
-      react-dom: 19.3.0-canary-4fdf7cf2-20251003(react@19.3.0-canary-4fdf7cf2-20251003)
-      react-is: 19.1.1
-      react-server-dom-webpack: 19.3.0-canary-4fdf7cf2-20251003(react-dom@19.3.0-canary-4fdf7cf2-20251003(react@19.3.0-canary-4fdf7cf2-20251003))(react@19.3.0-canary-4fdf7cf2-20251003)(webpack@5.97.1)
-      rsc-html-stream: 0.0.6
-      tmp-promise: 3.0.3
-      ts-morph: 27.0.0
-      unique-names-generator: 4.7.1
-      vibe-rules: 0.3.91
-      vite: 7.1.11(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
-      vite-tsconfig-paths: 5.1.4(typescript@5.9.3)(vite@7.1.11(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))
-      wrangler: 4.42.0(@cloudflare/workers-types@4.20251004.0)
-    transitivePeerDependencies:
-      - bare-buffer
-      - bare-url
-      - bufferutil
-      - supports-color
-      - typescript
-      - utf-8-validate
-
   safe-buffer@5.1.2: {}
 
   safe-buffer@5.2.1: {}
@@ -18370,7 +18274,7 @@ snapshots:
       debug: 4.4.1
       es-module-lexer: 1.7.0
       pathe: 2.0.3
-      vite: 7.1.9(@types/node@22.18.8)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
+      vite: 7.1.11(@types/node@22.18.8)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
     transitivePeerDependencies:
       - '@types/node'
       - jiti
@@ -18391,7 +18295,7 @@ snapshots:
       debug: 4.4.1
       es-module-lexer: 1.7.0
       pathe: 2.0.3
-      vite: 7.1.9(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
+      vite: 7.1.11(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
     transitivePeerDependencies:
       - '@types/node'
       - jiti
@@ -18411,17 +18315,6 @@ snapshots:
       debug: 4.4.1
       globrex: 0.1.2
       tsconfck: 3.1.6(typescript@5.9.2)
-    optionalDependencies:
-      vite: 7.1.11(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
-    transitivePeerDependencies:
-      - supports-color
-      - typescript
-
-  vite-tsconfig-paths@5.1.4(typescript@5.9.3)(vite@7.1.11(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)):
-    dependencies:
-      debug: 4.4.3
-      globrex: 0.1.2
-      tsconfck: 3.1.6(typescript@5.9.3)
     optionalDependencies:
       vite: 7.1.11(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
     transitivePeerDependencies:
