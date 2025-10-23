@@ -24,7 +24,9 @@ With a reproduction in hand, the next step was to get definitive proof of the im
 
 I added a `console.log` to the `onResolve` hook of our SDK's `knownDepsResolverPlugin`. This logged every module resolution attempt made by esbuild during Vite's dependency scan. By running the example app and piping the logs to a file, I was able to get a complete trace.
 
-The logs provided the "black and white" evidence, revealing a clear chain from the application's runtime code to the `vite` package. The issue was not in our SDK, but in the `livestore` codebase.
+The logs provided the evidence, revealing a clear chain from the application's runtime code to the `vite` package.
+
+TODO conclusion
 
 Here is the step-by-step import chain:
 
