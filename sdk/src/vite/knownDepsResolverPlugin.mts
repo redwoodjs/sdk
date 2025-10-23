@@ -171,6 +171,9 @@ export const knownDepsResolverPlugin = ({
       name: `rwsdk:known-dependencies-resolver-esbuild-${envName}`,
       setup(build: any) {
         build.onResolve({ filter: /.*/ }, (args: any) => {
+          console.log(
+            `[${envName}] resolving: ${args.path}, from: ${args.importer}`,
+          );
           let resolved: string | undefined = mappings.get(args.path);
 
           if (!resolved) {
