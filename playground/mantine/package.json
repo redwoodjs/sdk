@@ -43,6 +43,10 @@
     "postcss-preset-mantine": "^1.15.0",
     "postcss-simple-vars": "^7.0.1"
   },
+  "overrides": {
+    "react": "19.3.0-canary-4fdf7cf2-20251003",
+    "react-dom": "19.3.0-canary-4fdf7cf2-20251003"
+  },
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild",
