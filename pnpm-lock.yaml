@@ -1,5 +1,9 @@
 lockfileVersion: '9.0'
 
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
 importers:
 
   .:
@@ -705,7 +709,7 @@ importers:
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.13.10
-        version: 1.13.10(vite@7.1.9(@types/node@22.18.8)(jiti@2.6.0)(lightningcss@1.30.1)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))(workerd@1.20251001.0)(wrangler@4.42.0(@cloudflare/workers-types@4.20251004.0))
+        version: 1.13.10(vite@7.1.11(@types/node@22.18.8)(jiti@2.6.0)(lightningcss@1.30.1)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))(workerd@1.20251001.0)(wrangler@4.42.0(@cloudflare/workers-types@4.20251004.0))
       '@cloudflare/workers-types':
         specifier: 4.20251004.0
         version: 4.20251004.0
@@ -722,8 +726,8 @@ importers:
         specifier: 5.9.3
         version: 5.9.3
       vite:
-        specifier: 7.1.9
-        version: 7.1.9(@types/node@22.18.8)(jiti@2.6.0)(lightningcss@1.30.1)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
+        specifier: 7.1.11
+        version: 7.1.11(@types/node@22.18.8)(jiti@2.6.0)(lightningcss@1.30.1)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
       vitest:
         specifier: ^3.1.1
         version: 3.2.4(@types/debug@4.1.12)(@types/node@22.18.8)(jiti@2.6.0)(lightningcss@1.30.1)(msw@2.11.3(@types/node@22.18.8)(typescript@5.9.3))(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
@@ -10037,23 +10041,6 @@ snapshots:
       tinyglobby: 0.2.15
       unenv: 2.0.0-rc.21
       vite: 7.1.11(@types/node@24.5.2)(jiti@2.6.0)(lightningcss@1.30.1)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
-      wrangler: 4.42.0(@cloudflare/workers-types@4.20251004.0)
-      ws: 8.18.0
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-      - workerd
-
-  '@cloudflare/vite-plugin@1.13.10(vite@7.1.9(@types/node@22.18.8)(jiti@2.6.0)(lightningcss@1.30.1)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))(workerd@1.20251001.0)(wrangler@4.42.0(@cloudflare/workers-types@4.20251004.0))':
-    dependencies:
-      '@cloudflare/unenv-preset': 2.7.6(unenv@2.0.0-rc.21)(workerd@1.20251001.0)
-      '@remix-run/node-fetch-server': 0.8.0
-      get-port: 7.1.0
-      miniflare: 4.20251001.0
-      picocolors: 1.1.1
-      tinyglobby: 0.2.15
-      unenv: 2.0.0-rc.21
-      vite: 7.1.9(@types/node@22.18.8)(jiti@2.6.0)(lightningcss@1.30.1)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
       wrangler: 4.42.0(@cloudflare/workers-types@4.20251004.0)
       ws: 8.18.0
     transitivePeerDependencies:
