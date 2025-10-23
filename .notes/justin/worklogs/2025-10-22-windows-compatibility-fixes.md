@@ -84,3 +84,11 @@ cd ..; pnpm build:sdk; cd starter; $env:DEBUG="*"; pnpm dev 2>&1 | Tee-Object -F
 This function dynamically constructs a path to Vite's internal copy of esbuild and then loads it using a dynamic `import()`. On Windows, this results in an `import('D:\\path\\to\\esbuild.js')` call, which is the direct cause of the `ERR_UNSUPPORTED_ESM_URL_SCHEME` error. All previous debugging confirmed this was the issue, but we were looking in the wrong place.
 
 **Fix:** The fix is to modify `getViteEsbuild` to convert the constructed path into a `file://` URL before passing it to `import()`. This will be the definitive solution for this specific crash.
+
+### 6. "use client" Module Lookup Failure
+
+**Issue:** After all previous build-time errors were resolved, the development server now starts successfully. However, when trying to render a page, the server throws a new runtime error: `Internal server error: (ssr) No module found for '/src/app/pages/Welcome.tsx' in module lookup for "use client" directive`.
+
+**Investigation:** This error indicates that the framework's module lookup system, which relies on the results of the initial directive scan, is failing. The path format in the error (`/src/app/pages/Welcome.tsx`) is a normalized, Vite-style path. The failure suggests there is a discrepancy between how this path was generated and stored during the scan and how it is being generated and looked up during the server-side render. This is likely another Windows-specific path normalization inconsistency.
+
+**Plan:** To debug this, the immediate next step is to inspect the contents of the `clientFiles` and `serverFiles` sets right after the directive scan completes. The user will add logging to see exactly what paths are stored in these sets. By comparing the stored paths with the path that is failing the lookup, we can identify the source of the normalization mismatch and correct it.
