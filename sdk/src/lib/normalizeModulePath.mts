@@ -1,14 +1,5 @@
-import * as os from "node:os";
 import * as path from "node:path";
-
-const isWindows = os.platform() === "win32";
-const slash = (p: string): string => p.replace(/\\/g, "/");
-
-// port(justinvdm, 23 October 2025): From Vite's internal `normalizePath` utility.
-// See: https://github.com/vitejs/vite/blob/main/packages/vite/src/node/utils.ts
-function normalizePath(id: string): string {
-  return path.posix.normalize(isWindows ? slash(id) : id);
-}
+import { normalizePath as normalizePathSeparators } from "vite";
 
 /**
  * Find the number of common ancestor segments between two absolute paths.
@@ -59,8 +50,8 @@ export function normalizeModulePath(
   projectRootDir: string,
   options: { absolute?: boolean; isViteStyle?: boolean } = {},
 ): string {
-  modulePath = normalizePath(modulePath);
-  projectRootDir = normalizePath(path.resolve(projectRootDir));
+  modulePath = normalizePathSeparators(modulePath);
+  projectRootDir = normalizePathSeparators(path.resolve(projectRootDir));
 
   // Handle empty string or current directory
   if (modulePath === "" || modulePath === ".") {
@@ -102,7 +93,7 @@ export function normalizeModulePath(
     resolved = path.resolve(projectRootDir, modulePath);
   }
 
-  resolved = normalizePath(resolved);
+  resolved = normalizePathSeparators(resolved);
 
   // If absolute option is set, always return absolute paths
   if (options.absolute) {
@@ -119,5 +110,5 @@ export function normalizeModulePath(
 
   // Path is within project root, return as Vite-style relative path
   const cleanRelative = relative === "." ? "" : relative;
-  return "/" + normalizePath(cleanRelative);
+  return "/" + normalizePathSeparators(cleanRelative);
 }
