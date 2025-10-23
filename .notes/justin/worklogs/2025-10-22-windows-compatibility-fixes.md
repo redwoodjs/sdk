@@ -66,3 +66,21 @@ To narrow down the source of the invalid path, I'm now attempting to capture mor
 ```powershell
 cd ..; pnpm build:sdk; cd starter; $env:DEBUG="*"; pnpm dev 2>&1 | Tee-Object -FilePath "out.log"
 ```
+
+### 4. `normalizeModulePath` Is Not Called
+
+**Issue:** After adding verbose logging to the `normalizeModulePath` function and re-running, I discovered that none of the new logs appeared in the output before the application crashed.
+
+**Investigation:** This is a critical finding. It proves that the error occurs *before* our custom module resolution logic has a chance to run. The problem is not with how we resolve `import` statements within files, but rather with how esbuild handles the initial list of files it's asked to scan. The evidence now points directly at the `entryPoints` array that is passed to `esbuild.build`. Esbuild is likely attempting to load one of these entry points using a raw Windows path, which is then rejected by Node's ESM loader.
+
+**Fix:** The next step is to apply a targeted fix: convert all paths in the `entryPoints` array into valid `file://` URLs before passing them to esbuild. This should resolve the `ERR_UNSUPPORTED_ESM_URL_SCHEME` error.
+
+### 5. Pinpointing the Crash in `getViteEsbuild`
+
+**Issue:** After a previous fix failed, I noticed that a key debug log ("Starting directives scan...") was not appearing in the output.
+
+**Investigation:** This was a critical observation. The absence of that log proved the crash was happening much earlier in the `runDirectivesScan` function than previously assumed. By examining the code that runs before the missing log statement, I identified the culprit: the `getViteEsbuild` helper function.
+
+This function dynamically constructs a path to Vite's internal copy of esbuild and then loads it using a dynamic `import()`. On Windows, this results in an `import('D:\\path\\to\\esbuild.js')` call, which is the direct cause of the `ERR_UNSUPPORTED_ESM_URL_SCHEME` error. All previous debugging confirmed this was the issue, but we were looking in the wrong place.
+
+**Fix:** The fix is to modify `getViteEsbuild` to convert the constructed path into a `file://` URL before passing it to `import()`. This will be the definitive solution for this specific crash.
