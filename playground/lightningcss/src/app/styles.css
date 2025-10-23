@@ -1,6 +1,10 @@
 body {
   min-height: 100vh;
   padding: 0;
+
+  .test-class {
+    color: blue;
+  }
 }
 
 #root,
