@@ -26,7 +26,15 @@ I added a `console.log` to the `onResolve` hook of our SDK's `knownDepsResolverP
 
 The logs provided the evidence, revealing a clear chain from the application's runtime code to the `vite` package.
 
-TODO conclusion
+## Conclusion
+
+The investigation traced the `lightningcss` build failure to a specific import chain originating in the `livestore` codebase. A runtime file (`leader-thread-shared.ts`) dynamically imports a development utility that can start a Vite dev server. When Vite's dependency optimizer scans this for a worker or SSR environment, it pulls the `vite` package itself into the dependency graph. This causes the optimizer to fail on Vite's optional `lightningcss` import.
+
+The underlying scenario is that a Vite dev server is being initiated from within a worker that is, itself, managed by a Vite dev server. This "Vite-in-Vite" setup is the direct cause of the dependency resolution failure. This confirms that the initial theory about the SDK's `normalizeModulePath.mts` being the responsible module was incorrect, and the issue originates from the application's dependency graph.
+
+The `vite` import comes directly from the `livestore` codebase, meaning the optimizer issue would likely persist regardless of any changes within the SDK. Furthermore, supporting the underlying architecture of running a Vite dev server from within Miniflare, which itself is running inside another Vite dev server, is likely to be infeasible.
+
+The next step is to understand from the user whether this architecture was an intentional choice, and then decide on a path forward based on that information.
 
 Here is the step-by-step import chain:
 
