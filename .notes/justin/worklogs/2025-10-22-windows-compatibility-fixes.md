@@ -42,8 +42,10 @@ Error: ENOENT: no such file or directory, mkdir 'D:\D:\a\sdk\sdk\sdk\dist\__inte
 
 **Investigation:** This error is coming from `runDirectivesScan.mjs` and indicates that an `import()` call is being made with a raw Windows path (e.g., `D:\path\to\file`) instead of a valid `file://` URL. The ESM loader in Node.js is strict about this. I need to find where the import path is being constructed and ensure it's converted to a proper URL before being used.
 
-```
 
+This should provide a detailed trace of the operations leading up to the crash, which will hopefully reveal the exact module that is being imported incorrectly.
+
+```
 Error: RWSDK directive scan failed:
 Error [ERR_UNSUPPORTED_ESM_URL_SCHEME]: Only URLs with a scheme in: file, data, and node are supported by the default ESM loader. On Windows, absolute paths must be valid file:// URLs. Received protocol 'd:'
     at throwIfUnsupportedURLScheme (node:internal/modules/esm/load:187:11)
@@ -58,3 +60,9 @@ Error [ERR_UNSUPPORTED_ESM_URL_SCHEME]: Only URLs with a scheme in: file, data, 
     at runDirectivesScan (file:///D:/a/sdk/sdk/sdk/dist/vite/runDirectivesScan.mjs:294:15)
     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
   ```
+
+To narrow down the source of the invalid path, I'm now attempting to capture more verbose output by enabling all debug logs and redirecting the output to a file. I will run the following command from the project root:
+
+```powershell
+cd ..; pnpm build:sdk; cd starter; $env:DEBUG="*"; pnpm dev *> out.log
+```
