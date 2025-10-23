@@ -64,5 +64,5 @@ Error [ERR_UNSUPPORTED_ESM_URL_SCHEME]: Only URLs with a scheme in: file, data, 
 To narrow down the source of the invalid path, I'm now attempting to capture more verbose output by enabling all debug logs and redirecting the output to a file. I will run the following command from the project root:
 
 ```powershell
-cd ..; pnpm build:sdk; cd starter; $env:DEBUG="*"; pnpm dev *> out.log
+cd ..; pnpm build:sdk; cd starter; $env:DEBUG="*"; pnpm dev 2>&1 | Tee-Object -FilePath "out.log"
 ```

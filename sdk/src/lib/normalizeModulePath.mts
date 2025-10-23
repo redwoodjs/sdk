@@ -50,6 +50,13 @@ export function normalizeModulePath(
   projectRootDir: string,
   options: { absolute?: boolean; isViteStyle?: boolean } = {},
 ): string {
+  console.log(`[normalizeModulePath] IN:`, {
+    modulePath,
+    projectRootDir,
+    options,
+  });
+  console.trace(`[normalizeModulePath] Call stack`);
+
   modulePath = normalizePathSeparators(modulePath);
   projectRootDir = normalizePathSeparators(path.resolve(projectRootDir));
 
@@ -110,5 +117,7 @@ export function normalizeModulePath(
 
   // Path is within project root, return as Vite-style relative path
   const cleanRelative = relative === "." ? "" : relative;
-  return "/" + normalizePathSeparators(cleanRelative);
+  const finalPath = "/" + normalizePathSeparators(cleanRelative);
+  console.log(`[normalizeModulePath] OUT:`, { finalPath });
+  return finalPath;
 }
