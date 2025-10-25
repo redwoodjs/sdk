@@ -6,6 +6,7 @@ export * from "../register/worker";
 export * from "../render/renderToStream";
 export * from "../render/renderToString";
 export * from "../requestInfo/types";
+export * from "../requestInfo/utils";
 export * from "../requestInfo/worker";
 export * from "../script";
 export * from "../worker";

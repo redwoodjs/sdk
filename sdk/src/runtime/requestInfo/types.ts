@@ -16,3 +16,10 @@ export interface RequestInfo<Params = any, AppContext = DefaultAppContext> {
   response: ResponseInit & { headers: Headers };
   isAction: boolean;
 }
+
+export type PartialRequestInfo<
+  Params = any,
+  AppContext = DefaultAppContext,
+> = Omit<Partial<RequestInfo<Params, AppContext>>, "rw"> & {
+  rw?: Partial<RwContext>;
+};
