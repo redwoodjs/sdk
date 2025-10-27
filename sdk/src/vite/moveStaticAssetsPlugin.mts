@@ -1,5 +1,7 @@
+import path from "node:path";
 import { Plugin } from "vite";
-import { $sh } from "../lib/$.mjs";
+import fs from "fs-extra";
+import { glob } from "glob";
 
 export const moveStaticAssetsPlugin = ({
   rootDir,
@@ -15,9 +17,18 @@ export const moveStaticAssetsPlugin = ({
       this.environment.name === "worker" &&
       process.env.RWSDK_BUILD_PASS === "linker"
     ) {
-      await $sh({
-        cwd: rootDir,
-      })`mv dist/worker/assets/*.css dist/client/assets/ || true`;
+      const sourceDir = path.join(rootDir, "dist", "worker", "assets");
+      const destDir = path.join(rootDir, "dist", "client", "assets");
+      const cssFiles = await glob("*.css", { cwd: sourceDir });
+
+      if (cssFiles.length > 0) {
+        await fs.ensureDir(destDir);
+        for (const file of cssFiles) {
+          const sourceFile = path.join(sourceDir, file);
+          const destFile = path.join(destDir, file);
+          await fs.move(sourceFile, destFile, { overwrite: true });
+        }
+      }
     }
   },
 });

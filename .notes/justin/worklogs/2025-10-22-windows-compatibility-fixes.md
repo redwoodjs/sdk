@@ -134,3 +134,8 @@ This resolves #696.
 
 4.  **Enabling Windows CI**
     - To validate these fixes and prevent future regressions, `windows-latest` has been added to the test matrix for the smoke test and end-to-end test workflows. This will ensure that our test suites are run on a Windows environment.
+
+5.  **Cross-Platform Asset Handling in Build Process**
+    - **Problem**: The build process failed on Windows with an `mv: cannot stat` error.
+    - **Cause**: The build used the Unix `mv` command with a glob pattern to move CSS assets. This is not compatible with Windows and can be unreliable in different shell environments.
+    - **Solution**: Replaced the shell command with Node.js APIs (`glob` and `fs-extra`) to find and move files, ensuring the asset handling is cross-platform.
