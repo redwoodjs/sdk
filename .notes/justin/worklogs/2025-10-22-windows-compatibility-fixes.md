@@ -139,3 +139,8 @@ This resolves #696.
     - **Problem**: The build process failed on Windows with an `mv: cannot stat` error.
     - **Cause**: The build used the Unix `mv` command with a glob pattern to move CSS assets. This is not compatible with Windows and can be unreliable in different shell environments.
     - **Solution**: Replaced the shell command with Node.js APIs (`glob` and `fs-extra`) to find and move files, ensuring the asset handling is cross-platform.
+
+6.  **Cross-Platform E2E Test Script**
+    - **Problem**: The `test:e2e` script failed to run on Windows because it was a bash script (`.sh`).
+    - **Cause**: Windows cannot execute shell scripts natively.
+    - **Solution**: Replaced the bash script with a cross-platform Node.js script that replicates the same logic, allowing the E2E tests to be run on any operating system.
