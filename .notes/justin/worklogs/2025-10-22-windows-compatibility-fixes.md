@@ -165,13 +165,3 @@ To minimize the production dependency footprint and reduce any potential attack 
     *   `sdk/src/lib/e2e/tarball.mts` (replaced `cp` with `fs.cp`)
 
 3.  **Implement Type-Safe `execa` Wrapper**: To prevent the unsafe tagged-template syntax from being used in the future, the `$` utility in `sdk/src/lib/$.mts` was replaced with a type-safe wrapper. After an initial complex attempt that resulted in TypeScript errors, a much simpler and more robust solution was implemented. The final wrapper is a plain function that calls `execa` internally, which naturally disallows the template-literal form at the type level and forces the use of the safer array-based syntax (`$(command, [args])`). This provides a strong, compile-time guarantee against future cross-platform command parsing bugs.
-
-### 14. Post-Audit TypeScript Fixes
-
-**Problem**: After the comprehensive audit and refactoring, a final check revealed a few remaining TypeScript errors that had been introduced.
-
-**Investigation & Solution**: The errors were in two files:
-*   `playground/database-do/__tests__/e2e.test.mts`: A call to the `worker-run` script was still using an incorrect, object-based syntax for `execa`. This was corrected to use the proper `(file, args, options)` signature.
-*   `sdk/src/scripts/migrate-new.mts`: This file was left in a broken state after a previous refactoring, with missing imports and undefined variables. The script was repaired by adding the necessary imports and fixing the broken logic.
-
-With these final fixes, the codebase is now fully type-correct and cross-platform compatible.

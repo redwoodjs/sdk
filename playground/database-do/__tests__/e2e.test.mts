@@ -14,7 +14,7 @@ setupPlaygroundEnvironment(import.meta.url);
 testSDK("seeds the database and displays initial todos", async ({ page }) => {
   const devServerControl = createDevServer();
 
-  await $("pnpm", ["seed"], { cwd: devServerControl.projectDir });
+  await $({ cwd: devServerControl.projectDir })`pnpm seed`;
 
   const devServer = await devServerControl.start();
 
