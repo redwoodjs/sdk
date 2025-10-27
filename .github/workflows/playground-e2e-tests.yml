@@ -114,9 +114,15 @@ jobs:
       github.event_name == 'push' ||
       github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request_target' && (github.event.pull_request.author_association == 'MEMBER' || github.event.pull_request.author_association == 'OWNER'))
+      github.event_name == 'pull_request_target'
 
     steps:
+      - name: Require approval for external contributors
+        if: github.event_name == 'pull_request_target' && github.event.pull_request.author_association != 'MEMBER' && github.event.pull_request.author_association != 'OWNER' && !contains(github.event.pull_request.labels.*.name, 'run-secure-tests')
+        run: |
+          echo "ERROR: This PR requires the 'run-secure-tests' label from a maintainer to run E2E tests."
+          exit 1
+
       - name: Checkout repository
         uses: actions/checkout@v5
         with:
