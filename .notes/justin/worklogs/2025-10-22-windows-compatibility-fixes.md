@@ -104,3 +104,13 @@ This is a significant finding. It means the problem is not a runtime path mismat
 **Investigation:** The `onLoad` filter contained the condition `!args.path.startsWith("/")` to identify and skip non-absolute paths. While this works on POSIX-based systems, it fails on Windows, where absolute paths begin with a drive letter (e.g., `D:\...`). Verbose logging confirmed this hypothesis, showing the log message `Skipping file due to filter: ... { startsWithSlash: false, ... }` for every file processed on Windows. This faulty check caused esbuild to skip every file during the scan, leading to the empty module sets.
 
 **Fix:** The solution is to replace the string comparison with Node.js's built-in, cross-platform `path.isAbsolute()` function. This ensures that paths are correctly identified as absolute on all operating systems, allowing the esbuild scan to proceed as intended.
+
+6.  **Cross-Platform E2E Test Script**
+    - **Problem**: The `test:e2E` script failed to run on Windows because it was a bash script (`.sh`).
+    - **Cause**: Windows cannot execute shell scripts natively.
+    - **Solution**: Replaced the bash script with a cross-platform Node.js script that replicates the same logic, allowing the E2E tests to be run on any operating system.
+
+7.  **Cross-Platform Path Handling in E2E Test Harness**
+    - **Problem**: The E2E tests failed on Windows with an error indicating it could not find a `package.json`.
+    - **Cause**: The test harness used `new URL().pathname` and a POSIX-specific root check (`currentDir !== "/'`) to locate the test playground directory. Both of these are incorrect on Windows.
+    - **Solution**: Switched to `fileURLToPath()` for correct URL-to-path conversion and a more robust loop condition (`dirname(currentDir) !== currentDir`) to make the directory search cross-platform.

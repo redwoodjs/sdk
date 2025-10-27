@@ -34,6 +34,7 @@ import {
   runRelease,
 } from "./release.mjs";
 import { setupTarballEnvironment } from "./tarball.mjs";
+import { fileURLToPath } from "url";
 export type { Browser, Page } from "puppeteer-core";
 
 export {
@@ -132,12 +133,12 @@ function getProjectDirectory(): string {
  * Derive the playground directory from import.meta.url by finding the nearest package.json
  */
 function getPlaygroundDirFromImportMeta(importMetaUrl: string): string {
-  const url = new URL(importMetaUrl);
-  const testFilePath = url.pathname;
+  const testFilePath = fileURLToPath(importMetaUrl);
 
   let currentDir = dirname(testFilePath);
   // Walk up the tree from the test file's directory
-  while (currentDir !== "/") {
+  // Stop when the parent directory is the same as the current directory (we've reached the root)
+  while (dirname(currentDir) !== currentDir) {
     // Check if a package.json exists in the current directory
     if (fs.existsSync(pathJoin(currentDir, "package.json"))) {
       return currentDir;
