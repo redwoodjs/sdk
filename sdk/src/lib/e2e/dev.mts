@@ -93,7 +93,7 @@ export async function runDevServer(
       cwd: cwd || process.cwd(), // Use provided directory or current directory
       env, // Pass the updated environment variables
       stdio: "pipe", // Ensure streams are piped
-    })`${pm} run dev`;
+    })(pm, ["run", "dev"]);
 
     devProcess.catch((error: any) => {
       if (!isErrorExpected) {
