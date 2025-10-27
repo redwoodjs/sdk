@@ -104,3 +104,33 @@ This is a significant finding. It means the problem is not a runtime path mismat
 **Investigation:** The `onLoad` filter contained the condition `!args.path.startsWith("/")` to identify and skip non-absolute paths. While this works on POSIX-based systems, it fails on Windows, where absolute paths begin with a drive letter (e.g., `D:\...`). Verbose logging confirmed this hypothesis, showing the log message `Skipping file due to filter: ... { startsWithSlash: false, ... }` for every file processed on Windows. This faulty check caused esbuild to skip every file during the scan, leading to the empty module sets.
 
 **Fix:** The solution is to replace the string comparison with Node.js's built-in, cross-platform `path.isAbsolute()` function. This ensures that paths are correctly identified as absolute on all operating systems, allowing the esbuild scan to proceed as intended.
+
+---
+
+## PR Description
+
+### fix(windows): Resolve Windows-specific path handling issues
+
+This change addresses a series of critical path-related bugs that prevented the development server from running on Windows. The fixes ensure that file paths are resolved, formatted, and checked in a cross-platform-compatible manner.
+
+This resolves #696.
+
+### Key Issues and Fixes
+
+1.  **Incorrect Path Resolution Leading to `ENOENT` Errors**
+    - **Problem:** The dev server failed with an `ENOENT` error, showing an invalid path with a duplicated drive letter (e.g., `D:\D:\...`).
+    - **Cause:** `__dirname` was calculated using `new URL(".", import.meta.url).pathname`, which produces a POSIX-style path on Windows (e.g., `/D:/path`). When passed to `path.resolve()`, this resulted in an incorrect path.
+    - **Solution:** Switched to the standard `fileURLToPath(import.meta.url)` and `dirname` combination to ensure correct, cross-platform path resolution.
+
+2.  **`ERR_UNSUPPORTED_ESM_URL_SCHEME` on Startup**
+    - **Problem:** Node.js threw an `ERR_UNSUPPORTED_ESM_URL_SCHEME` error because a dynamic `import()` was called with a raw Windows path.
+    - **Cause:** The `getViteEsbuild` helper function attempted to `import()` Vite's internal esbuild module using a path like `D:\path\to\file.js`. Node's ESM loader requires absolute paths on Windows to be valid `file://` URLs.
+    - **Solution:** The path is now converted to a `file://` URL using `pathToFileURL()` before being passed to `import()`, satisfying the ESM loader's requirement.
+
+3.  **Directive Scan Failing Silently on Windows**
+    - **Problem:** A runtime error, `No module found for "use client" directive`, occurred because the initial directive scan was not detecting any client or server components.
+    - **Cause:** The esbuild plugin used for the scan contained a filter (`!args.path.startsWith("/")`) to identify absolute paths. This check is incorrect for Windows paths, causing every file to be skipped during the scan.
+    - **Solution:** Replaced the string-based check with `path.isAbsolute()`, which provides a reliable, cross-platform method for identifying absolute paths.
+
+4.  **Enabling Windows CI**
+    - To validate these fixes and prevent future regressions, `windows-latest` has been added to the test matrix for the smoke test and end-to-end test workflows. This will ensure that our test suites are run on a Windows environment.
