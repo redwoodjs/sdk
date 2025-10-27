@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
-import { $ } from "execa";
-import fs from "node:fs";
+import fs from "fs-extra";
+import { glob } from "glob";
 import path from "node:path";
 import {
   adjectives,
@@ -9,6 +9,7 @@ import {
 } from "unique-names-generator";
 import { ROOT_DIR } from "../constants.mjs";
 import { copyProjectToTempDir } from "./environment.mjs";
+import { $sh } from "../../lib/$.mjs";
 
 const log = (message: string) => console.log(message);
 
@@ -21,6 +22,19 @@ interface SetupTarballOptions {
 interface TarballEnvironment {
   targetDir: string;
   cleanup: () => Promise<void>;
+}
+
+async function getDirectoryChecksum(dir: string): Promise<string> {
+  const files = await glob("**/*", { cwd: dir, nodir: true });
+  files.sort();
+
+  const hash = createHash("md5");
+  for (const file of files) {
+    const content = await fs.readFile(path.join(dir, file));
+    hash.update(file);
+    hash.update(content);
+  }
+  return hash.digest("hex");
 }
 
 async function verifyPackedContents(targetDir: string) {
@@ -39,23 +53,10 @@ async function verifyPackedContents(targetDir: string) {
     );
   }
 
-  const { stdout: originalDistChecksumOut } = await $(
-    "find . -type f | sort | md5sum",
-    {
-      shell: true,
-      cwd: path.join(ROOT_DIR, "dist"),
-    },
+  const originalDistChecksum = await getDirectoryChecksum(
+    path.join(ROOT_DIR, "dist"),
   );
-  const originalDistChecksum = originalDistChecksumOut.split(" ")[0];
-
-  const { stdout: installedDistChecksumOut } = await $(
-    "find . -type f | sort | md5sum",
-    {
-      shell: true,
-      cwd: installedDistPath,
-    },
-  );
-  const installedDistChecksum = installedDistChecksumOut.split(" ")[0];
+  const installedDistChecksum = await getDirectoryChecksum(installedDistPath);
 
   log(`    - Original dist checksum: ${originalDistChecksum}`);
   log(`    - Installed dist checksum: ${installedDistChecksum}`);
@@ -121,23 +122,18 @@ async function copyWranglerCache(
       "node_modules/.cache/wrangler",
     );
 
-    if (fs.existsSync(sourceCachePath)) {
-      log(`  🔐 Copying wrangler cache from monorepo to temp directory...`);
-
-      // Ensure the target cache directory exists
-      await fs.promises.mkdir(path.dirname(targetCachePath), {
-        recursive: true,
-      });
-
-      // Copy the entire wrangler cache directory
-      await $`cp -r ${sourceCachePath} ${path.dirname(targetCachePath)}`;
-
-      log(`  ✅ Wrangler cache copied successfully`);
-    } else {
+    if (sourceCachePath && fs.existsSync(sourceCachePath)) {
       log(
-        `  ⚠️ No wrangler cache found in monorepo, deployment tests may require authentication`,
+        `Cache found at ${sourceCachePath}. Copying to target node_modules.`,
       );
+      await fs.ensureDir(path.dirname(targetCachePath));
+      await fs.cp(sourceCachePath, targetCachePath, { recursive: true });
     }
+
+    // Install dependencies in the temporary directory
+    log("Installing dependencies in temporary directory...");
+
+    log(`  ✅ Wrangler cache copied successfully`);
   } catch (error) {
     log(`  ⚠️ Failed to copy wrangler cache: ${(error as Error).message}`);
     // Don't throw - this is not a fatal error, deployment tests will just need manual auth

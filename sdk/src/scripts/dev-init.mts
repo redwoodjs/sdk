@@ -7,17 +7,17 @@ export const initDev = async () => {
 
   if (await hasPkgScript(projectRootDir, "generate")) {
     console.log("Generating...");
-    await $`npm run generate`;
+    await $("npm", ["run", "generate"]);
   }
 
   if (await hasPkgScript(projectRootDir, "migrate:dev")) {
     console.log("Running migrations...");
-    await $`npm run migrate:dev`;
+    await $("npm", ["run", "migrate:dev"]);
   }
 
   if (await hasPkgScript(projectRootDir, "seed")) {
     console.log("Seeding database...");
-    await $`npm run seed`;
+    await $("npm", ["run", "seed"]);
   }
 
   console.log("Done!");

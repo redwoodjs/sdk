@@ -146,3 +146,22 @@ To minimize the production dependency footprint and reduce any potential attack 
 **Investigation**: The issue was traced to the `execa` library's tagged-template syntax (`$``...`). A test using a simple `echo` command revealed that this syntax was not parsing commands with arguments correctly on Windows, leading to an immediate, silent exit. The command was being misinterpreted, causing `execa` to fail before any output could be generated.
 
 **Solution**: The fix is to use `execa`'s more robust, array-based syntax (`$(command, [arg1, arg2])`). This method avoids shell parsing ambiguities and is the recommended approach for cross-platform compatibility. The command to start the dev server was refactored to use this syntax, which allows the process to be spawned correctly and its output to be captured by the test harness. This resolves the final blocker for the E2E tests on Windows.
+
+### 13. Codebase Audit for Cross-Platform Compatibility
+
+**Problem**: The repeated discovery of Windows-specific bugs, particularly related to process spawning and file system commands, indicated that these issues were likely not isolated. A systematic audit was needed to proactively identify and fix other potential cross-platform compatibility problems.
+
+**Investigation & Solution**: I conducted a full-codebase audit with three main goals:
+
+1.  **Audit Process Killing**: A search for `process.kill` confirmed that no POSIX-specific process termination logic exists in the production codebase. This validated the decision to keep the `tree-kill` library as a `devDependency`, as it is only needed for the E2E test suite.
+
+2.  **Audit Process Spawning and Unix Commands**: I searched for all usages of the `execa` tagged-template syntax (`$``...`) and other Unix-specific shell commands. The following files were refactored to use the explicit, array-based `execa` syntax and cross-platform Node.js APIs:
+    *   `sdk/src/vite/redwoodPlugin.mts`
+    *   `sdk/src/scripts/migrate-new.mts`
+    *   `sdk/src/scripts/ensure-deploy-env.mts`
+    *   `sdk/src/scripts/dev-init.mts`
+    *   `sdk/src/scripts/debug-sync.mts`
+    *   `sdk/src/lib/smokeTests/browser.mts` (replaced `curl` with `fetch`)
+    *   `sdk/src/lib/e2e/tarball.mts` (replaced `cp` with `fs.cp`)
+
+3.  **Implement Type-Safe `execa` Wrapper**: To prevent the unsafe tagged-template syntax from being used in the future, the `$` utility in `sdk/src/lib/$.mts` was replaced with a type-safe wrapper. After an initial complex attempt that resulted in TypeScript errors, a much simpler and more robust solution was implemented. The final wrapper is a plain function that calls `execa` internally, which naturally disallows the template-literal form at the type level and forces the use of the safer array-based syntax (`$(command, [args])`). This provides a strong, compile-time guarantee against future cross-platform command parsing bugs.

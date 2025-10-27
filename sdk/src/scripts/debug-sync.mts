@@ -5,6 +5,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { lock } from "proper-lockfile";
+import { $, $sh } from "../lib/$.mjs";
+import { type ResultPromise } from "execa";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -226,7 +228,7 @@ const performFastSync = async (
 
 const performSync = async (sdkDir: string, targetDir: string) => {
   console.log("🏗️  Rebuilding SDK...");
-  await $`pnpm build`;
+  await $("pnpm", ["build"]);
 
   // Clean up vite cache in the target project
   await cleanupViteEntries(targetDir);
@@ -343,16 +345,15 @@ export const debugSync = async (opts: DebugSyncOptions) => {
 
   console.log("👀 Watching for changes...");
 
-  let childProc: ReturnType<typeof $> | null = null;
+  let childProc: ResultPromise | null = null;
   const runWatchedCommand = () => {
     if (typeof watch === "string") {
       console.log(`\n> ${watch}\n`);
-      childProc = $({
+      childProc = $sh(watch, [], {
         stdio: "inherit",
-        shell: true,
         cwd: targetDir,
         reject: false,
-      })`${watch}`;
+      });
     }
   };
 

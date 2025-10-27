@@ -1159,11 +1159,39 @@ export async function checkServerUp(
         console.log(
           `Checking if server is up at ${url} (attempt ${i + 1}/${retries})...`,
         );
-        await $`curl -s -o /dev/null -w "%{http_code}" ${url}`;
-        log("Server is up at %s", url);
-        console.log(`✅ Server is up at ${url}`);
-        up = true;
-        break;
+        const isWindows = process.platform === "win32";
+        const checkWithFetch = async () => {
+          try {
+            const response = await fetch(url, {
+              method: "HEAD",
+              signal: AbortSignal.timeout(1000),
+            });
+            return response.status.toString();
+          } catch (error: any) {
+            if (error.name === "AbortError") {
+              return "timeout";
+            }
+            return "error";
+          }
+        };
+
+        if (!isWindows) {
+          try {
+            const { stdout } = await $("curl", [
+              "-s",
+              "-o",
+              "/dev/null",
+              "-w",
+              "%{http_code}",
+              url,
+            ]);
+            return stdout.trim();
+          } catch {
+            return await checkWithFetch();
+          }
+        } else {
+          return await checkWithFetch();
+        }
       } catch (error) {
         if (i === retries - 1) {
           log(

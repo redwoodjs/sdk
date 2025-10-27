@@ -128,14 +128,20 @@ export const ensureDeployEnv = async () => {
     // todo(justinvdm): this is a hack to force the account selection prompt,
     // we need to find a better way
     if (!(await pathExists(accountCachePath))) {
-      await $({ stdio: "inherit" })`npx wrangler d1 list --json`;
+      await $("npx", ["wrangler", "d1", "list", "--json"], {
+        stdio: "inherit",
+      });
     }
   }
 
   // Create a no-op secret to ensure worker exists
   console.log(`Ensuring worker ${wranglerConfig.name} exists...`);
-  await $({ stdio: "pipe" })`echo "true"`
-    .pipe`npx wrangler secret put TMP_WORKER_CREATED`;
+  await $("echo", ["true"]).pipe("npx", [
+    "wrangler",
+    "secret",
+    "put",
+    "TMP_WORKER_CREATED",
+  ]);
 
   // Check D1 database setup
   const needsDatabase = await hasD1Database();
@@ -167,9 +173,12 @@ export const ensureDeployEnv = async () => {
         try {
           // Create the database with real-time output so the user can see progress
           console.log(`Creating D1 database: ${dbName}...`);
-          const createResult = await $({
-            stdio: "pipe",
-          })`npx wrangler d1 create ${dbName}`;
+          const createResult = await $("npx", [
+            "wrangler",
+            "d1",
+            "create",
+            dbName,
+          ]);
 
           // Log the result to the console
           console.log(createResult.stdout);
@@ -257,7 +266,26 @@ export const ensureDeployEnv = async () => {
     console.log("Found auth usage, checking secret setup...");
     try {
       // Get list of all secrets
-      const secretsResult = await $`npx wrangler secret list --format=json`;
+      let secretsResult: ExecaReturnValue<string>;
+      try {
+        secretsResult = await $("npx", [
+          "wrangler",
+          "secret",
+          "list",
+          "--format=json",
+        ]);
+      } catch (e: any) {
+        if (e.stderr.includes("No secrets found")) {
+          secretsResult = await $("npx", [
+            "wrangler",
+            "secret",
+            "list",
+            "--format=json",
+          ]);
+        } else {
+          throw e;
+        }
+      }
       const existingSecrets = parseJson<Secret[]>(secretsResult.stdout, []).map(
         (secret) => secret.name,
       );
@@ -271,8 +299,12 @@ export const ensureDeployEnv = async () => {
         // Secret doesn't exist, create it
         const secretKey = generateSecretKey();
         // Use the same pattern as TMP_WORKER_CREATED for consistency
-        await $({ stdio: "pipe" })`echo "${secretKey}"`
-          .pipe`npx wrangler secret put AUTH_SECRET_KEY`;
+        await $("echo", [`"${secretKey}"`]).pipe("npx", [
+          "wrangler",
+          "secret",
+          "put",
+          "AUTH_SECRET_KEY",
+        ]);
         console.log("Set AUTH_SECRET_KEY secret");
       }
     } catch (error) {
@@ -331,8 +363,30 @@ export const ensureDeployEnv = async () => {
       }
 
       // Check remote migrations status
-      const migrationStatus =
-        await $`npx wrangler d1 migrations list ${dbConfig.database_name} --remote`;
+      let migrationStatus: ExecaReturnValue<string>;
+      try {
+        migrationStatus = await $("npx", [
+          "wrangler",
+          "d1",
+          "migrations",
+          "list",
+          dbConfig.database_name,
+          "--remote",
+        ]);
+      } catch (e: any) {
+        if (e.stderr.includes("No migrations found")) {
+          migrationStatus = await $("npx", [
+            "wrangler",
+            "d1",
+            "migrations",
+            "list",
+            dbConfig.database_name,
+            "--remote",
+          ]);
+        } else {
+          throw e;
+        }
+      }
 
       // If stdout includes "No migrations found", this is a fresh database
       if (migrationStatus.stdout?.includes("No migrations present")) {
