@@ -96,3 +96,11 @@ This function dynamically constructs a path to Vite's internal copy of esbuild a
 **Update:** The debugging plan yielded a surprising and critical result. The log output for `clientFiles` and `serverFiles` after the scan is complete shows that both sets are empty: `client=[], server=[]`.
 
 This is a significant finding. It means the problem is not a runtime path mismatch, as previously suspected. Instead, the directive scan itself is failing to detect any files containing 'use client' or 'use server' directives on Windows. The scan is completing silently without populating the module sets, which is the root cause of the downstream "No module found" error. The investigation must now shift to why the scanning and file content analysis process is not working as expected in the Windows environment.
+
+### 7. Cross-Platform Path Checking in Esbuild `onLoad`
+
+**Issue:** After discovering that the directive scan was producing empty `clientFiles` and `serverFiles` sets on Windows, a detailed review of `runDirectivesScan.mts` revealed the root cause. The `onLoad` plugin for esbuild was using an incorrect method to check for absolute paths.
+
+**Investigation:** The `onLoad` filter contained the condition `!args.path.startsWith("/")` to identify and skip non-absolute paths. While this works on POSIX-based systems, it fails on Windows, where absolute paths begin with a drive letter (e.g., `D:\...`). Verbose logging confirmed this hypothesis, showing the log message `Skipping file due to filter: ... { startsWithSlash: false, ... }` for every file processed on Windows. This faulty check caused esbuild to skip every file during the scan, leading to the empty module sets.
+
+**Fix:** The solution is to replace the string comparison with Node.js's built-in, cross-platform `path.isAbsolute()` function. This ensures that paths are correctly identified as absolute on all operating systems, allowing the esbuild scan to proceed as intended.

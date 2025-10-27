@@ -337,12 +337,12 @@ export const runDirectivesScan = async ({
             log("onLoad called for:", args.path);
 
             if (
-              !args.path.startsWith("/") ||
+              !path.isAbsolute(args.path) ||
               args.path.includes("virtual:") ||
               isExternalUrl(args.path)
             ) {
               log("Skipping file due to filter:", args.path, {
-                startsWithSlash: args.path.startsWith("/"),
+                isAbsolute: path.isAbsolute(args.path),
                 hasVirtual: args.path.includes("virtual:"),
                 isExternal: isExternalUrl(args.path),
               });
