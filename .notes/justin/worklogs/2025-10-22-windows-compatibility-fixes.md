@@ -105,12 +105,26 @@ This is a significant finding. It means the problem is not a runtime path mismat
 
 **Fix:** The solution is to replace the string comparison with Node.js's built-in, cross-platform `path.isAbsolute()` function. This ensures that paths are correctly identified as absolute on all operating systems, allowing the esbuild scan to proceed as intended.
 
-6.  **Cross-Platform E2E Test Script**
-    - **Problem**: The `test:e2E` script failed to run on Windows because it was a bash script (`.sh`).
-    - **Cause**: Windows cannot execute shell scripts natively.
-    - **Solution**: Replaced the bash script with a cross-platform Node.js script that replicates the same logic, allowing the E2E tests to be run on any operating system.
+### 8. Cross-Platform E2E Test Script
 
-7.  **Cross-Platform Path Handling in E2E Test Harness**
-    - **Problem**: The E2E tests failed on Windows with an error indicating it could not find a `package.json`.
-    - **Cause**: The test harness used `new URL().pathname` and a POSIX-specific root check (`currentDir !== "/'`) to locate the test playground directory. Both of these are incorrect on Windows.
-    - **Solution**: Switched to `fileURLToPath()` for correct URL-to-path conversion and a more robust loop condition (`dirname(currentDir) !== currentDir`) to make the directory search cross-platform.
+**Problem**: The `test:e2E` script failed to run on Windows because it was a bash script (`.sh`).
+
+**Cause**: Windows cannot execute shell scripts natively.
+
+**Solution**: Replaced the bash script with a cross-platform Node.js script that replicates the same logic, allowing the E2E tests to be run on any operating system.
+
+### 9. Cross-Platform Path Handling in E2E Test Harness
+
+**Problem**: The E2E tests failed on Windows with an error indicating it could not find a `package.json`.
+
+**Cause**: The test harness used `new URL().pathname` and a POSIX-specific root check (`currentDir !== "/'`) to locate the test playground directory. Both of these are incorrect on Windows.
+
+**Solution**: Switched to `fileURLToPath()` for correct URL-to-path conversion and a more robust loop condition (`dirname(currentDir) !== currentDir`) to make the directory search cross-platform.
+
+### 10. URL Encoding for `worker-run` Script Paths
+
+**Problem**: The `worker-run` script, used for database seeding in tests, failed on Windows.
+
+**Cause**: The script passed a raw Windows file path directly into a URL query parameter without encoding it. Backslashes and other special characters in the path corrupted the URL.
+
+**Solution**: The file path is now wrapped in `encodeURIComponent` before being added to the URL, ensuring it is correctly formatted and parsed by the dev server.

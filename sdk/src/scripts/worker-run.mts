@@ -53,7 +53,9 @@ const main = async () => {
 
     await server.listen();
 
-    const url = `http://localhost:${port}/__worker-run?script=${scriptPath}`;
+    const url = `http://localhost:${port}/__worker-run?script=${encodeURIComponent(
+      scriptPath,
+    )}`;
     debug("Fetching %s", url);
 
     const response = await fetch(url);
