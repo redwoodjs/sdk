@@ -128,3 +128,13 @@ This is a significant finding. It means the problem is not a runtime path mismat
 **Cause**: The script passed a raw Windows file path directly into a URL query parameter without encoding it. Backslashes and other special characters in the path corrupted the URL.
 
 **Solution**: The file path is now wrapped in `encodeURIComponent` before being added to the URL, ensuring it is correctly formatted and parsed by the dev server.
+
+### 11. Cross-Platform Process Killing in E2E Tests
+
+**Problem**: After fixing the previous pathing issues, E2E tests on Windows still failed. The dev server would not start, causing the tests to time out, and a subsequent `EBUSY: resource busy or locked` error would occur during the cleanup phase.
+
+**Investigation**: The `EBUSY` error indicated that the test cleanup process was unable to delete the temporary playground directory because a process still held a file lock. The polling timeout confirmed that the dev server was the hanging process. The root cause was the `stopDev` function in the test harness, which used POSIX-specific signals (`SIGTERM`, `SIGKILL`) and process group IDs (`-pid`) to terminate the server. This method is not supported on Windows, causing the server process to be orphaned and to maintain a lock on the test directory, preventing cleanup.
+
+**Solution**: The initial plan was to write custom, cross-platform process termination logic using `taskkill` on Windows and `process.kill` on other systems. However, a better approach is to use a dedicated library for this. The `tree-kill` package is a small, focused utility that provides a reliable, cross-platform way to kill a process and its entire descendant tree.
+
+To minimize the production dependency footprint and reduce any potential attack surface from third-party code, `tree-kill` has been added as a `devDependency`. While the E2E test harness is technically an exported module of the SDK, this is a deliberate trade-off that prioritizes the security and leanness of the production `rwsdk` package, as `tree-kill` is only ever used in a testing context. The `stopDev` function was refactored to use this library, creating a more robust and maintainable solution.

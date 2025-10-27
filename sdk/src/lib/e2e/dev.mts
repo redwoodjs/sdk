@@ -1,5 +1,6 @@
 import debug from "debug";
 import { setTimeout as sleep } from "node:timers/promises";
+import kill from "tree-kill";
 import { $ } from "../../lib/$.mjs";
 import { poll } from "./poll.mjs";
 import { PackageManager } from "./types.mjs";
@@ -36,51 +37,20 @@ export async function runDevServer(
 
     console.log("Stopping development server...");
 
-    try {
-      // Send a regular termination signal to the entire process group first
-      process.kill(-devProcess.pid, "SIGTERM");
-    } catch (e) {
-      log("Could not send SIGTERM to dev server process group: %O", e);
-    }
+    await new Promise<void>((resolve, reject) => {
+      kill(devProcess.pid, (err) => {
+        if (err) {
+          log("Failed to kill process tree:", err);
+          return reject(err);
+        }
+        resolve();
+      });
+    });
 
-    // Wait for the process to terminate with a timeout
-    const terminationTimeout = 5000; // 5 seconds
-    const processExitPromise = devProcess.catch(() => {
+    await devProcess.catch(() => {
       // We expect this promise to reject when the process is killed,
       // so we catch and ignore the error.
     });
-
-    const timeoutPromise = new Promise((resolve) =>
-      setTimeout(() => resolve(undefined), terminationTimeout),
-    );
-
-    await Promise.race([processExitPromise, timeoutPromise]);
-
-    // Check if the process is still alive. We can't reliably check exitCode
-    // on a detached process, so we try sending a signal 0, which errors
-    // if the process doesn't exist.
-    let isAlive = true;
-    try {
-      // Sending signal 0 doesn't kill the process, but checks if it exists
-      process.kill(-devProcess.pid, 0);
-    } catch (e) {
-      isAlive = false;
-    }
-
-    // If not terminated within timeout, force kill the entire process group
-    if (isAlive) {
-      log(
-        "Dev server process did not terminate within timeout, force killing with SIGKILL",
-      );
-      console.log(
-        "⚠️ Development server not responding after 5 seconds timeout, force killing...",
-      );
-      try {
-        process.kill(-devProcess.pid, "SIGKILL");
-      } catch (e) {
-        log("Could not send SIGKILL to dev server process group: %O", e);
-      }
-    }
 
     console.log("Development server stopped");
   };

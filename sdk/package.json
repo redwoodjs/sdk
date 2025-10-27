@@ -194,6 +194,7 @@
     "js-beautify": "~1.15.4",
     "semver": "~7.7.1",
     "tsx": "~4.20.0",
+    "tree-kill": "^1.2.2",
     "typescript": "~5.9.0",
     "vite": "~7.1.9",
     "vitest": "~3.2.0"
