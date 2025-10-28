@@ -113,6 +113,12 @@ jobs:
       github.event_name == 'pull_request_target'
 
     steps:
+      - name: Debug author context
+        if: github.event_name == 'pull_request_target'
+        run: |
+          echo "PR Author Login: ${{ github.event.pull_request.user.login }}"
+          echo "PR Author Association: ${{ github.event.pull_request.author_association }}"
+
       - name: Require approval for external contributors
         if: github.event_name == 'pull_request_target'
         env:
