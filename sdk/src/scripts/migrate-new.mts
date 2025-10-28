@@ -48,51 +48,9 @@ export const migrateNew = async (name: string, skipApply = false) => {
 
   if (!skipApply) {
     console.log("Applying migration in development...");
-    try {
-      if (isCi) {
-        console.log(
-          "CI environment detected, running `prisma migrate diff` to create migration...",
-        );
-        await $(
-          "npx",
-          [
-            "prisma",
-            "migrate",
-            "diff",
-            "--from-local-d1",
-            "--to-schema-datamodel",
-            "./prisma/schema.prisma",
-            "--script",
-          ],
-          {
-            stdio: "inherit",
-          },
-        );
-      } else {
-        // Check if `migrate:dev` script exists in package.json
-        const packageJsonPath = resolve(process.cwd(), "package.json");
-        if (fs.existsSync(packageJsonPath)) {
-          const packageJson = JSON.parse(
-            fs.readFileSync(packageJsonPath, "utf-8"),
-          );
-          if (packageJson.scripts && packageJson.scripts["migrate:dev"]) {
-            console.log(
-              "Running `npm run migrate:dev` to create a new migration...",
-            );
-            await $("npm", ["run", "migrate:dev"]);
-          } else {
-            await $("npx", ["prisma", "migrate", "dev"]);
-          }
-        } else {
-          await $("npx", ["prisma", "migrate", "dev"]);
-        }
-      }
-
-      await $("npx", ["prisma", "generate"]);
-    } catch (error) {
-      console.error("Error creating migration:", error);
-      process.exitCode = 1;
-    }
+    await $`npm run migrate:dev`;
+    console.log("Generating Prisma Client");
+    await $`npx prisma generate`;
   }
 };
 

@@ -129,7 +129,7 @@ export const redwoodPlugin = async (
     );
     // @ts-ignore
     $.verbose = true;
-    await $("npm", ["run", "dev:init"]);
+    await $`npm run dev:init`;
   }
 
   return [

@@ -1,14 +1,13 @@
 import debug from "debug";
+import { execaCommand } from "execa";
 import { existsSync, readFileSync } from "fs";
 import { pathExists } from "fs-extra";
 import * as fs from "fs/promises";
 import { parse as parseJsonc } from "jsonc-parser";
 import { setTimeout } from "node:timers/promises";
 import { basename, dirname, join, resolve } from "path";
-import { $, $sh } from "../../lib/$.mjs";
+import { $ } from "../../lib/$.mjs";
 import { extractLastJson, parseJson } from "../../lib/jsonUtils.mjs";
-import path from "path";
-import { $sh } from "../../lib/$.mjs";
 
 const log = debug("rwsdk:e2e:release");
 
@@ -91,7 +90,7 @@ export async function $expect(
     console.log(`Running command: ${command}`);
 
     // Spawn the process with pipes for interaction
-    const childProcess = $sh(command, [], {
+    const childProcess = execaCommand(command, {
       cwd: options.cwd ?? process.cwd(),
       stdio: "pipe",
       reject: false, // Never reject so we can handle the error ourselves
@@ -347,10 +346,10 @@ export async function ensureCloudflareAccountId(
 
     // Try wrangler whoami as a final attempt
     console.log("\nAttempting to get account info from wrangler...");
-    const result = await $sh("npx", ["wrangler", "whoami"], {
+    const result = await $({
       cwd: projectDir,
       stdio: "pipe",
-    });
+    })`npx wrangler whoami`;
 
     // First try regex pattern matching on the text output
     if (result.stdout) {
@@ -591,7 +590,7 @@ export async function deleteWorker(
   projectDir: string,
   resourceUniqueKey: string,
 ) {
-  log(`Cleaning up: Deleting worker ${workerName}...`);
+  console.log(`Cleaning up: Deleting worker ${workerName}...`);
 
   // We are extra careful here to not delete workers that are not related to
   // the current test run. We check if the worker name contains the resource
@@ -669,10 +668,10 @@ export async function listD1Databases(
 ): Promise<Array<D1Database>> {
   log("Listing D1 databases");
   try {
-    const result = await $sh("npx", ["wrangler", "d1", "list", "--json"], {
+    const result = await $({
       cwd,
       stdio: "pipe",
-    });
+    })`npx wrangler d1 list --json`;
 
     // Parse the JSON output to extract the last valid JSON
     const data = parseJson<D1Database[] | { databases?: D1Database[] }>(
@@ -725,7 +724,7 @@ export async function deleteD1Database(
     );
   }
 
-  log(`Cleaning up: Deleting D1 database ${name}...`);
+  console.log(`Cleaning up: Deleting D1 database ${name}...`);
   try {
     // First check if the database exists
     const databases = await listD1Databases(cwd);
