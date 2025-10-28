@@ -138,3 +138,23 @@ This is a significant finding. It means the problem is not a runtime path mismat
 **Solution**: The initial plan was to write custom, cross-platform process termination logic using `taskkill` on Windows and `process.kill` on other systems. However, a better approach is to use a dedicated library for this. The `tree-kill` package is a small, focused utility that provides a reliable, cross-platform way to kill a process and its entire descendant tree.
 
 To minimize the production dependency footprint and reduce any potential attack surface from third-party code, `tree-kill` has been added as a `devDependency`. While the E2E test harness is technically an exported module of the SDK, this is a deliberate trade-off that prioritizes the security and leanness of the production `rwsdk` package, as `tree-kill` is only ever used in a testing context. The `stopDev` function was refactored to use this library, creating a more robust and maintainable solution.
+
+### 12. E2E Dev Server Hang on Windows
+
+**Problem**: After reverting the codebase to a clean state, the `hello-world` E2E test still failed with a timeout. The root cause was that the `pnpm run dev` process, when spawned from the test harness, was hanging indefinitely without producing any output.
+
+**Investigation**: To solve this with certainty, I followed a methodical, "no guesses" approach.
+
+1.  **Isolate the Command**: I created a dedicated test script (`sdk/src/scripts/test-dev-server-spawn.mts`) to run the problematic `execa` command in isolation, removing the complexity of the full test harness.
+
+2.  **Confirm the Hang**: Running this script confirmed the hang. The process was not exiting silently; it was getting stuck at the moment of invocation.
+
+3.  **Identify the Variable**: The command itself used a tagged-template syntax (`$``...`) that had previously been identified as brittle on Windows. However, a second test that replaced it with the correct, array-based syntax (`$(...)`) *also* hung. This proved the syntax was a red herring for this specific issue.
+
+4.  **Test the Next Variable**: The next most likely cause was one of the options passed to `execa`. The `detached: true` option was the primary suspect, as it has known side effects on Windows that can interfere with I/O piping.
+
+5.  **The Definitive Test**: I modified the test script one last time to run the command *without* the `detached: true` option. The script immediately stopped hanging and ran correctly, producing the expected output from the dev server.
+
+**Conclusion**: This series of controlled experiments proved with absolute certainty that the `detached: true` option was the sole cause of the dev server process hanging on Windows. On Windows, this option severs the I/O pipes between the parent and child process, causing our test script to wait forever for output that would never arrive.
+
+**Solution**: The fix is to remove the `detached: true` option from the `execa` call in `sdk/src/lib/e2e/dev.mts`. The `tree-kill` library we added is still effective at cleaning up the process tree, even without the `detached` option.

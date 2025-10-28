@@ -88,7 +88,6 @@ export async function runDevServer(
     // Use the provided cwd if available
     devProcess = $({
       all: true,
-      detached: true, // Run in a new process group so we can kill the entire group
       cleanup: false, // Don't auto-kill on exit
       cwd: cwd || process.cwd(), // Use provided directory or current directory
       env, // Pass the updated environment variables
