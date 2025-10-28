@@ -1,7 +1,9 @@
 import debug from "debug";
-import { rm } from "node:fs/promises";
-import { resolve } from "node:path";
+import { existsSync } from "node:fs";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 import type { ViteBuilder } from "vite";
+import { INTERMEDIATES_OUTPUT_DIR } from "../lib/constants.mjs";
 import { runDirectivesScan } from "./runDirectivesScan.mjs";
 
 const log = debug("rwsdk:vite:build-app");
@@ -31,6 +33,40 @@ export async function buildApp({
   await rm(resolve(projectRootDir, "dist"), { recursive: true, force: true });
 
   const workerEnv = builder.environments.worker;
+
+  // Run a pre-scan build pass to allow plugins to set up and generate code
+  // before scanning.
+  console.log("Running plugin setup pass...");
+  process.env.RWSDK_BUILD_PASS = "plugin-setup";
+
+  const tempEntryPath = resolve(INTERMEDIATES_OUTPUT_DIR, "temp-entry.js");
+
+  try {
+    if (!existsSync(dirname(tempEntryPath))) {
+      await mkdir(dirname(tempEntryPath), { recursive: true });
+    }
+    await writeFile(tempEntryPath, "");
+
+    const originalWorkerBuildConfig = workerEnv.config.build;
+    workerEnv.config.build = {
+      ...originalWorkerBuildConfig,
+      write: false,
+      rollupOptions: {
+        ...originalWorkerBuildConfig?.rollupOptions,
+        input: {
+          index: tempEntryPath,
+        },
+      },
+    };
+
+    await builder.build(workerEnv);
+
+    // Restore the original config
+    workerEnv.config.build = originalWorkerBuildConfig;
+  } finally {
+    await rm(tempEntryPath, { force: true });
+  }
+
   await runDirectivesScan({
     rootConfig: builder.config,
     environments: builder.environments,
@@ -39,7 +75,7 @@ export async function buildApp({
     entries: [workerEntryPathname],
   });
 
-  console.log("Building worker to discover used client components...");
+  console.log("Building worker...");
   process.env.RWSDK_BUILD_PASS = "worker";
   await builder.build(workerEnv);
 
