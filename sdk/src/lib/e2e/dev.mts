@@ -1,7 +1,6 @@
 import debug from "debug";
 import { setTimeout as sleep } from "node:timers/promises";
-import kill from "tree-kill";
-import { $ } from "../../lib/$.mjs";
+import { $, $sh } from "../../lib/$.mjs";
 import { poll } from "./poll.mjs";
 import { PackageManager } from "./types.mjs";
 
@@ -37,15 +36,15 @@ export async function runDevServer(
 
     console.log("Stopping development server...");
 
-    await new Promise<void>((resolve, reject) => {
-      kill(devProcess.pid, (err) => {
-        if (err) {
-          log("Failed to kill process tree:", err);
-          return reject(err);
-        }
-        resolve();
-      });
-    });
+    if (process.platform === "win32") {
+      try {
+        await $sh(`taskkill /pid ${devProcess.pid} /f /t`);
+      } catch (err) {
+        log("Failed to kill process tree with taskkill:", err);
+      }
+    } else {
+      process.kill(devProcess.pid, "SIGKILL");
+    }
 
     await devProcess.catch(() => {
       // We expect this promise to reject when the process is killed,
@@ -88,7 +87,9 @@ export async function runDevServer(
     // Use the provided cwd if available
     devProcess = $({
       all: true,
-      cleanup: false, // Don't auto-kill on exit
+      detached: true, // Re-enable for reliable process cleanup
+      cleanup: true, // Let execa handle cleanup
+      forceKillAfterTimeout: 2000, // Force kill if graceful shutdown fails
       cwd: cwd || process.cwd(), // Use provided directory or current directory
       env, // Pass the updated environment variables
       stdio: "pipe", // Ensure streams are piped
