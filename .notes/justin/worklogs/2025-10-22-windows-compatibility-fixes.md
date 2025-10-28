@@ -166,3 +166,43 @@ To minimize the production dependency footprint and reduce any potential attack 
 **Investigation**: This is a known race condition on Windows. After a process is terminated, the operating system can take a moment to release all file locks held by that process. The test runner's cleanup function, which attempts to delete the temporary test directory, executes so quickly that it often runs before these locks have been released, causing the `EBUSY` error.
 
 **Solution**: The most pragmatic solution for this known, non-critical issue is to make the cleanup process "fire and forget." The function that creates the temporary test directories (`copyProjectToTempDir`) was modified to wrap the final cleanup step in a `try...catch` block. This catches and silently ignores any `EBUSY` errors, preventing the race condition from failing an otherwise successful test run.
+
+### Worker Script Runner Pathing on Windows
+
+**Problem**: The `rwsdk worker-run` command, which is used to execute scripts like database seeds in a Vite-like environment, was failing on Windows with a `Cannot find module` error.
+
+**Investigation**: This was a two-part pathing issue. We had previously URI-encoded the script path on the client-side (`worker-run.mts`), but this was insufficient. The server-side worker (`runtime/worker.tsx`) would decode this path back to a raw Windows path (e.g., `D:\path\to\script.ts`) and pass it directly to a dynamic `import()`. Node's ESM loader cannot handle raw Windows paths and requires a valid `file://` URL.
+
+**Solution**: The fix was to make the client responsible for creating a valid module identifier. The `worker-run.mts` script was modified to first convert the absolute file path into a `file://` URL using Node's `pathToFileURL`. This URL is then URI-encoded and sent to the server. When the server decodes the parameter, it receives a perfectly-formed `file://` URL that can be directly and reliably used by the `import()` function on any platform.
+
+---
+
+## PR Summary
+
+### Title: `fix(windows): Comprehensive Windows Compatibility`
+
+### Description:
+
+This pull request resolves a wide range of Windows compatibility issues, making the SDK and its E2E test suite fully functional in a Windows environment. The effort involved a deep dive into platform-specific behaviors related to file system paths, process management, and build tooling.
+
+This PR addresses the following key areas:
+
+#### 1. Core SDK & Dev Server
+
+*   **POSIX-style Path Checks**: Fixed a critical bug in the directive scanner's esbuild plugin where `!path.startsWith('/')` was used to detect absolute paths, causing the scan to fail silently on Windows. This was replaced with the cross-platform `path.isAbsolute()`.
+*   **ESM URL Schemes for `import()`**: Resolved multiple `ERR_UNSUPPORTED_ESM_URL_SCHEME` errors by ensuring that all dynamic `import()` calls use valid `file://` URLs instead of raw Windows paths. This was fixed in both the Vite esbuild loader and the `worker-run` script execution endpoint.
+*   **Path Resolution**: Corrected `__dirname` and path resolution logic in `constants.mts` to use `fileURLToPath`, preventing invalid path constructions like `D:\D:\...`.
+*   **Worker Script Runner (`worker-run`)**: Fixed the client-side `worker-run` script to convert local file paths into `file://` URLs before URI-encoding them. This ensures that user scripts (e.g., database seeds) can be correctly located and executed on the dev server on any platform.
+
+#### 2. Build Process
+
+*   **Cross-Platform Asset Moving**: Replaced a Unix-specific `mv` command in the `moveStaticAssetsPlugin` with a robust Node.js implementation using `glob` and `fs-extra`, fixing a build failure on Windows.
+
+#### 3. E2E Test Suite Stability
+
+*   **Cross-Platform Test Runner**: Converted the `test:e2e` script from a bash script (`.sh`) to a Node.js script (`.mjs`) to enable it to run on Windows.
+*   **Test Harness Pathing**: Fixed the E2E test harness by replacing POSIX-specific path logic with `fileURLToPath` and cross-platform root directory checks, resolving test setup failures.
+*   **Dev Server Hang on `execa`**: Methodically diagnosed and fixed a silent hang when spawning the E2E test dev server. The issue was traced with certainty to the `detached: true` option in `execa`, which disrupts I/O piping on Windows. This option was removed.
+*   **Process Cleanup (`EBUSY` Errors)**:
+    *   Replaced POSIX-specific process killing logic (`process.kill(-pid)`) with a manual, cross-platform implementation using `taskkill` on Windows to reliably terminate the entire process tree.
+    *   To resolve a final race condition where Windows fails to release file locks before cleanup, the temporary directory cleanup function is now wrapped in a `try...catch` block. This "fire and forget" approach prevents intermittent `EBUSY` errors from failing an otherwise successful test run.
