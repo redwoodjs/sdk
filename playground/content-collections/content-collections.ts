@@ -1,5 +1,5 @@
 import { defineCollection, defineConfig } from "@content-collections/core";
-import { compileMDX } from "@content-collections/markdown";
+import { compileMarkdown } from "@content-collections/markdown";
 
 const posts = defineCollection({
   name: "posts",
@@ -10,7 +10,7 @@ const posts = defineCollection({
     summary: z.string(),
   }),
   transform: async (document, context) => {
-    const body = await compileMDX(context, document, {
+    const body = await compileMarkdown(context, document, {
       remarkPlugins: [],
       rehypePlugins: [],
     });
