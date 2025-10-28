@@ -158,3 +158,11 @@ To minimize the production dependency footprint and reduce any potential attack 
 **Conclusion**: This series of controlled experiments proved with absolute certainty that the `detached: true` option was the sole cause of the dev server process hanging on Windows. On Windows, this option severs the I/O pipes between the parent and child process, causing our test script to wait forever for output that would never arrive.
 
 **Solution**: The fix is to remove the `detached: true` option from the `execa` call in `sdk/src/lib/e2e/dev.mts`. The `tree-kill` library we added is still effective at cleaning up the process tree, even without the `detached` option.
+
+### E2E Test Cleanup Race Condition on Windows
+
+**Problem**: Even with all fixes in place, the E2E test suite would sometimes fail with an `EBUSY: resource busy or locked` error during the final cleanup phase, even though all tests had passed.
+
+**Investigation**: This is a known race condition on Windows. After a process is terminated, the operating system can take a moment to release all file locks held by that process. The test runner's cleanup function, which attempts to delete the temporary test directory, executes so quickly that it often runs before these locks have been released, causing the `EBUSY` error.
+
+**Solution**: The most pragmatic solution for this known, non-critical issue is to make the cleanup process "fire and forget." The function that creates the temporary test directories (`copyProjectToTempDir`) was modified to wrap the final cleanup step in a `try...catch` block. This catches and silently ignores any `EBUSY` errors, preventing the race condition from failing an otherwise successful test run.
