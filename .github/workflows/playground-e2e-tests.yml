@@ -118,10 +118,26 @@ jobs:
 
     steps:
       - name: Require approval for external contributors
-        if: github.event_name == 'pull_request_target' && github.event.pull_request.author_association != 'MEMBER' && github.event.pull_request.author_association != 'OWNER' && !contains(github.event.pull_request.labels.*.name, 'run-secure-tests')
+        if: github.event_name == 'pull_request_target'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
-          echo "ERROR: This PR requires the 'run-secure-tests' label from a maintainer to run E2E tests."
-          exit 1
+          # Exit with success if the author is a member of the organization
+          if gh api "orgs/redwoodjs/members/$PR_AUTHOR" -H "Accept: application/vnd.github.v3+json" --silent; then
+            echo "User $PR_AUTHOR is an organization member. Proceeding."
+            exit 0
+          fi
+
+          # If not an org member, check for the approval label
+          echo "User $PR_AUTHOR is not an organization member. Checking for 'run-secure-tests' label."
+          if ${{ contains(github.event.pull_request.labels.*.name, 'run-secure-tests') }}; then
+            echo "Approval label found. Proceeding."
+            exit 0
+          else
+            echo "ERROR: This PR requires the 'run-secure-tests' label from a maintainer to run E2E tests."
+            exit 1
+          fi
 
       - name: Checkout repository
         uses: actions/checkout@v5
