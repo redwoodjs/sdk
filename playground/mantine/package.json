@@ -1,7 +1,7 @@
 {
-  "name": "request-info-playground",
+  "name": "@rwsdk/mantine-playground",
   "version": "1.0.0",
-  "description": "A bare-bones RedwoodSDK starter",
+  "description": "A RedwoodSDK starter with Mantine",
   "main": "index.js",
   "type": "module",
   "keywords": [],
@@ -22,13 +22,12 @@
     "types": "tsc"
   },
   "dependencies": {
-    "is-even": "^1.0.0",
-    "is-number": "^7.0.0",
-    "is-odd": "^3.0.1",
+    "rwsdk": "workspace:*",
     "react": "19.3.0-canary-4fdf7cf2-20251003",
     "react-dom": "19.3.0-canary-4fdf7cf2-20251003",
     "react-server-dom-webpack": "19.3.0-canary-4fdf7cf2-20251003",
-    "rwsdk": "workspace:*"
+    "@mantine/core": "^7.11.0",
+    "@mantine/hooks": "^7.11.0"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.13.10",
@@ -39,11 +38,20 @@
     "typescript": "5.9.3",
     "vite": "7.1.11",
     "vitest": "^3.1.1",
-    "wrangler": "4.42.0"
+    "wrangler": "4.42.0",
+    "postcss": "^8.4.38",
+    "postcss-preset-mantine": "^1.15.0",
+    "postcss-simple-vars": "^7.0.1"
+  },
+  "overrides": {
+    "react": "19.3.0-canary-4fdf7cf2-20251003",
+    "react-dom": "19.3.0-canary-4fdf7cf2-20251003"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "@cloudflare/vite-plugin"
+      "esbuild",
+      "sharp",
+      "workerd"
     ]
   }
 }

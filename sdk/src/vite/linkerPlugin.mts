@@ -1,7 +1,7 @@
 import debug from "debug";
 import fsp from "node:fs/promises";
 import path from "node:path";
-import type { Plugin } from "vite";
+import type { Plugin, ResolvedConfig } from "vite";
 import { CLIENT_MANIFEST_RELATIVE_PATH } from "../lib/constants.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 
@@ -11,10 +11,12 @@ export function linkWorkerBundle({
   code,
   manifestContent,
   projectRootDir,
+  base,
 }: {
   code: string;
   manifestContent: string;
   projectRootDir: string;
+  base?: string;
 }) {
   let newCode = code;
   const manifest = JSON.parse(manifestContent);
@@ -33,10 +35,11 @@ export function linkWorkerBundle({
       isViteStyle: false,
     });
 
-    newCode = newCode.replaceAll(
-      `rwsdk_asset:${normalizedKey}`,
-      `/${(value as { file: string }).file}`,
-    );
+    // If base is provided, prepend it with the final hashed path.
+    // Base is assumed to have a trailing "/".
+    const assetPath = (base ? base : "/") + (value as { file: string }).file;
+
+    newCode = newCode.replaceAll(`rwsdk_asset:${normalizedKey}`, assetPath);
   }
 
   // 3. Deprefix any remaining placeholders that were not in the manifest.
@@ -55,8 +58,15 @@ export const linkerPlugin = ({
 }: {
   projectRootDir: string;
 }): Plugin => {
+  let config: ResolvedConfig;
+
   return {
     name: "rwsdk:linker",
+
+    configResolved(resolvedConfig) {
+      config = resolvedConfig;
+    },
+
     async renderChunk(code) {
       if (
         this.environment.name !== "worker" ||
@@ -75,6 +85,7 @@ export const linkerPlugin = ({
         code,
         manifestContent,
         projectRootDir,
+        base: config.base,
       });
 
       log("Final worker chunk rendered");
