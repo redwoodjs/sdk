@@ -31,6 +31,27 @@ export async function buildApp({
   await rm(resolve(projectRootDir, "dist"), { recursive: true, force: true });
 
   const workerEnv = builder.environments.worker;
+
+  // Run a pre-scan build pass to allow plugins to set up and generate code
+  // before scanning.
+  console.log("Running plugin setup pass...");
+  process.env.RWSDK_BUILD_PASS = "plugin-setup";
+
+  const originalWorkerBuildConfig = workerEnv.config.build;
+  workerEnv.config.build = {
+    ...originalWorkerBuildConfig,
+    write: false,
+    rollupOptions: {
+      ...(originalWorkerBuildConfig?.rollupOptions ?? {}),
+      input: [],
+    },
+  };
+
+  await builder.build(workerEnv);
+
+  // Restore the original config
+  workerEnv.config.build = originalWorkerBuildConfig;
+
   await runDirectivesScan({
     rootConfig: builder.config,
     environments: builder.environments,

@@ -1,0 +1,35 @@
+# 2025-10-28: Fixing Content Collections Build-Time Generation
+
+## Problem
+
+I've run into a lifecycle issue with libraries that generate code during the build process, specifically `Content Collections`. This library uses Vite's `buildStart` hook to generate typed collections from content files (e.g., markdown).
+
+My framework's build process relies on a directive scan (`"use client"`, `"use server"`) that runs *before* the main Vite build begins. This scan is necessary to configure Vite's internals correctly. The problem is that this scan happens *before* `Content Collections` has a chance to run its `buildStart` hook and generate its files. Consequently, if any of those generated files contain directives, my scan misses them, leading to build failures.
+
+## Investigation and Solution
+
+My initial thought was to find a way to trigger the code generation step before my scan. I considered a few options:
+
+1.  **Manually Invoke Plugin Hooks**: I could try to find the `Content Collections` plugin in the Vite config and call its `buildStart` hook myself. I quickly dismissed this as being too fragile. It would require reverse-engineering the context Vite provides to hooks, which would be a maintenance nightmare and likely break with any Vite update.
+
+2.  **A Full Pre-Build Pass**: Another idea was to run a full, separate Vite build before the main one, just to trigger the codegen. I was very hesitant about this. A full build is expensive, and more importantly, it felt like a high-risk change that could introduce instability or unexpected side effects for existing projects.
+
+After discussing the problem, a much more surgical solution became clear. The key insight is that Vite's build process is graph-driven. Most hooks (`resolveId`, `load`, `transform`) are only triggered as Vite traverses the module graph, starting from the specified entry points. The `buildStart` hook, however, is a lifecycle hook that runs once at the beginning, before any graph traversal.
+
+This led to the chosen solution:
+
+**A Minimal "Plugin Setup" Build Pass**
+
+Before the directive scan, a new, minimal build pass is introduced. This pass is configured to be as inert as possible:
+*   **No Entry Points**: Its `rollupOptions.input` is an empty array (`[]`).
+*   **No Output**: Its `build.write` option is set to `false`.
+
+Because there are no entry points, Vite has no module graph to traverse. This effectively prevents it from running the `resolveId`, `load`, and `transform` hooks on any of the project's source files. However, it *does* initialize the build process, which is enough to trigger the `buildStart` hooks on all plugins.
+
+This approach isolates the desired side effect (running `buildStart` for `Content Collections`) without the cost or risk of a full build. It uses Vite's own public APIs and lifecycle guarantees, making it a robust and low-impact solution.
+
+## Plan
+
+1.  **Implement the plugin setup pass**: Add the minimal build pass to `sdk/src/vite/buildApp.mts`.
+2.  **Update Architecture Docs**: Revise `docs/architecture/directiveScanningAndResolution.md` to include this new pre-scan step and the rationale behind it.
+3.  **Add E2E Test**: Create a new playground example that uses `Content Collections` and add a simple end-to-end test to verify that content generated at build-time is correctly rendered. This serves as a regression test for the fix.
