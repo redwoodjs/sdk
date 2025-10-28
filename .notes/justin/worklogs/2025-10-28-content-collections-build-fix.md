@@ -42,7 +42,7 @@ This approach isolates the desired side effect (running `buildStart` for `Conten
 
 ## PR Info
 
-**Title**: `fix(build): Introduce plugin setup pass for build-time code generation`
+**Title**: `fix(build): Introduce build pass to accomodate plugins with build-time code generation`
 
 **Description**:
 
