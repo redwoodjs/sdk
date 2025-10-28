@@ -1,7 +1,9 @@
 import debug from "debug";
-import { rm } from "node:fs/promises";
-import { resolve } from "node:path";
+import { existsSync } from "node:fs";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 import type { ViteBuilder } from "vite";
+import { INTERMEDIATES_OUTPUT_DIR } from "../lib/constants.mjs";
 import { runDirectivesScan } from "./runDirectivesScan.mjs";
 
 const log = debug("rwsdk:vite:build-app");
@@ -37,20 +39,33 @@ export async function buildApp({
   console.log("Running plugin setup pass...");
   process.env.RWSDK_BUILD_PASS = "plugin-setup";
 
-  const originalWorkerBuildConfig = workerEnv.config.build;
-  workerEnv.config.build = {
-    ...originalWorkerBuildConfig,
-    write: false,
-    rollupOptions: {
-      ...(originalWorkerBuildConfig?.rollupOptions ?? {}),
-      input: [],
-    },
-  };
+  const tempEntryPath = resolve(INTERMEDIATES_OUTPUT_DIR, "temp-entry.js");
 
-  await builder.build(workerEnv);
+  try {
+    if (!existsSync(dirname(tempEntryPath))) {
+      await mkdir(dirname(tempEntryPath), { recursive: true });
+    }
+    await writeFile(tempEntryPath, "");
 
-  // Restore the original config
-  workerEnv.config.build = originalWorkerBuildConfig;
+    const originalWorkerBuildConfig = workerEnv.config.build;
+    workerEnv.config.build = {
+      ...originalWorkerBuildConfig,
+      write: false,
+      rollupOptions: {
+        ...originalWorkerBuildConfig?.rollupOptions,
+        input: {
+          index: tempEntryPath,
+        },
+      },
+    };
+
+    await builder.build(workerEnv);
+
+    // Restore the original config
+    workerEnv.config.build = originalWorkerBuildConfig;
+  } finally {
+    await rm(tempEntryPath, { force: true });
+  }
 
   await runDirectivesScan({
     rootConfig: builder.config,

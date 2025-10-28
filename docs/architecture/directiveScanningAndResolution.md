@@ -18,9 +18,11 @@ To address these challenges, a three-phase scan is implemented that is comprehen
 
 ### Phase 1: Plugin Setup Pass
 
-To ensure that any build-time code generation is complete before scanning begins, the process starts with a minimal, inert Vite build pass. This "plugin setup" pass is configured with no entry points and is set not to write any files to disk.
+To ensure that any build-time code generation is complete before scanning begins, the process starts with a minimal, inert Vite build pass. This "plugin setup" pass triggers the `buildStart` hook for all configured Vite plugins.
 
-Its sole purpose is to trigger the `buildStart` hook for all configured Vite plugins. Because the pass has no entry points, Vite does not traverse the module graph, and thus does not run any `resolveId`, `load`, or `transform` hooks. This surgically triggers plugins that perform pre-build code generation without the overhead or side effects of a full build, making the generated files available for the next phase.
+To satisfy Vite's requirement for a valid entry point while ensuring the pass does nothing, a temporary, empty file is created and used as the sole input. The pass is also configured not to write any files to the output directory.
+
+Because the entry point is empty and has no imports, Vite does not traverse the module graph, and thus does not run any `resolveId`, `load`, or `transform` hooks. This surgically triggers plugins that perform pre-build code generation without the overhead or side effects of a full build, making the generated files available for the next phase. The temporary entry file is deleted immediately after the pass completes.
 
 ### Phase 2: Glob-based Pre-Scan for All Potential Modules
 

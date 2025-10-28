@@ -28,8 +28,12 @@ Because there are no entry points, Vite has no module graph to traverse. This ef
 
 This approach isolates the desired side effect (running `buildStart` for `Content Collections`) without the cost or risk of a full build. It uses Vite's own public APIs and lifecycle guarantees, making it a robust and low-impact solution.
 
+**Update**: My initial attempt to use an empty array for the `input` option failed. It appears Rollup, under the hood, requires at least one valid entry point to initialize, even if no processing is to be done. The solution was refined to create a temporary, empty dummy file to use as the entry point for the setup pass. This file is created just before the pass and deleted immediately after, satisfying Rollup's requirement without changing the no-op nature of the build.
+
+**Update 2**: A subsequent test run showed that simply providing a temporary entry file was not enough. The Cloudflare Vite plugin specifically asserts that an entry chunk named `index` must exist. The solution was further refined to name the output chunk for our temporary file `index` by passing an object to `rollupOptions.input` (e.g., `input: { index: tempEntryPath }`). This satisfies the Cloudflare plugin's expectation while keeping the pass inert.
+
 ## Plan
 
-1.  **Implement the plugin setup pass**: Add the minimal build pass to `sdk/src/vite/buildApp.mts`.
+1.  **Implement the plugin setup pass**: Add the minimal build pass to `sdk/src/vite/buildApp.mts`, using a temporary dummy file as the entry point and naming the output chunk `index`.
 2.  **Update Architecture Docs**: Revise `docs/architecture/directiveScanningAndResolution.md` to include this new pre-scan step and the rationale behind it.
 3.  **Add E2E Test**: Create a new playground example that uses `Content Collections` and add a simple end-to-end test to verify that content generated at build-time is correctly rendered. This serves as a regression test for the fix.
