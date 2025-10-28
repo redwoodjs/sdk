@@ -138,11 +138,3 @@ This is a significant finding. It means the problem is not a runtime path mismat
 **Solution**: The initial plan was to write custom, cross-platform process termination logic using `taskkill` on Windows and `process.kill` on other systems. However, a better approach is to use a dedicated library for this. The `tree-kill` package is a small, focused utility that provides a reliable, cross-platform way to kill a process and its entire descendant tree.
 
 To minimize the production dependency footprint and reduce any potential attack surface from third-party code, `tree-kill` has been added as a `devDependency`. While the E2E test harness is technically an exported module of the SDK, this is a deliberate trade-off that prioritizes the security and leanness of the production `rwsdk` package, as `tree-kill` is only ever used in a testing context. The `stopDev` function was refactored to use this library, creating a more robust and maintainable solution.
-
-### 12. Cross-Platform Command Execution in E2E Tests
-
-**Problem**: Even after fixing the process cleanup logic, the E2E tests on Windows still timed out, with the root cause being a silent failure of the dev server to start. Diagnostic tests showed that the child process was not producing any output on `stdout` or `stderr`.
-
-**Investigation**: The issue was traced to the `execa` library's tagged-template syntax (`$``...`). A test using a simple `echo` command revealed that this syntax was not parsing commands with arguments correctly on Windows, leading to an immediate, silent exit. The command was being misinterpreted, causing `execa` to fail before any output could be generated.
-
-**Solution**: The fix is to use `execa`'s more robust, array-based syntax (`$(command, [arg1, arg2])`). This method avoids shell parsing ambiguities and is the recommended approach for cross-platform compatibility. The command to start the dev server was refactored to use this syntax, which allows the process to be spawned correctly and its output to be captured by the test harness. This resolves the final blocker for the E2E tests on Windows.
