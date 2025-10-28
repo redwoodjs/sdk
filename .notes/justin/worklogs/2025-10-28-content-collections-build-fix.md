@@ -37,3 +37,29 @@ This approach isolates the desired side effect (running `buildStart` for `Conten
 1.  **Implement the plugin setup pass**: Add the minimal build pass to `sdk/src/vite/buildApp.mts`, using a temporary dummy file as the entry point and naming the output chunk `index`.
 2.  **Update Architecture Docs**: Revise `docs/architecture/directiveScanningAndResolution.md` to include this new pre-scan step and the rationale behind it.
 3.  **Add E2E Test**: Create a new playground example that uses `Content Collections` and add a simple end-to-end test to verify that content generated at build-time is correctly rendered. This serves as a regression test for the fix.
+
+---
+
+## PR Info
+
+**Title**: `fix(build): Introduce plugin setup pass for build-time code generation`
+
+**Description**:
+
+### Problem
+
+Vite plugins that generate code at build time, such as `Content Collections`, typically use the `buildStart` hook to perform their work. The framework's directive scan, which is necessary to configure the main build, was running *before* this hook. This created a lifecycle mismatch: if any generated files contained `"use client"` or `"use server"` directives, the scan would miss them, leading to build failures.
+
+### Solution
+
+This change introduces a "plugin setup pass"—a minimal, no-op Vite build that runs before the directive scan.
+
+This pass is configured to be inert: it uses a temporary, empty file as an entry point and is set not to write any output. Its sole purpose is to trigger the `buildStart` hook for all configured plugins, ensuring that any necessary code generation is complete before the directive scan begins.
+
+To ensure compatibility, the temporary entry point is named `index`, satisfying an assertion in the Cloudflare Vite plugin. This approach uses Vite's public APIs to resolve the lifecycle issue in a surgical way, without the performance cost or potential side effects of a full pre-build.
+
+### Changes
+
+-   Adds a "plugin setup pass" to the `buildApp` function.
+-   Creates a new `content-collections` playground example to serve as a regression test.
+-   Updates the `directiveScanningAndResolution.md` architecture document to reflect the new build phase.
