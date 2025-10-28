@@ -10,7 +10,7 @@ A naive scan starting from the application's entry points is insufficient for th
 
 1.  **It cannot handle conditional exports.** A scan starting from a server entry point would use server-side resolution conditions for the entire dependency graph. When it crosses a `"use client"` boundary, it would fail to switch to browser-side conditions, leading to incorrect module resolution and build failures.
 2.  **It misses undiscovered modules.** If a directive-containing file exists in the project but is not yet imported by any other file in the graph, an entry-point-based scan will not find it. If a developer later adds an import to that file, the directive map becomes stale, causing "module not found" errors during Server-Side Rendering (SSR).
-3.  **It does not account for pre-build code generation.** Some Vite plugins, such as `Content Collections`, use the `buildStart` hook to generate source files before the build formally begins. A scan that runs before this hook will fail if it tries to resolve an import to a file that has not yet been generated, causing the entire build to stop with a module resolution error.
+3.  **It does not account for pre-build code generation.** Some Vite plugins, such as `Content Collections`, use the `buildStart` hook to generate source files before the build formally begins. A scan that runs before this hook will fail if it tries to resolve an import to a file that has not yet been generated. This causes the entire build to stop with a module resolution error (e.g., `ERROR: Cannot read file "...": is a directory`).
 
 ## The Solution: A Three-Phase, Context-Aware Scan
 
