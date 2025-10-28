@@ -75,7 +75,7 @@ export async function buildApp({
     entries: [workerEntryPathname],
   });
 
-  console.log("Building worker to discover used client components...");
+  console.log("Building worker...");
   process.env.RWSDK_BUILD_PASS = "worker";
   await builder.build(workerEnv);
 
