@@ -1,9 +1,10 @@
 import { FC, ReactElement } from "react";
 import { injectRSCPayload } from "rsc-html-stream/server";
+import { ssrWebpackRequire } from "../imports/worker.js";
 import { DocumentProps } from "../lib/types.js";
 import { type PartialRequestInfo } from "../requestInfo/types";
 import { constructWithDefaultRequestInfo } from "../requestInfo/utils";
-import { getRequestInfo } from "../requestInfo/worker";
+import { getRequestInfo, runWithRequestInfo } from "../requestInfo/worker";
 import { renderDocumentHtmlStream } from "./renderDocumentHtmlStream";
 import { renderToRscStream } from "./renderToRscStream";
 
@@ -29,6 +30,10 @@ export const renderToStream = async (
     onError = () => {},
   }: RenderToStreamOptions = {},
 ): Promise<ReadableStream> => {
+  if (!globalThis.__webpack_require__) {
+    globalThis.__webpack_require__ = ssrWebpackRequire;
+  }
+
   // Try to get the context requestInfo from the async store.
   let contextRequestInfo;
   try {
@@ -48,35 +53,41 @@ export const renderToStream = async (
     },
   });
 
-  let rscStream = renderToRscStream({
-    input: {
-      node: element,
-      actionResult: undefined,
-    },
-    onError,
-  });
-
-  let injectRSCStream;
-
-  if (shouldInjectRSCPayload) {
-    const [rscPayloadStream1, rscPayloadStream2] = rscStream.tee();
-    rscStream = rscPayloadStream1;
-    injectRSCStream = injectRSCPayload(rscPayloadStream2, {
-      nonce: requestInfo.rw.nonce,
+  // context(gching, 2025-10-29): We wrap the following with context to the requestInfo
+  // due to `ssrWebpackRequire` needing to reference the `requestInfo` in context.
+  // Therefore, we need to wrap + also pass in the requestInfo in their independent
+  // function calls
+  return runWithRequestInfo(requestInfo, async () => {
+    let rscStream = renderToRscStream({
+      input: {
+        node: element,
+        actionResult: undefined,
+      },
+      onError,
     });
-  }
 
-  let htmlStream: ReadableStream<any> = await renderDocumentHtmlStream({
-    rscPayloadStream: rscStream,
-    Document,
-    requestInfo,
-    shouldSSR,
-    onError,
+    let injectRSCStream;
+
+    if (shouldInjectRSCPayload) {
+      const [rscPayloadStream1, rscPayloadStream2] = rscStream.tee();
+      rscStream = rscPayloadStream1;
+      injectRSCStream = injectRSCPayload(rscPayloadStream2, {
+        nonce: requestInfo.rw.nonce,
+      });
+    }
+
+    let htmlStream: ReadableStream<any> = await renderDocumentHtmlStream({
+      rscPayloadStream: rscStream,
+      Document,
+      requestInfo,
+      shouldSSR,
+      onError,
+    });
+
+    if (injectRSCStream) {
+      htmlStream = htmlStream.pipeThrough(injectRSCStream);
+    }
+
+    return htmlStream;
   });
-
-  if (injectRSCStream) {
-    htmlStream = htmlStream.pipeThrough(injectRSCStream);
-  }
-
-  return htmlStream;
 };
