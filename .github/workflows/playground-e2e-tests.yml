@@ -30,6 +30,7 @@ on:
           - all
           - ubuntu-latest
           - macos-latest
+          - windows-latest
       package-manager:
         description: "Package manager to use (e.g., pnpm, npm)"
         required: true
