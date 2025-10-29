@@ -43,7 +43,18 @@ export async function runDevServer(
         log("Failed to kill process tree with taskkill:", err);
       }
     } else {
-      process.kill(devProcess.pid, "SIGKILL");
+      // On Unix-like systems, we kill the entire process group by sending a signal
+      // to the negative PID. This is the equivalent of the `/t` flag for `taskkill` on Windows.
+      // This relies on `detached: true` being set in the execa options, which makes
+      // the child process the leader of a new process group.
+      try {
+        process.kill(-devProcess.pid, "SIGKILL");
+      } catch (e) {
+        log(
+          "Failed to kill process group. This may happen if the process already exited. %O",
+          e,
+        );
+      }
     }
 
     await devProcess.catch(() => {
