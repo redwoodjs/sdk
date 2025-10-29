@@ -6,28 +6,37 @@ This document details the internal `esbuild`-based scanner used to discover `"us
 
 A core requirement of the framework is to know the location of all directive-marked modules *before* Vite's main processing begins. This is necessary in development for Vite's dependency optimizer (`optimizeDeps`) and in production for effective tree-shaking. Because Vite lacks a public API hook at this specific lifecycle point, a custom scanning solution is required.
 
-A naive scan starting from the application's entry points is insufficient for two key reasons:
+A naive scan starting from the application's entry points is insufficient for three key reasons:
 
 1.  **It cannot handle conditional exports.** A scan starting from a server entry point would use server-side resolution conditions for the entire dependency graph. When it crosses a `"use client"` boundary, it would fail to switch to browser-side conditions, leading to incorrect module resolution and build failures.
 2.  **It misses undiscovered modules.** If a directive-containing file exists in the project but is not yet imported by any other file in the graph, an entry-point-based scan will not find it. If a developer later adds an import to that file, the directive map becomes stale, causing "module not found" errors during Server-Side Rendering (SSR).
+3.  **It does not account for pre-build code generation.** Some Vite plugins, such as `Content Collections`, use the `buildStart` hook to generate source files before the build formally begins. A scan that runs before this hook will fail if it tries to resolve an import to a file that has not yet been generated. This causes the entire build to stop with a module resolution error (e.g., `ERROR: Cannot read file "...": is a directory`).
 
-## The Solution: A Two-Phase, Context-Aware Scan
+## The Solution: A Three-Phase, Context-Aware Scan
 
-To address these challenges, the framework implements a two-phase scan that is both comprehensive and contextually aware.
+To address these challenges, a three-phase scan is implemented that is comprehensive, accounts for code generation, and is contextually aware.
 
-### Phase 1: Glob-based Pre-Scan for All Potential Modules
+### Phase 1: Plugin Setup Pass
 
-The first phase solves the "stale map" problem by finding all files in the application's codebase that could *potentially* contain a directive, regardless of whether they are currently imported.
+To ensure that any build-time code generation is complete before scanning begins, the process starts with a minimal, inert Vite build pass. This "plugin setup" pass triggers the `buildStart` hook for all configured Vite plugins.
+
+To satisfy Vite's requirement for a valid entry point while ensuring the pass does nothing, a temporary, empty file is created and used as the sole input. The pass is also configured not to write any files to the output directory.
+
+Because the entry point is empty and has no imports, Vite does not traverse the module graph, and thus does not run any `resolveId`, `load`, or `transform` hooks. This surgically triggers plugins that perform pre-build code generation without the overhead or side effects of a full build, making the generated files available for the next phase. The temporary entry file is deleted immediately after the pass completes.
+
+### Phase 2: Glob-based Pre-Scan for All Potential Modules
+
+The second phase solves the "stale map" problem by finding all files in the application's codebase that could *potentially* contain a directive, regardless of whether they are currently imported.
 
 -   A fast `glob` search is performed across the `src/` directory for all relevant file extensions (`.ts`, `.tsx`, `.js`, `.mdx`, etc.).
 -   This initial list of files is then filtered down to only those that actually contain a `"use client"` or `"use server"` directive.
 -   This process ensures that even currently-unimported modules are identified upfront, "future-proofing" the directive map against code changes made during a development session. Caching is used to optimize performance.
 
-### Phase 2: Context-Aware `esbuild` Traversal
+### Phase 3: Context-Aware `esbuild` Traversal
 
-The second phase solves the module resolution problem by using `esbuild` to traverse the dependency graph with a stateful, Vite-aware resolver.
+The third phase solves the module resolution problem by using `esbuild` to traverse the dependency graph with a stateful, Vite-aware resolver.
 
-The entry points for this phase are a combination of the application's main entry points and the set of directive-containing files discovered in Phase 1. As the scanner traverses the graph, its resolver maintains the current environment context (`'worker'` or `'client'`).
+The entry points for this phase are a combination of the application's main entry points and the set of directive-containing files discovered in Phase 2. As the scanner traverses the graph, its resolver maintains the current environment context (`'worker'` or `'client'`).
 
 When resolving an import, the process is as follows:
 1.  Before resolving the import, the scanner inspects the *importing* module for a `"use client"` or `"use server"` directive.
@@ -53,6 +62,10 @@ In development mode, the Vite server `environment` has a fully-formed `pluginCon
 ### Why not access Vite's internal plugin container functions?
 
 While Vite has internal functions to create a `pluginContainer` for the build environment, they are not part of its public API. Accessing them would require importing from hashed, internal distribution files (e.g., `dep-DBxKXgDP.js`). This would make our build process extremely brittle, as these internal file hashes change with every Vite release. A solution that relies only on stable, public APIs is a core requirement for maintainability.
+
+### Why not simply run the scan after `buildStart`?
+
+The core issue is a lifecycle mismatch. The directive scan's purpose is to gather information needed to *configure* the main build, which includes tasks that happen very early in Vite's internal build setup. The `buildStart` hook, while early, runs *after* much of this initial setup is complete. There is no public Vite API to hook between this initial setup and the `buildStart` event. The "plugin setup" pass is a pragmatic solution that uses public APIs to trigger the necessary hooks at the correct time, ensuring generated files are present before the scan needs to see them.
 
 ### Why not cache the scan results?
 
