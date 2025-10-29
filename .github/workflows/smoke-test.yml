@@ -113,33 +113,16 @@ jobs:
       github.event_name == 'pull_request_target'
 
     steps:
-      - name: Debug author context
-        if: github.event_name == 'pull_request_target'
-        run: |
-          echo "PR Author Login: ${{ github.event.pull_request.user.login }}"
-          echo "PR Author Association: ${{ github.event.pull_request.author_association }}"
-
       - name: Require approval for external contributors
-        if: github.event_name == 'pull_request_target'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        if: |
+          github.event_name == 'pull_request_target' &&
+          github.event.pull_request.author_association != 'OWNER' &&
+          github.event.pull_request.author_association != 'MEMBER' &&
+          github.event.pull_request.author_association != 'COLLABORATOR' &&
+          !contains(github.event.pull_request.labels.*.name, 'run-secure-tests')
         run: |
-          # Exit with success if the author is a member of the organization
-          if gh api "orgs/redwoodjs/members/$PR_AUTHOR" -H "Accept: application/vnd.github.v3+json" --silent; then
-            echo "User $PR_AUTHOR is an organization member. Proceeding."
-            exit 0
-          fi
-
-          # If not an org member, check for the approval label
-          echo "User $PR_AUTHOR is not an organization member. Checking for 'run-secure-tests' label."
-          if ${{ contains(github.event.pull_request.labels.*.name, 'run-secure-tests') }}; then
-            echo "Approval label found. Proceeding."
-            exit 0
-          else
-            echo "ERROR: This PR requires the 'run-secure-tests' label from a maintainer to run smoke tests."
-            exit 1
-          fi
+          echo "ERROR: This PR is from an external contributor and requires the 'run-secure-tests' label."
+          exit 1
 
       - name: Checkout repository
         uses: actions/checkout@v5
