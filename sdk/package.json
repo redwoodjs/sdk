@@ -58,7 +58,8 @@
     },
     "./router": {
       "types": "./dist/runtime/entries/router.d.ts",
-      "default": "./dist/runtime/entries/router.js"
+      "workerd": "./dist/runtime/entries/router.js",
+      "default": "./dist/runtime/entries/routerClient.js"
     },
     "./auth": {
       "types": "./dist/runtime/entries/auth.d.ts",
