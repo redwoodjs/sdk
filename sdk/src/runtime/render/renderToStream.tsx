@@ -30,7 +30,6 @@ export const renderToStream = async (
     onError = () => {},
   }: RenderToStreamOptions = {},
 ): Promise<ReadableStream> => {
-  // Set __webpack_require__ if it doesn't exist
   if (!globalThis.__webpack_require__) {
     globalThis.__webpack_require__ = ssrWebpackRequire;
   }
