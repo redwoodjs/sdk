@@ -54,6 +54,10 @@ export const renderToStream = async (
     },
   });
 
+  // context(gching, 2025-10-29): We wrap the following with context to the requestInfo
+  // due to `ssrWebpackRequire` needing to reference the `requestInfo` in context.
+  // Therefore, we need to wrap + also pass in the requestInfo their independent
+  // function calls
   return runWithRequestInfo(requestInfo, async () => {
     let rscStream = renderToRscStream({
       input: {
