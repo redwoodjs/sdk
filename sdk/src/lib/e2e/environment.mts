@@ -233,7 +233,7 @@ export async function copyProjectToTempDir(
         // todo(justinvdm, 23-09-23): Support yarn pnpm
         "nodeLinker: node-modules",
         "enableImmutableInstalls: false",
-        `cacheFolder: "${yarnCacheDir}"`,
+        `cacheFolder: "${yarnCacheDir.replace(/\\\\/g, "/")}"`,
       ].join("\n");
       await fs.promises.writeFile(yarnrcPath, yarnConfig);
       log("Created .yarnrc.yml to allow lockfile changes for yarn");
