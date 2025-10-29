@@ -145,18 +145,18 @@ jobs:
           cache: "pnpm"
 
       - name: Install dependencies
-        shell: bash
+        shell: ${{ runner.os == 'Windows' && 'pwsh' || 'bash' }}
         run: pnpm install
 
       - name: Build SDK
-        shell: bash
+        shell: ${{ runner.os == 'Windows' && 'pwsh' || 'bash' }}
         run: |
           cd sdk
           pnpm build
 
       - name: Run Playground E2E Tests
         id: tests
-        shell: bash
+        shell: ${{ runner.os == 'Windows' && 'pwsh' || 'bash' }}
         run: |
           pnpm install
           pnpm test:e2e
@@ -173,3 +173,6 @@ jobs:
             /tmp/*-e2e-test-*
             playground/**/node_modules/.cache/wrangler
           retention-days: 7
+            playground/**/node_modules/.cache/wrangler
+          retention-days: 7
+
