@@ -206,5 +206,4 @@ This PR addresses the following key areas:
 *   **Process Cleanup (`EBUSY` Errors)**:
     *   Replaced POSIX-specific process killing logic (`process.kill(-pid)`) with a manual, cross-platform implementation using `taskkill` on Windows to reliably terminate the entire process tree.
     *   To resolve a final race condition where Windows fails to release file locks before cleanup, the temporary directory cleanup function is now wrapped in a `try...catch` block. This "fire and forget" approach prevents intermittent `EBUSY` errors from failing an otherwise successful test run.
-*   **Enabling Windows CI**
-    - To validate these fixes and prevent future regressions, `windows-latest` has been added to the test matrix for the smoke test and end-to-end test workflows. This change also enables Windows runs in our nightly test suite, ensuring ongoing compatibility.
+* `windows-latest` is now included in our build matrix for nightly builds
