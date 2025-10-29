@@ -120,27 +120,7 @@ const findUp = async (
 };
 
 const getMonorepoRoot = async (startDir: string) => {
-  try {
-    // `pnpm root` is the most reliable way to find the workspace root node_modules
-    const { stdout } = await $({
-      cwd: startDir,
-    })`pnpm root`;
-    // pnpm root returns the node_modules path, so we go up one level
-    return path.resolve(stdout, "..");
-  } catch (e) {
-    console.warn(
-      `Could not determine pnpm root from ${startDir}. Falling back to file search.`,
-    );
-    const root = await findUp(["pnpm-workspace.yaml"], startDir);
-    if (root) {
-      return root;
-    }
-  }
-
-  console.warn(
-    "Could not find pnpm monorepo root. Using parent directory of target as fallback.",
-  );
-  return path.resolve(startDir, "..");
+  return await findUp(["pnpm-workspace.yaml"], startDir);
 };
 
 const areDependenciesEqual = (
@@ -149,6 +129,17 @@ const areDependenciesEqual = (
 ) => {
   // Simple string comparison for this use case is sufficient
   return JSON.stringify(deps1 ?? {}) === JSON.stringify(deps2 ?? {});
+};
+
+const isPlaygroundExample = async (targetDir: string, monorepoRoot: string) => {
+  const pkgJson = JSON.parse(
+    await fs.readFile(path.join(monorepoRoot, "package.json"), "utf-8"),
+  );
+  if (pkgJson.name === "rw-sdk-monorepo") {
+    const playgroundDir = path.join(monorepoRoot, "playground");
+    return targetDir.startsWith(playgroundDir);
+  }
+  return false;
 };
 
 const performFullSync = async (
@@ -241,10 +232,19 @@ const performSync = async (sdkDir: string, targetDir: string) => {
   await cleanupViteEntries(targetDir);
 
   const monorepoRoot = await getMonorepoRoot(targetDir);
+  const rootDir = monorepoRoot ?? targetDir;
   const projectName = path.basename(targetDir);
 
+  if (monorepoRoot && (await isPlaygroundExample(targetDir, monorepoRoot))) {
+    console.log(
+      "Playground example detected. Skipping file sync; workspace linking will be used.",
+    );
+    console.log("✅ Done syncing");
+    return;
+  }
+
   const installedSdkPackageJsonPath = path.join(
-    monorepoRoot,
+    rootDir,
     "node_modules",
     `.rwsync_${projectName}`,
     "node_modules",
@@ -280,9 +280,9 @@ const performSync = async (sdkDir: string, targetDir: string) => {
   }
 
   if (needsFullSync) {
-    await performFullSync(sdkDir, targetDir, monorepoRoot);
+    await performFullSync(sdkDir, targetDir, rootDir);
   } else {
-    await performFastSync(sdkDir, targetDir, monorepoRoot);
+    await performFastSync(sdkDir, targetDir, rootDir);
   }
 
   console.log("✅ Done syncing");

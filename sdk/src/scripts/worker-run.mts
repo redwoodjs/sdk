@@ -1,6 +1,7 @@
 import dbg from "debug";
 import getPort from "get-port";
 import path from "path";
+import { pathToFileURL } from "url";
 import * as vite from "vite";
 import { createLogger } from "vite";
 
@@ -53,7 +54,10 @@ const main = async () => {
 
     await server.listen();
 
-    const url = `http://localhost:${port}/__worker-run?script=${scriptPath}`;
+    const fileUrl = pathToFileURL(scriptPath).href;
+    const url = `http://localhost:${port}/__worker-run?script=${encodeURIComponent(
+      fileUrl,
+    )}`;
     debug("Fetching %s", url);
 
     const response = await fetch(url);

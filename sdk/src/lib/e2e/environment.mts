@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import debug from "debug";
 import { copy, pathExists } from "fs-extra";
 import ignore from "ignore";
@@ -8,15 +9,31 @@ import { basename, join, relative, resolve } from "path";
 import tmp from "tmp-promise";
 import { $ } from "../../lib/$.mjs";
 import { ROOT_DIR } from "../constants.mjs";
-import { INSTALL_DEPENDENCIES_RETRIES } from "./constants.mjs";
+import { INSTALL_DEPENDENCIES_RETRIES, IS_CI } from "./constants.mjs";
 import { retry } from "./retry.mjs";
 import { PackageManager } from "./types.mjs";
 
 const log = debug("rwsdk:e2e:environment");
 
+const IS_CACHE_ENABLED = process.env.RWSDK_E2E_CACHE
+  ? process.env.RWSDK_E2E_CACHE === "1"
+  : !IS_CI;
+
+if (IS_CACHE_ENABLED) {
+  log("E2E test caching is enabled.");
+}
+
 const getTempDir = async (): Promise<tmp.DirectoryResult> => {
   return tmp.dir({ unsafeCleanup: true });
 };
+
+function slugify(str: string) {
+  return str
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/--+/g, "-")
+    .replace(/^-|-$/g, "");
+}
 
 const createSdkTarball = async (): Promise<{
   tarballPath: string;
@@ -38,17 +55,37 @@ const createSdkTarball = async (): Promise<{
       }, // No-op cleanup
     };
   }
-  const packResult = await $({ cwd: ROOT_DIR, stdio: "pipe" })`npm pack`;
-  const tarballName = packResult.stdout?.trim()!;
-  const tarballPath = path.join(ROOT_DIR, tarballName);
 
-  log(`📦 Created tarball: ${tarballPath}`);
+  // Create a temporary directory to receive the tarball, ensuring a stable path.
+  const tempDir = await fs.promises.mkdtemp(
+    path.join(os.tmpdir(), "rwsdk-tarball-"),
+  );
+
+  await $({
+    cwd: ROOT_DIR,
+    stdio: "pipe",
+  })`npm pack --pack-destination=${tempDir}`;
+
+  // We need to determine the tarball's name, as it's version-dependent.
+  // Running `npm pack --dry-run` gives us the filename without creating a file.
+  const packDryRun = await $({
+    cwd: ROOT_DIR,
+    stdio: "pipe",
+  })`npm pack --dry-run`;
+  const tarballName = packDryRun.stdout?.trim()!;
+  const tarballPath = path.join(tempDir, tarballName);
+
+  if (!fs.existsSync(tarballPath)) {
+    throw new Error(
+      `Tarball was not created in the expected location: ${tarballPath}`,
+    );
+  }
+
+  log(`📦 Created tarball in stable temp location: ${tarballPath}`);
 
   const cleanupTarball = async () => {
-    if (fs.existsSync(tarballPath)) {
-      log(`🧹 Cleaning up tarball: ${tarballPath}`);
-      await fs.promises.rm(tarballPath, { force: true });
-    }
+    log(`🧹 Cleaning up tarball directory: ${tempDir}`);
+    await fs.promises.rm(tempDir, { recursive: true, force: true });
   };
 
   return { tarballPath, cleanupTarball };
@@ -92,7 +129,7 @@ export async function copyProjectToTempDir(
 
     // Create unique project directory name
     const originalDirName = basename(sourceDir);
-    const workerName = `${originalDirName}-test-${resourceUniqueKey}`;
+    const workerName = `${slugify(originalDirName)}-test-${resourceUniqueKey}`;
     const tempCopyRoot = resolve(tempDir.path, workerName);
 
     // If it's a monorepo, the targetDir for commands is a subdirectory
@@ -162,7 +199,9 @@ export async function copyProjectToTempDir(
 
         if (packageManager === "pnpm") {
           const pnpmWsPath = join(tempCopyRoot, "pnpm-workspace.yaml");
-          const pnpmWsConfig = `packages:\n${workspaces.map((w: string) => `  - '${w}'`).join("\n")}\n`;
+          const pnpmWsConfig = `packages:\n${workspaces
+            .map((w: string) => `  - '${w}'`)
+            .join("\n")}\n`;
           await fs.promises.writeFile(pnpmWsPath, pnpmWsConfig);
           log("Created pnpm-workspace.yaml");
         } else {
@@ -213,10 +252,19 @@ export async function copyProjectToTempDir(
 
     // Install dependencies in the target directory
     const installDir = monorepoRoot ? tempCopyRoot : targetDir;
-    await retry(() => installDependencies(installDir, packageManager), {
-      retries: INSTALL_DEPENDENCIES_RETRIES,
-      delay: 1000,
-    });
+    await retry(
+      () =>
+        installDependencies(
+          installDir,
+          packageManager,
+          projectDir,
+          monorepoRoot,
+        ),
+      {
+        retries: INSTALL_DEPENDENCIES_RETRIES,
+        delay: 1000,
+      },
+    );
 
     // Return the environment details
     return { tempDir, targetDir, workerName };
@@ -228,7 +276,64 @@ export async function copyProjectToTempDir(
 async function installDependencies(
   targetDir: string,
   packageManager: PackageManager = "pnpm",
+  projectDir: string,
+  monorepoRoot?: string,
 ): Promise<void> {
+  if (IS_CACHE_ENABLED) {
+    // Generate a checksum of the SDK's dist directory to factor into the cache key
+    const { stdout: sdkDistChecksum } = await $(
+      "find . -type f | sort | md5sum",
+      {
+        shell: true,
+        cwd: path.join(ROOT_DIR, "dist"),
+      },
+    );
+    const projectIdentifier = monorepoRoot
+      ? `${monorepoRoot}-${projectDir}`
+      : projectDir;
+    const projectHash = createHash("md5")
+      .update(`${projectIdentifier}-${sdkDistChecksum}`)
+      .digest("hex")
+      .substring(0, 8);
+    const cacheDirName = monorepoRoot
+      ? basename(monorepoRoot)
+      : basename(projectDir);
+    const cacheRoot = path.join(
+      os.tmpdir(),
+      "rwsdk-e2e-cache",
+      `${cacheDirName}-${projectHash}`,
+    );
+    const nodeModulesCachePath = path.join(cacheRoot, "node_modules");
+
+    if (await pathExists(nodeModulesCachePath)) {
+      console.log(
+        `✅ CACHE HIT for source "${projectIdentifier}": Found cached node_modules. Hard-linking from ${nodeModulesCachePath}`,
+      );
+      try {
+        // Use cp -al for a fast, hardlink-based copy
+        await $(
+          "cp",
+          ["-al", nodeModulesCachePath, join(targetDir, "node_modules")],
+          { stdio: "pipe" },
+        );
+        console.log(`✅ Hardlink copy created successfully.`);
+      } catch (e) {
+        console.warn(
+          `⚠️ Hardlink copy failed, falling back to full copy. Error: ${
+            (e as Error).message
+          }`,
+        );
+        // Fallback to a regular copy if hardlinking fails (e.g., cross-device)
+        await copy(nodeModulesCachePath, join(targetDir, "node_modules"));
+        console.log(`✅ Full copy created successfully.`);
+      }
+      return;
+    }
+    console.log(
+      `ℹ️ CACHE MISS for source "${projectIdentifier}": No cached node_modules found at ${nodeModulesCachePath}. Proceeding with installation.`,
+    );
+  }
+
   console.log(
     `📦 Installing project dependencies in ${targetDir} using ${packageManager}...`,
   );
@@ -287,6 +392,44 @@ async function installDependencies(
     });
 
     console.log("✅ Dependencies installed successfully");
+
+    // After successful install, populate the cache if enabled
+    if (IS_CACHE_ENABLED) {
+      // Re-calculate cache path to be safe
+      const { stdout: sdkDistChecksum } = await $(
+        "find . -type f | sort | md5sum",
+        {
+          shell: true,
+          cwd: path.join(ROOT_DIR, "dist"),
+        },
+      );
+      const projectIdentifier = monorepoRoot
+        ? `${monorepoRoot}-${projectDir}`
+        : projectDir;
+      const projectHash = createHash("md5")
+        .update(`${projectIdentifier}-${sdkDistChecksum}`)
+        .digest("hex")
+        .substring(0, 8);
+      const cacheDirName = monorepoRoot
+        ? basename(monorepoRoot)
+        : basename(projectDir);
+      const cacheRoot = path.join(
+        os.tmpdir(),
+        "rwsdk-e2e-cache",
+        `${cacheDirName}-${projectHash}`,
+      );
+      const nodeModulesCachePath = path.join(cacheRoot, "node_modules");
+
+      console.log(
+        `Caching node_modules to ${nodeModulesCachePath} for future runs...`,
+      );
+      // Ensure parent directory exists
+      await fs.promises.mkdir(path.dirname(nodeModulesCachePath), {
+        recursive: true,
+      });
+      await copy(join(targetDir, "node_modules"), nodeModulesCachePath);
+      console.log(`✅ node_modules cached successfully.`);
+    }
 
     // Log installation details at debug level
     if (result.stdout) {

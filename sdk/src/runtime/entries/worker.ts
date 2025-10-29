@@ -1,10 +1,12 @@
 import "./types/worker";
 export * from "../error";
+export * from "../lib/types";
 export * from "../lib/utils";
 export * from "../register/worker";
 export * from "../render/renderToStream";
 export * from "../render/renderToString";
 export * from "../requestInfo/types";
+export * from "../requestInfo/utils";
 export * from "../requestInfo/worker";
 export * from "../script";
 export * from "../worker";

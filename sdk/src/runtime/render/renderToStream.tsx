@@ -1,7 +1,9 @@
 import { FC, ReactElement } from "react";
 import { injectRSCPayload } from "rsc-html-stream/server";
-import { DocumentProps } from "../lib/router";
-import { requestInfo } from "../requestInfo/worker";
+import { DocumentProps } from "../lib/types.js";
+import { type PartialRequestInfo } from "../requestInfo/types";
+import { constructWithDefaultRequestInfo } from "../requestInfo/utils";
+import { getRequestInfo } from "../requestInfo/worker";
 import { renderDocumentHtmlStream } from "./renderDocumentHtmlStream";
 import { renderToRscStream } from "./renderToRscStream";
 
@@ -10,6 +12,7 @@ export interface RenderToStreamOptions {
   ssr?: boolean;
   injectRSCPayload?: boolean;
   onError?: (error: unknown) => void;
+  requestInfo?: PartialRequestInfo;
 }
 
 export const IdentityDocument: FC<DocumentProps> = ({ children }) => (
@@ -22,9 +25,29 @@ export const renderToStream = async (
     ssr: shouldSSR = true,
     Document = IdentityDocument,
     injectRSCPayload: shouldInjectRSCPayload = true,
+    requestInfo: givenRequestInfo,
     onError = () => {},
   }: RenderToStreamOptions = {},
 ): Promise<ReadableStream> => {
+  // Try to get the context requestInfo from the async store.
+  let contextRequestInfo;
+  try {
+    contextRequestInfo = getRequestInfo();
+  } catch (e) {
+    // No requestInfo detected from store.
+  }
+
+  // Construct requestInfo with defaults where overrides take precedence.
+  // If provided, `givenRequestInfo` will override values from context requestInfo if it exists
+  const requestInfo = constructWithDefaultRequestInfo({
+    ...contextRequestInfo,
+    ...givenRequestInfo,
+    rw: {
+      ...contextRequestInfo?.rw,
+      ...givenRequestInfo?.rw,
+    },
+  });
+
   let rscStream = renderToRscStream({
     input: {
       node: element,

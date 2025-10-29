@@ -81,6 +81,14 @@ Our GitHub Actions workflows are configured to provide a tiered testing strategy
 
 All test suites can also be run manually on any branch using the `workflow_dispatch` trigger in GitHub Actions, giving contributors the power to run the full suite on their changes when needed.
 
+#### Handling External Contributions
+
+For security, pull requests from external contributors require manual approval before the `smoke-test` and `playground-e2e` suites will run. Because these test suites require access to secrets, they are gated to prevent malicious code from running in a trusted environment.
+
+*   **Initial Status**: When a PR is opened by an external contributor, the `smoke-test` and `playground-e2e` jobs will fail with an error message indicating that approval is required. This is an intentional failure to signal that a maintainer's action is needed.
+*   **Maintainer's Responsibility**: A core contributor must first perform a code review. If the code is deemed safe to test, the maintainer should add the label `run-secure-tests` to the pull request.
+*   **Triggering the Tests**: Once the label is applied, the tests will run automatically on the next commit to the branch. To run the tests immediately without waiting for a new commit, a maintainer can manually re-run the failed jobs from the GitHub Actions UI. This label acts as a one-time approval for the PR; all subsequent commits will also trigger the tests.
+
 ### Smoke Testing
 
 Smoke tests check that the critical paths of the SDK work for a new project. They perform a full lifecycle test: installing dependencies, running the dev server, and creating a production build. For both dev and production environments, they verify that server and client components render correctly and that actions work as expected.
@@ -186,6 +194,17 @@ You can also specify a package manager or enable debug logging using environment
 # Run tests for hello-world with Yarn and enable debug logging for the e2e environment
 PACKAGE_MANAGER="yarn" DEBUG='rwsdk:e2e:environment' pnpm test:e2e hello-world/__tests__/e2e.test.mts
 ```
+
+#### Local Development Performance
+
+To speed up the local test-and-debug cycle, the E2E test harness uses a caching mechanism that is **enabled by default** for local runs.
+
+-   **How it Works**: The harness creates a persistent test environment in your system's temporary directory for each playground project. On the first run, it installs all dependencies. On subsequent runs, it reuses this environment, skipping the lengthy installation step. The cache is automatically disabled in CI environments.
+-   **Disabling the Cache**: If you need to force a clean install, you can disable the cache by setting the `RWSDK_E2E_CACHE` environment variable to `0`:
+    ```sh
+    RWSDK_E2E_CACHE=0 pnpm test:e2e
+    ```
+-   **Cache Invalidation**: If you change a playground's `package.json`, you will need to manually clear the cache for that playground to force a re-installation. The cache directories are located in your system's temporary folder (e.g., `/tmp/rwsdk-e2e-cache` on Linux).
 
 #### Skipping Tests
 

@@ -34,6 +34,7 @@ import {
   runRelease,
 } from "./release.mjs";
 import { setupTarballEnvironment } from "./tarball.mjs";
+import { fileURLToPath } from "url";
 export type { Browser, Page } from "puppeteer-core";
 
 export {
@@ -132,12 +133,12 @@ function getProjectDirectory(): string {
  * Derive the playground directory from import.meta.url by finding the nearest package.json
  */
 function getPlaygroundDirFromImportMeta(importMetaUrl: string): string {
-  const url = new URL(importMetaUrl);
-  const testFilePath = url.pathname;
+  const testFilePath = fileURLToPath(importMetaUrl);
 
   let currentDir = dirname(testFilePath);
   // Walk up the tree from the test file's directory
-  while (currentDir !== "/") {
+  // Stop when the parent directory is the same as the current directory (we've reached the root)
+  while (dirname(currentDir) !== currentDir) {
     // Check if a package.json exists in the current directory
     if (fs.existsSync(pathJoin(currentDir, "package.json"))) {
       return currentDir;
@@ -173,6 +174,11 @@ export interface SetupPlaygroundEnvironmentOptions {
    * @default true
    */
   deploy?: boolean;
+  /**
+   * Whether to automatically start the dev server.
+   * @default true
+   */
+  autoStartDevServer?: boolean;
 }
 
 /**
@@ -189,7 +195,10 @@ export function setupPlaygroundEnvironment(
     monorepoRoot,
     dev = true,
     deploy = true,
-  } = typeof options === "string" ? { sourceProjectDir: options } : options;
+    autoStartDevServer = true,
+  } = typeof options === "string"
+    ? { sourceProjectDir: options, autoStartDevServer: true }
+    : options;
   ensureHooksRegistered();
 
   beforeAll(async () => {
@@ -218,14 +227,17 @@ export function setupPlaygroundEnvironment(
         projectDir: devEnv.targetDir,
         cleanup: devEnv.cleanup,
       };
-      const devControl = createDevServer();
-      globalDevInstancePromise = devControl.start().then((instance) => {
-        globalDevInstance = instance;
-        return instance;
-      });
-      // Prevent unhandled promise rejections. The error will be handled inside
-      // the test's beforeEach hook where this promise is awaited.
-      globalDevInstancePromise.catch(() => {});
+
+      if (autoStartDevServer) {
+        const devControl = createDevServer();
+        globalDevInstancePromise = devControl.start().then((instance) => {
+          globalDevInstance = instance;
+          return instance;
+        });
+        // Prevent unhandled promise rejections. The error will be handled inside
+        // the test's beforeEach hook where this promise is awaited.
+        globalDevInstancePromise.catch(() => {});
+      }
     } else {
       globalDevPlaygroundEnv = null;
     }
@@ -474,8 +486,6 @@ export async function runTestWithRetries(
 type SDKRunner = (
   name: string,
   testLogic: (context: {
-    createDevServer: () => Promise<DevServerInstance>;
-    createDeployment: () => Promise<DeploymentInstance>;
     browser: Browser;
     page: Page;
     projectDir: string;

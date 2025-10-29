@@ -57,7 +57,19 @@
       "prPriority": 1
     },
     {
-      "description": "Update React peer dependencies in starter, playground, and addon projects, tracking the 'next' tag.",
+      "description": "Ignore non-React peerDependencies in the SDK to maintain a wide compatibility range.",
+      "matchFileNames": ["sdk/package.json"],
+      "matchPackageNames": [
+        "@cloudflare/vite-plugin",
+        "@cloudflare/workers-types",
+        "wrangler",
+        "vite"
+      ],
+      "matchDepTypes": ["peerDependencies"],
+      "enabled": false
+    },
+    {
+      "description": "Update React dependencies in starter, playground, and addon projects, tracking the 'next' tag.",
       "matchFileNames": [
         "starter/package.json",
         "playground/**/package.json",
