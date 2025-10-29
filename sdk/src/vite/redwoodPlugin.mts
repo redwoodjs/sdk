@@ -11,6 +11,7 @@ import reactPlugin from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 import { pathExists } from "fs-extra";
+import { $ } from "../lib/$.mjs";
 import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
 import { hasPkgScript } from "../lib/hasPkgScript.mjs";
 import { configPlugin } from "./configPlugin.mjs";
@@ -126,7 +127,7 @@ export const redwoodPlugin = async (
     console.log(
       "🚀 Project has no .wrangler directory yet, assuming fresh install: running `npm run dev:init`...",
     );
-    await runPkgScript(projectRootDir, "dev:init");
+    await $`npm run dev:init`;
   }
 
   return [
