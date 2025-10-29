@@ -129,6 +129,9 @@ jobs:
         run: |
           echo "DEBUG: PR Author Login is ${{ github.event.pull_request.user.login }}"
           echo "DEBUG: GitHub Actor is ${{ github.actor }}"
+          # This step will now succeed to allow us to see the logs.
+          # We will replace this with the final check once we have the correct user.
+          exit 0
 
       - name: Checkout repository
         uses: actions/checkout@v5
