@@ -1,5 +1,6 @@
 # Logs
 
+*.log
 .rwsync.lock
 
 .tmp/

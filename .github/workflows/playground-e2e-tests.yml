@@ -66,14 +66,14 @@ jobs:
       - id: set-matrix
         run: |
           if [[ "${{ inputs.run_full_matrix }}" == "true" ]]; then
-            echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"},{"os":"ubuntu-latest","package-manager":"npm"},{"os":"ubuntu-latest","package-manager":"yarn"},{"os":"ubuntu-latest","package-manager":"yarn-classic"},{"os":"macos-latest","package-manager":"pnpm"},{"os":"macos-latest","package-manager":"npm"},{"os":"macos-latest","package-manager":"yarn"},{"os":"macos-latest","package-manager":"yarn-classic"}]}' >> $GITHUB_OUTPUT
+            echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"},{"os":"ubuntu-latest","package-manager":"npm"},{"os":"ubuntu-latest","package-manager":"yarn"},{"os":"ubuntu-latest","package-manager":"yarn-classic"},{"os":"macos-latest","package-manager":"pnpm"},{"os":"macos-latest","package-manager":"npm"},{"os":"macos-latest","package-manager":"yarn"},{"os":"macos-latest","package-manager":"yarn-classic"},{"os":"windows-latest","package-manager":"pnpm"},{"os":"windows-latest","package-manager":"npm"},{"os":"windows-latest","package-manager":"yarn"},{"os":"windows-latest","package-manager":"yarn-classic"}]}' >> $GITHUB_OUTPUT
           elif [[ "${{ github.event_name }}" == "pull_request" || "${{ github.event_name }}" == "push" ]]; then
             echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"}]}' >> $GITHUB_OUTPUT
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             OS_INPUT=${{ github.event.inputs.os }}
             PM_INPUT=${{ github.event.inputs.package-manager }}
 
-            [ "$OS_INPUT" == "all" ] && OS_LIST='ubuntu-latest macos-latest' || OS_LIST=$OS_INPUT
+            [ "$OS_INPUT" == "all" ] && OS_LIST='ubuntu-latest macos-latest windows-latest' || OS_LIST=$OS_INPUT
             [ "$PM_INPUT" == "all" ] && PM_LIST='pnpm npm yarn yarn-classic' || PM_LIST=$PM_INPUT
 
             JSON_ARRAY="[]"
