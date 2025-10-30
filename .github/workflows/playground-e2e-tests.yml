@@ -173,6 +173,3 @@ jobs:
             /tmp/*-e2e-test-*
             playground/**/node_modules/.cache/wrangler
           retention-days: 7
-            playground/**/node_modules/.cache/wrangler
-          retention-days: 7
-
