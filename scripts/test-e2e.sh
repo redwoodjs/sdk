@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -e
 
+if [[ "$1" == "--" ]]; then
+  shift
+fi
+
 cd "$(dirname "$0")/.."
 
 (cd sdk && pnpm build)
