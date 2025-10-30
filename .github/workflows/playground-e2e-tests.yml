@@ -145,18 +145,18 @@ jobs:
           cache: "pnpm"
 
       - name: Install dependencies
-        shell: ${{ runner.os == 'Windows' && 'pwsh' || 'bash' }}
+        shell: ${{ runner.os == 'Windows' ? 'pwsh' : 'bash' }}
         run: pnpm install
 
       - name: Build SDK
-        shell: ${{ runner.os == 'Windows' && 'pwsh' || 'bash' }}
+        shell: ${{ runner.os == 'Windows' ? 'pwsh' : 'bash' }}
         run: |
           cd sdk
           pnpm build
 
       - name: Run Playground E2E Tests
         id: tests
-        shell: ${{ runner.os == 'Windows' && 'pwsh' || 'bash' }}
+        shell: ${{ runner.os == 'Windows' ? 'pwsh' : 'bash' }}
         run: |
           pnpm install
           pnpm test:e2e
