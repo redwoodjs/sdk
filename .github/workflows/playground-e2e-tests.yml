@@ -145,18 +145,15 @@ jobs:
           cache: "pnpm"
 
       - name: Install dependencies
-        shell: "${{ if(matrix.os == 'windows-latest', 'pwsh', 'bash') }}"
         run: pnpm install
 
       - name: Build SDK
-        shell: "${{ if(matrix.os == 'windows-latest', 'pwsh', 'bash') }}"
         run: |
           cd sdk
           pnpm build
 
       - name: Run Playground E2E Tests
         id: tests
-        shell: "${{ if(matrix.os == 'windows-latest', 'pwsh', 'bash') }}"
         run: |
           pnpm install
           pnpm test:e2e
