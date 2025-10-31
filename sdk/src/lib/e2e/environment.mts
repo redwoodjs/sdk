@@ -51,9 +51,14 @@ async function getDirectoryHash(directory: string): Promise<string> {
 }
 
 const getTempDir = async (): Promise<tmp.DirectoryResult> => {
-  const projectsTempDir = path.join(ROOT_DIR, ".tmp", "e2e-projects");
+  const tmpDir = await ensureTmpDir();
+  const projectsTempDir = path.join(tmpDir, "e2e-projects");
   await fs.promises.mkdir(projectsTempDir, { recursive: true });
-  return tmp.dir({ unsafeCleanup: true, dir: projectsTempDir });
+  return tmp.dir({
+    unsafeCleanup: true,
+    dir: projectsTempDir,
+    tmpdir: tmpDir,
+  });
 };
 
 function slugify(str: string) {
