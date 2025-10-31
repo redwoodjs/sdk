@@ -37,3 +37,25 @@ We then explored several alternatives to remove the need for the environment var
 This aligns perfectly with our desired behavior: we want to run `dev:init` in any development context, and skip it in any production context. Using `process.env.NODE_ENV !== 'production'` as our condition is more accurate and robust than our previous `RWSDK_DEPLOY` flag. It correctly handles the default cases and also respects any user overrides of `NODE_ENV`.
 
 This change is backward-compatible. For existing users who have `RWSDK_DEPLOY=1` in their scripts, the variable will simply be ignored by the plugin. However, for Windows users, the build was already broken; they will need to remove the variable from their `release` script to get the fix, which is a reasonable expectation. This will be noted for the pull request description.
+
+### 3. Show npm Logs in CI
+
+To get more visibility, I will change the `stdio` option to `"inherit"`. This will stream `npm`'s output directly to the CI logs, allowing me to see exactly which package it might be struggling with or if it's a network issue.
+
+### 4. Hard Link Permission Errors on Windows CI
+
+**Issue:** With caching enabled, the E2E tests on Windows CI are failing with "Permission denied" errors when trying to create hard links for the `pnpm` cache. The `cp -al` command, used for creating a fast, hardlink-based copy of `node_modules`, is failing.
+
+**Investigation:** The errors indicate a problem with file system permissions in the system's temporary directory (`C:\msys64\tmp` in the CI environment). Creating hard links can require specific privileges that may not be available to the CI user. It could also be a cross-volume issue, where the temp directory and the project directory reside on different logical drives, which is a situation where hard links are not allowed.
+
+Although we can create temporary directories for the test projects themselves, the creation of hard links appears to be more restricted.
+
+**Fix:** Instead of relying on the system's temporary directory, which can be unpredictable across different environments, I will change the caching logic to use a directory within the project's root: `.tmp/rwsdk-e2e-cache`. This ensures that the cache resides on the same volume as the project, avoiding cross-device linking issues, and leverages a directory where we are certain to have write permissions.
+
+### 5. Enable E2E Cache in CI
+
+**Issue:** The E2E tests are slow, especially on Windows CI, due to repeatedly installing dependencies. The test harness cache is currently disabled in CI.
+
+**Investigation:** I agree that enabling the cache in CI is a good idea. Looking at the implementation, I found that the cache key generation relies on a shell command (`find . -type f | sort | md5sum`) to create a checksum of the SDK's `dist` directory. This command is not cross-platform and would fail on Windows, which is likely why the cache was disabled in CI environments in the first place. This is also probably why my previous change to show `npm` logs didn't produce any output for `npm` tests: the process was failing silently on this checksum command when caching was enabled locally for `npm` runs.
+
+**Fix:** I will replace the shell command with a Node.js implementation that recursively traverses the directory, reads file contents, and generates an MD5 hash. This will be cross-platform. With this fixed, I can then enable the cache by default for all environments, including CI. I'll also update the contributing guide to reflect this change.

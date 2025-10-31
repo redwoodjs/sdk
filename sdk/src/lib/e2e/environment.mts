@@ -15,12 +15,39 @@ import { PackageManager } from "./types.mjs";
 
 const log = debug("rwsdk:e2e:environment");
 
-const IS_CACHE_ENABLED = process.env.RWSDK_E2E_CACHE
-  ? process.env.RWSDK_E2E_CACHE === "1"
-  : !IS_CI;
+const IS_CACHE_ENABLED = process.env.RWSDK_E2E_CACHE !== "0";
 
 if (IS_CACHE_ENABLED) {
   log("E2E test caching is enabled.");
+}
+
+async function getFilesRecursively(directory: string): Promise<string[]> {
+  const entries = await fs.promises.readdir(directory, { withFileTypes: true });
+  const files = await Promise.all(
+    entries.map((entry) => {
+      const fullPath = path.join(directory, entry.name);
+      return entry.isDirectory() ? getFilesRecursively(fullPath) : fullPath;
+    }),
+  );
+  return files.flat();
+}
+
+async function getDirectoryHash(directory: string): Promise<string> {
+  const hash = createHash("md5");
+  if (!(await pathExists(directory))) {
+    return "";
+  }
+  const files = await getFilesRecursively(directory);
+  files.sort();
+
+  for (const file of files) {
+    const relativePath = path.relative(directory, file);
+    const data = await fs.promises.readFile(file);
+    hash.update(relativePath.replace(/\\/g, "/")); // Normalize path separators
+    hash.update(data);
+  }
+
+  return hash.digest("hex");
 }
 
 const getTempDir = async (): Promise<tmp.DirectoryResult> => {
@@ -279,15 +306,10 @@ async function installDependencies(
   projectDir: string,
   monorepoRoot?: string,
 ): Promise<void> {
+  let sdkDistChecksum = "";
   if (IS_CACHE_ENABLED) {
+    sdkDistChecksum = await getDirectoryHash(path.join(ROOT_DIR, "dist"));
     // Generate a checksum of the SDK's dist directory to factor into the cache key
-    const { stdout: sdkDistChecksum } = await $(
-      "find . -type f | sort | md5sum",
-      {
-        shell: true,
-        cwd: path.join(ROOT_DIR, "dist"),
-      },
-    );
     const projectIdentifier = monorepoRoot
       ? `${monorepoRoot}-${projectDir}`
       : projectDir;
@@ -299,7 +321,8 @@ async function installDependencies(
       ? basename(monorepoRoot)
       : basename(projectDir);
     const cacheRoot = path.join(
-      os.tmpdir(),
+      ROOT_DIR,
+      ".tmp",
       "rwsdk-e2e-cache",
       `${cacheDirName}-${projectHash}`,
     );
@@ -396,13 +419,6 @@ async function installDependencies(
     // After successful install, populate the cache if enabled
     if (IS_CACHE_ENABLED) {
       // Re-calculate cache path to be safe
-      const { stdout: sdkDistChecksum } = await $(
-        "find . -type f | sort | md5sum",
-        {
-          shell: true,
-          cwd: path.join(ROOT_DIR, "dist"),
-        },
-      );
       const projectIdentifier = monorepoRoot
         ? `${monorepoRoot}-${projectDir}`
         : projectDir;
@@ -414,7 +430,8 @@ async function installDependencies(
         ? basename(monorepoRoot)
         : basename(projectDir);
       const cacheRoot = path.join(
-        os.tmpdir(),
+        ROOT_DIR,
+        ".tmp",
         "rwsdk-e2e-cache",
         `${cacheDirName}-${projectHash}`,
       );
