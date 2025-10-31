@@ -21,7 +21,7 @@ if (IS_CACHE_ENABLED) {
   log("E2E test caching is enabled.");
 }
 
-async function getFilesRecursively(directory: string): Promise<string[]> {
+export async function getFilesRecursively(directory: string): Promise<string[]> {
   const entries = await fs.promises.readdir(directory, { withFileTypes: true });
   const files = await Promise.all(
     entries.map((entry) => {
@@ -329,7 +329,10 @@ async function installDependencies(
     const cacheDirName = monorepoRoot
       ? basename(monorepoRoot)
       : basename(projectDir);
-    const cacheRoot = path.join(await ensureTmpDir(), "rwsdk-e2e-cache");
+    const cacheRoot = path.join(
+      await ensureTmpDir(),
+      `${cacheDirName}-${projectHash}`,
+    );
     const nodeModulesCachePath = path.join(cacheRoot, "node_modules");
 
     if (await pathExists(nodeModulesCachePath)) {
@@ -424,7 +427,11 @@ async function installDependencies(
       const cacheDirName = monorepoRoot
         ? basename(monorepoRoot)
         : basename(projectDir);
-      const cacheRoot = path.join(await ensureTmpDir(), "rwsdk-e2e-cache");
+      const cacheRoot = path.join(
+        await ensureTmpDir(),
+        "rwsdk-e2e-cache",
+        `${cacheDirName}-${projectHash}`,
+      );
       const nodeModulesCachePath = path.join(cacheRoot, "node_modules");
 
       console.log(

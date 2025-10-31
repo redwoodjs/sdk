@@ -115,3 +115,11 @@ Although we can create temporary directories for the test projects themselves, t
 **Investigation:** A targeted review of the `sdk/src/lib/e2e` directory revealed the remaining instances that were missed.
 
 **Fix:** I will now perform a focused update to replace the remaining uses of `os.tmpdir()` in `sdk/src/lib/e2e/testHarness.mts` and `sdk/src/lib/e2e/browser.mts` with our centralized `TMP_DIR` constant. This will finally consolidate all temporary file operations for the E2E tests within the project's root directory.
+
+### 15. Investigate Tarball Checksum Mismatch
+
+**Issue:** The E2E tests are failing with a checksum mismatch between the source `dist` directory and the `dist` directory that is unpacked from the tarball during installation.
+
+**Investigation:** The checksums being different indicates that the contents of the directory are being altered during the `npm pack` or `npm install` process. The most likely causes are files being excluded or line endings being changed (LF vs. CRLF). A single checksum for the entire directory does not provide enough information to identify the root cause.
+
+**Fix:** To diagnose this, I will implement a more detailed verification process. Instead of comparing a single hash of the entire directory, the `verifyPackedContents` function will be updated to perform a file-by-file comparison. It will generate a list of all files and their individual MD5 checksums from both the source and installed `dist` directories. It will then log any discrepancies, including missing/extra files and any files with content mismatches. This will give us a precise report of what is causing the checksums to differ.

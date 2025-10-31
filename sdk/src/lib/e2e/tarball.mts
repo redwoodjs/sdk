@@ -8,7 +8,10 @@ import {
   uniqueNamesGenerator,
 } from "unique-names-generator";
 import { ROOT_DIR } from "../constants.mjs";
-import { copyProjectToTempDir } from "./environment.mjs";
+import {
+  copyProjectToTempDir,
+  getFilesRecursively,
+} from "./environment.mjs";
 
 const log = (message: string) => console.log(message);
 
@@ -23,6 +26,24 @@ interface TarballEnvironment {
   cleanup: () => Promise<void>;
 }
 
+async function getFileChecksums(
+  directory: string,
+): Promise<Map<string, string>> {
+  const checksums = new Map<string, string>();
+  if (!fs.existsSync(directory)) {
+    return checksums;
+  }
+  const files = await getFilesRecursively(directory);
+
+  for (const file of files) {
+    const relativePath = path.relative(directory, file).replace(/\\/g, "/"); // Normalize
+    const data = await fs.promises.readFile(file);
+    const hash = createHash("md5").update(data).digest("hex");
+    checksums.set(relativePath, hash);
+  }
+  return checksums;
+}
+
 async function verifyPackedContents(targetDir: string) {
   log("  - Verifying installed package contents...");
   const packageName = "rwsdk";
@@ -33,36 +54,49 @@ async function verifyPackedContents(targetDir: string) {
     "dist",
   );
 
-  if (!fs.existsSync(installedDistPath)) {
-    throw new Error(
-      `dist/ directory not found in installed package at ${installedDistPath}.`,
-    );
+  const originalFiles = await getFileChecksums(path.join(ROOT_DIR, "dist"));
+  const installedFiles = await getFileChecksums(installedDistPath);
+
+  const originalFilePaths = new Set(originalFiles.keys());
+  const installedFilePaths = new Set(installedFiles.keys());
+
+  let mismatchFound = false;
+
+  log(`    - Comparing ${originalFilePaths.size} original files with ${installedFilePaths.size} installed files...`);
+
+  // Find files in original but not in installed
+  for (const filePath of originalFilePaths) {
+    if (!installedFilePaths.has(filePath)) {
+      log(`    - MISSING FILE in installed dist: ${filePath}`);
+      mismatchFound = true;
+    }
   }
 
-  const { stdout: originalDistChecksumOut } = await $(
-    "find . -type f | sort | md5sum",
-    {
-      shell: true,
-      cwd: path.join(ROOT_DIR, "dist"),
-    },
-  );
-  const originalDistChecksum = originalDistChecksumOut.split(" ")[0];
+  // Find files in installed but not in original
+  for (const filePath of installedFilePaths) {
+    if (!originalFilePaths.has(filePath)) {
+      log(`    - EXTRA FILE in installed dist: ${filePath}`);
+      mismatchFound = true;
+    }
+  }
 
-  const { stdout: installedDistChecksumOut } = await $(
-    "find . -type f | sort | md5sum",
-    {
-      shell: true,
-      cwd: installedDistPath,
-    },
-  );
-  const installedDistChecksum = installedDistChecksumOut.split(" ")[0];
+  // Compare checksums for common files
+  for (const filePath of originalFilePaths) {
+    if (installedFilePaths.has(filePath)) {
+      const originalChecksum = originalFiles.get(filePath);
+      const installedChecksum = installedFiles.get(filePath);
+      if (originalChecksum !== installedChecksum) {
+        log(`    - CHECKSUM MISMATCH for ${filePath}:`);
+        log(`      - Original:  ${originalChecksum}`);
+        log(`      - Installed: ${installedChecksum}`);
+        mismatchFound = true;
+      }
+    }
+  }
 
-  log(`    - Original dist checksum: ${originalDistChecksum}`);
-  log(`    - Installed dist checksum: ${installedDistChecksum}`);
-
-  if (originalDistChecksum !== installedDistChecksum) {
+  if (mismatchFound) {
     throw new Error(
-      "File list in installed dist/ does not match original dist/.",
+      "Mismatch found between original and installed dist directories.",
     );
   }
 
