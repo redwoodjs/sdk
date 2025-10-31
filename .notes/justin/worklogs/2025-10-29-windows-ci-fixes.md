@@ -236,6 +236,20 @@ In case of an installation failure, the existing error handling will log the cap
 
 **Fix (Attempt 1):** I will conduct an experiment by changing the `execa` call to use the explicit command-and-arguments array syntax (e.g., `$(pm, ['run', 'dev'], options)`). This is a more robust way to pass arguments and will rule out any shell parsing problems.
 
+**Fix (Attempt 2):** Attempt 1 showed no change in behavior. As per the user's suggestion, I will now re-add the `detached: true` option while keeping the more robust array-based syntax for the command. This combination is the most reliable way to invoke a long-running child process and kill it cleanly, so if this still fails, it points to a more fundamental issue with the child process itself.
+
+### 30. Validate Execa Wrapper Behavior
+
+**Issue:** The dev server process continues to fail silently. The minimal reproduction script showed that our `$` wrapper is not returning an object with a `.child` property, which prevents lifecycle listeners from being attached.
+
+**Investigation:** The user correctly pointed out that before rewriting the wrapper, we must first validate its behavior against the underlying `execa` library to understand the discrepancy. It is premature to assume the wrapper is fundamentally flawed without direct evidence.
+
+**Fix:** I will use the `playground/hello-world/debug-spawn.mjs` script to conduct a clear experiment. The script will be modified to:
+1.  Import both our `$` wrapper and the original `execa` function.
+2.  Execute the same command using both our wrapper and the direct `execa` call.
+3.  Log the properties of the returned object from each call, specifically checking for the presence of the `.child` property.
+This direct comparison will prove definitively whether our wrapper is altering the return value and guide the next step.
+
 ### 28. Fix Bug in Cache Hit Logic
 
 **Issue:** After implementing the new caching strategy, the tarball verification fails with a "missing files" error. The installed `dist` directory is empty.
@@ -251,3 +265,15 @@ In case of an installation failure, the existing error handling will log the cap
 **Investigation:** After several attempts to fix and improve the verification logic, it continues to fail and cause friction. The user correctly pointed out that its value as a safeguard is currently outweighed by the problems it's causing during active development.
 
 **Fix:** I will remove the `verifyPackedContents` function and its call from the E2E test harness. This will eliminate the checksum mismatch as a source of test failures and allow us to focus entirely on the dev server issue. The risk of future packaging bugs will be accepted for now in favor of unblocking the development workflow.
+
+### 30. Resolve Dev Server Timeout on Windows
+
+**Issue:** After resolving all other issues, the dev server process was still failing silently on Windows. None of the stream listeners (`stdout`, `stderr`) or process lifecycle events (`spawn`, `error`, `exit`) were producing any output, making it impossible to diagnose the timeout.
+
+**Investigation:** To isolate the problem from the complexity of the test harness, I created a standalone debug script (`playground/hello-world/debug-spawn.mjs`). This script systematically tested various configurations for spawning the `pnpm run dev` command using `execa`.
+
+The results were conclusive. Every test case that used the `detached: true` option failed to capture any `stdio` output. In contrast, the test cases with `detached: false` or `shell: true` immediately started streaming the dev server's output. This pinpointed the root cause: on Windows, `execa`'s `detached: true` option spawns the process in a way that severs the I/O streams from the parent, leading to the silent failure we were observing.
+
+**Fix:** The `detached` option is necessary on Unix-like systems for our cleanup logic, which kills the entire process group. However, on Windows, our cleanup logic uses `taskkill /t`, which does not have this requirement.
+
+The fix was to make the `detached` option conditional. In `sdk/src/lib/e2e/dev.mts`, I changed the `execa` call to use `detached: process.platform !== "win32"`. This sets the flag to `false` on Windows, restoring `stdio` communication, while preserving the existing `true` value for other platforms.

@@ -96,10 +96,11 @@ export async function runDevServer(
     const pm = getPackageManagerCommand(packageManager);
 
     // Use the provided cwd if available
-    const [command, ...args] = [pm, "run", "dev"];
-    devProcess = $(command, args, {
+    devProcess = $(pm, ["run", "dev"], {
       all: true,
-      detached: true, // Re-enable for reliable process cleanup
+      // On Windows, detached: true prevents stdio from being captured.
+      // On Unix, it's required for reliable cleanup by killing the process group.
+      detached: process.platform !== "win32",
       cleanup: true, // Let execa handle cleanup
       forceKillAfterTimeout: 2000, // Force kill if graceful shutdown fails
       cwd: cwd || process.cwd(), // Use provided directory or current directory
