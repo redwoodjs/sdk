@@ -11,16 +11,15 @@ export const IS_CI = !!(
   process.env.NETLIFY
 );
 
-export const TMP_DIR = path.join(ROOT_DIR, ".tmp");
-
 export const RWSDK_SKIP_DEV =
   Boolean(process.env.RWSDK_SKIP_DEV);
 
 export const RWSDK_SKIP_DEPLOY =
-  Boolean(process.env.RWSDK_SKIP_DEPLOY);
+  process.env.RWSDK_SKIP_DEPLOY === "true" ||
+  process.env.RWSDK_SKIP_DEPLOY === "1";
 
 export const IS_DEBUG_MODE = process.env.RWSDK_E2E_DEBUG
-  ? Boolean(process.env.RWSDK_E2E_DEBUG)
+  ? process.env.RWSDK_E2E_DEBUG === "true"
   : !IS_CI;
 
 export const SETUP_PLAYGROUND_ENV_TIMEOUT = process.env

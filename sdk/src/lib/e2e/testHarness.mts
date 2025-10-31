@@ -11,6 +11,7 @@ import {
   test,
 } from "vitest";
 import { launchBrowser } from "./browser.mjs";
+import { ensureTmpDir } from "./utils.mjs";
 import {
   DEPLOYMENT_CHECK_TIMEOUT,
   DEPLOYMENT_MIN_TRIES,
@@ -24,7 +25,6 @@ import {
   SETUP_WAIT_TIMEOUT,
   TEST_MAX_RETRIES,
   TEST_MAX_RETRIES_PER_CODE,
-  TMP_DIR,
 } from "./constants.mjs";
 import { runDevServer } from "./dev.mjs";
 import { poll, pollValue } from "./poll.mjs";
@@ -319,7 +319,6 @@ export function createDevServer() {
     },
   };
 }
-
 /**
  * Creates a deployment instance using the shared playground environment.
  * Automatically registers cleanup to run after the test.
@@ -522,7 +521,7 @@ function createTestRunner(
       let browser: Browser;
 
       beforeAll(async () => {
-        const tempDir = path.join(TMP_DIR, "rwsdk-e2e-tests");
+        const tempDir = path.join(await ensureTmpDir(), "rwsdk-e2e-tests");
         const wsEndpointFile = path.join(tempDir, "wsEndpoint");
 
         try {
@@ -625,7 +624,7 @@ function createSDKTestRunner(): SDKRunner & {
         let browser: Browser;
 
         beforeAll(async () => {
-          const tempDir = path.join(os.tmpdir(), "rwsdk-e2e-tests");
+          const tempDir = path.join(await ensureTmpDir(), "rwsdk-e2e-tests");
           const wsEndpointFile = path.join(tempDir, "wsEndpoint");
 
           try {

@@ -4,14 +4,14 @@ import { copy, pathExists } from "fs-extra";
 import ignore from "ignore";
 import * as fs from "node:fs";
 import path from "node:path";
-import os from "os";
 import { basename, join, relative, resolve } from "path";
 import tmp from "tmp-promise";
 import { $ } from "../../lib/$.mjs";
 import { ROOT_DIR } from "../constants.mjs";
-import { INSTALL_DEPENDENCIES_RETRIES, IS_CI } from "./constants.mjs";
+import { INSTALL_DEPENDENCIES_RETRIES } from "./constants.mjs";
 import { retry } from "./retry.mjs";
 import { PackageManager } from "./types.mjs";
+import { ensureTmpDir } from "./utils.mjs";
 
 const log = debug("rwsdk:e2e:environment");
 
@@ -87,7 +87,7 @@ const createSdkTarball = async (): Promise<{
 
   // Create a temporary directory to receive the tarball, ensuring a stable path.
   const tempDir = await fs.promises.mkdtemp(
-    path.join(os.tmpdir(), "rwsdk-tarball-"),
+    path.join(await ensureTmpDir(), "rwsdk-tarball-"),
   );
 
   await $({
@@ -254,9 +254,10 @@ export async function copyProjectToTempDir(
     const npmrcPath = join(targetDir, ".npmrc");
     await fs.promises.writeFile(npmrcPath, "frozen-lockfile=false\n");
 
+    const tmpDir = await ensureTmpDir();
     if (packageManager === "yarn") {
       const yarnrcPath = join(targetDir, ".yarnrc.yml");
-      const yarnCacheDir = path.join(os.tmpdir(), "yarn-cache");
+      const yarnCacheDir = path.join(tmpDir, "yarn-cache");
       await fs.promises.mkdir(yarnCacheDir, { recursive: true });
       const yarnConfig = [
         // todo(justinvdm, 23-09-23): Support yarn pnpm
@@ -270,7 +271,7 @@ export async function copyProjectToTempDir(
 
     if (packageManager === "yarn-classic") {
       const yarnrcPath = join(targetDir, ".yarnrc");
-      const yarnCacheDir = path.join(os.tmpdir(), "yarn-classic-cache");
+      const yarnCacheDir = path.join(tmpDir, "yarn-classic-cache");
       await fs.promises.mkdir(yarnCacheDir, { recursive: true });
       const yarnConfig = `cache-folder "${yarnCacheDir.replace(/\\/g, "/")}"`;
       await fs.promises.writeFile(yarnrcPath, yarnConfig);
@@ -395,7 +396,7 @@ async function installDependencies(
         });
       }
     }
-    const npmCacheDir = path.join(os.tmpdir(), "npm-cache");
+    const npmCacheDir = path.join(await ensureTmpDir(), "npm-cache");
     await fs.promises.mkdir(npmCacheDir, { recursive: true });
 
     const installCommand = {
