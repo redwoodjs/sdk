@@ -24,6 +24,7 @@ import {
   SETUP_WAIT_TIMEOUT,
   TEST_MAX_RETRIES,
   TEST_MAX_RETRIES_PER_CODE,
+  TMP_DIR,
 } from "./constants.mjs";
 import { runDevServer } from "./dev.mjs";
 import { poll, pollValue } from "./poll.mjs";
@@ -521,7 +522,7 @@ function createTestRunner(
       let browser: Browser;
 
       beforeAll(async () => {
-        const tempDir = path.join(os.tmpdir(), "rwsdk-e2e-tests");
+        const tempDir = path.join(TMP_DIR, "rwsdk-e2e-tests");
         const wsEndpointFile = path.join(tempDir, "wsEndpoint");
 
         try {

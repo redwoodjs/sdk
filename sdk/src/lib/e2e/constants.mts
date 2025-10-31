@@ -1,3 +1,6 @@
+import path from "path";
+import { ROOT_DIR } from "../constants.mjs";
+
 export const IS_CI = !!(
   (process.env.CI && !process.env.NOT_CI) ||
   process.env.GITHUB_ACTIONS ||
@@ -8,8 +11,16 @@ export const IS_CI = !!(
   process.env.NETLIFY
 );
 
+export const TMP_DIR = path.join(ROOT_DIR, ".tmp");
+
+export const RWSDK_SKIP_DEV =
+  Boolean(process.env.RWSDK_SKIP_DEV);
+
+export const RWSDK_SKIP_DEPLOY =
+  Boolean(process.env.RWSDK_SKIP_DEPLOY);
+
 export const IS_DEBUG_MODE = process.env.RWSDK_E2E_DEBUG
-  ? process.env.RWSDK_E2E_DEBUG === "true"
+  ? Boolean(process.env.RWSDK_E2E_DEBUG)
   : !IS_CI;
 
 export const SETUP_PLAYGROUND_ENV_TIMEOUT = process.env

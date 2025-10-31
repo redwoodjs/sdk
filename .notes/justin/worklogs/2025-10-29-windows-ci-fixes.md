@@ -67,3 +67,11 @@ Although we can create temporary directories for the test projects themselves, t
 **Investigation:** The logs show that while the cache is now located at `D:\a\sdk\sdk\sdk\.tmp\rwsdk-e2e-cache`, the temporary directories for the test projects are still being created in the system's default temporary directory (`C:\msys64\tmp`). The `cp -al` command fails because it cannot create hard links between two different drives (C: and D:).
 
 **Fix:** To resolve this, I will modify the test harness to create the temporary project directories within the project root as well, specifically under `<ROOT>/.tmp/e2e-projects`. This will ensure that both the cache and the test projects reside on the same volume, allowing hard links to be created successfully.
+
+### 6. Final `tmpdir` Cleanup in E2E Harness
+
+**Issue:** After several rounds of fixes, there are still remaining references to `os.tmpdir()` in the E2E test harness, specifically in `testHarness.mts` and `browser.mts`, which continue to cause cross-device link errors.
+
+**Investigation:** A targeted review of the `sdk/src/lib/e2e` directory revealed the remaining instances that were missed.
+
+**Fix:** I will now perform a focused update to replace the remaining uses of `os.tmpdir()` in `sdk/src/lib/e2e/testHarness.mts` and `sdk/src/lib/e2e/browser.mts` with our centralized `TMP_DIR` constant. This will finally consolidate all temporary file operations for the E2E tests within the project's root directory.

@@ -8,11 +8,11 @@ import {
 } from "@puppeteer/browsers";
 import debug from "debug";
 import { mkdirp, pathExists } from "fs-extra";
-import * as os from "os";
 import { join } from "path";
 import type { Browser } from "puppeteer-core";
 import puppeteer from "puppeteer-core";
 import { SmokeTestOptions } from "./types.mjs";
+import { TMP_DIR } from "./constants.mjs";
 
 const log = debug("rwsdk:e2e:browser");
 
@@ -23,6 +23,11 @@ export async function launchBrowser(
   browserPath?: string,
   headless: boolean = true,
 ): Promise<Browser> {
+  // Define a consistent cache directory path in system temp folder
+  const rwCacheDir = join(TMP_DIR, "redwoodjs-smoke-test-cache");
+  await mkdirp(rwCacheDir);
+  log("Using cache directory: %s", rwCacheDir);
+
   // Get browser path if not provided
   if (!browserPath) {
     log("Getting browser executable path");
@@ -67,7 +72,7 @@ export async function getBrowserPath(
   log("Detected platform: %s", platform);
 
   // Define a consistent cache directory path in system temp folder
-  const rwCacheDir = join(os.tmpdir(), "redwoodjs-smoke-test-cache");
+  const rwCacheDir = join(TMP_DIR, "redwoodjs-smoke-test-cache");
   await mkdirp(rwCacheDir);
   log("Using cache directory: %s", rwCacheDir);
 
