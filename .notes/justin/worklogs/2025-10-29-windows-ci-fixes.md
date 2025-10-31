@@ -155,3 +155,25 @@ Although we can create temporary directories for the test projects themselves, t
 **Investigation:** I reviewed the cache path generation logic in `sdk/src/lib/e2e/environment.mts` and discovered a discrepancy. The path used to check for an existing cache entry is different from the path used to save a new cache entry after installation. Specifically, the cache population logic includes an extra directory segment (`rwsdk-e2e-cache`) that is missing from the cache check logic.
 
 **Fix:** I will correct the path construction in the cache check section to match the path used for cache population. This will align the read and write locations, ensuring that the cache is hit on subsequent test runs.
+
+### 20. Create Standalone Debug Script for Dev Server
+
+**Issue:** Even after redirecting the dev server's output, we are still not seeing any logs after the initial "Starting development server..." message. The process hangs without providing any diagnostic information.
+
+**Investigation:** The complexity of the E2E test harness might be interfering with the child process or its output streams in a subtle way. To debug this effectively, we need to isolate the dev server launch from the test harness.
+
+**Fix:** I will create a standalone Node.js script, `scripts/debug-dev-server.mjs`, that replicates the core logic for setting up a test environment and launching the dev server. This script will:
+1.  Copy a specified playground project to a temporary directory.
+2.  Pack the local SDK into a tarball.
+3.  Install the packed SDK and other dependencies in the temporary project.
+4.  Attempt to launch the dev server using the same command as the E2E tests, with `stdio` set to `"inherit"`.
+
+This will provide a clean, isolated environment to reproduce and diagnose the hanging issue.
+
+### 21. Exclude Intermediate Builds from Tarball Verification
+
+**Issue:** The tarball verification step in the E2E tests is failing due to a checksum mismatch. The logs show that two extra files, `rwsdk-vendor-client-barrel.js` and `rwsdk-vendor-server-barrel.js`, are present in the `__intermediate_builds` directory of the installed package, but not in the source `dist` directory.
+
+**Investigation:** These intermediate build artifacts are generated as part of the package installation process, which explains why they exist in the installed version but not in the local pre-packed version. The tarball verification logic needs to account for this.
+
+**Fix:** I will modify the `verifyPackedContents` function to explicitly ignore the `__intermediate_builds` directory when comparing the file lists. This will prevent the verification from failing on these expected differences, allowing the tests to proceed.

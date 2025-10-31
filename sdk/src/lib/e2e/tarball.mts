@@ -7,7 +7,7 @@ import {
   animals,
   uniqueNamesGenerator,
 } from "unique-names-generator";
-import { ROOT_DIR } from "../constants.mjs";
+import { INTERMEDIATES_OUTPUT_DIR, ROOT_DIR } from "../constants.mjs";
 import {
   copyProjectToTempDir,
   getFilesRecursively,
@@ -57,8 +57,17 @@ async function verifyPackedContents(targetDir: string) {
   const originalFiles = await getFileChecksums(path.join(ROOT_DIR, "dist"));
   const installedFiles = await getFileChecksums(installedDistPath);
 
-  const originalFilePaths = new Set(originalFiles.keys());
-  const installedFilePaths = new Set(installedFiles.keys());
+  const intermediatesDirName = path.basename(INTERMEDIATES_OUTPUT_DIR);
+
+  const filterIntermediates = (p: string) =>
+    !p.startsWith(intermediatesDirName + "/");
+
+  const originalFilePaths = new Set(
+    [...originalFiles.keys()].filter(filterIntermediates),
+  );
+  const installedFilePaths = new Set(
+    [...installedFiles.keys()].filter(filterIntermediates),
+  );
 
   let mismatchFound = false;
 
