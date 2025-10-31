@@ -26,92 +26,6 @@ interface TarballEnvironment {
   cleanup: () => Promise<void>;
 }
 
-async function getFileChecksums(
-  directory: string,
-): Promise<Map<string, string>> {
-  const checksums = new Map<string, string>();
-  if (!fs.existsSync(directory)) {
-    return checksums;
-  }
-  const files = await getFilesRecursively(directory);
-
-  for (const file of files) {
-    const relativePath = path.relative(directory, file).replace(/\\/g, "/"); // Normalize
-    const data = await fs.promises.readFile(file);
-    const hash = createHash("md5").update(data).digest("hex");
-    checksums.set(relativePath, hash);
-  }
-  return checksums;
-}
-
-async function verifyPackedContents(targetDir: string) {
-  log("  - Verifying installed package contents...");
-  const packageName = "rwsdk";
-  const installedDistPath = path.join(
-    targetDir,
-    "node_modules",
-    packageName,
-    "dist",
-  );
-
-  const originalFiles = await getFileChecksums(path.join(ROOT_DIR, "dist"));
-  const installedFiles = await getFileChecksums(installedDistPath);
-
-  const intermediatesDirName = path.basename(INTERMEDIATES_OUTPUT_DIR);
-
-  const filterIntermediates = (p: string) =>
-    !p.startsWith(intermediatesDirName + "/");
-
-  const originalFilePaths = new Set(
-    [...originalFiles.keys()].filter(filterIntermediates),
-  );
-  const installedFilePaths = new Set(
-    [...installedFiles.keys()].filter(filterIntermediates),
-  );
-
-  let mismatchFound = false;
-
-  log(`    - Comparing ${originalFilePaths.size} original files with ${installedFilePaths.size} installed files...`);
-
-  // Find files in original but not in installed
-  for (const filePath of originalFilePaths) {
-    if (!installedFilePaths.has(filePath)) {
-      log(`    - MISSING FILE in installed dist: ${filePath}`);
-      mismatchFound = true;
-    }
-  }
-
-  // Find files in installed but not in original
-  for (const filePath of installedFilePaths) {
-    if (!originalFilePaths.has(filePath)) {
-      log(`    - EXTRA FILE in installed dist: ${filePath}`);
-      mismatchFound = true;
-    }
-  }
-
-  // Compare checksums for common files
-  for (const filePath of originalFilePaths) {
-    if (installedFilePaths.has(filePath)) {
-      const originalChecksum = originalFiles.get(filePath);
-      const installedChecksum = installedFiles.get(filePath);
-      if (originalChecksum !== installedChecksum) {
-        log(`    - CHECKSUM MISMATCH for ${filePath}:`);
-        log(`      - Original:  ${originalChecksum}`);
-        log(`      - Installed: ${installedChecksum}`);
-        mismatchFound = true;
-      }
-    }
-  }
-
-  if (mismatchFound) {
-    throw new Error(
-      "Mismatch found between original and installed dist directories.",
-    );
-  }
-
-  log("  ✅ Installed package contents match the local build.");
-}
-
 /**
  * Copies wrangler cache from monorepo to temp directory for deployment tests
  */
@@ -220,8 +134,6 @@ export async function setupTarballEnvironment({
       packageManager,
       monorepoRoot,
     );
-
-    await verifyPackedContents(targetDir);
 
     // Copy wrangler cache to improve deployment performance
     const sdkRoot = ROOT_DIR;

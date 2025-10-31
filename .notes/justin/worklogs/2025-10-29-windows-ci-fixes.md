@@ -243,3 +243,11 @@ In case of an installation failure, the existing error handling will log the cap
 **Investigation:** The user discovered that the `runInstall` function, which is called after a cache hit to perform a targeted SDK installation, was incorrectly deleting the `node_modules` directory that had just been restored from the cache. This left the project in a broken state, causing the subsequent verification to fail.
 
 **Fix:** I will modify the `runInstall` function to only perform its cleanup step (deleting `node_modules` and lockfiles) on a cache miss. This will be controlled by the existing `isCacheHit` boolean, ensuring that the restored `node_modules` directory is preserved during the targeted SDK installation.
+
+### 29. Remove Tarball Verification
+
+**Issue:** The tarball content verification step has become a persistent and time-consuming blocker, preventing progress on the primary goal of debugging the dev server timeout.
+
+**Investigation:** After several attempts to fix and improve the verification logic, it continues to fail and cause friction. The user correctly pointed out that its value as a safeguard is currently outweighed by the problems it's causing during active development.
+
+**Fix:** I will remove the `verifyPackedContents` function and its call from the E2E test harness. This will eliminate the checksum mismatch as a source of test failures and allow us to focus entirely on the dev server issue. The risk of future packaging bugs will be accepted for now in favor of unblocking the development workflow.
