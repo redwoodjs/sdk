@@ -15,7 +15,7 @@ import { PackageManager } from "./types.mjs";
 
 const log = debug("rwsdk:e2e:environment");
 
-const IS_CACHE_ENABLED = process.env.RWSDK_E2E_CACHE !== "0";
+const IS_CACHE_ENABLED = !process.env.RWSDK_E2E_CACHE_DISABLED;
 
 if (IS_CACHE_ENABLED) {
   log("E2E test caching is enabled.");
@@ -51,7 +51,9 @@ async function getDirectoryHash(directory: string): Promise<string> {
 }
 
 const getTempDir = async (): Promise<tmp.DirectoryResult> => {
-  return tmp.dir({ unsafeCleanup: true });
+  const projectsTempDir = path.join(ROOT_DIR, ".tmp", "e2e-projects");
+  await fs.promises.mkdir(projectsTempDir, { recursive: true });
+  return tmp.dir({ unsafeCleanup: true, dir: projectsTempDir });
 };
 
 function slugify(str: string) {

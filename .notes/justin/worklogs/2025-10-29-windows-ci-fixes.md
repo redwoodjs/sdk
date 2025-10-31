@@ -59,3 +59,11 @@ Although we can create temporary directories for the test projects themselves, t
 **Investigation:** I agree that enabling the cache in CI is a good idea. Looking at the implementation, I found that the cache key generation relies on a shell command (`find . -type f | sort | md5sum`) to create a checksum of the SDK's `dist` directory. This command is not cross-platform and would fail on Windows, which is likely why the cache was disabled in CI environments in the first place. This is also probably why my previous change to show `npm` logs didn't produce any output for `npm` tests: the process was failing silently on this checksum command when caching was enabled locally for `npm` runs.
 
 **Fix:** I will replace the shell command with a Node.js implementation that recursively traverses the directory, reads file contents, and generates an MD5 hash. This will be cross-platform. With this fixed, I can then enable the cache by default for all environments, including CI. I'll also update the contributing guide to reflect this change.
+
+### 6. Invalid Cross-Device Link Errors on Windows CI
+
+**Issue:** After moving the cache directory into the project root, the tests still fail on Windows with "Invalid cross-device link" errors.
+
+**Investigation:** The logs show that while the cache is now located at `D:\a\sdk\sdk\sdk\.tmp\rwsdk-e2e-cache`, the temporary directories for the test projects are still being created in the system's default temporary directory (`C:\msys64\tmp`). The `cp -al` command fails because it cannot create hard links between two different drives (C: and D:).
+
+**Fix:** To resolve this, I will modify the test harness to create the temporary project directories within the project root as well, specifically under `<ROOT>/.tmp/e2e-projects`. This will ensure that both the cache and the test projects reside on the same volume, allowing hard links to be created successfully.
