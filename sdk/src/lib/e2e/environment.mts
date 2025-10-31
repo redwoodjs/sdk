@@ -405,13 +405,24 @@ async function installDependencies(
     // Run install command in the target directory
     log(`Running ${installCommand.join(" ")}`);
     const [command, ...args] = installCommand;
-    const result = await $(command, args, {
+    const installProcess = $(command, args, {
       cwd: targetDir,
-      stdio: "inherit", 
+      stdio: "pipe",
       env: {
         YARN_ENABLE_HARDENED_MODE: "0",
       },
     });
+
+    if (log.enabled) {
+      installProcess.stdout?.on("data", (chunk) =>
+        log(chunk.toString().trimEnd()),
+      );
+      installProcess.stderr?.on("data", (chunk) =>
+        log(chunk.toString().trimEnd()),
+      );
+    }
+
+    const result = await installProcess;
 
     console.log("✅ Dependencies installed successfully");
 

@@ -127,6 +127,8 @@ export async function runDevServer(
     // Listen for all output to get the URL
     const handleOutput = (data: Buffer, source: string) => {
       const output = data.toString();
+      // Raw output for debugging
+      process.stdout.write(`[dev:${source}] ` + output);
       allOutput += output; // Accumulate all output
       log("Received output from %s: %s", source, output.replace(/\n/g, "\\n"));
 
@@ -215,10 +217,6 @@ export async function runDevServer(
         handleOutput(data, "child.stderr"),
       );
     }
-
-    // Tee the output to the console for real-time feedback
-    devProcess.stdout?.pipe(process.stdout);
-    devProcess.stderr?.pipe(process.stderr);
 
     // Wait for URL with timeout
     const waitForUrl = async (): Promise<string> => {

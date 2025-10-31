@@ -177,3 +177,30 @@ This will provide a clean, isolated environment to reproduce and diagnose the ha
 **Investigation:** These intermediate build artifacts are generated as part of the package installation process, which explains why they exist in the installed version but not in the local pre-packed version. The tarball verification logic needs to account for this.
 
 **Fix:** I will modify the `verifyPackedContents` function to explicitly ignore the `__intermediate_builds` directory when comparing the file lists. This will prevent the verification from failing on these expected differences, allowing the tests to proceed.
+
+### 22. Diagnose Dev Server Output Stream Handling
+
+**Issue:** The dev server process is still not producing any visible output during E2E tests, even after an attempt to pipe its `stdout` and `stderr` streams to the main process.
+
+**Investigation:** The user correctly pointed out that the `runDevServer` function already had `'.on('data', ...)` listeners attached to the process's output streams to parse the server URL. Adding a `.pipe()` call can interfere with these existing listeners, as a stream can only be consumed once. This is the likely reason the output is still being suppressed.
+
+**Fix:** I will remove the `.pipe()` calls. Instead, I will add a `console.log` statement directly inside the existing `handleOutput` function. This will print all raw output received from the dev server directly to the console, providing the necessary visibility for debugging without disrupting the URL parsing logic.
+
+### 23. Conditional Logging for Dependency Installation
+
+**Issue:** The dependency installation step can be very verbose. While this output is useful for debugging, it adds a lot of noise to the CI logs during normal test runs.
+
+**Investigation:** The `installDependencies` function currently uses a hardcoded `stdio: "inherit"` setting, which always streams the full output. We need a way to make this conditional.
+
+**Fix:** I will modify the `installDependencies` function to check if the `rwsdk:e2e:environment` debug channel is enabled.
+- If it is enabled, `stdio` will be set to `"inherit"` to provide detailed logs for debugging.
+- If it is disabled, `stdio` will be set to `"pipe"` to suppress the output and keep the main logs clean.
+In case of an installation failure, the existing error handling will log the captured output from the piped process, ensuring that we still have access to the relevant information when things go wrong.
+
+### 24. Stream Installation Logs Through Debug Logger
+
+**Issue:** The conditional `stdio: "inherit"` is too blunt for debugging dependency installation. It streams raw output without the context of which logger is producing it.
+
+**Investigation:** The user requested that we always pipe the installer's output. Then, only if the `rwsdk:e2e:environment` debug channel is enabled, should we stream that output through the `debug` logger. This ensures the output is always captured for error reporting, but only displayed in real-time with the proper logger prefix during debugging sessions.
+
+**Fix:** I will modify the `installDependencies` function to always use `stdio: "pipe"`. I will then add logic that checks if the logger is enabled. If it is, I will attach `.on('data')` listeners to the `stdout` and `stderr` streams of the child process. These listeners will forward the output to the `log` function, which will prefix it correctly.
