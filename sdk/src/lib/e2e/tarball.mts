@@ -8,7 +8,7 @@ import {
   uniqueNamesGenerator,
 } from "unique-names-generator";
 import { ROOT_DIR } from "../constants.mjs";
-import { copyProjectToTempDir } from "./environment.mjs";
+import { copyProjectToTempDir, getDirectoryHash } from "./environment.mjs";
 
 const log = (message: string) => console.log(message);
 
@@ -39,23 +39,10 @@ async function verifyPackedContents(targetDir: string) {
     );
   }
 
-  const { stdout: originalDistChecksumOut } = await $(
-    "find . -type f | sort | md5sum",
-    {
-      shell: true,
-      cwd: path.join(ROOT_DIR, "dist"),
-    },
+  const originalDistChecksum = await getDirectoryHash(
+    path.join(ROOT_DIR, "dist"),
   );
-  const originalDistChecksum = originalDistChecksumOut.split(" ")[0];
-
-  const { stdout: installedDistChecksumOut } = await $(
-    "find . -type f | sort | md5sum",
-    {
-      shell: true,
-      cwd: installedDistPath,
-    },
-  );
-  const installedDistChecksum = installedDistChecksumOut.split(" ")[0];
+  const installedDistChecksum = await getDirectoryHash(installedDistPath);
 
   log(`    - Original dist checksum: ${originalDistChecksum}`);
   log(`    - Installed dist checksum: ${installedDistChecksum}`);

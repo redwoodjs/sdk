@@ -1,10 +1,9 @@
-import { mkdirp } from "fs-extra";
+import os from "os";
 import path from "path";
-import { ROOT_DIR } from "../constants.mjs";
-
+import { mkdirp } from "fs-extra";
 
 export const ensureTmpDir = async () => {
-  const tmpDir = path.join(ROOT_DIR, ".tmp");
+  const tmpDir = path.join(os.tmpdir(), "rwsdk-e2e");
   await mkdirp(tmpDir);
   return tmpDir;
 };

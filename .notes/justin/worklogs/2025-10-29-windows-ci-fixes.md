@@ -68,6 +68,46 @@ Although we can create temporary directories for the test projects themselves, t
 
 **Fix:** To resolve this, I will modify the test harness to create the temporary project directories within the project root as well, specifically under `<ROOT>/.tmp/e2e-projects`. This will ensure that both the cache and the test projects reside on the same volume, allowing hard links to be created successfully.
 
+### 7. `node_modules` Disappearing After Install
+
+**Issue:** The `ENOENT` error persists even with the diagnostic delay, which disproves the initial race condition theory.
+
+**Investigation:** The logs confirm that dependency installation completes successfully, but the `node_modules` directory is gone by the time the caching step begins. This is extremely strange behavior. To get to the bottom of this, I need to add more aggressive logging to trace the lifecycle of the `node_modules` directory.
+
+**Fix:** I will add two key pieces of diagnostic logging. First, immediately after the `npm install` command completes, I will add a check to confirm that the `node_modules` directory exists. Second, right before the caching logic attempts to copy the directory, I will add a command to list the contents of the temporary project directory. This will show us if `node_modules` is being deleted somewhere between the end of the installation and the start of the caching, which should help us finally pinpoint the cause of this issue.
+
+### 11. Probing `npm`'s Behavior on Windows CI
+
+**Issue:** The diagnostic logging confirms that `node_modules` does not exist after the installation command successfully completes.
+
+**Investigation:** This is highly unusual behavior. The package manager exits with a success code but does not produce the expected `node_modules` directory. This suggests a silent failure or an environment-specific quirk on the Windows CI runner. Standard debugging is not providing enough information.
+
+**Fix:** To get a different signal, I will conduct an experiment. Before running `npm install`, I will manually create a dummy `node_modules` directory containing a placeholder file (`_probe.txt`). After the installation command finishes, I will check for the existence of this dummy file. This will tell us if `npm` is deleting the directory before it runs (the file will be gone) or if it's simply skipping the installation entirely (the file will remain, and the directory will be otherwise empty). This should give us a much clearer insight into the package manager's behavior.
+
+### 12. Force `pnpm` to Recognize Temporary Project
+
+**Issue:** The `ENOENT` error persists even with the diagnostic delay, which disproves the initial race condition theory.
+
+**Investigation:** The logs confirm that dependency installation completes successfully, but the `node_modules` directory is gone by the time the caching step begins. This is extremely strange behavior. To get to the bottom of this, I need to add more aggressive logging to trace the lifecycle of the `node_modules` directory.
+
+**Fix:** To solve this, I will force `pnpm` to recognize the temporary project as a standalone workspace. I will modify the test harness to create a `pnpm-workspace.yaml` file at the root of the temporary project directory. This will prevent `pnpm` from traversing up the directory tree, ensuring it installs dependencies locally as intended.
+
+### 13. Replace Unix-Specific Shell Commands
+
+**Issue:** The E2E tests are still failing on Windows, this time with a "dist/ directory not found" error. This is happening because the checksum verification for the packed tarball is failing.
+
+**Investigation:** The `verifyPackedContents` function in `tarball.mts` and the cache creation logic in `environment.mts` are using Unix-specific shell commands (`find`, `md5sum`, `cp -al`). These commands are not available on the Windows CI runners, which is causing the verification to fail and preventing the tests from running.
+
+**Fix:** I will replace all Unix-specific shell commands with their cross-platform Node.js equivalents. I will update `verifyPackedContents` to use the existing `getDirectoryHash` function, which is already cross-platform. I will also replace the `cp -al` command with a call to `fs-extra`'s `copy` function, which will handle the file copying in a way that works on all operating systems.
+
+### 14. Isolate Temporary Directory from Monorepo
+
+**Issue:** `pnpm` is detecting the monorepo's workspace configuration because the temporary directory for tests is created inside the project's root directory. This causes `pnpm` to skip dependency installation.
+
+**Investigation:** The user correctly identified that `pnpm`'s behavior of walking up the directory tree is the root cause.
+
+**Fix:** To prevent this, the temporary directory will be created *outside* the project's root, at the same level (e.g., `<parent_dir>/.tmp-rwsdk`). This is accomplished by modifying the centralized `ensureTmpDir` utility. This isolates the test environment from the monorepo, ensuring `pnpm` performs a clean installation, while keeping the temporary directory on the same drive to prevent cross-device link errors.
+
 ### 6. Final `tmpdir` Cleanup in E2E Harness
 
 **Issue:** After several rounds of fixes, there are still remaining references to `os.tmpdir()` in the E2E test harness, specifically in `testHarness.mts` and `browser.mts`, which continue to cause cross-device link errors.

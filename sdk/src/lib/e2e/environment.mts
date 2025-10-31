@@ -32,7 +32,7 @@ async function getFilesRecursively(directory: string): Promise<string[]> {
   return files.flat();
 }
 
-async function getDirectoryHash(directory: string): Promise<string> {
+export async function getDirectoryHash(directory: string): Promise<string> {
   const hash = createHash("md5");
   if (!(await pathExists(directory))) {
     return "";
@@ -342,22 +342,13 @@ async function installDependencies(
         `✅ CACHE HIT for source "${projectIdentifier}": Found cached node_modules. Hard-linking from ${nodeModulesCachePath}`,
       );
       try {
-        // Use cp -al for a fast, hardlink-based copy
-        await $(
-          "cp",
-          ["-al", nodeModulesCachePath, join(targetDir, "node_modules")],
-          { stdio: "pipe" },
-        );
-        console.log(`✅ Hardlink copy created successfully.`);
+        // Use a fast copy since we're on the same filesystem
+        await copy(nodeModulesCachePath, join(targetDir, "node_modules"));
+        console.log(`✅ Cache restored successfully.`);
       } catch (e) {
         console.warn(
-          `⚠️ Hardlink copy failed, falling back to full copy. Error: ${
-            (e as Error).message
-          }`,
+          `⚠️ Cache restore failed. Error: ${(e as Error).message}`,
         );
-        // Fallback to a regular copy if hardlinking fails (e.g., cross-device)
-        await copy(nodeModulesCachePath, join(targetDir, "node_modules"));
-        console.log(`✅ Full copy created successfully.`);
       }
       return;
     }
@@ -383,6 +374,13 @@ async function installDependencies(
       fs.promises.rm(join(targetDir, "package-lock.json"), { force: true }),
     ]);
     log("Cleanup complete.");
+
+    // DIAGNOSTIC: Create a dummy node_modules to see what happens to it
+    const probeDir = join(targetDir, "node_modules");
+    const probeFile = join(probeDir, "_probe.txt");
+    await fs.promises.mkdir(probeDir, { recursive: true });
+    await fs.promises.writeFile(probeFile, "This is a probe file.");
+    console.log("DIAGNOSTIC: Created dummy node_modules/_probe.txt");
 
     if (packageManager.startsWith("yarn")) {
       log(`Enabling corepack...`);
@@ -417,7 +415,7 @@ async function installDependencies(
     const [command, ...args] = installCommand;
     const result = await $(command, args, {
       cwd: targetDir,
-      stdio: "pipe", // Capture output
+      stdio: "inherit", 
       env: {
         YARN_ENABLE_HARDENED_MODE: "0",
       },
