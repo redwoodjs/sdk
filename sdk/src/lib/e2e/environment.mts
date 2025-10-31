@@ -329,12 +329,7 @@ async function installDependencies(
     const cacheDirName = monorepoRoot
       ? basename(monorepoRoot)
       : basename(projectDir);
-    const cacheRoot = path.join(
-      ROOT_DIR,
-      ".tmp",
-      "rwsdk-e2e-cache",
-      `${cacheDirName}-${projectHash}`,
-    );
+    const cacheRoot = path.join(await ensureTmpDir(), "rwsdk-e2e-cache");
     const nodeModulesCachePath = path.join(cacheRoot, "node_modules");
 
     if (await pathExists(nodeModulesCachePath)) {
@@ -374,13 +369,6 @@ async function installDependencies(
       fs.promises.rm(join(targetDir, "package-lock.json"), { force: true }),
     ]);
     log("Cleanup complete.");
-
-    // DIAGNOSTIC: Create a dummy node_modules to see what happens to it
-    const probeDir = join(targetDir, "node_modules");
-    const probeFile = join(probeDir, "_probe.txt");
-    await fs.promises.mkdir(probeDir, { recursive: true });
-    await fs.promises.writeFile(probeFile, "This is a probe file.");
-    console.log("DIAGNOSTIC: Created dummy node_modules/_probe.txt");
 
     if (packageManager.startsWith("yarn")) {
       log(`Enabling corepack...`);
@@ -436,12 +424,7 @@ async function installDependencies(
       const cacheDirName = monorepoRoot
         ? basename(monorepoRoot)
         : basename(projectDir);
-      const cacheRoot = path.join(
-        ROOT_DIR,
-        ".tmp",
-        "rwsdk-e2e-cache",
-        `${cacheDirName}-${projectHash}`,
-      );
+      const cacheRoot = path.join(await ensureTmpDir(), "rwsdk-e2e-cache");
       const nodeModulesCachePath = path.join(cacheRoot, "node_modules");
 
       console.log(
