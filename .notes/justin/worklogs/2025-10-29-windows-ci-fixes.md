@@ -123,3 +123,19 @@ Although we can create temporary directories for the test projects themselves, t
 **Investigation:** The checksums being different indicates that the contents of the directory are being altered during the `npm pack` or `npm install` process. The most likely causes are files being excluded or line endings being changed (LF vs. CRLF). A single checksum for the entire directory does not provide enough information to identify the root cause.
 
 **Fix:** To diagnose this, I will implement a more detailed verification process. Instead of comparing a single hash of the entire directory, the `verifyPackedContents` function will be updated to perform a file-by-file comparison. It will generate a list of all files and their individual MD5 checksums from both the source and installed `dist` directories. It will then log any discrepancies, including missing/extra files and any files with content mismatches. This will give us a precise report of what is causing the checksums to differ.
+
+### 16. Investigate `RWSDK_SKIP_DEPLOY` Flag Ignored
+
+**Issue:** The test harness is setting up a deployment environment even when the `RWSDK_SKIP_DEPLOY` environment variable is set.
+
+**Investigation:** The user correctly pointed out that the check for the `SKIP_DEPLOYMENT_TESTS` flag is happening too late in the process. The `setupPlaygroundEnvironment` function, which is responsible for the expensive environment creation, does not check the flag and proceeds with the setup unconditionally.
+
+**Fix:** I will investigate the `setupPlaygroundEnvironment` and `createDevServer` functions in the test harness to understand how the environments are being created and managed. The goal will be to refactor the logic to ensure that a single, shared playground environment is used for both the dev server and deployment tests for any given project. This will eliminate the redundant setup and significantly speed up the E2E test suite.
+
+### 17. Respect `RWSDK_SKIP_DEPLOY` Flag During Setup
+
+**Issue:** The test harness is setting up a deployment environment even when the `RWSDK_SKIP_DEPLOY` environment variable is set.
+
+**Investigation:** The user correctly pointed out that the check for the `SKIP_DEPLOYMENT_TESTS` flag is happening too late in the process. The `setupPlaygroundEnvironment` function, which is responsible for the expensive environment creation, does not check the flag and proceeds with the setup unconditionally.
+
+**Fix:** I will modify the `setupPlaygroundEnvironment` function to check for the `SKIP_DEPLOYMENT_TESTS` flag at the beginning of its execution. If the flag is set, the function will skip the entire deployment environment setup process. This will ensure the environment variable is respected and will prevent the unnecessary and time-consuming setup on the CI runner.

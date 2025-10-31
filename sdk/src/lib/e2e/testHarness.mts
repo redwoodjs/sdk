@@ -243,7 +243,7 @@ export function setupPlaygroundEnvironment(
       globalDevPlaygroundEnv = null;
     }
 
-    if (deploy) {
+    if (deploy && !SKIP_DEPLOYMENT_TESTS) {
       const deployEnv = await setupTarballEnvironment({
         projectDir,
         monorepoRoot,
