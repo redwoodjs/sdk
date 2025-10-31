@@ -54,11 +54,12 @@ const getTempDir = async (): Promise<tmp.DirectoryResult> => {
   const tmpDir = await ensureTmpDir();
   const projectsTempDir = path.join(tmpDir, "e2e-projects");
   await fs.promises.mkdir(projectsTempDir, { recursive: true });
-  return tmp.dir({
+  const tempDir = await tmp.dir({
     unsafeCleanup: true,
-    dir: projectsTempDir,
-    tmpdir: tmpDir,
+    tmpdir: projectsTempDir,
   });
+  await fs.promises.mkdir(tempDir.path, { recursive: true });
+  return tempDir;
 };
 
 function slugify(str: string) {
