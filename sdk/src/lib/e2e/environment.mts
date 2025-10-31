@@ -21,6 +21,22 @@ if (IS_CACHE_ENABLED) {
   log("E2E test caching is enabled.");
 }
 
+async function getProjectDependencyHash(projectDir: string): Promise<string> {
+  const hash = createHash("md5");
+  const dependencyFiles = ["package.json", "pnpm-lock.yaml", "yarn.lock", "package-lock.json"];
+
+  for (const file of dependencyFiles) {
+    const filePath = path.join(projectDir, file);
+    if (await pathExists(filePath)) {
+      const data = await fs.promises.readFile(filePath);
+      hash.update(path.basename(filePath));
+      hash.update(data);
+    }
+  }
+
+  return hash.digest("hex");
+}
+
 export async function getFilesRecursively(directory: string): Promise<string[]> {
   const entries = await fs.promises.readdir(directory, { withFileTypes: true });
   const files = await Promise.all(
@@ -315,161 +331,149 @@ async function installDependencies(
   projectDir: string,
   monorepoRoot?: string,
 ): Promise<void> {
-  let sdkDistChecksum = "";
+  let cacheRoot: string | null = null;
+  let nodeModulesCachePath: string | null = null;
+
   if (IS_CACHE_ENABLED) {
-    sdkDistChecksum = await getDirectoryHash(path.join(ROOT_DIR, "dist"));
-    // Generate a checksum of the SDK's dist directory to factor into the cache key
-    const projectIdentifier = monorepoRoot
-      ? `${monorepoRoot}-${projectDir}`
-      : projectDir;
-    const projectHash = createHash("md5")
-      .update(`${projectIdentifier}-${sdkDistChecksum}`)
-      .digest("hex")
-      .substring(0, 8);
+    const dependencyHash = await getProjectDependencyHash(
+      monorepoRoot || projectDir,
+    );
+
     const cacheDirName = monorepoRoot
       ? basename(monorepoRoot)
       : basename(projectDir);
-    const cacheRoot = path.join(
+
+    cacheRoot = path.join(
       await ensureTmpDir(),
       "rwsdk-e2e-cache",
-      `${cacheDirName}-${projectHash}`,
+      `${cacheDirName}-${dependencyHash.substring(0, 8)}`,
     );
-    const nodeModulesCachePath = path.join(cacheRoot, "node_modules");
+    nodeModulesCachePath = path.join(cacheRoot, "node_modules");
 
     if (await pathExists(nodeModulesCachePath)) {
       console.log(
-        `✅ CACHE HIT for source "${projectIdentifier}": Found cached node_modules. Hard-linking from ${nodeModulesCachePath}`,
+        `✅ CACHE HIT for dependencies: Found cached node_modules. Hard-linking from ${nodeModulesCachePath}`,
       );
       try {
-        // Use a fast copy since we're on the same filesystem
         await copy(nodeModulesCachePath, join(targetDir, "node_modules"));
         console.log(`✅ Cache restored successfully.`);
+        console.log(
+          `📦 Installing local SDK into cached node_modules...`,
+        );
+        // We still need to install the packed tarball
+        await runInstall(targetDir, packageManager, true);
+        return;
       } catch (e) {
         console.warn(
-          `⚠️ Cache restore failed. Error: ${(e as Error).message}`,
+          `⚠️ Cache restore failed. Error: ${(e as Error).message}. Proceeding with clean install.`,
         );
       }
-      return;
+    } else {
+      console.log(
+        `ℹ️ CACHE MISS for dependencies: No cached node_modules found at ${nodeModulesCachePath}. Proceeding with clean installation.`,
+      );
     }
+  }
+
+  await runInstall(targetDir, packageManager, false);
+
+  if (IS_CACHE_ENABLED && nodeModulesCachePath) {
     console.log(
-      `ℹ️ CACHE MISS for source "${projectIdentifier}": No cached node_modules found at ${nodeModulesCachePath}. Proceeding with installation.`,
+      `Caching node_modules to ${nodeModulesCachePath} for future runs...`,
+    );
+    await fs.promises.mkdir(path.dirname(nodeModulesCachePath), {
+      recursive: true,
+    });
+    await copy(join(targetDir, "node_modules"), nodeModulesCachePath);
+    console.log(`✅ node_modules cached successfully.`);
+  }
+}
+
+async function runInstall(
+  targetDir: string,
+  packageManager: PackageManager,
+  isCacheHit: boolean,
+) {
+  // Clean up any pre-existing node_modules and lockfiles
+  log("Cleaning up pre-existing node_modules and lockfiles...");
+  await Promise.all([
+    fs.promises.rm(join(targetDir, "node_modules"), {
+      recursive: true,
+      force: true,
+    }),
+    fs.promises.rm(join(targetDir, "pnpm-lock.yaml"), { force: true }),
+    fs.promises.rm(join(targetDir, "yarn.lock"), { force: true }),
+    fs.promises.rm(join(targetDir, "package-lock.json"), { force: true }),
+  ]);
+  log("Cleanup complete.");
+
+  if (packageManager.startsWith("yarn")) {
+    log(`Enabling corepack...`);
+    await $("corepack", ["enable"], { cwd: targetDir, stdio: "pipe" });
+
+    if (packageManager === "yarn") {
+      log(`Preparing yarn@stable with corepack...`);
+      await $("corepack", ["prepare", "yarn@stable", "--activate"], {
+        cwd: targetDir,
+        stdio: "pipe",
+      });
+    } else if (packageManager === "yarn-classic") {
+      log(`Preparing yarn@1.22.19 with corepack...`);
+      await $("corepack", ["prepare", "yarn@1.x", "--activate"], {
+        cwd: targetDir,
+        stdio: "pipe",
+      });
+    }
+  }
+  const npmCacheDir = path.join(await ensureTmpDir(), "npm-cache");
+  await fs.promises.mkdir(npmCacheDir, { recursive: true });
+
+  const installCommand = {
+    pnpm: ["pnpm", "install"],
+    npm: ["npm", "install", "--cache", npmCacheDir],
+    yarn: ["yarn", "install"],
+    "yarn-classic": ["yarn"],
+  }[packageManager];
+
+  if (isCacheHit && packageManager === "pnpm") {
+    // For pnpm, a targeted `install <tarball>` is much faster
+    // We need to find the tarball name first.
+    const files = await fs.promises.readdir(targetDir);
+    const tarball = files.find((f) => f.startsWith("rwsdk-") && f.endsWith(".tgz"));
+    if (tarball) {
+      installCommand[1] = `./${tarball}`;
+    } else {
+      log("Could not find SDK tarball for targeted install, falling back to full install.");
+    }
+  }
+
+
+  // Run install command in the target directory
+  log(`Running ${installCommand.join(" ")}`);
+  const [command, ...args] = installCommand;
+  const installProcess = $(command, args, {
+    cwd: targetDir,
+    stdio: "pipe",
+    env: {
+      YARN_ENABLE_HARDENED_MODE: "0",
+    },
+  });
+
+  if (log.enabled) {
+    installProcess.stdout?.on("data", (chunk) =>
+      log(chunk.toString().trimEnd()),
+    );
+    installProcess.stderr?.on("data", (chunk) =>
+      log(chunk.toString().trimEnd()),
     );
   }
 
-  console.log(
-    `📦 Installing project dependencies in ${targetDir} using ${packageManager}...`,
-  );
+  const result = await installProcess;
 
-  try {
-    // Clean up any pre-existing node_modules and lockfiles
-    log("Cleaning up pre-existing node_modules and lockfiles...");
-    await Promise.all([
-      fs.promises.rm(join(targetDir, "node_modules"), {
-        recursive: true,
-        force: true,
-      }),
-      fs.promises.rm(join(targetDir, "pnpm-lock.yaml"), { force: true }),
-      fs.promises.rm(join(targetDir, "yarn.lock"), { force: true }),
-      fs.promises.rm(join(targetDir, "package-lock.json"), { force: true }),
-    ]);
-    log("Cleanup complete.");
+  console.log("✅ Dependencies installed successfully");
 
-    if (packageManager.startsWith("yarn")) {
-      log(`Enabling corepack...`);
-      await $("corepack", ["enable"], { cwd: targetDir, stdio: "pipe" });
-
-      if (packageManager === "yarn") {
-        log(`Preparing yarn@stable with corepack...`);
-        await $("corepack", ["prepare", "yarn@stable", "--activate"], {
-          cwd: targetDir,
-          stdio: "pipe",
-        });
-      } else if (packageManager === "yarn-classic") {
-        log(`Preparing yarn@1.22.19 with corepack...`);
-        await $("corepack", ["prepare", "yarn@1.x", "--activate"], {
-          cwd: targetDir,
-          stdio: "pipe",
-        });
-      }
-    }
-    const npmCacheDir = path.join(await ensureTmpDir(), "npm-cache");
-    await fs.promises.mkdir(npmCacheDir, { recursive: true });
-
-    const installCommand = {
-      pnpm: ["pnpm", "install"],
-      npm: ["npm", "install", "--cache", npmCacheDir],
-      yarn: ["yarn", "install"],
-      "yarn-classic": ["yarn"],
-    }[packageManager];
-
-    // Run install command in the target directory
-    log(`Running ${installCommand.join(" ")}`);
-    const [command, ...args] = installCommand;
-    const installProcess = $(command, args, {
-      cwd: targetDir,
-      stdio: "pipe",
-      env: {
-        YARN_ENABLE_HARDENED_MODE: "0",
-      },
-    });
-
-    if (log.enabled) {
-      installProcess.stdout?.on("data", (chunk) =>
-        log(chunk.toString().trimEnd()),
-      );
-      installProcess.stderr?.on("data", (chunk) =>
-        log(chunk.toString().trimEnd()),
-      );
-    }
-
-    const result = await installProcess;
-
-    console.log("✅ Dependencies installed successfully");
-
-    // After successful install, populate the cache if enabled
-    if (IS_CACHE_ENABLED) {
-      // Re-calculate cache path to be safe
-      const projectIdentifier = monorepoRoot
-        ? `${monorepoRoot}-${projectDir}`
-        : projectDir;
-      const projectHash = createHash("md5")
-        .update(`${projectIdentifier}-${sdkDistChecksum}`)
-        .digest("hex")
-        .substring(0, 8);
-      const cacheDirName = monorepoRoot
-        ? basename(monorepoRoot)
-        : basename(projectDir);
-      const cacheRoot = path.join(
-        await ensureTmpDir(),
-        "rwsdk-e2e-cache",
-        `${cacheDirName}-${projectHash}`,
-      );
-      const nodeModulesCachePath = path.join(cacheRoot, "node_modules");
-
-      console.log(
-        `Caching node_modules to ${nodeModulesCachePath} for future runs...`,
-      );
-      // Ensure parent directory exists
-      await fs.promises.mkdir(path.dirname(nodeModulesCachePath), {
-        recursive: true,
-      });
-      await copy(join(targetDir, "node_modules"), nodeModulesCachePath);
-      console.log(`✅ node_modules cached successfully.`);
-    }
-
-    // Log installation details at debug level
-    if (result.stdout) {
-      log(`${packageManager} install output: %s`, result.stdout);
-    }
-  } catch (error) {
-    log("ERROR: Failed to install dependencies: %O", error);
-    console.error(
-      `❌ Failed to install dependencies: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-    );
-    throw new Error(
-      `Failed to install project dependencies. Please ensure the project can be installed with ${packageManager}.`,
-    );
+  // Log installation details at debug level
+  if (result.stdout) {
+    log(`${packageManager} install output: %s`, result.stdout);
   }
 }

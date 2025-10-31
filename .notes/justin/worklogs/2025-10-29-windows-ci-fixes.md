@@ -204,3 +204,16 @@ In case of an installation failure, the existing error handling will log the cap
 **Investigation:** The user requested that we always pipe the installer's output. Then, only if the `rwsdk:e2e:environment` debug channel is enabled, should we stream that output through the `debug` logger. This ensures the output is always captured for error reporting, but only displayed in real-time with the proper logger prefix during debugging sessions.
 
 **Fix:** I will modify the `installDependencies` function to always use `stdio: "pipe"`. I will then add logic that checks if the logger is enabled. If it is, I will attach `.on('data')` listeners to the `stdout` and `stderr` streams of the child process. These listeners will forward the output to the `log` function, which will prefix it correctly.
+
+### 25. Optimize E2E Cache for Developer Workflow
+
+**Issue:** The current E2E caching strategy invalidates the cache on every change to the SDK's `dist` directory. While correct, this is inefficient for local development, as it forces a slow, full dependency re-installation for every code change.
+
+**Investigation:** The user pointed out that this behavior defeats the purpose of the cache for rapid iteration. The cache should only be invalidated when third-party dependencies change, not when the local SDK source code is modified.
+
+**Fix:** I will implement a more sophisticated caching strategy:
+1.  **Dependency-Based Cache Key:** The cache key will be generated from a hash of the test project's `package.json` and lockfile (`pnpm-lock.yaml`, `package-lock.json`, etc.). The SDK's `dist` directory will no longer be part of this key.
+2.  **Two-Stage Installation on Cache Hit:** When a cache hit occurs, the test harness will:
+    a. Restore the cached `node_modules` directory.
+    b. Run a fast, targeted installation of just the locally packed SDK tarball. This updates the local SDK without re-installing all other dependencies.
+3.  **Full Installation on Cache Miss:** If a cache miss occurs (due to a change in dependencies), the harness will perform a full, clean installation and then populate the cache with the resulting `node_modules` directory for future runs.
