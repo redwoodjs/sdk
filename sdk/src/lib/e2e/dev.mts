@@ -96,7 +96,8 @@ export async function runDevServer(
     const pm = getPackageManagerCommand(packageManager);
 
     // Use the provided cwd if available
-    devProcess = $({
+    const [command, ...args] = [pm, "run", "dev"];
+    devProcess = $(command, args, {
       all: true,
       detached: true, // Re-enable for reliable process cleanup
       cleanup: true, // Let execa handle cleanup
@@ -104,14 +105,14 @@ export async function runDevServer(
       cwd: cwd || process.cwd(), // Use provided directory or current directory
       env, // Pass the updated environment variables
       stdio: "pipe", // Ensure streams are piped
-    })`${pm} run dev`;
+    });
 
     devProcess.catch((error: any) => {
       if (!isErrorExpected) {
         // Don't re-throw. The error will be handled gracefully by the polling
         // logic in `waitForUrl`, which will detect that the process has exited.
         // Re-throwing here would cause an unhandled promise rejection.
-        log("Dev server process exited unexpectedly:", error.shortMessage);
+        log("Dev server process exited unexpectedly: %O", error);
       }
     });
 
@@ -210,6 +211,15 @@ export async function runDevServer(
     // Also try listening to the raw process output
     if (devProcess.child) {
       log("Setting up child process stream listeners");
+      devProcess.child.on("spawn", () => {
+        log("Child process spawned successfully.");
+      });
+      devProcess.child.on("error", (err: Error) => {
+        log("Child process error: %O", err);
+      });
+      devProcess.child.on("exit", (code: number | null, signal: string | null) => {
+        log("Child process exited with code %s and signal %s", code, signal);
+      });
       devProcess.child.stdout?.on("data", (data: Buffer) =>
         handleOutput(data, "child.stdout"),
       );

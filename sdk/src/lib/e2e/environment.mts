@@ -394,18 +394,20 @@ async function runInstall(
   packageManager: PackageManager,
   isCacheHit: boolean,
 ) {
-  // Clean up any pre-existing node_modules and lockfiles
-  log("Cleaning up pre-existing node_modules and lockfiles...");
-  await Promise.all([
-    fs.promises.rm(join(targetDir, "node_modules"), {
-      recursive: true,
-      force: true,
-    }),
-    fs.promises.rm(join(targetDir, "pnpm-lock.yaml"), { force: true }),
-    fs.promises.rm(join(targetDir, "yarn.lock"), { force: true }),
-    fs.promises.rm(join(targetDir, "package-lock.json"), { force: true }),
-  ]);
-  log("Cleanup complete.");
+  if (!isCacheHit) {
+    // Clean up any pre-existing node_modules and lockfiles
+    log("Cleaning up pre-existing node_modules and lockfiles...");
+    await Promise.all([
+      fs.promises.rm(join(targetDir, "node_modules"), {
+        recursive: true,
+        force: true,
+      }),
+      fs.promises.rm(join(targetDir, "pnpm-lock.yaml"), { force: true }),
+      fs.promises.rm(join(targetDir, "yarn.lock"), { force: true }),
+      fs.promises.rm(join(targetDir, "package-lock.json"), { force: true }),
+    ]);
+    log("Cleanup complete.");
+  }
 
   if (packageManager.startsWith("yarn")) {
     log(`Enabling corepack...`);

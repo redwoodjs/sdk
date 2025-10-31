@@ -217,3 +217,29 @@ In case of an installation failure, the existing error handling will log the cap
     a. Restore the cached `node_modules` directory.
     b. Run a fast, targeted installation of just the locally packed SDK tarball. This updates the local SDK without re-installing all other dependencies.
 3.  **Full Installation on Cache Miss:** If a cache miss occurs (due to a change in dependencies), the harness will perform a full, clean installation and then populate the cache with the resulting `node_modules` directory for future runs.
+
+### 26. Add Process Lifecycle Listeners for Debugging
+
+**Issue:** The dev server process remains silent after launch, and our current logging isn't revealing why.
+
+**Investigation:** The `runDevServer` function launches the dev server as a child process, but we lack visibility into its fundamental lifecycle events. We need to confirm if the process is spawning correctly, if it's throwing an error on startup, or if it's exiting silently.
+
+**Fix:** I will enhance the debugging in `runDevServer` by attaching listeners directly to the underlying child process object for the `spawn`, `error`, and `exit` events. I will also improve the existing `catch` block to log the full error object instead of just a short message. This will provide a detailed trace of the process's lifecycle and immediately expose any startup failures that were previously being missed.
+
+### 27. Experiment with Execa API to Resolve Silent Failure
+
+**Issue:** The dev server process is still failing silently, with none of the lifecycle or stream listeners producing any output.
+
+**Investigation:** The user suggested that the issue might be with how we are invoking the child process. Two possibilities were raised:
+1.  The template literal syntax (`` `${pm} run dev` ``) might be causing parsing issues, especially on Windows.
+2.  The `detached: true` option might be interfering with stdio stream handling.
+
+**Fix (Attempt 1):** I will conduct an experiment by changing the `execa` call to use the explicit command-and-arguments array syntax (e.g., `$(pm, ['run', 'dev'], options)`). This is a more robust way to pass arguments and will rule out any shell parsing problems.
+
+### 28. Fix Bug in Cache Hit Logic
+
+**Issue:** After implementing the new caching strategy, the tarball verification fails with a "missing files" error. The installed `dist` directory is empty.
+
+**Investigation:** The user discovered that the `runInstall` function, which is called after a cache hit to perform a targeted SDK installation, was incorrectly deleting the `node_modules` directory that had just been restored from the cache. This left the project in a broken state, causing the subsequent verification to fail.
+
+**Fix:** I will modify the `runInstall` function to only perform its cleanup step (deleting `node_modules` and lockfiles) on a cache miss. This will be controlled by the existing `isCacheHit` boolean, ensuring that the restored `node_modules` directory is preserved during the targeted SDK installation.
