@@ -97,6 +97,7 @@ jobs:
       matrix: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
     timeout-minutes: 60
     env:
+      DEBUG: rwsdk:e2e:*
       MAX_RETRIES: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '10' || '1' }}
       RWSDK_SETUP_PLAYGROUND_ENV_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '1800000' || '' }} # 30 mins
       RWSDK_DEPLOYMENT_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '900000' || '' }} # 15 mins
