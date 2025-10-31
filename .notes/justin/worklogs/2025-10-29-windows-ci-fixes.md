@@ -139,3 +139,19 @@ Although we can create temporary directories for the test projects themselves, t
 **Investigation:** The user correctly pointed out that the check for the `SKIP_DEPLOYMENT_TESTS` flag is happening too late in the process. The `setupPlaygroundEnvironment` function, which is responsible for the expensive environment creation, does not check the flag and proceeds with the setup unconditionally.
 
 **Fix:** I will modify the `setupPlaygroundEnvironment` function to check for the `SKIP_DEPLOYMENT_TESTS` flag at the beginning of its execution. If the flag is set, the function will skip the entire deployment environment setup process. This will ensure the environment variable is respected and will prevent the unnecessary and time-consuming setup on the CI runner.
+
+### 18. Dev Server Timing Out
+
+**Issue:** With all other issues resolved, we are back to the original problem: the E2E tests are failing because they time out waiting for the dev server URL to become available.
+
+**Investigation:** The dev server process is not producing any output in the CI logs, which makes it impossible to debug why it's hanging. This is a classic symptom of a child process being spawned with its `stdio` streams configured to `"pipe"` instead of `"inherit"`.
+
+**Fix:** I will locate the code responsible for spawning the dev server process and change its `stdio` configuration to `"inherit"`. This will ensure that all output from the dev server (including startup progress and any errors) is streamed directly to the main test output. This increased visibility should allow us to diagnose the root cause of the timeout.
+
+### 19. E2E Cache Path Mismatch
+
+**Issue:** The E2E tests are experiencing a consistent cache miss on every run, forcing a full dependency installation each time.
+
+**Investigation:** I reviewed the cache path generation logic in `sdk/src/lib/e2e/environment.mts` and discovered a discrepancy. The path used to check for an existing cache entry is different from the path used to save a new cache entry after installation. Specifically, the cache population logic includes an extra directory segment (`rwsdk-e2e-cache`) that is missing from the cache check logic.
+
+**Fix:** I will correct the path construction in the cache check section to match the path used for cache population. This will align the read and write locations, ensuring that the cache is hit on subsequent test runs.

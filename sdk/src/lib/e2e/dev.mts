@@ -216,6 +216,10 @@ export async function runDevServer(
       );
     }
 
+    // Tee the output to the console for real-time feedback
+    devProcess.stdout?.pipe(process.stdout);
+    devProcess.stderr?.pipe(process.stderr);
+
     // Wait for URL with timeout
     const waitForUrl = async (): Promise<string> => {
       const start = Date.now();

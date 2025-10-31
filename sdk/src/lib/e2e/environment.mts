@@ -331,6 +331,7 @@ async function installDependencies(
       : basename(projectDir);
     const cacheRoot = path.join(
       await ensureTmpDir(),
+      "rwsdk-e2e-cache",
       `${cacheDirName}-${projectHash}`,
     );
     const nodeModulesCachePath = path.join(cacheRoot, "node_modules");
