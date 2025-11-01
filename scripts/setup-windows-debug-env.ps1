@@ -67,8 +67,9 @@ $TunnelCmd
 Set-Content -Path $PROFILE -Value $AutoRunScript
 Write-Host "PowerShell profile created at: $PROFILE"
 
-# Setup bash profile to auto-launch PowerShell
-$BashProfile = "$env:USERPROFILE\.bashrc"
+# Setup bash profiles to auto-launch PowerShell
+# .bash_profile is sourced for login shells (like SSH)
+# .bashrc is sourced for interactive non-login shells
 $BashAutoRun = @"
 # Auto-launch PowerShell for Windows Debug Session
 if [ -z "$PS_LAUNCHED" ]; then
@@ -78,6 +79,25 @@ if [ -z "$PS_LAUNCHED" ]; then
 fi
 "@
 
+# Set up .bash_profile (for login shells like SSH)
+$BashProfile = "$env:USERPROFILE\.bash_profile"
 Set-Content -Path $BashProfile -Value $BashAutoRun -Encoding UTF8
-Write-Host "Bash profile created at: $BashProfile"
+Write-Host "Bash profile (.bash_profile) created at: $BashProfile"
+
+# Also set up .bashrc (for interactive shells)
+$BashRc = "$env:USERPROFILE\.bashrc"
+Set-Content -Path $BashRc -Value $BashAutoRun -Encoding UTF8
+Write-Host "Bash profile (.bashrc) created at: $BashRc"
+
+# Ensure .bash_profile sources .bashrc if it exists
+$BashProfileContent = @"
+# Source .bashrc if it exists
+if [ -f `$HOME/.bashrc ]; then
+  source `$HOME/.bashrc
+fi
+
+$BashAutoRun
+"@
+Set-Content -Path $BashProfile -Value $BashProfileContent -Encoding UTF8
+Write-Host "Updated .bash_profile to source .bashrc"
 
