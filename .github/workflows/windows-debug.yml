@@ -12,12 +12,6 @@ on:
       gitUserEmail:
         description: "Git user email (from local config)"
         required: false
-  push:
-    branches:
-      - more-windows-fixes # temporary trigger for testing # temporary trigger for testing
-    paths:
-      - ".github/workflows/windows-debug.yml"
-      - ".trigger-debug"
 
 jobs:
   debug-session:
