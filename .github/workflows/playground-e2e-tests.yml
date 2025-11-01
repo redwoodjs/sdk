@@ -153,14 +153,19 @@ jobs:
           cd sdk
           pnpm build
 
-      - name: s('playground/**/package.json', 'playground/**/pnpm-lock.yaml', 'playground/**/yarn.lock', 'playground/**/package-lock.json') }}
+      - name: Setup E2E Cache
+        uses: actions/cache@v4
+        with:
+          path: .tmp/rwsdk-e2e/rwsdk-e2e-cache
+          key: ${{ runner.os }}-${{ matrix.package-manager }}-e2e-deps-${{ hashFiles('playground/**/package.json', 'playground/**/pnpm-lock.yaml', 'playground/**/yarn.lock', 'playground/**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-${{ matrix.package-manager }}-e2e-deps-
 
-      - name: 
-        env:
-          CI: 1
-          PACKAGE_MANAGER: ${{ matrix.package-manager }}
+      - name: Run Playground E2E Tests
+        id: tests
+        run: |
+          pnpm install
+          pnpm test:e2e
 
       - name: Upload playground artifacts
         uses: actions/upload-artifact@v4
