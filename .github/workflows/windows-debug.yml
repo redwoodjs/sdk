@@ -62,7 +62,7 @@ jobs:
       - name: Download auto-commit script
         shell: pwsh
         run: |
-          $AdScriptPath = "$env:GITHUB_WORKSPACE\.tmp\bin\ad"
+          $AdScriptPath = "$env:GITHUB_WORKSPACE\.tmp\bin\ac"
           $AdScriptDir = Split-Path -Parent $AdScriptPath
           if (-not (Test-Path $AdScriptDir)) {
             New-Item -ItemType Directory -Path $AdScriptDir -Force | Out-Null
