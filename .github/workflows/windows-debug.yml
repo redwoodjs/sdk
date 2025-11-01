@@ -19,6 +19,9 @@ on:
       - ".github/workflows/windows-debug.yml"
       - ".trigger-debug"
 
+env:
+  GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+
 jobs:
   debug-session:
     runs-on: windows-latest
