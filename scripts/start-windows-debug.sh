@@ -9,6 +9,10 @@ TUNNEL_NAME=$1
 GIT_USER_NAME=$(git config user.name || echo "")
 GIT_USER_EMAIL=$(git config user.email || echo "")
 
+# Get Cloudflare credentials from local environment
+CLOUDFLARE_ACCOUNT_ID="${CLOUDFLARE_ACCOUNT_ID:-}"
+CLOUDFLARE_API_TOKEN="${CLOUDFLARE_API_TOKEN:-}"
+
 echo "🚀 Triggering the 'Windows Debug Session' on branch '$BRANCH'..."
 
 # Build workflow input arguments
@@ -22,6 +26,12 @@ if [ -n "$GIT_USER_NAME" ]; then
 fi
 if [ -n "$GIT_USER_EMAIL" ]; then
   WORKFLOW_ARGS="$WORKFLOW_ARGS -f gitUserEmail=$GIT_USER_EMAIL"
+fi
+if [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
+  WORKFLOW_ARGS="$WORKFLOW_ARGS -f cloudflareAccountId=$CLOUDFLARE_ACCOUNT_ID"
+fi
+if [ -n "$CLOUDFLARE_API_TOKEN" ]; then
+  WORKFLOW_ARGS="$WORKFLOW_ARGS -f cloudflareApiToken=$CLOUDFLARE_API_TOKEN"
 fi
 
 # Trigger the workflow (don't exit on failure)

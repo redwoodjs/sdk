@@ -3,7 +3,9 @@
 
 param(
     [string]$CursorTunnelName = "",
-    [string]$WorkspacePath = $env:GITHUB_WORKSPACE
+    [string]$WorkspacePath = $env:GITHUB_WORKSPACE,
+    [string]$CloudflareAccountId = "",
+    [string]$CloudflareApiToken = ""
 )
 
 # Setup PowerShell profile that auto-runs tunnel and includes git aliases
@@ -54,6 +56,19 @@ function gcp { git cherry-pick @args }
 `$env:Path += ";$WorkspacePath\.tmp\bin"
 "@
 
+# Set Cloudflare credentials as environment variables (without logging)
+$CloudflareEnvVars = ""
+if ($CloudflareAccountId -ne "") {
+    $env:CLOUDFLARE_ACCOUNT_ID = $CloudflareAccountId
+    [Environment]::SetEnvironmentVariable("CLOUDFLARE_ACCOUNT_ID", $CloudflareAccountId, [EnvironmentVariableTarget]::User)
+    $CloudflareEnvVars += "`$env:CLOUDFLARE_ACCOUNT_ID = '$CloudflareAccountId'`n"
+}
+if ($CloudflareApiToken -ne "") {
+    $env:CLOUDFLARE_API_TOKEN = $CloudflareApiToken
+    [Environment]::SetEnvironmentVariable("CLOUDFLARE_API_TOKEN", $CloudflareApiToken, [EnvironmentVariableTarget]::User)
+    $CloudflareEnvVars += "`$env:CLOUDFLARE_API_TOKEN = '$CloudflareApiToken'`n"
+}
+
 $AutoRunScript = @"
 # Auto-run script for Windows Debug Session
 Write-Host "`n🚀 Auto-starting Cursor tunnel...`n" -ForegroundColor Cyan
@@ -61,11 +76,19 @@ Set-Location "$WorkspacePath"
 
 $GitAliases
 
+# Set Cloudflare credentials
+$CloudflareEnvVars
+
 $TunnelCmd
 "@
 
 Set-Content -Path $PROFILE -Value $AutoRunScript
 Write-Host "PowerShell profile created at: $PROFILE"
+
+# Confirm Cloudflare credentials were set (without exposing values)
+if ($CloudflareAccountId -ne "" -or $CloudflareApiToken -ne "") {
+    Write-Host "Cloudflare credentials have been set as environment variables" -ForegroundColor Green
+}
 
 # Setup bash profiles to auto-launch PowerShell
 # .bash_profile is sourced for login shells (like SSH)

@@ -12,6 +12,12 @@ on:
       gitUserEmail:
         description: "Git user email (from local config)"
         required: false
+      cloudflareAccountId:
+        description: "Cloudflare Account ID (from local env)"
+        required: false
+      cloudflareApiToken:
+        description: "Cloudflare API Token (from local env)"
+        required: false
 
 jobs:
   debug-session:
@@ -75,7 +81,16 @@ jobs:
       - name: Setup Auto-Run Scripts
         shell: pwsh
         run: |
-          pwsh -File "$env:GITHUB_WORKSPACE/scripts/setup-windows-debug-env.ps1" -CursorTunnelName "${{ inputs.cursorTunnelName }}"
+          $params = @{
+            CursorTunnelName = "${{ inputs.cursorTunnelName }}"
+          }
+          if ("${{ inputs.cloudflareAccountId }}" -ne "") {
+            $params.CloudflareAccountId = "${{ inputs.cloudflareAccountId }}"
+          }
+          if ("${{ inputs.cloudflareApiToken }}" -ne "") {
+            $params.CloudflareApiToken = "${{ inputs.cloudflareApiToken }}"
+          }
+          pwsh -File "$env:GITHUB_WORKSPACE/scripts/setup-windows-debug-env.ps1" @params
 
       - name: Start Interactive Debug Session
         uses: mxschmitt/action-tmate@v3
