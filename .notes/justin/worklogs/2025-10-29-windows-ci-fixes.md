@@ -278,28 +278,42 @@ The results were conclusive. Every test case that used the `detached: true` opti
 
 The fix was to make the `detached` option conditional. In `sdk/src/lib/e2e/dev.mts`, I changed the `execa` call to use `detached: process.platform !== "win32"`. This sets the flag to `false` on Windows, restoring `stdio` communication, while preserving the existing `true` value for other platforms.
 
-### 31. Path Alias Resolution Failures on Windows CI
+### 31. E2E: Vite fails to resolve path aliases on Windows CI
 
-**Issue:** On Windows CI, Vite fails to resolve path aliases like `@/app/Document`, `@/app/pages/Home`, and `@/app/headers`. The error occurs during Vite's dependency scan phase, reporting that these dependencies "could not be resolved" and asking "Are they installed?". This issue only manifests in CI (GitHub Actions Windows runners) and not when running tests manually, despite using the same environment (GitHub Actions runner + pwsh).
+**Problem**
 
-**Investigation:** The error shows mixed path formats:
-- Long path format: `C:/Users/runneradmin/AppData/Local/Temp/rwsdk-e2e/e2e-projects/...`
-- Short path format (8.3): `C:/Users/RUNNER~1/AppData/Local/Temp/rwsdk-e2e/...`
+After resolving the dev server timeout, a new issue appeared on Windows CI runs. Vite fails during dependency scanning with an error indicating it cannot resolve path aliases (e.g., `@/app/Document`) defined in `tsconfig.json`.
 
-The root cause appears to be that `redwoodPlugin` uses `process.cwd()` to determine the project root directory (line 77 in `redwoodPlugin.mts`). This relies on the working directory being set correctly when the plugin initializes. However, in concurrent test scenarios on Windows, there may be timing issues or path normalization problems that cause `vite-tsconfig-paths` to fail to locate or correctly parse `tsconfig.json`.
+```
+[dev:all] (!) Failed to run dependency scan. Skipping dependency pre-bundling. Error: The following dependencies are imported but could not be resolved:
 
-**Findings:**
-1. The Redwood plugin uses `tsconfigPaths({ root: projectRootDir })` to resolve path aliases from `tsconfig.json`
-2. `projectRootDir` is determined via `process.cwd()`, which may not accurately reflect the test project directory in all scenarios
-3. Windows path normalization (long vs short names) can cause path resolution mismatches
-4. Concurrent test execution may create race conditions where multiple Vite instances interfere with path resolution
+  @/app/Document (imported by C:/Users/runneradmin/AppData/Local/Temp/rwsdk-e2e/e2e-projects/tmp-8224-Akimokq2BbfC/rsc-kitchen-sink-test-charming-kingfisher-36cd0432/src/worker.tsx)
+  ...
+```
 
-**Fix:** 
-1. Add support for `RWSDK_PROJECT_ROOT_DIR` environment variable in `redwoodPlugin.mts` to allow explicit override of `projectRootDir`
-2. Validate that `tsconfig.json` exists at the determined project root before proceeding, providing a clear error message if not found
-3. Set `RWSDK_PROJECT_ROOT_DIR` in `dev.mts` when starting the dev server, ensuring the Vite plugin uses the correct project directory
+This error only occurs in the parallelized CI environment, not during manual runs on the same infrastructure, which points towards a race condition or a path-related issue exacerbated by concurrency.
 
-This ensures that:
-- The project root is explicitly set to the test's temporary directory
-- Path resolution uses normalized, absolute paths instead of relying on `process.cwd()`
-- We fail fast with a clear error if `tsconfig.json` is missing, rather than silently failing path resolution
+**Investigation**
+
+1.  **Path Aliases:** The aliases are correctly configured in each playground's `tsconfig.json` (e.g., `"@/*": ["./src/*"]`). The Redwood Vite plugin uses `vite-tsconfig-paths` to read this configuration.
+2.  **Working Directory:** The plugin determines the project root via `process.cwd()`. In the CI environment, where tests for multiple projects run concurrently from a single parent process, `process.cwd()` might not reliably point to the correct temporary project directory for each test.
+3.  **Path Normalization:** The error logs show a mix of long (`C:/Users/runneradmin/...`) and short 8.3-style (`C:/Users/RUNNER~1/...`) paths. This inconsistency is a common source of resolution issues on Windows, as different tools and libraries may normalize paths differently, causing mismatches.
+
+The core issue seems to be that `vite-tsconfig-paths` is not receiving the correct root directory or is getting confused by inconsistent path formats, preventing it from loading the `tsconfig.json` and applying the path aliases correctly.
+
+### 32. CI: Implement GitHub Actions caching for E2E tests
+
+**Problem**
+
+The E2E tests are slow to run in CI because they perform a full dependency installation for every playground project on every run. Although a local file-based caching mechanism exists, it's ineffective in a stateless CI environment where the cache directory (`<repo>/.tmp/rwsdk-e2e/rwsdk-e2e-cache`) is empty at the start of each job.
+
+**Plan**
+
+To speed this up, I will integrate `actions/cache` into the `playground-e2e-tests.yml` workflow.
+
+1.  **Cache Key:** A cache key will be generated based on the runner's OS, the package manager, and a hash of all `package.json` and lockfiles within the `playground` directory. This ensures the cache is invalidated only when dependencies change.
+2.  **Cache Path:** The workflow will cache the `.tmp/rwsdk-e2e/rwsdk-e2e-cache` directory.
+3.  **Workflow:**
+    *   On a cache hit, `actions/cache` will restore the cache directory.
+    *   The existing `installDependencies` function in `environment.mts` will then find the restored artifacts and perform a fast hard-link/copy into the temporary test directory instead of a slow full installation.
+    *   On a cache miss, the tests will run a full installation, and the resulting artifacts in `.tmp/rwsdk-e2e/rwsdk-e2e-cache` will be saved by `actions/cache` for future runs.
