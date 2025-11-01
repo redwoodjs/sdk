@@ -59,7 +59,7 @@ jobs:
           tar -xvf $CursorArchive -C $CursorDir | Out-Null
           Write-Host "Cursor CLI extracted to $CursorDir"
 
-      - name: Download ad script
+      - name: Download auto-commit script
         shell: pwsh
         run: |
           $AdScriptPath = "$env:GITHUB_WORKSPACE\.tmp\bin\ad"
@@ -79,7 +79,7 @@ jobs:
           $env:Path += ";$AdScriptDir"
           [Environment]::SetEnvironmentVariable("Path", $env:Path, [EnvironmentVariableTarget]::User)
 
-          Write-Host "ad script downloaded to: $AdScriptPath"
+          Write-Host "auto-commit script downloaded to: $AdScriptPath"
 
       - name: Setup Auto-Run Scripts
         shell: pwsh
