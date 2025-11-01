@@ -99,16 +99,52 @@ function ensureHooksRegistered() {
   afterAll(async () => {
     const cleanupPromises = [];
     for (const instance of devInstances) {
-      cleanupPromises.push(instance.stopDev());
+      cleanupPromises.push(
+        instance.stopDev().catch((error) => {
+          // Suppress all cleanup errors - they don't affect test results
+          console.warn(
+            `Suppressing error during dev server cleanup: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        }),
+      );
     }
     for (const instance of deploymentInstances) {
-      cleanupPromises.push(instance.cleanup());
+      cleanupPromises.push(
+        instance.cleanup().catch((error) => {
+          // Suppress all cleanup errors - they don't affect test results
+          console.warn(
+            `Suppressing error during deployment cleanup: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        }),
+      );
     }
     if (globalDevPlaygroundEnv) {
-      cleanupPromises.push(globalDevPlaygroundEnv.cleanup());
+      cleanupPromises.push(
+        globalDevPlaygroundEnv.cleanup().catch((error) => {
+          // Suppress all cleanup errors - they don't affect test results
+          console.warn(
+            `Suppressing error during dev environment cleanup: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        }),
+      );
     }
     if (globalDeployPlaygroundEnv) {
-      cleanupPromises.push(globalDeployPlaygroundEnv.cleanup());
+      cleanupPromises.push(
+        globalDeployPlaygroundEnv.cleanup().catch((error) => {
+          // Suppress all cleanup errors - they don't affect test results
+          console.warn(
+            `Suppressing error during deploy environment cleanup: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        }),
+      );
     }
 
     await Promise.all(cleanupPromises);
