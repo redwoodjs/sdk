@@ -14,13 +14,13 @@ on:
         required: false
   push:
     branches:
-      - more-windows-fixes # temporary trigger for testing
+      - more-windows-fixes # temporary trigger for testing # temporary trigger for testing
     paths:
       - ".github/workflows/windows-debug.yml"
       - ".trigger-debug"
-
-env:
-  GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+    paths:
+      - ".github/workflows/windows-debug.yml"
+      - ".trigger-debug"
 
 jobs:
   debug-session:
@@ -62,7 +62,7 @@ jobs:
       - name: Download auto-commit script
         shell: pwsh
         run: |
-          $AdScriptPath = "$env:GITHUB_WORKSPACE\.tmp\bin\ac"
+          $AdScriptPath = "$env:GITHUB_WORKSPACE\.tmp\bin\ad"
           $AdScriptDir = Split-Path -Parent $AdScriptPath
           if (-not (Test-Path $AdScriptDir)) {
             New-Item -ItemType Directory -Path $AdScriptDir -Force | Out-Null
@@ -79,7 +79,7 @@ jobs:
           $env:Path += ";$AdScriptDir"
           [Environment]::SetEnvironmentVariable("Path", $env:Path, [EnvironmentVariableTarget]::User)
 
-          Write-Host "auto-commit script downloaded to: $AdScriptPath"
+          Write-Host "ad script downloaded to: $AdScriptPath"
 
       - name: Setup Auto-Run Scripts
         shell: pwsh
