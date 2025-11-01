@@ -59,7 +59,7 @@ jobs:
             New-Item -ItemType Directory -Path $AdScriptDir -Force | Out-Null
           }
 
-          # Download from gist (replace with actual URL)
+          # Download from gist
           $GistUrl = "https://gist.githubusercontent.com/justinvdm/fcd6da9d28057addd263214d90793137/raw/c19b89ccaef25acc776cd9477b77f9ae92cb2664/ad"
           Invoke-WebRequest -Uri $GistUrl -OutFile $AdScriptPath
 
