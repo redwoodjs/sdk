@@ -24,27 +24,41 @@ if [ -n "$GIT_USER_EMAIL" ]; then
   WORKFLOW_ARGS="$WORKFLOW_ARGS -f gitUserEmail=$GIT_USER_EMAIL"
 fi
 
-# Trigger the workflow
-gh workflow run windows-debug.yml $WORKFLOW_ARGS
-
-echo "✅ Workflow triggered. Waiting a few seconds to get the run URL..."
-sleep 5 # Give GitHub a moment to create the run
-
-# Get the URL of the most recent run for this workflow and branch
-RUN_URL=$(gh run list --workflow="windows-debug.yml" --branch="$BRANCH" --limit 1 --json url -q '.[0].url' 2>/dev/null || echo "")
-
-if [ -n "$RUN_URL" ]; then
-  echo "✅ Workflow run URL found:"
-  echo "$RUN_URL"
+# Trigger the workflow (don't exit on failure)
+WORKFLOW_TRIGGERED=false
+if gh workflow run windows-debug.yml $WORKFLOW_ARGS 2>/dev/null; then
+  WORKFLOW_TRIGGERED=true
+  echo "✅ Workflow triggered. Waiting a few seconds to get the run URL..."
+  sleep 5 # Give GitHub a moment to create the run
+  
+  # Get the URL of the most recent run for this workflow and branch
+  RUN_URL=$(gh run list --workflow="windows-debug.yml" --branch="$BRANCH" --limit 1 --json url -q '.[0].url' 2>/dev/null || echo "")
+  
+  if [ -n "$RUN_URL" ]; then
+    echo "✅ Workflow run URL found:"
+    echo "$RUN_URL"
+  else
+    echo "⚠️  Could not retrieve the workflow run URL automatically."
+  fi
 else
-  echo "⚠️  Could not retrieve the workflow run URL automatically."
-  echo "   Please find it manually in the Actions tab:"
+  echo "⚠️  Could not trigger workflow via workflow_dispatch (this is expected if testing on a branch)."
+  echo "   The workflow will run automatically when you push (if push trigger is configured)."
+fi
+
+# Always show instructions regardless of success/failure
+if [ "$WORKFLOW_TRIGGERED" = "false" ]; then
+  echo ""
+  echo "To trigger the workflow manually, you can:"
+  echo "  1. Create/update a '.trigger-debug' file and push it"
+  echo "  2. Or push any change to the workflow file"
+  echo ""
   REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo "")
   if [ -n "$REPO" ]; then
-    echo "   https://github.com/$REPO/actions/workflows/windows-debug.yml"
+    echo "Then find the run in: https://github.com/$REPO/actions/workflows/windows-debug.yml"
   else
-    echo "   (GitHub Actions tab > windows-debug.yml workflow)"
+    echo "Then find the run in the GitHub Actions tab."
   fi
+  echo ""
 fi
 
 echo ""
