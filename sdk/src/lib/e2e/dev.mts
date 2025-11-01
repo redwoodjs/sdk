@@ -74,6 +74,7 @@ export async function runDevServer(
     const env: Record<string, string> = {
       ...process.env,
       NODE_ENV: "development",
+      RWSDK_PROJECT_ROOT_DIR: cwd ?? process.cwd(),
     };
 
     // Disable colors when running in CI mode to make URL parsing more reliable

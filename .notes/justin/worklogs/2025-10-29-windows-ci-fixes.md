@@ -277,3 +277,29 @@ The results were conclusive. Every test case that used the `detached: true` opti
 **Fix:** The `detached` option is necessary on Unix-like systems for our cleanup logic, which kills the entire process group. However, on Windows, our cleanup logic uses `taskkill /t`, which does not have this requirement.
 
 The fix was to make the `detached` option conditional. In `sdk/src/lib/e2e/dev.mts`, I changed the `execa` call to use `detached: process.platform !== "win32"`. This sets the flag to `false` on Windows, restoring `stdio` communication, while preserving the existing `true` value for other platforms.
+
+### 31. Path Alias Resolution Failures on Windows CI
+
+**Issue:** On Windows CI, Vite fails to resolve path aliases like `@/app/Document`, `@/app/pages/Home`, and `@/app/headers`. The error occurs during Vite's dependency scan phase, reporting that these dependencies "could not be resolved" and asking "Are they installed?". This issue only manifests in CI (GitHub Actions Windows runners) and not when running tests manually, despite using the same environment (GitHub Actions runner + pwsh).
+
+**Investigation:** The error shows mixed path formats:
+- Long path format: `C:/Users/runneradmin/AppData/Local/Temp/rwsdk-e2e/e2e-projects/...`
+- Short path format (8.3): `C:/Users/RUNNER~1/AppData/Local/Temp/rwsdk-e2e/...`
+
+The root cause appears to be that `redwoodPlugin` uses `process.cwd()` to determine the project root directory (line 77 in `redwoodPlugin.mts`). This relies on the working directory being set correctly when the plugin initializes. However, in concurrent test scenarios on Windows, there may be timing issues or path normalization problems that cause `vite-tsconfig-paths` to fail to locate or correctly parse `tsconfig.json`.
+
+**Findings:**
+1. The Redwood plugin uses `tsconfigPaths({ root: projectRootDir })` to resolve path aliases from `tsconfig.json`
+2. `projectRootDir` is determined via `process.cwd()`, which may not accurately reflect the test project directory in all scenarios
+3. Windows path normalization (long vs short names) can cause path resolution mismatches
+4. Concurrent test execution may create race conditions where multiple Vite instances interfere with path resolution
+
+**Fix:** 
+1. Add support for `RWSDK_PROJECT_ROOT_DIR` environment variable in `redwoodPlugin.mts` to allow explicit override of `projectRootDir`
+2. Validate that `tsconfig.json` exists at the determined project root before proceeding, providing a clear error message if not found
+3. Set `RWSDK_PROJECT_ROOT_DIR` in `dev.mts` when starting the dev server, ensuring the Vite plugin uses the correct project directory
+
+This ensures that:
+- The project root is explicitly set to the test's temporary directory
+- Path resolution uses normalized, absolute paths instead of relying on `process.cwd()`
+- We fail fast with a clear error if `tsconfig.json` is missing, rather than silently failing path resolution

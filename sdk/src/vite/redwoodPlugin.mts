@@ -74,7 +74,8 @@ const clientEntryPoints = new Set<string>();
 export const redwoodPlugin = async (
   options: RedwoodPluginOptions = {},
 ): Promise<InlineConfig["plugins"]> => {
-  const projectRootDir = process.cwd();
+  const projectRootDir =
+    process.env.RWSDK_PROJECT_ROOT_DIR ?? process.cwd();
 
   if (options.forceClientPaths) {
     const clientPaths = await resolveForcedPaths({
