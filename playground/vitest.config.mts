@@ -23,6 +23,7 @@ export default defineConfig({
     // concurrency is beneficial as most workers will be idle waiting on I/O.
     // context(justinvdm, 1 Nov 2025): On Windows, run tests serially (maxWorkers: 1)
     // to avoid potential race conditions with path alias resolution in concurrent CI runs.
+    minWorkers: process.platform === "win32" ? 1 : undefined,
     maxWorkers:
       process.platform === "win32"
         ? 1
