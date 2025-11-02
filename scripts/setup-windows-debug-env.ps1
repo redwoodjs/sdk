@@ -5,7 +5,9 @@ param(
     [string]$CursorTunnelName = "",
     [string]$WorkspacePath = $env:GITHUB_WORKSPACE,
     [string]$CloudflareAccountId = "",
-    [string]$CloudflareApiToken = ""
+    [string]$CloudflareApiToken = "",
+    [string]$GitUserName = "",
+    [string]$GitUserEmail = ""
 )
 
 # Setup PowerShell profile that auto-runs tunnel and includes git aliases
@@ -20,9 +22,28 @@ $TunnelCmd = if ($CursorTunnelName -ne "") {
     "& '.\.tmp\cursor_cli\cursor.exe' tunnel --random-name --verbose"
 }
 
+# Git config setup
+$GitConfig = ""
+if ($GitUserName -ne "") {
+    $GitConfig += "git config --global user.name '$GitUserName'`n"
+}
+if ($GitUserEmail -ne "") {
+    $GitConfig += "git config --global user.email '$GitUserEmail'`n"
+}
+
 # Git aliases as PowerShell functions
+# Remove any existing aliases that might conflict with our functions
+$AliasesToRemove = @('gs', 'ga', 'gf', 'gpll', 'gpsh', 'gpshu', 'gpshh', 'gm', 'grm', 'gch', 'gffs', 'gfff', 'grh', 'gb', 'grb', 'gll', 'gd', 'gds', 'gl', 'gc', 'gcm', 'gca', 'gst', 'gssh', 'gsap', 'gsa', 'gcp')
+$RemoveAliasesScript = ""
+foreach ($alias in $AliasesToRemove) {
+    $RemoveAliasesScript += "if (Get-Alias -Name $alias -ErrorAction SilentlyContinue) { Remove-Item Alias:$alias -Force -ErrorAction SilentlyContinue }`n"
+}
+
 $GitAliases = @"
-# Git aliases
+# Remove conflicting aliases
+$RemoveAliasesScript
+
+# Git aliases (functions take precedence over aliases)
 function gs { git status @args }
 function ga { git add @args }
 function gf { git fetch @args }
@@ -73,6 +94,9 @@ $AutoRunScript = @"
 # Auto-run script for Windows Debug Session
 Write-Host "`n🚀 Auto-starting Cursor tunnel...`n" -ForegroundColor Cyan
 Set-Location "$WorkspacePath"
+
+# Configure git
+$GitConfig
 
 $GitAliases
 

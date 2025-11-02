@@ -31,16 +31,6 @@ jobs:
           corepack enable
           pnpm install
 
-      - name: Configure Git
-        shell: pwsh
-        run: |
-          if ("${{ inputs.gitUserName }}" -ne "") {
-            git config --global user.name "${{ inputs.gitUserName }}"
-          }
-          if ("${{ inputs.gitUserEmail }}" -ne "") {
-            git config --global user.email "${{ inputs.gitUserEmail }}"
-          }
-
       - name: Download Cursor CLI (bash)
         shell: bash
         run: |
@@ -83,6 +73,12 @@ jobs:
         run: |
           $params = @{
             CursorTunnelName = "${{ inputs.cursorTunnelName }}"
+          }
+          if ("${{ inputs.gitUserName }}" -ne "") {
+            $params.GitUserName = "${{ inputs.gitUserName }}"
+          }
+          if ("${{ inputs.gitUserEmail }}" -ne "") {
+            $params.GitUserEmail = "${{ inputs.gitUserEmail }}"
           }
           if ("${{ inputs.cloudflareAccountId }}" -ne "") {
             $params.CloudflareAccountId = "${{ inputs.cloudflareAccountId }}"
