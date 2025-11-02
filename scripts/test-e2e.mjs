@@ -8,14 +8,22 @@ if (process.platform === "win32") {
   console.log("--- Running Windows Path Discrepancy Check ---");
   const tmpDir = os.tmpdir();
   const realTmpDir = fs.realpathSync(tmpDir);
-  console.log(`Original os.tmpdir():       ${tmpDir}`);
-  console.log(`Real path for os.tmpdir():  ${realTmpDir}`);
-  if (tmpDir !== realTmpDir) {
+  const nativeRealTmpDir = fs.realpathSync.native(tmpDir);
+
+  console.log(`Original os.tmpdir():             ${tmpDir}`);
+  console.log(`fs.realpathSync(tmpDir):        ${realTmpDir}`);
+  console.log(`fs.realpathSync.native(tmpDir): ${nativeRealTmpDir}`);
+
+  if (tmpDir !== nativeRealTmpDir) {
     console.log(
-      "!!! Path discrepancy DETECTED. This is the likely cause of alias resolution issues.",
+      "!!! Path discrepancy DETECTED with NATIVE method. This is the likely cause.",
+    );
+  } else if (tmpDir !== realTmpDir) {
+    console.log(
+      "!!! Path discrepancy DETECTED with standard method. This is the likely cause.",
     );
   } else {
-    console.log("... No path discrepancy detected in os.tmpdir().");
+    console.log("... No path discrepancy detected.");
   }
   console.log("----------------------------------------------");
 }
