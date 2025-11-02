@@ -317,3 +317,15 @@ To speed this up, I will integrate `actions/cache` into the `playground-e2e-test
     *   On a cache hit, `actions/cache` will restore the cache directory.
     *   The existing `installDependencies` function in `environment.mts` will then find the restored artifacts and perform a fast hard-link/copy into the temporary test directory instead of a slow full installation.
     *   On a cache miss, the tests will run a full installation, and the resulting artifacts in `.tmp/rwsdk-e2e/rwsdk-e2e-cache` will be saved by `actions/cache` for future runs.
+
+### 33. E2E: Run tests in-band on Windows to isolate concurrency issues
+
+**Problem**
+
+The Vite path alias resolution is still failing on Windows CI, but not in local manual runs. This strongly suggests a race condition or resource conflict caused by Vitest running tests for multiple playground projects in parallel. The concurrent processes might be interfering with each other's ability to correctly resolve `process.cwd()` or access `tsconfig.json` at the right time.
+
+**Plan**
+
+To test this hypothesis, I will force Vitest to run the E2E tests serially on Windows. I will modify the `playground/vitest.config.mts` file to conditionally set `maxWorkers: 1` when `process.platform === "win32"`. This keeps the configuration in the Vitest config file rather than modifying the workflow command, making it cleaner and more maintainable.
+
+If this resolves the path alias errors, it will confirm that the issue is concurrency-related, and we can then investigate a more permanent solution that either allows for safe parallel execution or makes serial execution the default for Windows CI.
