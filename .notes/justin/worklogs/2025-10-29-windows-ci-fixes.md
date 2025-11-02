@@ -329,3 +329,21 @@ The Vite path alias resolution is still failing on Windows CI, but not in local 
 To test this hypothesis, I will force Vitest to run the E2E tests serially on Windows. I will modify the `playground/vitest.config.mts` file to conditionally set `maxWorkers: 1` when `process.platform === "win32"`. This keeps the configuration in the Vitest config file rather than modifying the workflow command, making it cleaner and more maintainable.
 
 If this resolves the path alias errors, it will confirm that the issue is concurrency-related, and we can then investigate a more permanent solution that either allows for safe parallel execution or makes serial execution the default for Windows CI.
+
+### 34. E2E: Fix Windows path normalization for Vite alias resolution
+
+**Problem**
+
+Even after forcing serial execution, the Vite path alias resolution error persisted on Windows CI. This pointed to a more fundamental issue than a simple race condition.
+
+**Investigation**
+
+The root cause was a path mismatch. In the non-interactive Windows CI environment, Node.js functions like `os.tmpdir()` were returning a legacy "short" path (e.g., `C:\Users\RUNNER~1\AppData\Local\Temp`). However, deep within Vite's dependency scanner, a different system call was resolving the same path to its modern "long" form (`C:\Users\runneradmin\AppData\Local\Temp`). When the `vite-tsconfig-paths` plugin was initialized with the short path but then asked to resolve a module at a long path, the string comparison failed, and the alias resolution broke.
+
+My first attempt to fix this was to use `fs.realpathSync` to normalize the paths. However, a diagnostic script added to the CI workflow proved that this function was also returning the short path, making the fix ineffective.
+
+The breakthrough came from testing `fs.realpathSync.native`. This function, which interacts more directly with the underlying Windows APIs, successfully resolved the short path to the correct long path in the CI environment.
+
+**Plan**
+
+I will now apply this fix comprehensively. I will replace all `fs.realpathSync` calls in the E2E test harness (`sdk/src/lib/e2e/utils.mts` and `sdk/src/lib/e2e/environment.mts`) with `fs.realpathSync.native`. This will ensure that all temporary directory paths are canonicalized to their long form *before* being passed to Vite, eliminating the path mismatch and resolving the alias issue. Finally, I will remove the temporary diagnostic script from the test runner.
