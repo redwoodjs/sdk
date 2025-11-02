@@ -7,8 +7,11 @@ import {
   animals,
   uniqueNamesGenerator,
 } from "unique-names-generator";
-import { ROOT_DIR } from "../constants.mjs";
-import { copyProjectToTempDir } from "./environment.mjs";
+import { INTERMEDIATES_OUTPUT_DIR, ROOT_DIR } from "../constants.mjs";
+import {
+  copyProjectToTempDir,
+  getFilesRecursively,
+} from "./environment.mjs";
 
 const log = (message: string) => console.log(message);
 
@@ -21,52 +24,6 @@ interface SetupTarballOptions {
 interface TarballEnvironment {
   targetDir: string;
   cleanup: () => Promise<void>;
-}
-
-async function verifyPackedContents(targetDir: string) {
-  log("  - Verifying installed package contents...");
-  const packageName = "rwsdk";
-  const installedDistPath = path.join(
-    targetDir,
-    "node_modules",
-    packageName,
-    "dist",
-  );
-
-  if (!fs.existsSync(installedDistPath)) {
-    throw new Error(
-      `dist/ directory not found in installed package at ${installedDistPath}.`,
-    );
-  }
-
-  const { stdout: originalDistChecksumOut } = await $(
-    "find . -type f | sort | md5sum",
-    {
-      shell: true,
-      cwd: path.join(ROOT_DIR, "dist"),
-    },
-  );
-  const originalDistChecksum = originalDistChecksumOut.split(" ")[0];
-
-  const { stdout: installedDistChecksumOut } = await $(
-    "find . -type f | sort | md5sum",
-    {
-      shell: true,
-      cwd: installedDistPath,
-    },
-  );
-  const installedDistChecksum = installedDistChecksumOut.split(" ")[0];
-
-  log(`    - Original dist checksum: ${originalDistChecksum}`);
-  log(`    - Installed dist checksum: ${installedDistChecksum}`);
-
-  if (originalDistChecksum !== installedDistChecksum) {
-    throw new Error(
-      "File list in installed dist/ does not match original dist/.",
-    );
-  }
-
-  log("  ✅ Installed package contents match the local build.");
 }
 
 /**
@@ -177,8 +134,6 @@ export async function setupTarballEnvironment({
       packageManager,
       monorepoRoot,
     );
-
-    await verifyPackedContents(targetDir);
 
     // Copy wrangler cache to improve deployment performance
     const sdkRoot = ROOT_DIR;

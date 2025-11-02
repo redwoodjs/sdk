@@ -97,6 +97,7 @@ jobs:
       matrix: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
     timeout-minutes: 60
     env:
+      DEBUG: rwsdk:e2e:*
       MAX_RETRIES: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '10' || '1' }}
       RWSDK_SETUP_PLAYGROUND_ENV_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '1800000' || '' }} # 30 mins
       RWSDK_DEPLOYMENT_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '900000' || '' }} # 15 mins
@@ -145,24 +146,26 @@ jobs:
           cache: "pnpm"
 
       - name: Install dependencies
-        shell: bash
         run: pnpm install
 
       - name: Build SDK
-        shell: bash
         run: |
           cd sdk
           pnpm build
 
+      - name: Setup E2E Cache
+        uses: actions/cache@v4
+        with:
+          path: .tmp/rwsdk-e2e/rwsdk-e2e-cache
+          key: ${{ runner.os }}-${{ matrix.package-manager }}-e2e-deps-${{ hashFiles('playground/**/package.json', 'playground/**/pnpm-lock.yaml', 'playground/**/yarn.lock', 'playground/**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.package-manager }}-e2e-deps-
+
       - name: Run Playground E2E Tests
         id: tests
-        shell: bash
         run: |
           pnpm install
           pnpm test:e2e
-        env:
-          CI: 1
-          PACKAGE_MANAGER: ${{ matrix.package-manager }}
 
       - name: Upload playground artifacts
         uses: actions/upload-artifact@v4
