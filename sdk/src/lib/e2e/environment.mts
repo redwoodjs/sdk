@@ -23,7 +23,12 @@ if (IS_CACHE_ENABLED) {
 
 async function getProjectDependencyHash(projectDir: string): Promise<string> {
   const hash = createHash("md5");
-  const dependencyFiles = ["package.json", "pnpm-lock.yaml", "yarn.lock", "package-lock.json"];
+  const dependencyFiles = [
+    "package.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "package-lock.json",
+  ];
 
   for (const file of dependencyFiles) {
     const filePath = path.join(projectDir, file);
@@ -37,7 +42,9 @@ async function getProjectDependencyHash(projectDir: string): Promise<string> {
   return hash.digest("hex");
 }
 
-export async function getFilesRecursively(directory: string): Promise<string[]> {
+export async function getFilesRecursively(
+  directory: string,
+): Promise<string[]> {
   const entries = await fs.promises.readdir(directory, { withFileTypes: true });
   const files = await Promise.all(
     entries.map((entry) => {
@@ -373,9 +380,7 @@ async function installDependencies(
       try {
         await copy(nodeModulesCachePath, join(targetDir, "node_modules"));
         console.log(`✅ Cache restored successfully.`);
-        console.log(
-          `📦 Installing local SDK into cached node_modules...`,
-        );
+        console.log(`📦 Installing local SDK into cached node_modules...`);
         // We still need to install the packed tarball
         await runInstall(targetDir, packageManager, true);
         return;
@@ -447,29 +452,32 @@ async function runInstall(
   await fs.promises.mkdir(npmCacheDir, { recursive: true });
 
   const installCommand = {
-    pnpm: ["pnpm", "install"],
-    npm: ["npm", "install", "--cache", npmCacheDir],
-    yarn: ["yarn", "install"],
-    "yarn-classic": ["yarn"],
+    pnpm: ["pnpm", "install", "--reporter=silent"],
+    npm: ["npm", "install", "--cache", npmCacheDir, "--silent"],
+    yarn: ["yarn", "install", "--silent"],
+    "yarn-classic": ["yarn", "--silent"],
   }[packageManager];
 
   if (isCacheHit && packageManager === "pnpm") {
     // For pnpm, a targeted `install <tarball>` is much faster
     // We need to find the tarball name first.
     const files = await fs.promises.readdir(targetDir);
-    const tarball = files.find((f) => f.startsWith("rwsdk-") && f.endsWith(".tgz"));
+    const tarball = files.find(
+      (f) => f.startsWith("rwsdk-") && f.endsWith(".tgz"),
+    );
     if (tarball) {
       installCommand[1] = `./${tarball}`;
     } else {
-      log("Could not find SDK tarball for targeted install, falling back to full install.");
+      log(
+        "Could not find SDK tarball for targeted install, falling back to full install.",
+      );
     }
   }
-
 
   // Run install command in the target directory
   log(`Running ${installCommand.join(" ")}`);
   const [command, ...args] = installCommand;
-  const installProcess = $(command, args, {
+  await $(command, args, {
     cwd: targetDir,
     stdio: "pipe",
     env: {
@@ -477,21 +485,5 @@ async function runInstall(
     },
   });
 
-  if (log.enabled) {
-    installProcess.stdout?.on("data", (chunk) =>
-      log(chunk.toString().trimEnd()),
-    );
-    installProcess.stderr?.on("data", (chunk) =>
-      log(chunk.toString().trimEnd()),
-    );
-  }
-
-  const result = await installProcess;
-
   console.log("✅ Dependencies installed successfully");
-
-  // Log installation details at debug level
-  if (result.stdout) {
-    log(`${packageManager} install output: %s`, result.stdout);
-  }
 }
