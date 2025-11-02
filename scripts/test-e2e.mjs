@@ -1,6 +1,24 @@
 import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import os from "node:os";
+import fs from "node:fs";
+
+if (process.platform === "win32") {
+  console.log("--- Running Windows Path Discrepancy Check ---");
+  const tmpDir = os.tmpdir();
+  const realTmpDir = fs.realpathSync(tmpDir);
+  console.log(`Original os.tmpdir():       ${tmpDir}`);
+  console.log(`Real path for os.tmpdir():  ${realTmpDir}`);
+  if (tmpDir !== realTmpDir) {
+    console.log(
+      "!!! Path discrepancy DETECTED. This is the likely cause of alias resolution issues.",
+    );
+  } else {
+    console.log("... No path discrepancy detected in os.tmpdir().");
+  }
+  console.log("----------------------------------------------");
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");

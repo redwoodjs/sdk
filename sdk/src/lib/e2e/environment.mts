@@ -74,6 +74,16 @@ const getTempDir = async (): Promise<tmp.DirectoryResult> => {
     unsafeCleanup: true,
     tmpdir: projectsTempDir,
   });
+
+  // context(justinvdm, 2 Nov 2025): On Windows CI, tmp.dir() can return a
+  // short path (e.g., RUNNER~1). Vite's internals may later resolve this to a
+  // long path (e.g., runneradmin), causing alias resolution to fail due to
+  // path mismatch. Using realpathSync ensures we always use the canonical
+  // path, avoiding this inconsistency.
+  if (process.platform === "win32") {
+    tempDir.path = fs.realpathSync(tempDir.path);
+  }
+
   await fs.promises.mkdir(tempDir.path, { recursive: true });
   return tempDir;
 };
@@ -108,9 +118,15 @@ const createSdkTarball = async (): Promise<{
   }
 
   // Create a temporary directory to receive the tarball, ensuring a stable path.
-  const tempDir = await fs.promises.mkdtemp(
+  let tempDir = await fs.promises.mkdtemp(
     path.join(await ensureTmpDir(), "rwsdk-tarball-"),
   );
+
+  // context(justinvdm, 2 Nov 2025): Normalize the temp dir on Windows
+  // to prevent short/long path mismatches.
+  if (process.platform === "win32") {
+    tempDir = fs.realpathSync(tempDir);
+  }
 
   await $({
     cwd: ROOT_DIR,
