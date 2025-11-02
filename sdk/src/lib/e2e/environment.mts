@@ -81,7 +81,7 @@ const getTempDir = async (): Promise<tmp.DirectoryResult> => {
   // path mismatch. Using realpathSync ensures we always use the canonical
   // path, avoiding this inconsistency.
   if (process.platform === "win32") {
-    tempDir.path = fs.realpathSync(tempDir.path);
+    tempDir.path = fs.realpathSync.native(tempDir.path);
   }
 
   await fs.promises.mkdir(tempDir.path, { recursive: true });
@@ -125,7 +125,7 @@ const createSdkTarball = async (): Promise<{
   // context(justinvdm, 2 Nov 2025): Normalize the temp dir on Windows
   // to prevent short/long path mismatches.
   if (process.platform === "win32") {
-    tempDir = fs.realpathSync(tempDir);
+    tempDir = fs.realpathSync.native(tempDir);
   }
 
   await $({
