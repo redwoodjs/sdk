@@ -21,12 +21,6 @@ export default defineConfig({
     // context(justinvdm, 24 Sep 2025): Use 4x the number of logical CPUs. The tests
     // are heavily network-bound (e.g. deploying workers), so a high degree of
     // concurrency is beneficial as most workers will be idle waiting on I/O.
-    // context(justinvdm, 1 Nov 2025): On Windows, run tests serially (maxWorkers: 1)
-    // to avoid potential race conditions with path alias resolution in concurrent CI runs.
-    minWorkers: process.platform === "win32" ? 1 : undefined,
-    maxWorkers:
-      process.platform === "win32"
-        ? 1
-        : Math.ceil(os.cpus().length * 2),
+    maxWorkers: Math.ceil(os.cpus().length * 2),
   },
 });
