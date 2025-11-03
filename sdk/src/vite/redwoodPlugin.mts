@@ -27,6 +27,8 @@ import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
 import { prismaPlugin } from "./prismaPlugin.mjs";
 import { resolveForcedPaths } from "./resolveForcedPaths.mjs";
 import { ssrBridgePlugin } from "./ssrBridgePlugin.mjs";
+import { staleDepRetryPlugin } from "./staleDepRetryPlugin.mjs";
+import { statePlugin } from "./statePlugin.mjs";
 import { transformJsxScriptTagsPlugin } from "./transformJsxScriptTagsPlugin.mjs";
 import { useClientLookupPlugin } from "./useClientLookupPlugin.mjs";
 import { useServerLookupPlugin } from "./useServerLookupPlugin.mjs";
@@ -118,21 +120,19 @@ export const redwoodPlugin = async (
   // then this is fresh install, and we run `npm run dev:init` here.
   if (
     process.env.RWSDK_WORKER_RUN !== "1" &&
-    process.env.RWSDK_DEPLOY !== "1" &&
+    process.env.NODE_ENV !== "production" &&
     !(await pathExists(resolve(projectRootDir, ".wrangler"))) &&
     (await hasPkgScript(projectRootDir, "dev:init"))
   ) {
     console.log(
       "🚀 Project has no .wrangler directory yet, assuming fresh install: running `npm run dev:init`...",
     );
-    await $({
-      // context(justinvdm, 01 Apr 2025): We want to avoid interactive migration y/n prompt, so we ignore stdin
-      // as a signal to operate in no-tty mode
-      stdio: ["ignore", "inherit", "inherit"],
-    })`npm run dev:init`;
+    await $`npm run dev:init`;
   }
 
   return [
+    staleDepRetryPlugin(),
+    statePlugin({ projectRootDir }),
     devServerTimingPlugin(),
     devServerConstantPlugin(),
     directiveModulesDevPlugin({

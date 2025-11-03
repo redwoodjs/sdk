@@ -1,4 +1,4 @@
-import { RwContext } from "../lib/router";
+import { RwContext } from "../lib/types.js";
 
 export interface DefaultAppContext {}
 
@@ -16,3 +16,10 @@ export interface RequestInfo<Params = any, AppContext = DefaultAppContext> {
   response: ResponseInit & { headers: Headers };
   isAction: boolean;
 }
+
+export type PartialRequestInfo<
+  Params = any,
+  AppContext = DefaultAppContext,
+> = Omit<Partial<RequestInfo<Params, AppContext>>, "rw"> & {
+  rw?: Partial<RwContext>;
+};

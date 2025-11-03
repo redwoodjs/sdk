@@ -11,6 +11,9 @@ This collection of documents provides a high-level overview of the core architec
 - [**The SSR Bridge**](./ssrBridge.md)
   Details the architecture that allows the framework to support two different rendering environments (RSC and traditional SSR) within a single Cloudflare Worker. It explains how the "SSR Bridge" uses Vite's Environments API to manage conflicting dependency requirements between the two runtimes.
 
+- [**Dev Server Stability**](./devServerStability.md)
+  Explains the multi-layered system that ensures a stable development experience, detailing how the framework handles race conditions and state desynchronization during Vite's dependency re-optimization process.
+
 - [**Directive Scanning and Module Resolution**](./directiveScanningAndResolution.md)
   Details the internal `esbuild`-based scanner used to discover `"use client"` and `"use server"` directives, and the context-aware module resolution it employs to handle conditional exports correctly.
 

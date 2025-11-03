@@ -1,0 +1,92 @@
+name: Windows Debug Session
+
+on:
+  workflow_dispatch:
+    inputs:
+      cursorTunnelName:
+        description: "Optional Cursor tunnel name (<=20 chars); leave blank for random"
+        required: false
+      gitUserName:
+        description: "Git user name (from local config)"
+        required: false
+      gitUserEmail:
+        description: "Git user email (from local config)"
+        required: false
+      cloudflareAccountId:
+        description: "Cloudflare Account ID (from local env)"
+        required: false
+      cloudflareApiToken:
+        description: "Cloudflare API Token (from local env)"
+        required: false
+
+jobs:
+  debug-session:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        shell: pwsh
+        run: |
+          corepack enable
+          pnpm install
+
+      - name: Download Cursor CLI (bash)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/.tmp/cursor_cli"
+          curl -Lk "https://api2.cursor.sh/updates/download-latest?os=cli-win32-x64" -o "$GITHUB_WORKSPACE/.tmp/cursor_cli/cursor_cli.tar.gz"
+
+      - name: Extract Cursor CLI
+        shell: pwsh
+        run: |
+          $CursorDir = "$env:GITHUB_WORKSPACE\.tmp\cursor_cli"
+          $CursorArchive = "$CursorDir\cursor_cli.tar.gz"
+          tar -xvf $CursorArchive -C $CursorDir | Out-Null
+          Write-Host "Cursor CLI extracted to $CursorDir"
+
+      - name: Download auto-commit script
+        shell: pwsh
+        run: |
+          $AdScriptPath = "$env:GITHUB_WORKSPACE\.tmp\bin\ad"
+          $AdScriptDir = Split-Path -Parent $AdScriptPath
+          if (-not (Test-Path $AdScriptDir)) {
+            New-Item -ItemType Directory -Path $AdScriptDir -Force | Out-Null
+          }
+
+          # Download from gist
+          $GistUrl = "https://gist.githubusercontent.com/justinvdm/fcd6da9d28057addd263214d90793137/raw/e7404b71a0a27b9538890a95dd7804b18ec10c5d/ad"
+          Invoke-WebRequest -Uri $GistUrl -OutFile $AdScriptPath
+
+          # Make executable (bash will handle this)
+          bash -c "chmod +x '$AdScriptPath'"
+
+          # Add to PATH for PowerShell
+          $env:Path += ";$AdScriptDir"
+          [Environment]::SetEnvironmentVariable("Path", $env:Path, [EnvironmentVariableTarget]::User)
+
+          Write-Host "ad script downloaded to: $AdScriptPath"
+
+      - name: Setup Auto-Run Scripts
+        shell: pwsh
+        run: |
+          $params = @{
+            CursorTunnelName = "${{ inputs.cursorTunnelName }}"
+          }
+          if ("${{ inputs.gitUserName }}" -ne "") {
+            $params.GitUserName = "${{ inputs.gitUserName }}"
+          }
+          if ("${{ inputs.gitUserEmail }}" -ne "") {
+            $params.GitUserEmail = "${{ inputs.gitUserEmail }}"
+          }
+          if ("${{ inputs.cloudflareAccountId }}" -ne "") {
+            $params.CloudflareAccountId = "${{ inputs.cloudflareAccountId }}"
+          }
+          if ("${{ inputs.cloudflareApiToken }}" -ne "") {
+            $params.CloudflareApiToken = "${{ inputs.cloudflareApiToken }}"
+          }
+          pwsh -File "$env:GITHUB_WORKSPACE/scripts/setup-windows-debug-env.ps1" @params
+
+      - name: Start Interactive Debug Session
+        uses: mxschmitt/action-tmate@v3

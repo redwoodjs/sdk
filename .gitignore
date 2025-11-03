@@ -1,6 +1,9 @@
 # Logs
 
+*.log
 .rwsync.lock
+
+.tmp/
 
 logs
 _.log
@@ -187,6 +190,8 @@ smoke-test-artifacts
 # But we also don't want to commit the cursor rules to this repo
 starters/standard/.cursor/rules/*
 starters/standard/.pnpm-store
+
+!starter/.vscode/launch.json
 
 # Cursor User Rules
 .cursor/rules/user

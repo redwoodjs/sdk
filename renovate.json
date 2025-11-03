@@ -19,6 +19,7 @@
     {
       "description": "Group all SDK internal dependencies into a single weekly PR.",
       "matchFileNames": ["sdk/package.json"],
+      "excludePackageNames": ["vite"],
       "groupName": "sdk-internal-deps",
       "schedule": ["at 00:00 on sunday"]
     },
@@ -57,7 +58,28 @@
       "prPriority": 1
     },
     {
-      "description": "Update React peer dependencies in starter, playground, and addon projects, tracking the 'next' tag.",
+      "description": "Group the SDK's vite dev dependency with starter peer deps to keep them in sync.",
+      "matchFileNames": ["sdk/package.json"],
+      "matchPackageNames": ["vite"],
+      "matchDepTypes": ["devDependencies"],
+      "groupName": "starter-peer-deps",
+      "schedule": ["every weekend"],
+      "prPriority": 1
+    },
+    {
+      "description": "Ignore non-React peerDependencies in the SDK to maintain a wide compatibility range.",
+      "matchFileNames": ["sdk/package.json"],
+      "matchPackageNames": [
+        "@cloudflare/vite-plugin",
+        "@cloudflare/workers-types",
+        "wrangler",
+        "vite"
+      ],
+      "matchDepTypes": ["peerDependencies"],
+      "enabled": false
+    },
+    {
+      "description": "Update React dependencies in starter, playground, and addon projects, tracking the 'next' tag.",
       "matchFileNames": [
         "starter/package.json",
         "playground/**/package.json",

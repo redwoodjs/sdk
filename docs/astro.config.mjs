@@ -1,6 +1,6 @@
 // @ts-check
-import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
+import { defineConfig } from "astro/config";
 import starlightLlmsTxt from "starlight-llms-txt";
 
 // https://astro.build/config
@@ -112,6 +112,7 @@ export default defineConfig({
               ],
             },
             { label: "Server Function Streams", slug: "guides/rsc-streams" },
+            { label: "Debugging", slug: "guides/debugging" },
           ],
           collapsed: true,
         },

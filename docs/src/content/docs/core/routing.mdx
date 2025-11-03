@@ -23,6 +23,10 @@ export default defineApp([
   route("/ping", function handler({ request, ctx }) {
     return new Response("Pong!")
   }),
+  route("/api/users", {
+    get: () => new Response(JSON.stringify(users)),
+    post: () => new Response("Created", { status: 201 }),
+  }),
 ]);
 ```
 
@@ -84,6 +88,8 @@ route("/files/*/preview", ...)
 route("/files/*/download/*", ...)
 ```
 
+---
+
 ## Request Handlers
 
 The request handler is a function, or array of functions (See [Interrupters](#interrupters)), that are executed when a request is matched.
@@ -108,6 +114,66 @@ The request handler function takes a [RequestInfo](#request-info) object as its 
 Return values:
 - `Response`: A standard response object.
 - `JSX`: A React component, which is statically rendered to HTML on the server, streamed to the client, and then hydrated on the client side.
+
+---
+
+## HTTP Method Routing
+
+You can handle different HTTP methods (GET, POST, PUT, DELETE, etc.) on the same path by passing an object with method keys:
+
+```tsx
+route("/api/users", {
+  get: () => new Response(JSON.stringify(users)),
+  post: ({ request }) => new Response("User created", { status: 201 }),
+  delete: () => new Response("User deleted", { status: 204 }),
+});
+```
+
+Method handlers can also be arrays of functions, allowing you to use [interrupters](#interrupters) per method:
+
+```tsx
+route("/api/users", {
+  get: [isAuthenticated, () => new Response(JSON.stringify(users))],
+  post: [isAuthenticated, validateUser, createUserHandler],
+});
+```
+
+**Standard HTTP Methods**: `delete`, `get`, `head`, `patch`, `post`, `put`
+
+**Custom Methods**: Use the `custom` key for non-standard methods (case-insensitive):
+
+```tsx
+route("/api/search", {
+  custom: {
+    report: () => new Response("Report data"),
+  },
+});
+```
+
+**Automatic OPTIONS & 405 Support**: By default, OPTIONS requests return `204 No Content` with an `Allow` header, and unsupported methods return `405 Method Not Allowed`.
+
+**Configuration**: Disable automatic behaviors:
+
+```tsx
+route("/api/users", {
+  get: () => new Response("OK"),
+  config: {
+    disableOptions: true, // OPTIONS returns 405
+    disable405: true, // Unsupported methods fall through to 404
+  },
+});
+```
+
+<Aside type="note" title="HEAD Requests">
+  Unlike in Express.js, you must explicitly provide a HEAD handler. HEAD requests are not automatically mapped to GET handlers:
+
+```tsx
+route("/api/users", {
+  get: getHandler,
+  head: getHandler, // Explicitly reuse handler
+});
+```
+</Aside>
 
 ---
 
@@ -274,3 +340,82 @@ export default defineApp([
   }),
 ]);
 ```
+
+---
+
+## Generating Links
+
+While `route` handles incoming requests, `defineLinks` is used to generate the URLs for those routes. This function can be used in both server and client components to create type-safe links (e.g., in `<a>` tags or for programmatic navigation), helping prevent typos and providing compile-time errors for invalid routes.
+
+First, define all your application's routes in a shared file:
+
+```ts title="src/app/shared/links.ts"
+import { defineLinks } from "rwsdk/router";
+
+export const link = defineLinks([
+  "/",
+  "/about",
+  "/users/:id",
+  "/files/*"
+]);
+```
+
+<Aside type="note">
+  It is a good practice to keep your link definitions in a file that is shared between your server and client code.
+</Aside>
+
+Now you can import and use the `link` function throughout your application to generate URLs.
+
+### Type Safety
+
+`defineLinks` creates a strongly-typed function. If you attempt to generate a URL for a route that was not included in the initial array, TypeScript will raise a compile-time error.
+
+```tsx
+import { link } from "@/app/shared/links";
+
+function MyComponent() {
+  return (
+    <nav>
+      <a href={link("/")}>Home</a>
+      <a href={link("/about")}>About</a>
+      {/* ❌ TypeScript Error! '/contakt' is not a valid route. */}
+      <a href={link("/contakt")}>Contact</a>
+    </nav>
+  )
+}
+```
+
+### Dynamic Parameters
+
+The generated function also handles dynamic parameters for you.
+
+For named parameters, pass an object with keys matching the parameter names:
+
+```ts
+// Generates: /users/123
+link("/users/:id", { id: "123" });
+```
+
+For wildcard parameters, use special keys `$0`, `$1`, and so on, corresponding to the wildcards (`*`) in the route from left to right.
+
+```ts
+// Generates: /files/documents/report.pdf
+link("/files/*", { $0: "documents/report.pdf" });
+```
+
+### API Reference
+
+#### `defineLinks(routes): function`
+Takes an array of route patterns and returns a type-safe link-generating function.
+
+-   **routes**: `string[]` - An array of route pattern strings.
+
+The returned function has the following signature:
+
+#### `link(path[, params]): string`
+Generates a URL string for a given path, interpolating any dynamic parameters.
+
+-   **path**: `string` - A route pattern from the original `routes` array.
+-   **params** (optional): `Record<string, string>` - An object for dynamic segments.
+    -   For named parameters (e.g., `/users/:id`), the key should match the parameter name (e.g., `{ id: '123' }`).
+    -   For wildcard parameters (e.g., `/files/*`), keys should be `$0`, `$1`, etc., for each `*` from left to right (e.g., `{ $0: 'image.jpg' }`).

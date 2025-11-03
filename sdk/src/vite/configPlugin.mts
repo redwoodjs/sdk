@@ -112,6 +112,7 @@ export const configPlugin = ({
               "rwsdk/constants",
               "rwsdk/debug",
               "rwsdk/realtime/client",
+              "rwsdk/router",
               "rwsdk/turnstile",
             ],
             entries: [],

@@ -16,26 +16,26 @@
     "worker:run": "rw-scripts worker-run",
     "clean": "npm run clean:vite",
     "clean:vite": "rm -rf ./node_modules/.vite",
-    "release": "rw-scripts ensure-deploy-env && npm run clean && npm run build && RWSDK_DEPLOY=1 wrangler deploy",
+    "release": "rw-scripts ensure-deploy-env && npm run clean && npm run build && wrangler deploy",
     "generate": "rw-scripts ensure-env && wrangler types",
     "check": "npm run generate && npm run types",
     "types": "tsc"
   },
   "dependencies": {
-    "react": "19.3.0-canary-4fdf7cf2-20251003",
-    "react-dom": "19.3.0-canary-4fdf7cf2-20251003",
-    "react-server-dom-webpack": "19.3.0-canary-4fdf7cf2-20251003",
+    "react": "19.3.0-canary-561ee24d-20251101",
+    "react-dom": "19.3.0-canary-561ee24d-20251101",
+    "react-server-dom-webpack": "19.3.0-canary-561ee24d-20251101",
     "rwsdk": "workspace:*"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.13.10",
-    "@cloudflare/workers-types": "4.20251004.0",
+    "@cloudflare/vite-plugin": "1.13.18",
+    "@cloudflare/workers-types": "4.20251014.0",
     "@types/node": "~24.5.2",
     "@types/react": "19.1.2",
     "@types/react-dom": "19.1.2",
     "typescript": "5.8.3",
-    "vite": "7.1.9",
-    "wrangler": "4.42.0"
+    "vite": "7.1.12",
+    "wrangler": "4.45.3"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

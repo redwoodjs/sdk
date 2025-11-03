@@ -81,6 +81,14 @@ Our GitHub Actions workflows are configured to provide a tiered testing strategy
 
 All test suites can also be run manually on any branch using the `workflow_dispatch` trigger in GitHub Actions, giving contributors the power to run the full suite on their changes when needed.
 
+#### Handling External Contributions
+
+For security, pull requests from external contributors require manual approval before the `smoke-test` and `playground-e2e` suites will run. Because these test suites require access to secrets, they are gated to prevent malicious code from running in a trusted environment.
+
+*   **Initial Status**: When a PR is opened by an external contributor, the `smoke-test` and `playground-e2e` jobs will fail with an error message indicating that approval is required. This is an intentional failure to signal that a maintainer's action is needed.
+*   **Maintainer's Responsibility**: A core contributor must first perform a code review. If the code is deemed safe to test, the maintainer should add the label `run-secure-tests` to the pull request.
+*   **Triggering the Tests**: Once the label is applied, the tests will run automatically on the next commit to the branch. To run the tests immediately without waiting for a new commit, a maintainer can manually re-run the failed jobs from the GitHub Actions UI. This label acts as a one-time approval for the PR; all subsequent commits will also trigger the tests.
+
 ### Smoke Testing
 
 Smoke tests check that the critical paths of the SDK work for a new project. They perform a full lifecycle test: installing dependencies, running the dev server, and creating a production build. For both dev and production environments, they verify that server and client components render correctly and that actions work as expected.
@@ -100,7 +108,7 @@ The script will create a temporary directory, copy the starter, install dependen
 
 The monorepo includes a `playground` directory for end-to-end (E2E) tests. These tests run against a real, packed tarball of the SDK in an isolated environment to simulate a user's project accurately.
 
-Playground examples are self-contained, runnable projects designed to demonstrate and test RedwoodSDK features. Each example, modeled after `playground/hello-world`, must include an `__tests__` directory with end-to-end tests. These tests are executed from the monorepo root. For context on using the framework to build playgroud examples refer to our docs in `docs/src/content/docs`. Run the tests from monorepo root, `e.g: pnpm test:e2e -- playground/hello-world/__tests__/e2e.test.mts`
+Playground examples are self-contained, runnable projects designed to demonstrate and test RedwoodSDK features. Each example, modeled after `playground/hello-world`, must include an `__tests__` directory with end-to-end tests. These tests are executed from the monorepo root. For context on using the framework to build playgroud examples refer to our docs in `docs/src/content/docs`. Run the tests from monorepo root, `e.g: pnpm test:e2e playground/hello-world/__tests__/e2e.test.mts`
 
 #### Best Practices
 
@@ -186,6 +194,17 @@ You can also specify a package manager or enable debug logging using environment
 # Run tests for hello-world with Yarn and enable debug logging for the e2e environment
 PACKAGE_MANAGER="yarn" DEBUG='rwsdk:e2e:environment' pnpm test:e2e hello-world/__tests__/e2e.test.mts
 ```
+
+#### Local Development Performance
+
+To speed up the local test-and-debug cycle, the E2E test harness uses a caching mechanism that is **enabled by default** for local runs.
+
+-   **How it Works**: The harness creates a persistent test environment in your system's temporary directory for each playground project. On the first run, it installs all dependencies. On subsequent runs, it reuses this environment, skipping the lengthy installation step.
+-   **Disabling the Cache**: If you need to force a clean install, you can disable the cache by setting the `RWSDK_E2E_CACHE_DISABLED` environment variable:
+    ```sh
+    RWSDK_E2E_CACHE_DISABLED=1 pnpm test:e2e
+    ```
+-   **Cache Invalidation**: If you change a playground's `package.json`, you will need to manually clear the cache for that playground to force a re-installation. The cache directories are located in your system's temporary folder (e.g., `/tmp/rwsdk-e2e-cache` on Linux).
 
 #### Skipping Tests
 
@@ -456,154 +475,4 @@ When the smoke tests or playground E2E tests fail on a peer dependency update, i
 2.  **Manual Corrective Action**:
     *   If the issue is in our SDK, a fix should be implemented and pushed directly to the failing Renovate PR branch.
     *   If the failure is a regression in the dependency itself, a maintainer must perform the following steps **on the Renovate PR branch**:
-        1.  **Revert Dependency in Starters and Playground**: In the `starters/*/package.json` and `playground/*/package.json` files, revert the version of the failing dependency back to the last known good version.
-        2.  **Constrain Peer Dependency**: In `sdk/package.json`, update the `peerDependencies` entry for the package to add an upper bound that excludes the broken version (e.g., change `^1.2.3` to `>=1.2.3 <1.2.4`).
-        3.  **Commit and Push**: Commit these changes with a message explaining the reason for the constraint and push to the branch.
-
-    *   Once CI passes on the PR, it can be merged. This prepares for a patch release of `rwsdk` that protects users from the faulty dependency.
-
-## Debugging changes to the sdk locally for a project
-
-The `rwsync` command provides a bridge between a local checkout of the `rwsdk` and a project that uses it, enabling a fast and efficient development workflow.
-
-First, set the `RWSDK_REPO` environment variable in your shell's configuration file (e.g., `~/.bashrc`, `~/.zshrc`) to point to the absolute path of your local `sdk` repository checkout.
-
-```sh
-# e.g. in ~/.zshrc
-export RWSDK_REPO=/path/to/your/local/sdk
-```
-
-Then run this in your project's root to sync changes to your `sdk` checkout into your project:
-
-```sh
-cd /path/to/project/
-pnpm install # you need to have installed your dependencies first
-npx rwsync
-```
-
-To keep watching for changes to the `sdk` repo, and rerun a command when this happens, use `--watch`:
-
-```sh
-npx rwsync --watch "npm run dev"
-```
-
-## Debugging the Vite Plugin
-
-The RedwoodSDK Vite plugin is composed of several smaller, internal plugins. To debug them, you can use the [debug](https://www.npmjs.com/package/debug) package by setting the `DEBUG` environment variable.
-
-Each internal plugin has a unique namespace, like `rwsdk:vite:hmr-plugin`. To enable logging for a specific plugin, set the `DEBUG` variable to its namespace.
-
-For example, to see debug output from just the HMR plugin:
-```sh
-DEBUG='rwsdk:vite:hmr-plugin'
-```
-
-You can also use a wildcard to enable logging for all internal Vite plugins:
-```sh
-DEBUG='rwsdk:vite:*'
-```
-
-For more detailed "verbose" output, set the `VERBOSE` environment variable to `1`.
-
-Here is a full example command that enables verbose logging for the HMR plugin, starts `rwsync` in watch mode to sync your local SDK changes with a test project, and redirects all output to a log file for analysis:
-```sh
-VERBOSE=1 DEBUG='rwsdk:vite:hmr-plugin' npx rwsync --watch "npm run dev" 2>&1 | tee /tmp/out.log
-```
-
-## Forcing re-syncing
-Some projects (e.g. ones with lockfiles disabled) have proven challenging for working with the `rwsync`. For these cases, it might work better to force a full sync on each change:
-
-```sh
-export RWSDK_FORCE_FULL_SYNC=1
-npx rwsync --watch "npm run dev"
-```
-
-## Releasing (for Core Contributors)
-
-Releases are managed by a series of automated GitHub Actions workflows that handle versioning, smoke testing, publishing to npm, and packaging of release artifacts for the SDK, starter, and addons.
-
-For a complete, in-depth explanation of the entire end-to-end release process, please refer to the architecture document: [`docs/architecture/sdkStarterAndAddonReleaseProcess.md`](./docs/architecture/sdkStarterAndAddonReleaseProcess.md).
-
-### How to Create a Release
-
-1.  Navigate to the [Release workflow](.github/workflows/release.yml) in the repository's "Actions" tab.
-2.  Click the "Run workflow" dropdown.
-3.  Choose the `version_type` for the release:
-    *   `patch` or `minor` for standard releases.
-    *   `test` for internal test builds.
-    *   `explicit` for major or pre-releases (requires filling in the `version` field).
-4.  Click the "Run workflow" button.
-
-This action triggers the entire release pipeline as described in the architecture document.
-
-### How to Unrelease a Version
-
-A separate, manually-triggered workflow exists to unrelease a version.
-
-1.  Navigate to the [Unrelease workflow](.github/workflows/unrelease.yml) in the repository's "Actions" tab.
-2.  Click the "Run workflow" dropdown.
-3.  Enter the full `version` to unrelease (e.g., `0.1.15`).
-4.  Provide a `reason` for the action.
-
-Running this workflow does the following:
-*   Deprecates the specified package version on npm. This acts as a warning to users that the version should not be used, without removing it from the registry. A warning message with the provided reason is shown when the version is installed.
-*   Deletes the corresponding GitHub Release. If the deleted release was marked as "latest," the workflow automatically finds the most recent stable release and promotes it to "latest".
-*   Deletes the corresponding git tag from the remote repository.
-
-### Creating a Test Release from a Branch
-Sometimes you have changes made in your branch and would like to test them out or share them with others before making a new release. To create a test release from a branch to test changes:
-
-1.  In the GitHub UI, navigate to the [Release workflow](.github/workflows/release.yml).
-2.  From the "Use workflow from" dropdown, select the branch with the changes you want to test.
-3.  Choose `test` as the `version_type`.
-4.  Run the workflow.
-
-The easiest way to get the version string (e.g., `0.1.19-test.20250717130914`) is from the npm email notification. Alternatively, the workflow output will contain a line: `✨ Done! Released version 0.1.19-test.20250717130914`.
-
-Test releases receive special handling. They are published to npm under the `test` tag, but the release commit itself is not pushed to any branch. Instead, the script creates a release commit, tags it, and pushes *only the tag* to the remote. The local branch is then reset to its previous state. This makes the release commit available on the remote, referenced only by its tag, without including it in the main branch history.
-
-#### Why Deprecate Instead of Unpublish?
-
-This project uses `npm deprecate` instead of `npm unpublish` because unpublishing is highly restrictive and can be unreliable in an automated CI environment. The npm registry has strict policies to prevent breaking the package ecosystem:
-
-*   A package version can only be unpublished without restrictions within 72 hours of its release.
-*   After 72 hours, unpublishing is only allowed if the package has very few downloads and no other public packages depend on it.
-
-Deprecation is a safer and more reliable method. It immediately warns users about a problematic version while ensuring that existing projects that depend on it do not break.
-
-### Release Process and Sanity Checks
-
-The release workflow and underlying script (`sdk/sdk/scripts/release.sh`) follow a strict procedure to ensure the integrity of every release:
-
-1.  **Version & Commit**: Calculates the new version, updates `package.json`, and creates an initial version commit.
-2.  **Build**: The `rwsdk` package is built with `NODE_ENV=production`.
-3.  **Pack**: The package is bundled into a `.tgz` tarball using `npm pack`.
-4.  **Smoke Test & Verify**: A comprehensive smoke test is run against the packed tarball:
-    *   A temporary project is created using the `starter` template.
-    *   The `.tgz` tarball is installed as a dependency.
-    *   **Verification**: The script verifies that the contents of the `dist` directory in the installed package are *identical* to the local `dist` directory from the build step by comparing checksums.
-    *  Smoke tests are then run for this same test project, validating that the installed tarball is working correctly
-5.  **Publish**: Only if all smoke tests and verification checks pass, the script publishes the `.tgz` tarball to npm. This guarantees the exact package that was tested is the one that gets published.
-6.  **Finalize Commit**: For non-prerelease versions, the script updates dependencies in the monorepo, amends the version commit with these changes, tags the commit, and pushes everything to the remote repository.
-7.  **Rollback**: If any step fails, the script reverts the version commit and cleans up all temporary files, leaving the repository in a clean state.
-
-*   **A Note on Mocking**: The term "dependency" is used in two ways. This document primarily concerns package management (e.g., `npm` packages). For guidance on writing testable code by avoiding mocks in favor of dependency injection, please see the "Dependency Injection over Mocking" section.
-
-### Using the Dependency Dashboard
-
-After a new dependency update is available, Renovate will create a Pull Request. For managing all available updates, Renovate also creates a special issue in the repository titled "Dependency Dashboard". You can find this in the "Issues" tab.
-
-This dashboard is the central place to manage the greenkeeping process. It provides:
-*   A list of all new dependency versions that have been discovered.
-*   The status of current open Pull Requests for dependency updates.
-*   A list of updates that are waiting for their scheduled time to run.
-
-#### Manually Triggering Updates
-
-Our configuration schedules most updates to run weekly to reduce noise. However, you can trigger any scheduled update immediately from the dashboard.
-
-To do this, find the update group you wish to run in the "Awaiting Schedule" section of the dashboard and click the checkbox next to it. Renovate will detect this change and create the corresponding Pull Request within a few minutes. This is particularly useful for forcing a one-time update of all dependencies to establish a new baseline or to test a specific update, such as the `starter-peer-deps` group.
-
-### Failure Protocol for Peer Dependencies
-
-If a peer dependency update in a starter project fails the CI smoke tests, it signifies a potential regression. The failure could be due to one of two causes:
+        1.  **Revert Dependency in Starters and Playground**: In the `
