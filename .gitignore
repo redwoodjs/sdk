@@ -191,6 +191,8 @@ smoke-test-artifacts
 starters/standard/.cursor/rules/*
 starters/standard/.pnpm-store
 
+!starter/.vscode/launch.json
+
 # Cursor User Rules
 .cursor/rules/user
 
