@@ -11,6 +11,7 @@ import {
   test,
 } from "vitest";
 import { launchBrowser } from "./browser.mjs";
+import { ensureTmpDir } from "./utils.mjs";
 import {
   DEPLOYMENT_CHECK_TIMEOUT,
   DEPLOYMENT_MIN_TRIES,
@@ -98,16 +99,52 @@ function ensureHooksRegistered() {
   afterAll(async () => {
     const cleanupPromises = [];
     for (const instance of devInstances) {
-      cleanupPromises.push(instance.stopDev());
+      cleanupPromises.push(
+        instance.stopDev().catch((error) => {
+          // Suppress all cleanup errors - they don't affect test results
+          console.warn(
+            `Suppressing error during dev server cleanup: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        }),
+      );
     }
     for (const instance of deploymentInstances) {
-      cleanupPromises.push(instance.cleanup());
+      cleanupPromises.push(
+        instance.cleanup().catch((error) => {
+          // Suppress all cleanup errors - they don't affect test results
+          console.warn(
+            `Suppressing error during deployment cleanup: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        }),
+      );
     }
     if (globalDevPlaygroundEnv) {
-      cleanupPromises.push(globalDevPlaygroundEnv.cleanup());
+      cleanupPromises.push(
+        globalDevPlaygroundEnv.cleanup().catch((error) => {
+          // Suppress all cleanup errors - they don't affect test results
+          console.warn(
+            `Suppressing error during dev environment cleanup: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        }),
+      );
     }
     if (globalDeployPlaygroundEnv) {
-      cleanupPromises.push(globalDeployPlaygroundEnv.cleanup());
+      cleanupPromises.push(
+        globalDeployPlaygroundEnv.cleanup().catch((error) => {
+          // Suppress all cleanup errors - they don't affect test results
+          console.warn(
+            `Suppressing error during deploy environment cleanup: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        }),
+      );
     }
 
     await Promise.all(cleanupPromises);
@@ -242,7 +279,7 @@ export function setupPlaygroundEnvironment(
       globalDevPlaygroundEnv = null;
     }
 
-    if (deploy) {
+    if (deploy && !SKIP_DEPLOYMENT_TESTS) {
       const deployEnv = await setupTarballEnvironment({
         projectDir,
         monorepoRoot,
@@ -318,7 +355,6 @@ export function createDevServer() {
     },
   };
 }
-
 /**
  * Creates a deployment instance using the shared playground environment.
  * Automatically registers cleanup to run after the test.
@@ -521,7 +557,7 @@ function createTestRunner(
       let browser: Browser;
 
       beforeAll(async () => {
-        const tempDir = path.join(os.tmpdir(), "rwsdk-e2e-tests");
+        const tempDir = path.join(await ensureTmpDir(), "rwsdk-e2e-tests");
         const wsEndpointFile = path.join(tempDir, "wsEndpoint");
 
         try {
@@ -624,7 +660,7 @@ function createSDKTestRunner(): SDKRunner & {
         let browser: Browser;
 
         beforeAll(async () => {
-          const tempDir = path.join(os.tmpdir(), "rwsdk-e2e-tests");
+          const tempDir = path.join(await ensureTmpDir(), "rwsdk-e2e-tests");
           const wsEndpointFile = path.join(tempDir, "wsEndpoint");
 
           try {

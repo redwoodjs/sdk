@@ -1,3 +1,6 @@
+import path from "path";
+import { ROOT_DIR } from "../constants.mjs";
+
 export const IS_CI = !!(
   (process.env.CI && !process.env.NOT_CI) ||
   process.env.GITHUB_ACTIONS ||
@@ -7,6 +10,13 @@ export const IS_CI = !!(
   process.env.JENKINS_URL ||
   process.env.NETLIFY
 );
+
+export const RWSDK_SKIP_DEV =
+  Boolean(process.env.RWSDK_SKIP_DEV);
+
+export const RWSDK_SKIP_DEPLOY =
+  process.env.RWSDK_SKIP_DEPLOY === "true" ||
+  process.env.RWSDK_SKIP_DEPLOY === "1";
 
 export const IS_DEBUG_MODE = process.env.RWSDK_E2E_DEBUG
   ? process.env.RWSDK_E2E_DEBUG === "true"

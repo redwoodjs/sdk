@@ -96,22 +96,24 @@ export async function runDevServer(
     const pm = getPackageManagerCommand(packageManager);
 
     // Use the provided cwd if available
-    devProcess = $({
+    devProcess = $(pm, ["run", "dev"], {
       all: true,
-      detached: true, // Re-enable for reliable process cleanup
+      // On Windows, detached: true prevents stdio from being captured.
+      // On Unix, it's required for reliable cleanup by killing the process group.
+      detached: process.platform !== "win32",
       cleanup: true, // Let execa handle cleanup
       forceKillAfterTimeout: 2000, // Force kill if graceful shutdown fails
       cwd: cwd || process.cwd(), // Use provided directory or current directory
       env, // Pass the updated environment variables
       stdio: "pipe", // Ensure streams are piped
-    })`${pm} run dev`;
+    });
 
     devProcess.catch((error: any) => {
       if (!isErrorExpected) {
         // Don't re-throw. The error will be handled gracefully by the polling
         // logic in `waitForUrl`, which will detect that the process has exited.
         // Re-throwing here would cause an unhandled promise rejection.
-        log("Dev server process exited unexpectedly:", error.shortMessage);
+        log("Dev server process exited unexpectedly: %O", error);
       }
     });
 
@@ -127,8 +129,9 @@ export async function runDevServer(
     // Listen for all output to get the URL
     const handleOutput = (data: Buffer, source: string) => {
       const output = data.toString();
+      // Raw output for debugging
+      process.stdout.write(`[dev:${source}] ` + output);
       allOutput += output; // Accumulate all output
-      log("Received output from %s: %s", source, output.replace(/\n/g, "\\n"));
 
       if (!url) {
         // Multiple patterns to catch different package manager outputs
@@ -150,41 +153,15 @@ export async function runDevServer(
 
         for (const pattern of patterns) {
           const match = output.match(pattern);
-          log(
-            "Testing pattern %s against output: %s",
-            pattern.source,
-            output.replace(/\n/g, "\\n"),
-          );
           if (match) {
-            log("Pattern matched: %s, groups: %o", pattern.source, match);
             if (match[1] && match[1].startsWith("http")) {
               url = match[1];
-              log(
-                "Found development server URL with pattern %s: %s",
-                pattern.source,
-                url,
-              );
               break;
             } else if (match[1] && /^\d+$/.test(match[1])) {
               url = `http://localhost:${match[1]}`;
-              log(
-                "Found development server URL with port pattern %s: %s",
-                pattern.source,
-                url,
-              );
               break;
             }
           }
-        }
-
-        // Log potential matches for debugging
-        if (
-          !url &&
-          (output.includes("localhost") ||
-            output.includes("Local") ||
-            output.includes("server"))
-        ) {
-          log("Potential URL pattern found but not matched: %s", output.trim());
         }
       }
     };
@@ -208,6 +185,18 @@ export async function runDevServer(
     // Also try listening to the raw process output
     if (devProcess.child) {
       log("Setting up child process stream listeners");
+      devProcess.child.on("spawn", () => {
+        log("Child process spawned successfully.");
+      });
+      devProcess.child.on("error", (err: Error) => {
+        log("Child process error: %O", err);
+      });
+      devProcess.child.on(
+        "exit",
+        (code: number | null, signal: string | null) => {
+          log("Child process exited with code %s and signal %s", code, signal);
+        },
+      );
       devProcess.child.stdout?.on("data", (data: Buffer) =>
         handleOutput(data, "child.stdout"),
       );
