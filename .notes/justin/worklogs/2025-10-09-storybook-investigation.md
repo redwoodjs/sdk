@@ -65,6 +65,16 @@ Given that Vite's HMR is now more robust and our architecture has matured, we ha
 The `isInUseClientGraph` function and its calls have been removed. This resolves the "Maximum call stack size exceeded" error.
 
 The next step is to verify the fix and clean up the playground.
+
+## Update (2025-10-09) - Post-Fix Testing
+
+After the `isInUseClientGraph` check was removed, further testing was conducted in a separate playground (`requestInfo`) to check for regressions.
+
+The testing revealed a pre-existing HMR issue with client components. When a client component is updated, it appears to be re-rendered with a stale instance of React, leading to a mismatch between `react` and `react-dom` and causing client-side errors. HMR for server components, however, continues to work as expected.
+
+This issue seems unrelated to the `isInUseClientGraph` fix and is likely a deeper problem in how the dev server handles updates for client-side modules.
+
+The fix for the Storybook "Maximum call stack size exceeded" error is still considered valid. The next step is to restore the Storybook playground to a working state to confirm that HMR now works correctly in that environment.
 ## Plan
 
 1.  Create a new playground example based on `hello-world` to reproduce the issue.
