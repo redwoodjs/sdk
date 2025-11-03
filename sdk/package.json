@@ -1,6 +1,6 @@
 {
   "name": "rwsdk",
-  "version": "1.0.0-beta.9",
+  "version": "1.0.0-beta.23",
   "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime",
   "type": "module",
   "bin": {
@@ -36,6 +36,10 @@
       "types": "./dist/runtime/entries/client.d.ts",
       "default": "./dist/runtime/entries/client.js"
     },
+    "./__state": {
+      "types": "./dist/runtime/state.d.ts",
+      "default": "./dist/runtime/state.js"
+    },
     "./__ssr": {
       "react-server": "./dist/runtime/entries/no-react-server.js",
       "types": "./dist/runtime/entries/ssr.d.ts",
@@ -54,7 +58,8 @@
     },
     "./router": {
       "types": "./dist/runtime/entries/router.d.ts",
-      "default": "./dist/runtime/entries/router.js"
+      "workerd": "./dist/runtime/entries/router.js",
+      "default": "./dist/runtime/entries/routerClient.js"
     },
     "./auth": {
       "types": "./dist/runtime/entries/auth.d.ts",
@@ -168,13 +173,14 @@
     "ts-morph": "~27.0.0",
     "unique-names-generator": "~4.7.1",
     "vibe-rules": "~0.3.0",
-    "vite-tsconfig-paths": "~5.1.4"
+    "vite-tsconfig-paths": "~5.1.4",
+    "@types/glob": "^8.1.0"
   },
   "peerDependencies": {
-    "@cloudflare/vite-plugin": "^1.12.4",
-    "react": ">=19.2.0-canary-3fb190f7-20250908 <20.0.0",
-    "react-dom": ">=19.2.0-canary-3fb190f7-20250908 <20.0.0",
-    "react-server-dom-webpack": ">=19.2.0-canary-3fb190f7-20250908 <20.0.0",
+    "@cloudflare/vite-plugin": "^1.13.10",
+    "react": ">=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0",
+    "react-dom": ">=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0",
+    "react-server-dom-webpack": ">=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0",
     "vite": "^6.2.6 || 7.x",
     "wrangler": "^4.35.0"
   },
@@ -190,7 +196,7 @@
     "semver": "~7.7.1",
     "tsx": "~4.20.0",
     "typescript": "~5.9.0",
-    "vite": "7.1.6",
+    "vite": "~7.1.9",
     "vitest": "~3.2.0"
   }
 }

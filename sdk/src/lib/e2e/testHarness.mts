@@ -11,6 +11,7 @@ import {
   test,
 } from "vitest";
 import { launchBrowser } from "./browser.mjs";
+import { ensureTmpDir } from "./utils.mjs";
 import {
   DEPLOYMENT_CHECK_TIMEOUT,
   DEPLOYMENT_MIN_TRIES,
@@ -34,6 +35,7 @@ import {
   runRelease,
 } from "./release.mjs";
 import { setupTarballEnvironment } from "./tarball.mjs";
+import { fileURLToPath } from "url";
 export type { Browser, Page } from "puppeteer-core";
 
 export {
@@ -105,16 +107,52 @@ function ensureHooksRegistered() {
   afterAll(async () => {
     const cleanupPromises = [];
     for (const instance of devInstances) {
-      cleanupPromises.push(instance.stopDev());
+      cleanupPromises.push(
+        instance.stopDev().catch((error) => {
+          // Suppress all cleanup errors - they don't affect test results
+          console.warn(
+            `Suppressing error during dev server cleanup: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        }),
+      );
     }
     for (const instance of deploymentInstances) {
-      cleanupPromises.push(instance.cleanup());
+      cleanupPromises.push(
+        instance.cleanup().catch((error) => {
+          // Suppress all cleanup errors - they don't affect test results
+          console.warn(
+            `Suppressing error during deployment cleanup: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        }),
+      );
     }
     if (globalDevPlaygroundEnv) {
-      cleanupPromises.push(globalDevPlaygroundEnv.cleanup());
+      cleanupPromises.push(
+        globalDevPlaygroundEnv.cleanup().catch((error) => {
+          // Suppress all cleanup errors - they don't affect test results
+          console.warn(
+            `Suppressing error during dev environment cleanup: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        }),
+      );
     }
     if (globalDeployPlaygroundEnv) {
-      cleanupPromises.push(globalDeployPlaygroundEnv.cleanup());
+      cleanupPromises.push(
+        globalDeployPlaygroundEnv.cleanup().catch((error) => {
+          // Suppress all cleanup errors - they don't affect test results
+          console.warn(
+            `Suppressing error during deploy environment cleanup: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        }),
+      );
     }
 
     await Promise.all(cleanupPromises);
@@ -140,12 +178,12 @@ function getProjectDirectory(): string {
  * Derive the playground directory from import.meta.url by finding the nearest package.json
  */
 function getPlaygroundDirFromImportMeta(importMetaUrl: string): string {
-  const url = new URL(importMetaUrl);
-  const testFilePath = url.pathname;
+  const testFilePath = fileURLToPath(importMetaUrl);
 
   let currentDir = dirname(testFilePath);
   // Walk up the tree from the test file's directory
-  while (currentDir !== "/") {
+  // Stop when the parent directory is the same as the current directory (we've reached the root)
+  while (dirname(currentDir) !== currentDir) {
     // Check if a package.json exists in the current directory
     if (fs.existsSync(pathJoin(currentDir, "package.json"))) {
       return currentDir;
@@ -181,6 +219,11 @@ export interface SetupPlaygroundEnvironmentOptions {
    * @default true
    */
   deploy?: boolean;
+  /**
+   * Whether to automatically start the dev server.
+   * @default true
+   */
+  autoStartDevServer?: boolean;
 }
 
 /**
@@ -197,7 +240,10 @@ export function setupPlaygroundEnvironment(
     monorepoRoot,
     dev = true,
     deploy = true,
-  } = typeof options === "string" ? { sourceProjectDir: options } : options;
+    autoStartDevServer = true,
+  } = typeof options === "string"
+    ? { sourceProjectDir: options, autoStartDevServer: true }
+    : options;
   ensureHooksRegistered();
 
   beforeAll(async () => {
@@ -226,19 +272,22 @@ export function setupPlaygroundEnvironment(
         projectDir: devEnv.targetDir,
         cleanup: devEnv.cleanup,
       };
-      const devControl = createDevServer();
-      globalDevInstancePromise = devControl.start().then((instance) => {
-        globalDevInstance = instance;
-        return instance;
-      });
-      // Prevent unhandled promise rejections. The error will be handled inside
-      // the test's beforeEach hook where this promise is awaited.
-      globalDevInstancePromise.catch(() => {});
+
+      if (autoStartDevServer) {
+        const devControl = createDevServer();
+        globalDevInstancePromise = devControl.start().then((instance) => {
+          globalDevInstance = instance;
+          return instance;
+        });
+        // Prevent unhandled promise rejections. The error will be handled inside
+        // the test's beforeEach hook where this promise is awaited.
+        globalDevInstancePromise.catch(() => {});
+      }
     } else {
       globalDevPlaygroundEnv = null;
     }
 
-    if (deploy) {
+    if (deploy && !SKIP_DEPLOYMENT_TESTS) {
       const deployEnv = await setupTarballEnvironment({
         projectDir,
         monorepoRoot,
@@ -314,7 +363,6 @@ export function createDevServer() {
     },
   };
 }
-
 /**
  * Creates a deployment instance using the shared playground environment.
  * Automatically registers cleanup to run after the test.
@@ -482,8 +530,6 @@ export async function runTestWithRetries(
 type SDKRunner = (
   name: string,
   testLogic: (context: {
-    createDevServer: () => Promise<DevServerInstance>;
-    createDeployment: () => Promise<DeploymentInstance>;
     browser: Browser;
     page: Page;
     projectDir: string;
@@ -523,7 +569,7 @@ function createTestRunner(
       let errorTracker: ReturnType<typeof trackPageErrors> | null = null;
 
       beforeAll(async () => {
-        const tempDir = path.join(os.tmpdir(), "rwsdk-e2e-tests");
+        const tempDir = path.join(await ensureTmpDir(), "rwsdk-e2e-tests");
         const wsEndpointFile = path.join(tempDir, "wsEndpoint");
 
         try {
@@ -656,7 +702,7 @@ function createSDKTestRunner(): SDKRunner & {
         let browser: Browser;
 
         beforeAll(async () => {
-          const tempDir = path.join(os.tmpdir(), "rwsdk-e2e-tests");
+          const tempDir = path.join(await ensureTmpDir(), "rwsdk-e2e-tests");
           const wsEndpointFile = path.join(tempDir, "wsEndpoint");
 
           try {

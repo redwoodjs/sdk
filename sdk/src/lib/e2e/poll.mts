@@ -12,7 +12,7 @@ export interface PollOptions {
 }
 
 export async function poll(
-  fn: () => Promise<boolean>,
+  fn: () => boolean | Promise<boolean>,
   options: Partial<PollOptions> = {},
 ): Promise<void> {
   const {

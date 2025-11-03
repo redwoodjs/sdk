@@ -1,10 +1,12 @@
 import { FC, ReactElement } from "react";
-import { DocumentProps } from "../lib/router";
+import { DocumentProps } from "../lib/types.js";
+import { type PartialRequestInfo } from "../requestInfo/types";
 import { renderToStream } from "./renderToStream";
 
 export interface RenderToStringOptions {
   Document?: FC<DocumentProps>;
   injectRSCPayload?: boolean;
+  requestInfo?: PartialRequestInfo;
 }
 
 export const renderToString = async (

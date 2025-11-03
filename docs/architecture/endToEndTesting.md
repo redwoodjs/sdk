@@ -96,5 +96,7 @@ pnpm smoke-test --path=../starter
 To run the playground E2E tests:
 ```
 pnpm test:e2e
+
 ```
 This hybrid architecture provides a fast, reliable, and scalable foundation for the E2E test suite, allowing for both high-performance and high-isolation testing of RedwoodSDK's features.
+

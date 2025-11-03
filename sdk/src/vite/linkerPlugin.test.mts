@@ -35,6 +35,26 @@ describe("linkWorkerBundle", () => {
     expect(result.code).toContain(`const logo = "/assets/logo.abc.svg";`);
   });
 
+  it("should replace asset placeholder with a base + hashed paths from the manifest if base is provided", () => {
+    const code = `
+      const stylesheet = "rwsdk_asset:/src/styles.css";
+      const logo = "rwsdk_asset:/src/logo.svg";
+    `;
+
+    const base = "/base/";
+
+    const result = linkWorkerBundle({
+      code,
+      manifestContent,
+      projectRootDir,
+      base,
+    });
+    expect(result.code).toContain(
+      `const stylesheet = "/base/assets/styles.123.css";`,
+    );
+    expect(result.code).toContain(`const logo = "/base/assets/logo.abc.svg";`);
+  });
+
   it("should deprefix remaining asset placeholders not in the manifest", () => {
     const code = `const publicImg = "rwsdk_asset:/images/photo.jpg";`;
     const result = linkWorkerBundle({

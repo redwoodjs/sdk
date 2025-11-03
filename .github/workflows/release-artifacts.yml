@@ -18,12 +18,16 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
+          cache: "pnpm"
 
       - name: Get tag or input version
         id: vars
@@ -36,7 +40,6 @@ jobs:
 
       - name: Update starter package.json
         run: |
-          corepack enable
           version_without_v="${{ steps.vars.outputs.version }}"
           (cd starter && npm pkg set dependencies.rwsdk=${version_without_v#v})
           pnpm install --ignore-scripts --no-frozen-lockfile

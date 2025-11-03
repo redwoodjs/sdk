@@ -9,9 +9,8 @@ on:
       - ".notes/**"
       - "*.md"
       - "src/**/*.test.*"
-  pull_request:
-    branches:
-      - main
+  pull_request_target:
+    types: [opened, synchronize, reopened]
     paths-ignore:
       - "docs/**"
       - ".notes/**"
@@ -19,6 +18,9 @@ on:
       - "src/**/*.test.*"
   workflow_dispatch:
     inputs:
+      ref:
+        description: "The branch, tag or SHA to checkout. e.g. `refs/pull/123/head`"
+        required: false
       os:
         description: "OS to run on (e.g., ubuntu-latest, macos-latest)"
         required: true
@@ -28,6 +30,7 @@ on:
           - all
           - ubuntu-latest
           - macos-latest
+          - windows-latest
       package-manager:
         description: "Package manager to use (e.g., pnpm, npm)"
         required: true
@@ -48,8 +51,8 @@ on:
         default: false
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 env:
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -64,14 +67,14 @@ jobs:
       - id: set-matrix
         run: |
           if [[ "${{ inputs.run_full_matrix }}" == "true" ]]; then
-            echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"},{"os":"ubuntu-latest","package-manager":"npm"},{"os":"ubuntu-latest","package-manager":"yarn"},{"os":"ubuntu-latest","package-manager":"yarn-classic"},{"os":"macos-latest","package-manager":"pnpm"},{"os":"macos-latest","package-manager":"npm"},{"os":"macos-latest","package-manager":"yarn"},{"os":"macos-latest","package-manager":"yarn-classic"}]}' >> $GITHUB_OUTPUT
+            echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"},{"os":"ubuntu-latest","package-manager":"npm"},{"os":"ubuntu-latest","package-manager":"yarn"},{"os":"ubuntu-latest","package-manager":"yarn-classic"},{"os":"macos-latest","package-manager":"pnpm"},{"os":"macos-latest","package-manager":"npm"},{"os":"macos-latest","package-manager":"yarn"},{"os":"macos-latest","package-manager":"yarn-classic"},{"os":"windows-latest","package-manager":"pnpm"},{"os":"windows-latest","package-manager":"npm"},{"os":"windows-latest","package-manager":"yarn"},{"os":"windows-latest","package-manager":"yarn-classic"}]}' >> $GITHUB_OUTPUT
           elif [[ "${{ github.event_name }}" == "pull_request" || "${{ github.event_name }}" == "push" ]]; then
             echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"}]}' >> $GITHUB_OUTPUT
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             OS_INPUT=${{ github.event.inputs.os }}
             PM_INPUT=${{ github.event.inputs.package-manager }}
 
-            [ "$OS_INPUT" == "all" ] && OS_LIST='ubuntu-latest macos-latest' || OS_LIST=$OS_INPUT
+            [ "$OS_INPUT" == "all" ] && OS_LIST='ubuntu-latest macos-latest windows-latest' || OS_LIST=$OS_INPUT
             [ "$PM_INPUT" == "all" ] && PM_LIST='pnpm npm yarn yarn-classic' || PM_LIST=$PM_INPUT
 
             JSON_ARRAY="[]"
@@ -94,6 +97,7 @@ jobs:
       matrix: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
     timeout-minutes: 60
     env:
+      DEBUG: rwsdk:e2e:*
       MAX_RETRIES: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '10' || '1' }}
       RWSDK_SETUP_PLAYGROUND_ENV_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '1800000' || '' }} # 30 mins
       RWSDK_DEPLOYMENT_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '900000' || '' }} # 15 mins
@@ -112,38 +116,56 @@ jobs:
       github.event_name == 'push' ||
       github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch' ||
-      (github.event.pull_request.head.repo.full_name == github.repository)
+      github.event_name == 'pull_request_target'
 
     steps:
+      - name: Require approval for external contributors
+        if: |
+          github.event_name == 'pull_request_target' &&
+          github.event.pull_request.user.login != 'renovate[bot]' &&
+          github.event.pull_request.author_association != 'OWNER' &&
+          github.event.pull_request.author_association != 'MEMBER' &&
+          github.event.pull_request.author_association != 'COLLABORATOR' &&
+          !contains(github.event.pull_request.labels.*.name, 'run-secure-tests')
+        run: |
+          echo "ERROR: This PR is from an external contributor and requires the 'run-secure-tests' label."
+          exit 1
+
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.event.inputs.ref || github.ref }}
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
+          cache: "pnpm"
 
       - name: Install dependencies
-        shell: bash
-        run: |
-          corepack enable
-          pnpm install
+        run: pnpm install
 
       - name: Build SDK
-        shell: bash
         run: |
           cd sdk
           pnpm build
 
+      - name: Setup E2E Cache
+        uses: actions/cache@v4
+        with:
+          path: .tmp/rwsdk-e2e/rwsdk-e2e-cache
+          key: ${{ runner.os }}-${{ matrix.package-manager }}-e2e-deps-${{ hashFiles('playground/**/package.json', 'playground/**/pnpm-lock.yaml', 'playground/**/yarn.lock', 'playground/**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.package-manager }}-e2e-deps-
+
       - name: Run Playground E2E Tests
         id: tests
-        shell: bash
         run: |
           pnpm install
           pnpm test:e2e
-        env:
-          CI: 1
-          PACKAGE_MANAGER: ${{ matrix.package-manager }}
 
       - name: Upload playground artifacts
         uses: actions/upload-artifact@v4

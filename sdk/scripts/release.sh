@@ -99,6 +99,13 @@ while [[ $i -le $# ]]; do
   i=$((i + 1))
 done
 
+# Sanitize version input
+if [[ -n "$MANUAL_VERSION" && "$MANUAL_VERSION" == v* ]]; then
+  echo "Sanitizing version input: stripping leading 'v' from '$MANUAL_VERSION'"
+  MANUAL_VERSION="${MANUAL_VERSION#v}"
+  echo "Sanitized version: '$MANUAL_VERSION'"
+fi
+
 # Validate required arguments
 if [[ -z "$VERSION_TYPE" ]]; then
   echo "Error: Version type (patch|minor|test|explicit) is required."
