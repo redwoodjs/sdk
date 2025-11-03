@@ -34,17 +34,21 @@ I have modified `sdk/sdk/src/lib/e2e/environment.mts` to re-introduce platform-s
 
 This change should resolve the `ENOTEMPTY` and "Cannot copy to a subdirectory" errors on non-Windows CI runners.
 
-### Attempt 2: Simplify Caching Logic
 
-The previous fix introduced a new error: `ERR_MODULE_NOT_FOUND` from Vite when starting the dev server. This suggests that the two-step installation process (restoring from cache, then installing the SDK tarball on top) was creating an inconsistent or corrupt `node_modules` directory.
+### Final Attempt: Robust SDK Update on Cache Hit
 
-To fix this, I have simplified and robustified the caching strategy:
+My previous attempt to fix the `ERR_MODULE_NOT_FOUND` error by including the SDK's `dist` hash in the cache key was incorrect. This went against the desired developer workflow, which requires the cache to remain valid during local SDK development.
 
-1.  **Cache Key Enhancement:** The cache key is now a combination of the project's dependency hash and a hash of the SDK's `dist` directory. This ensures that any change to the SDK source code will correctly invalidate the cache.
-2.  **Simplified Cache Restore:** On a cache hit, the test harness now restores the `node_modules` directory from the cache and does nothing else. The installation step is skipped entirely. Because the SDK hash is part of the key, the cached `node_modules` is guaranteed to contain the correct version of the SDK.
-3.  **Clean Installation on Cache Miss:** On a cache miss, the harness performs a single, clean `pnpm install`. This command installs both the project's third-party dependencies and the local SDK tarball in one atomic operation, creating a consistent state. The resulting `node_modules` is then saved to the cache.
+The root cause of the module not found error was the use of `pnpm add` to update the SDK in a cached `node_modules` directory. This command appeared to be creating an inconsistent state.
 
-This new approach eliminates the complex and error-prone two-step installation, which should resolve the module resolution failures.
+The correct solution is to revert to the desired caching strategy and use a more idiomatic package manager command:
+
+1.  **Cache Key:** The cache key is based **only** on the project's dependency lockfiles. It does not include a hash of the SDK's source.
+2.  **Cache Hit Logic:** On a cache hit, the process is now:
+    a.  Restore the `node_modules` directory from the cache using the appropriate platform-specific command (`cp -al` or `copy`).
+    b.  Run a standard `pnpm install`. Because the `package.json` has been updated to point to the new, locally-packed SDK tarball, `pnpm` will see that only this one dependency needs to be updated. It performs a fast, minimal installation of just the SDK without disturbing the rest of the `node_modules` tree.
+
+This approach is both correct and efficient. It preserves the cache across SDK changes and uses the package manager's standard mechanism for updating a single dependency, which avoids corrupting the installation.
 
 ### PR Description
 
@@ -58,22 +62,18 @@ This PR resolves E2E test failures on non-Windows CI environments that were intr
 
 ##### Problem
 
-After switching from \`cp -al\` to \`fs-extra/copy\` for cross-platform support, tests on Linux and macOS began failing with two main errors:
-*   \`ENOTEMPTY: directory not empty, rmdir ...\`
-*   \`Cannot copy '...' to a subdirectory of itself\`
+After switching from `cp -al` to `fs-extra/copy` for cross-platform support, tests on Linux and macOS began failing with two main errors:
+*   `ENOTEMPTY: directory not empty, rmdir ...`
+*   `Cannot copy '...' to a subdirectory of itself`
 
-These errors occurred because \`fs-extra\`'s \`copy\` function dereferences symlinks by default. When encountering the symlink structure created by \`pnpm\` in \`node_modules\`, it would attempt to copy directories into themselves, leading to infinite recursion and corrupted state that could not be cleaned up.
+These errors occurred because `fs-extra`'s `copy` function dereferences symlinks by default, leading to infinite recursion when processing `pnpm`'s `node_modules` structure. Subsequent attempts to fix this by altering the installation logic on a cache hit resulted in `ERR_MODULE_NOT_FOUND` errors from Vite.
 
 ##### Solution
 
-The solution involves two main changes to the E2E test harness (\`sdk/sdk/src/lib/e2e/environment.mts\`):
+The solution restores the desired developer workflow where the dependency cache remains valid across local SDK changes, while fixing the underlying installation issues.
 
-1.  **Platform-Specific Cache Copying:** The logic for copying the \`node_modules\` directory from the cache has been made platform-aware:
-    *   **On Unix-like systems (Linux/macOS):** The implementation reverts to using \`cp -al\`. This command creates a fast, hardlink-based copy that correctly preserves \`pnpm\`'s symlink structure.
-    *   **On Windows:** The implementation continues to use \`fs-extra/copy\` to maintain compatibility.
+1.  **Platform-Specific Cache Copying:** The logic for copying the `node_modules` directory is now platform-aware:
+    *   **On Unix-like systems (Linux/macOS):** The implementation reverts to using `cp -al`. This creates a fast, hardlink-based copy that correctly preserves `pnpm`'s symlink structure.
+    *   **On Windows:** The implementation continues to use `fs-extra/copy`.
 
-2.  **Simplified Caching Strategy:** The caching logic was further refined to be more robust and prevent module resolution errors.
-    *   The cache key is now generated from a hash of both the project's dependencies *and* the SDK's \`dist\` directory.
-    *   On a cache hit, the harness restores the \`node_modules\` directory and skips the installation step entirely. This ensures a consistent state, as the cached directory is guaranteed to contain the correct version of all dependencies, including the local SDK.
-
-This approach resolves the file system errors on Unix-like systems while preserving the necessary compatibility for the Windows test environment.
+2.  **Robust SDK Update on Cache Hit:** On a cache hit, after restoring `node_modules`, the harness now runs a standard `pnpm install` (or equivalent). This allows the package manager to perform a fast, minimal update of just the local SDK package—which has been updated in `package.json` to point to a new tarball—without disturbing the rest of the cached dependencies. This is more reliable than the previous `pnpm add` approach and resolves the Vite module errors.

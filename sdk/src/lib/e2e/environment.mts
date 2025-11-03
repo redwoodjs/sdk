@@ -358,12 +358,9 @@ async function installDependencies(
   let nodeModulesCachePath: string | null = null;
 
   if (IS_CACHE_ENABLED) {
-    const depHash = await getProjectDependencyHash(monorepoRoot || projectDir);
-    const sdkHash = await getDirectoryHash(join(ROOT_DIR, "dist"));
-    const combinedHash = createHash("md5")
-      .update(depHash)
-      .update(sdkHash)
-      .digest("hex");
+    const dependencyHash = await getProjectDependencyHash(
+      monorepoRoot || projectDir,
+    );
 
     const cacheDirName = monorepoRoot
       ? basename(monorepoRoot)
@@ -372,7 +369,7 @@ async function installDependencies(
     cacheRoot = path.join(
       await ensureTmpDir(),
       "rwsdk-e2e-cache",
-      `${cacheDirName}-${combinedHash.substring(0, 8)}`,
+      `${cacheDirName}-${dependencyHash.substring(0, 8)}`,
     );
     nodeModulesCachePath = path.join(cacheRoot, "node_modules");
 
@@ -389,7 +386,9 @@ async function installDependencies(
           await $("cp", ["-al", nodeModulesCachePath, targetDir]);
         }
         console.log(`✅ Cache restored successfully.`);
-        return; // Skip installation
+        console.log(`📦 Installing local SDK into cached node_modules...`);
+        await runInstall(targetDir, packageManager, true);
+        return;
       } catch (e) {
         console.warn(
           `⚠️ Cache restore failed. Error: ${(e as Error).message}. Proceeding with clean install.`,
@@ -402,7 +401,7 @@ async function installDependencies(
     }
   }
 
-  await runInstall(targetDir, packageManager);
+  await runInstall(targetDir, packageManager, false);
 
   if (IS_CACHE_ENABLED && nodeModulesCachePath) {
     console.log(
@@ -427,20 +426,22 @@ async function installDependencies(
 async function runInstall(
   targetDir: string,
   packageManager: PackageManager,
-  // isCacheHit is no longer needed
+  isCacheHit: boolean,
 ) {
-  // Always clean up before a fresh install
-  log("Cleaning up pre-existing node_modules and lockfiles...");
-  await Promise.all([
-    fs.promises.rm(join(targetDir, "node_modules"), {
-      recursive: true,
-      force: true,
-    }),
-    fs.promises.rm(join(targetDir, "pnpm-lock.yaml"), { force: true }),
-    fs.promises.rm(join(targetDir, "yarn.lock"), { force: true }),
-    fs.promises.rm(join(targetDir, "package-lock.json"), { force: true }),
-  ]);
-  log("Cleanup complete.");
+  if (!isCacheHit) {
+    // Clean up any pre-existing node_modules and lockfiles
+    log("Cleaning up pre-existing node_modules and lockfiles...");
+    await Promise.all([
+      fs.promises.rm(join(targetDir, "node_modules"), {
+        recursive: true,
+        force: true,
+      }),
+      fs.promises.rm(join(targetDir, "pnpm-lock.yaml"), { force: true }),
+      fs.promises.rm(join(targetDir, "yarn.lock"), { force: true }),
+      fs.promises.rm(join(targetDir, "package-lock.json"), { force: true }),
+    ]);
+    log("Cleanup complete.");
+  }
 
   if (packageManager.startsWith("yarn")) {
     log(`Enabling corepack...`);
