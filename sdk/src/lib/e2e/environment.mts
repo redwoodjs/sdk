@@ -358,9 +358,12 @@ async function installDependencies(
   let nodeModulesCachePath: string | null = null;
 
   if (IS_CACHE_ENABLED) {
-    const dependencyHash = await getProjectDependencyHash(
-      monorepoRoot || projectDir,
-    );
+    const depHash = await getProjectDependencyHash(monorepoRoot || projectDir);
+    const sdkHash = await getDirectoryHash(join(ROOT_DIR, "dist"));
+    const combinedHash = createHash("md5")
+      .update(depHash)
+      .update(sdkHash)
+      .digest("hex");
 
     const cacheDirName = monorepoRoot
       ? basename(monorepoRoot)
@@ -369,7 +372,7 @@ async function installDependencies(
     cacheRoot = path.join(
       await ensureTmpDir(),
       "rwsdk-e2e-cache",
-      `${cacheDirName}-${dependencyHash.substring(0, 8)}`,
+      `${cacheDirName}-${combinedHash.substring(0, 8)}`,
     );
     nodeModulesCachePath = path.join(cacheRoot, "node_modules");
 
@@ -378,12 +381,15 @@ async function installDependencies(
         `✅ CACHE HIT for dependencies: Found cached node_modules. Hard-linking from ${nodeModulesCachePath}`,
       );
       try {
-        await copy(nodeModulesCachePath, join(targetDir, "node_modules"));
+        const destNodeModules = join(targetDir, "node_modules");
+        if (process.platform === "win32") {
+          await copy(nodeModulesCachePath, destNodeModules);
+        } else {
+          // On non-windows, use cp -al for performance
+          await $("cp", ["-al", nodeModulesCachePath, targetDir]);
+        }
         console.log(`✅ Cache restored successfully.`);
-        console.log(`📦 Installing local SDK into cached node_modules...`);
-        // We still need to install the packed tarball
-        await runInstall(targetDir, packageManager, true);
-        return;
+        return; // Skip installation
       } catch (e) {
         console.warn(
           `⚠️ Cache restore failed. Error: ${(e as Error).message}. Proceeding with clean install.`,
@@ -396,7 +402,7 @@ async function installDependencies(
     }
   }
 
-  await runInstall(targetDir, packageManager, false);
+  await runInstall(targetDir, packageManager);
 
   if (IS_CACHE_ENABLED && nodeModulesCachePath) {
     console.log(
@@ -405,7 +411,15 @@ async function installDependencies(
     await fs.promises.mkdir(path.dirname(nodeModulesCachePath), {
       recursive: true,
     });
-    await copy(join(targetDir, "node_modules"), nodeModulesCachePath);
+    if (process.platform === "win32") {
+      await copy(join(targetDir, "node_modules"), nodeModulesCachePath);
+    } else {
+      await $("cp", [
+        "-al",
+        join(targetDir, "node_modules"),
+        nodeModulesCachePath,
+      ]);
+    }
     console.log(`✅ node_modules cached successfully.`);
   }
 }
@@ -413,22 +427,20 @@ async function installDependencies(
 async function runInstall(
   targetDir: string,
   packageManager: PackageManager,
-  isCacheHit: boolean,
+  // isCacheHit is no longer needed
 ) {
-  if (!isCacheHit) {
-    // Clean up any pre-existing node_modules and lockfiles
-    log("Cleaning up pre-existing node_modules and lockfiles...");
-    await Promise.all([
-      fs.promises.rm(join(targetDir, "node_modules"), {
-        recursive: true,
-        force: true,
-      }),
-      fs.promises.rm(join(targetDir, "pnpm-lock.yaml"), { force: true }),
-      fs.promises.rm(join(targetDir, "yarn.lock"), { force: true }),
-      fs.promises.rm(join(targetDir, "package-lock.json"), { force: true }),
-    ]);
-    log("Cleanup complete.");
-  }
+  // Always clean up before a fresh install
+  log("Cleaning up pre-existing node_modules and lockfiles...");
+  await Promise.all([
+    fs.promises.rm(join(targetDir, "node_modules"), {
+      recursive: true,
+      force: true,
+    }),
+    fs.promises.rm(join(targetDir, "pnpm-lock.yaml"), { force: true }),
+    fs.promises.rm(join(targetDir, "yarn.lock"), { force: true }),
+    fs.promises.rm(join(targetDir, "package-lock.json"), { force: true }),
+  ]);
+  log("Cleanup complete.");
 
   if (packageManager.startsWith("yarn")) {
     log(`Enabling corepack...`);
@@ -457,22 +469,6 @@ async function runInstall(
     yarn: ["yarn", "install", "--silent"],
     "yarn-classic": ["yarn", "--silent"],
   }[packageManager];
-
-  if (isCacheHit && packageManager === "pnpm") {
-    // For pnpm, a targeted `install <tarball>` is much faster
-    // We need to find the tarball name first.
-    const files = await fs.promises.readdir(targetDir);
-    const tarball = files.find(
-      (f) => f.startsWith("rwsdk-") && f.endsWith(".tgz"),
-    );
-    if (tarball) {
-      installCommand[1] = `./${tarball}`;
-    } else {
-      log(
-        "Could not find SDK tarball for targeted install, falling back to full install.",
-      );
-    }
-  }
 
   // Run install command in the target directory
   log(`Running ${installCommand.join(" ")}`);
