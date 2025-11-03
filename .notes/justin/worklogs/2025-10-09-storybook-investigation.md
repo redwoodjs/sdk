@@ -66,15 +66,13 @@ The `isInUseClientGraph` function and its calls have been removed. This resolves
 
 The next step is to verify the fix and clean up the playground.
 
-## Update (2025-10-09) - Post-Fix Testing
+## Update (2025-10-09) - Stale State Bugfix
 
-After the `isInUseClientGraph` check was removed, further testing was conducted in a separate playground (`requestInfo`) to check for regressions.
+Further investigation revealed a pre-existing bug in the HMR logic for the `worker` environment. The plugin was not invalidating the changed module itself, only related CSS and virtual SSR modules. This was causing a stale state issue, particularly with React instances, where the client would receive an RSC payload rendered with an old version of a server-side module.
 
-The testing revealed a pre-existing HMR issue with client components. When a client component is updated, it appears to be re-rendered with a stale instance of React, leading to a mismatch between `react` and `react-dom` and causing client-side errors. HMR for server components, however, continues to work as expected.
+A call to `invalidateModule(ctx.server, environment, ctx.file)` has been added to the `worker` environment's `hotUpdate` handler. This ensures that the changed module is correctly invalidated, allowing Vite to propagate the changes through the module graph and preventing the stale state issue.
 
-This issue seems unrelated to the `isInUseClientGraph` fix and is likely a deeper problem in how the dev server handles updates for client-side modules.
-
-The fix for the Storybook "Maximum call stack size exceeded" error is still considered valid. The next step is to restore the Storybook playground to a working state to confirm that HMR now works correctly in that environment.
+With this, both the Storybook crash and the HMR stale state issue should be resolved.
 ## Plan
 
 1.  Create a new playground example based on `hello-world` to reproduce the issue.
