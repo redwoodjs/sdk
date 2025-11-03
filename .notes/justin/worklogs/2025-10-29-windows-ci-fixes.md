@@ -347,3 +347,47 @@ I applied the fix comprehensively by replacing all `fs.realpathSync` calls in th
 ### 35. E2E: Re-enable parallel test execution on Windows
 
 With the path normalization issue resolved, the workaround to run tests serially on Windows is no longer needed. I have removed the conditional `maxWorkers` and `minWorkers` logic from `playground/vitest.config.mts`, restoring the default parallel execution behavior. This confirms the issue was environmental and not related to test concurrency.
+
+### PR Description
+
+### PR Title
+
+feat: Remove RWSDK_DEPLOY for cross-platform builds and fix Windows E2E tests
+
+This PR introduces fixes to resolve critical E2E test failures on Windows CI.
+
+## User-Facing Fixes
+
+*   **Cross-Platform Scripting:**
+    *   **Removed `RWSDK_DEPLOY` Env Var:** Replaced the non-portable `RWSDK_DEPLOY=1` syntax in starter's `package.json` scripts with a check against `process.env.NODE_ENV`. Vite automatically sets `NODE_ENV` to `"production"` for builds and `"development"` for the dev server. This provides a reliable, cross-platform way to determine the build context without requiring extra dependencies. This is also backwards compatible for existing projects created from the starter previously.
+
+## E2E and CI Fixes
+
+*   **Windows Path Normalization:**
+    *   **Vite Alias Resolution:** The primary cause of test failures was a path mismatch issue on Windows CI. Node.js was returning legacy "short" paths (e.g., `RUNNER~1`), while Vite's internals resolved to modern "long" paths (e.g., `runneradmin`). This inconsistency broke module alias resolution. The fix was to replace `fs.realpathSync` with `fs.realpathSync.native` throughout the E2E harness, which correctly canonicalizes paths to their long form.
+    *   **Yarn YAML Parsing:** Corrected an issue where backslashes in Windows paths would cause YAML parsing errors in `.yarnrc.yml` files by normalizing paths to use forward slashes.
+*   **CI & E2E Test Harness Stability:**
+    *   **Dev Server Timeout:** Resolved an issue where the dev server would fail silently on Windows. The root cause was `execa`'s `detached: true` option severing `stdio` streams. The fix was to conditionally set this option to `false` on Windows, restoring error and log output.
+    *   **Package Manager Verbosity:** Added silent flags (`--reporter=silent`, `--silent`) to `pnpm`, `npm`, and `yarn` install commands to reduce log noise in CI.
+    *   **GitHub Actions Workflow:** Fixed syntax errors in the `playground-e2e-tests.yml` workflow by removing a faulty conditional `shell` property and relying on runner defaults.
+*   **Windows Debugging Environment:**
+    *   An interactive debugging environment for Windows was created and refined. It can be triggered via `./scripts/start-windows-debug.sh`.
+    *   The environment automatically configures the runner with the user's local Git credentials, sets up custom git aliases, starts a Cursor tunnel, and launches a PowerShell session on SSH login.
+    *   Securely forwards local `CLOUDFLARE_` environment variables to the remote session for testing.
+
+## Current Status
+
+The fixes in this PR have improved the stability of E2E tests on Windows, but several failures remain. Many of these appear to be timeouts, which may be transient. The current test results on Windows are as follows:
+
+*   **pnpm:**
+    *   Test Files: 10 failed, 6 passed (16 total)
+    *   Tests: 9 failed, 22 passed, 23 skipped (54 total)
+
+*   **npm:**
+    *   Test Files: 14 failed, 2 passed (16 total)
+    *   Tests: 1 failed, 4 passed, 49 skipped (54 total)
+    *   Note: Includes a hook timeout error.
+
+*   **Yarn (Classic):**
+    *   Test Files: 12 failed, 4 passed (16 total)
+    *   Tests: 12 failed, 17 passed, 25 skipped (54 total)
