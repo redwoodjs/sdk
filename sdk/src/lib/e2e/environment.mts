@@ -378,10 +378,15 @@ async function installDependencies(
         `✅ CACHE HIT for dependencies: Found cached node_modules. Hard-linking from ${nodeModulesCachePath}`,
       );
       try {
-        await copy(nodeModulesCachePath, join(targetDir, "node_modules"));
+        const destNodeModules = join(targetDir, "node_modules");
+        if (process.platform === "win32") {
+          await copy(nodeModulesCachePath, destNodeModules);
+        } else {
+          // On non-windows, use cp -al for performance
+          await $("cp", ["-al", nodeModulesCachePath, targetDir]);
+        }
         console.log(`✅ Cache restored successfully.`);
         console.log(`📦 Installing local SDK into cached node_modules...`);
-        // We still need to install the packed tarball
         await runInstall(targetDir, packageManager, true);
         return;
       } catch (e) {
@@ -405,7 +410,15 @@ async function installDependencies(
     await fs.promises.mkdir(path.dirname(nodeModulesCachePath), {
       recursive: true,
     });
-    await copy(join(targetDir, "node_modules"), nodeModulesCachePath);
+    if (process.platform === "win32") {
+      await copy(join(targetDir, "node_modules"), nodeModulesCachePath);
+    } else {
+      await $("cp", [
+        "-al",
+        join(targetDir, "node_modules"),
+        nodeModulesCachePath,
+      ]);
+    }
     console.log(`✅ node_modules cached successfully.`);
   }
 }
@@ -457,22 +470,6 @@ async function runInstall(
     yarn: ["yarn", "install", "--silent"],
     "yarn-classic": ["yarn", "--silent"],
   }[packageManager];
-
-  if (isCacheHit && packageManager === "pnpm") {
-    // For pnpm, a targeted `install <tarball>` is much faster
-    // We need to find the tarball name first.
-    const files = await fs.promises.readdir(targetDir);
-    const tarball = files.find(
-      (f) => f.startsWith("rwsdk-") && f.endsWith(".tgz"),
-    );
-    if (tarball) {
-      installCommand[1] = `./${tarball}`;
-    } else {
-      log(
-        "Could not find SDK tarball for targeted install, falling back to full install.",
-      );
-    }
-  }
 
   // Run install command in the target directory
   log(`Running ${installCommand.join(" ")}`);
