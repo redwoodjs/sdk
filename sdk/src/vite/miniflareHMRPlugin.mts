@@ -56,41 +56,6 @@ export const hasEntryAsAncestor = ({
   return false;
 };
 
-const isInUseClientGraph = ({
-  file,
-  clientFiles,
-  server,
-}: {
-  file: string;
-  clientFiles: Set<string>;
-  server: ViteDevServer;
-}) => {
-  const id = normalizeModulePath(file, server.config.root);
-
-  if (clientFiles.has(id)) {
-    return true;
-  }
-
-  const modules = server.environments.client.moduleGraph.getModulesByFile(file);
-
-  if (!modules) {
-    return false;
-  }
-
-  for (const m of modules) {
-    for (const importer of m.importers) {
-      if (
-        importer.file &&
-        isInUseClientGraph({ file: importer.file, clientFiles, server })
-      ) {
-        return true;
-      }
-    }
-  }
-
-  return false;
-};
-
 export const miniflareHMRPlugin = (givenOptions: {
   clientFiles: Set<string>;
   serverFiles: Set<string>;
@@ -164,17 +129,6 @@ export const miniflareHMRPlugin = (givenOptions: {
 
       if (this.environment.name === "ssr") {
         log("SSR update, invalidating recursively", ctx.file);
-        const isUseClientUpdate = isInUseClientGraph({
-          file: ctx.file,
-          clientFiles,
-          server: ctx.server,
-        });
-
-        if (!isUseClientUpdate) {
-          log("hmr: not a use client update, short circuiting");
-          return [];
-        }
-
         invalidateModule(ctx.server, "ssr", ctx.file);
         invalidateModule(
           ctx.server,
@@ -286,18 +240,6 @@ export const miniflareHMRPlugin = (givenOptions: {
           }
         }
 
-        const isUseClientUpdate = isInUseClientGraph({
-          file: ctx.file,
-          clientFiles,
-          server: ctx.server,
-        });
-
-        if (!isUseClientUpdate && !ctx.file.endsWith(".css")) {
-          log("hmr: not a use client update and not css, short circuiting");
-          return [];
-        }
-
-        log("hmr: returning client modules for hmr");
         return ctx.modules;
       }
 
