@@ -81,7 +81,6 @@ export const miniflareHMRPlugin = (givenOptions: {
       };
     },
     async hotUpdate(ctx: HotUpdateOptions) {
-      console.log("######", this.environment.name);
       if (ctx.file.includes(".wrangler")) {
         return;
       }
@@ -243,11 +242,6 @@ export const miniflareHMRPlugin = (givenOptions: {
 
         return ctx.modules;
       }
-      console.log("######", {
-        isWorkerUpdate,
-        environmentName: this.environment.name,
-        workerEnvironment: environment,
-      });
 
       // The worker needs an update, and the hot check is for the worker environment
       // => Notify for custom RSC-based HMR update, then short circuit HMR
