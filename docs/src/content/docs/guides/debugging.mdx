@@ -1,0 +1,86 @@
+---
+title: Debugging
+description: How to debug your RedwoodSDK application in VS Code.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+This guide explains how to set up VS Code or Cursor to debug both your client-side and server-side (worker) code.
+
+## Setup
+
+For debugging to work, you'll need a `.vscode/launch.json` file in your project. If you created your project with `create-rwsdk`, this file should already be there.
+
+If not, create the file and add the following configuration:
+
+```json title=".vscode/launch.json"
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Vite App (Client)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}",
+      "sourceMaps": true,
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Attach to Worker",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "address": "localhost",
+      "restart": false,
+      "protocol": "inspector",
+      "skipFiles": ["<node_internals>/**"],
+      "localRoot": "${workspaceFolder}",
+      "remoteRoot": "${workspaceFolder}",
+      "sourceMaps": true
+    },
+    {
+      "name": "Attach to Worker (Port 9299)",
+      "type": "node",
+      "request": "attach",
+      "port": 9299,
+      "address": "localhost",
+      "restart": false,
+      "protocol": "inspector",
+      "skipFiles": ["<node_internals>/**"],
+      "localRoot": "${workspaceFolder}",
+      "remoteRoot": "${workspaceFolder}",
+      "sourceMaps": true
+    }
+  ]
+}
+```
+
+<Aside>
+You can also find the latest version of this configuration in the [starter project repository](https://github.com/redwoodjs/sdk/blob/main/starter/.vscode/launch.json).
+</Aside>
+
+## Debugging Server-Side Code (Worker)
+
+To debug server-side code, such as server components or server functions:
+
+1.  **Start the dev server** in your terminal:
+    ```bash
+    npm run dev
+    ```
+2.  **Attach the debugger**:
+    - In VS Code, open the "Run and Debug" panel (Cmd+Shift+D on Mac, Ctrl+Shift+D on Windows).
+    - Select **"Attach to Worker"** from the dropdown and press the play button (F5).
+    - If the terminal shows a message like "Default inspector port 9229 not available, using 9299 instead," use the **"Attach to Worker (Port 9299)"** configuration instead.
+
+3.  **Set breakpoints**: Place breakpoints in your server-side code (e.g., in `src/worker.tsx` or a server component). They should now be hit when the code is executed.
+
+## Debugging Client-Side Code
+
+1.  Make sure your dev server is already running.
+2.  In the "Run and Debug" panel, select **"Debug Vite App (Client)"** and press F5.
+3.  This will open a new Chrome window. Breakpoints in your client-side code (e.g., components with a `"use client"` directive) will now work.
+
+## Limitations
+
+Currently, debugging server-side rendering (SSR) of components is not fully supported. However, you can debug other worker code paths, including server components and server functions, as well as all client-side code.
