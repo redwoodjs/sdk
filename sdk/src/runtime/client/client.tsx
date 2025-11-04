@@ -77,6 +77,39 @@ export const fetchTransport: Transport = (transportContext) => {
   return fetchCallServer;
 };
 
+/**
+ * Initializes the React client and hydrates the RSC payload.
+ *
+ * This function sets up client-side hydration for React Server Components,
+ * making the page interactive. Call this from your client entry point.
+ *
+ * @param transport - Custom transport for server communication (defaults to fetchTransport)
+ * @param hydrateRootOptions - Options passed to React's hydrateRoot
+ * @param handleResponse - Custom response handler for navigation errors
+ *
+ * @example
+ * // Basic usage
+ * import { initClient } from "rwsdk/client";
+ *
+ * initClient();
+ *
+ * @example
+ * // With client-side navigation
+ * import { initClient, initClientNavigation } from "rwsdk/client";
+ *
+ * const { handleResponse } = initClientNavigation();
+ * initClient({ handleResponse });
+ *
+ * @example
+ * // With custom React hydration options
+ * initClient({
+ *   hydrateRootOptions: {
+ *     onRecoverableError: (error) => {
+ *       console.warn("Recoverable error:", error);
+ *     },
+ *   },
+ * });
+ */
 export const initClient = async ({
   transport = fetchTransport,
   hydrateRootOptions,

@@ -103,6 +103,47 @@ function saveScrollPosition(x: number, y: number) {
   );
 }
 
+/**
+ * Initializes client-side navigation for Single Page App (SPA) behavior.
+ *
+ * Intercepts clicks on internal links and fetches page content without full-page reloads.
+ * Returns a handleResponse function to pass to initClient.
+ *
+ * @param opts.scrollToTop - Scroll to top after navigation (default: true)
+ * @param opts.scrollBehavior - How to scroll: 'instant', 'smooth', or 'auto' (default: 'instant')
+ * @param opts.onNavigate - Callback executed after history push but before RSC fetch
+ *
+ * @example
+ * // Basic usage
+ * import { initClient, initClientNavigation } from "rwsdk/client";
+ *
+ * const { handleResponse } = initClientNavigation();
+ * initClient({ handleResponse });
+ *
+ * @example
+ * // With custom scroll behavior
+ * const { handleResponse } = initClientNavigation({
+ *   scrollBehavior: "smooth",
+ *   scrollToTop: true,
+ * });
+ * initClient({ handleResponse });
+ *
+ * @example
+ * // Preserve scroll position (e.g., for infinite scroll)
+ * const { handleResponse } = initClientNavigation({
+ *   scrollToTop: false,
+ * });
+ * initClient({ handleResponse });
+ *
+ * @example
+ * // With navigation callback
+ * const { handleResponse } = initClientNavigation({
+ *   onNavigate: () => {
+ *     console.log("Navigating to:", window.location.href);
+ *   },
+ * });
+ * initClient({ handleResponse });
+ */
 export function initClientNavigation(opts: ClientNavigationOptions = {}) {
   IS_CLIENT_NAVIGATION = true;
   history.scrollRestoration = "auto";

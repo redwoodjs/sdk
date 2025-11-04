@@ -48,6 +48,24 @@ type LinkFunction<T extends readonly string[]> = {
   ): string;
 };
 
+/**
+ * Creates a type-safe link generation function from route patterns.
+ *
+ * @example
+ * // Define your routes
+ * const link = defineLinks([
+ *   "/",
+ *   "/about",
+ *   "/users/:id",
+ *   "/files/*",
+ * ] as const)
+ *
+ * // Generate links with type checking
+ * link("/")                                  // "/"
+ * link("/about")                             // "/about"
+ * link("/users/:id", { id: "123" })          // "/users/123"
+ * link("/files/*", { $0: "docs/guide.pdf" }) // "/files/docs/guide.pdf"
+ */
 export function defineLinks<const T extends readonly string[]>(
   routes: T,
 ): LinkFunction<T> {
