@@ -25,29 +25,30 @@
   },
   "dependencies": {
     "rwsdk": "workspace:*",
-    "react": "19.3.0-canary-4fdf7cf2-20251003",
-    "react-dom": "19.3.0-canary-4fdf7cf2-20251003",
-    "react-server-dom-webpack": "19.3.0-canary-4fdf7cf2-20251003"
+    "react": "19.3.0-canary-561ee24d-20251101",
+    "react-dom": "19.3.0-canary-561ee24d-20251101",
+    "react-server-dom-webpack": "19.3.0-canary-561ee24d-20251101"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.13.10",
-    "@cloudflare/workers-types": "4.20251004.0",
-    "@types/node": "22.18.8",
+    "@cloudflare/vite-plugin": "1.13.18",
+    "@cloudflare/workers-types": "4.20251014.0",
+    "@types/node": "~24.5.2",
     "@types/react": "19.1.2",
     "@types/react-dom": "19.1.2",
-    "storybook": "^8.6.14",
-    "@storybook/react": "^8.6.14",
-    "@storybook/react-vite": "^8.6.14",
-    "@storybook/addon-essentials": "^8.6.14",
-    "@storybook/addon-interactions": "^8.6.14",
-    "@storybook/addon-links": "^8.6.14",
-    "@storybook/addon-docs": "^8.6.14",
-    "@storybook/addon-a11y": "^8.6.14",
+    "storybook": "^9.0.0-alpha.10",
+    "@storybook/react": "^9.0.0-alpha.10",
+    "@storybook/react-vite": "^9.0.0-alpha.10",
+    "@storybook/addon-essentials": "^9.0.0-alpha.10",
+    "@storybook/addon-interactions": "^9.0.0-alpha.10",
+    "@storybook/addon-links": "^9.0.0-alpha.10",
+    "@storybook/addon-docs": "^9.0.0-alpha.10",
+    "@storybook/addon-a11y": "^9.0.0-alpha.10",
+    "@storybook/addon-vitest": "^9.0.0-alpha.0",
     "@storybook/testing-library": "^0.2.2",
-    "typescript": "5.9.3",
-    "vite": "7.1.9",
+    "typescript": "5.8.3",
+    "vite": "7.1.12",
     "vitest": "^3.1.1",
-    "wrangler": "4.42.0"
+    "wrangler": "4.45.3"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
