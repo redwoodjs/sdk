@@ -80,3 +80,19 @@ The investigation for the Storybook issue revealed that the HMR handler for the 
 
 **Solution**
 An `invalidateModule` call for the changed file has been added to the `worker` environment's HMR handler.
+
+### Testing
+
+A comprehensive, automated HMR test suite was started but has been deferred to a future ticket ([#858](https://github.com/redwoodjs/sdk/issues/858)) to prioritize shipping these fixes and returning sooner to other priorities.
+
+The changes have been validated through a combination of existing E2E tests and manual testing:
+
+*   **Existing E2E Coverage**: The `requestInfo` playground test already provides automated coverage for the primary HMR scenarios involving server and client component updates.
+*   **Manual Verification**: I have manually tested these fixes across multiple projects, confirming that HMR now functions correctly for:
+    * The Storybook playground (resolving the original crash).
+    * Direct changes to `worker.tsx`.
+    * Global CSS updates via `?url` imports.
+    * CSS Module updates.
+    * Server component updates
+    * Client component updates
+    * Server functions
