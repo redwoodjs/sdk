@@ -55,33 +55,33 @@ I initially planned to create a comprehensive HMR test suite to cover various sc
 
 This change addresses two separate issues related to Vite's Hot Module Replacement (HMR) functionality.
 
-### Storybook HMR Crash
+## Storybook HMR Crash
 
-**Problem**
+### Problem
 When using Storybook, saving a file would crash the development server with a "Maximum call stack size exceeded" error.
 
-**Context**
+### Context
 The error was traced to the `isInUseClientGraph` function within our HMR plugin. This function was a legacy optimization from a pre-SSR-bridge architecture. In that earlier phase, module graphs for different environments were not clearly separated, so this check was needed to recursively guess if a changed module was part of a client-side bundle in order to avoid a disruptive full-page reload. However, it did not track visited nodes, causing it to enter an infinite loop when encountering module graphs with cycles, such as those created by Storybook.
 
 Our current architecture now maintains separate and well-structured module graphs for each Vite environment (`client`, `worker`, and `ssr`). A key aspect of this design is the SSR subgraph, which ensures that client components are correctly incorporated into the worker's module graph for server-side rendering.
 
 Because of this clear architectural separation, a file change is now handled by the `hotUpdate` hook within the specific environment it belongs to. The system no longer needs to manually traverse the graph to guess a module's context; the environment-specific plugin execution provides this information implicitly. This makes the old check redundant.
 
-**Solution**
+### Solution
 The `isInUseClientGraph` function and its calls have been removed. This eliminates the fragile, unnecessary check, which resolves the crash and simplifies the HMR plugin.
 
-### Worker HMR Stale State
+## Worker HMR Stale State
 
-**Problem**
+### Problem
 When a file used by the `worker` environment was modified, HMR would not correctly update the server-side state. This resulted in the client receiving RSC payloads that were rendered using an outdated version of the worker's code.
 
-**Context**
+### Context
 The investigation for the Storybook issue revealed that the HMR handler for the `worker` environment was not explicitly invalidating the changed module itself. While it handled related virtual modules in SSR case, it skipped the invalidation for the source file.
 
-**Solution**
+### Solution
 An `invalidateModule` call for the changed file has been added to the `worker` environment's HMR handler.
 
-### Testing
+## Testing
 
 A comprehensive, automated HMR test suite was started but has been deferred to a future ticket ([#858](https://github.com/redwoodjs/sdk/issues/858)) to prioritize shipping these fixes and returning sooner to other priorities.
 
