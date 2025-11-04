@@ -46,3 +46,37 @@ A call to `invalidateModule(ctx.server, environment, ctx.file)` has been added t
 ## Update (2025-11-04) - HMR Test Suite Deferral
 
 I initially planned to create a comprehensive HMR test suite to cover various scenarios (client/server components, CSS, worker changes). However, after further consideration, I've decided to defer this, as I have other priorities I need to return to. The existing `requestInfo` playground test already covers the most critical HMR path for server and client components, which is sufficient for now. I've also manually verified that HMR for both CSS Modules and `?url` stylesheet imports is working as expected after the recent fixes. A dedicated, exhaustive HMR suite can be added later. I've created a ticket to track this work: [#858](https://github.com/redwoodjs/sdk/issues/858).
+
+## PR Description
+
+**Title:** `fix(vite): Resolve Storybook HMR crash and worker stale state`
+
+**Body:**
+
+This change addresses two separate issues related to Vite's Hot Module Replacement (HMR) functionality.
+
+### Storybook HMR Crash
+
+**Problem**
+When using Storybook, saving a file would crash the development server with a "Maximum call stack size exceeded" error.
+
+**Context**
+The error was traced to the `isInUseClientGraph` function within our HMR plugin. This function was a legacy optimization from a pre-SSR-bridge architecture. In that earlier phase, module graphs for different environments were not clearly separated, so this check was needed to recursively guess if a changed module was part of a client-side bundle in order to avoid a disruptive full-page reload. However, it did not track visited nodes, causing it to enter an infinite loop when encountering module graphs with cycles, such as those created by Storybook.
+
+Our current architecture now maintains separate and well-structured module graphs for each Vite environment (`client`, `worker`, and `ssr`). A key aspect of this design is the SSR subgraph, which ensures that client components are correctly incorporated into the worker's module graph for server-side rendering.
+
+Because of this clear architectural separation, a file change is now handled by the `hotUpdate` hook within the specific environment it belongs to. The system no longer needs to manually traverse the graph to guess a module's context; the environment-specific plugin execution provides this information implicitly. This makes the old check redundant.
+
+**Solution**
+The `isInUseClientGraph` function and its calls have been removed. This eliminates the fragile, unnecessary check, which resolves the crash and simplifies the HMR plugin.
+
+### Worker HMR Stale State
+
+**Problem**
+When a file used by the `worker` environment was modified, HMR would not correctly update the server-side state. This resulted in the client receiving RSC payloads that were rendered using an outdated version of the worker's code.
+
+**Context**
+The investigation for the Storybook issue revealed that the HMR handler for the `worker` environment was not explicitly invalidating the changed module itself. While it handled related virtual modules in SSR case, it skipped the invalidation for the source file.
+
+**Solution**
+An `invalidateModule` call for the changed file has been added to the `worker` environment's HMR handler.
