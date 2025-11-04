@@ -49,7 +49,7 @@ I initially planned to create a comprehensive HMR test suite to cover various sc
 
 ## PR Description
 
-**Title:** `fix(vite): Resolve Storybook HMR crash and worker stale state`
+**Title:** `fix: Resolve Storybook HMR crash and worker stale state`
 
 **Body:**
 
