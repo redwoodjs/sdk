@@ -1,6 +1,6 @@
 import { execSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");
@@ -12,7 +12,12 @@ try {
     stdio: "inherit",
   });
 
-  const rawArgs = process.argv.slice(2);
+  let rawArgs = process.argv.slice(2);
+
+  if (rawArgs[0] === "--") {
+    rawArgs = rawArgs.slice(1);
+  }
+
   const vitestArgs = rawArgs.map((arg) => {
     const prefix = "playground" + path.sep;
     if (arg.startsWith(prefix)) {
