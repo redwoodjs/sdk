@@ -390,6 +390,43 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
   };
 }
 
+/**
+ * Defines a route handler for a path pattern.
+ *
+ * Supports three types of path patterns:
+ * - Static: /about, /contact
+ * - Parameters: /users/:id, /posts/:postId/edit
+ * - Wildcards: /files/*, /api/star/download
+ *
+ * @example
+ * // Static route
+ * route("/about", () => <AboutPage />)
+ *
+ * @example
+ * // Route with parameters
+ * route("/users/:id", ({ params }) => {
+ *   return <UserProfile userId={params.id} />
+ * })
+ *
+ * @example
+ * // Route with wildcards
+ * route("/files/*", ({ params }) => {
+ *   const filePath = params.$0
+ *   return <FileViewer path={filePath} />
+ * })
+ *
+ * @example
+ * // Method-based routing
+ * route("/api/users", {
+ *   get: () => Response.json(users),
+ *   post: ({ request }) => Response.json({ status: "created" }, { status: 201 }),
+ *   delete: () => new Response(null, { status: 204 }),
+ * })
+ *
+ * @example
+ * // Route with middleware array
+ * route("/admin", [isAuthenticated, isAdmin, () => <AdminDashboard />])
+ */
 export function route<T extends RequestInfo = RequestInfo>(
   path: string,
   handler: RouteHandler<T> | MethodHandlers<T>,
@@ -417,12 +454,42 @@ export function route<T extends RequestInfo = RequestInfo>(
   };
 }
 
+/**
+ * Defines a route handler for the root path "/".
+ *
+ * @example
+ * // Homepage
+ * index(() => <HomePage />)
+ *
+ * @example
+ * // With middleware
+ * index([logRequest, () => <HomePage />])
+ */
 export function index<T extends RequestInfo = RequestInfo>(
   handler: RouteHandler<T>,
 ): RouteDefinition<T> {
   return route("/", handler);
 }
 
+/**
+ * Prefixes a group of routes with a path.
+ *
+ * @example
+ * // Organize blog routes under /blog
+ * const blogRoutes = [
+ *   route("/", () => <BlogIndex />),
+ *   route("/post/:id", ({ params }) => <BlogPost id={params.id} />),
+ *   route("/admin", [isAuthenticated, () => <BlogAdmin />]),
+ * ]
+ *
+ * // In worker.tsx
+ * defineApp([
+ *   render(Document, [
+ *     route("/", () => <HomePage />),
+ *     prefix("/blog", blogRoutes),
+ *   ]),
+ * ])
+ */
 export function prefix<T extends RequestInfo = RequestInfo>(
   prefixPath: string,
   routes: Route<T>[],
@@ -520,6 +587,26 @@ export const wrapHandlerToThrowResponses = <
   return ComponentWrappedToThrowResponses;
 };
 
+/**
+ * Wraps routes with a layout component.
+ *
+ * @example
+ * // Define a layout component
+ * function BlogLayout({ children }: { children: React.ReactNode }) {
+ *   return (
+ *     <div>
+ *       <nav>Blog Navigation</nav>
+ *       <main>{children}</main>
+ *     </div>
+ *   )
+ * }
+ *
+ * // Apply layout to routes
+ * const blogRoutes = layout(BlogLayout, [
+ *   route("/", () => <BlogIndex />),
+ *   route("/post/:id", ({ params }) => <BlogPost id={params.id} />),
+ * ])
+ */
 export function layout<T extends RequestInfo = RequestInfo>(
   LayoutComponent: React.FC<LayoutProps<T>>,
   routes: Route<T>[],
@@ -542,14 +629,33 @@ export function layout<T extends RequestInfo = RequestInfo>(
   });
 }
 
+/**
+ * Wraps routes with a Document component and configures rendering options.
+ *
+ * @param options.rscPayload - Toggle the RSC payload that's appended to the Document. Disabling this will mean that interactivity no longer works.
+ * @param options.ssr - Disable sever side rendering for all these routes. This only allow client side rendering, which requires `rscPayload` to be enabled.
+ *
+ * @example
+ * // Basic usage
+ * defineApp([
+ *   render(Document, [
+ *     route("/", () => <HomePage />),
+ *     route("/about", () => <AboutPage />),
+ *   ]),
+ * ])
+ *
+ * @example
+ * // With custom rendering options
+ * render(Document, [
+ *   route("/", () => <HomePage />),
+ * ], {
+ *   rscPayload: true,
+ *   ssr: true,
+ * })
+ */
 export function render<T extends RequestInfo = RequestInfo>(
   Document: React.FC<DocumentProps<T>>,
   routes: Route<T>[],
-  /**
-   * @param options - Configuration options for rendering.
-   * @param options.rscPayload - Toggle the RSC payload that's appended to the Document. Disabling this will mean that interactivity no longer works.
-   * @param options.ssr - Disable sever side rendering for all these routes. This only allow client side rendering`, which requires `rscPayload` to be enabled.
-   */
   options: {
     rscPayload?: boolean;
     ssr?: boolean;
