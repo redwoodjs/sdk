@@ -20,7 +20,7 @@ type RouteComponent<T extends RequestInfo = RequestInfo> = (
 type RouteHandler<T extends RequestInfo = RequestInfo> =
   | RouteFunction<T>
   | RouteComponent<T>
-  | [...RouteMiddleware<T>[], RouteFunction<T> | RouteComponent<T>];
+  | readonly [...RouteMiddleware<T>[], RouteFunction<T> | RouteComponent<T>];
 
 const METHOD_VERBS = ["delete", "get", "head", "patch", "post", "put"] as const;
 
