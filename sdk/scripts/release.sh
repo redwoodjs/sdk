@@ -25,7 +25,7 @@ show_help() {
   echo "  5.  Performs a comprehensive smoke test on the packed tarball:"
   echo "      - Verifies the packed \`dist\` contents match the local build via checksum."
   echo "      - Runs \`npx rw-scripts smoke-tests\` in a temporary project."
-  echo "  6.  If smoke tests pass, publishes the .tgz tarball to npm (using --tag pre for prereleases and --tag test for test builds)."
+  echo "  6.  If smoke tests pass, publishes the .tgz tarball to npm (beta versions use --tag latest, other prereleases use --tag pre, test builds use --tag test)."
   echo "  7.  On successful publish (for non-prereleases):"
   echo "      - Updates dependencies in the monorepo."
   echo "      - Amends the initial commit with dependency updates."
@@ -246,6 +246,8 @@ echo -e "\n🚀 Publishing version $NEW_VERSION..."
 if [[ "$DRY_RUN" == true ]]; then
   if [[ "$VERSION_TYPE" == "test" ]]; then
     echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag test"
+  elif [[ "$NEW_VERSION" == *"-beta."* ]]; then
+    echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag latest"
   elif [[ "$NEW_VERSION" =~ - ]]; then
     echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag pre"
   else
@@ -256,8 +258,7 @@ else
   if [[ "$VERSION_TYPE" == "test" ]]; then
     PUBLISH_CMD="$PUBLISH_CMD --tag test"
   elif [[ "$NEW_VERSION" == *"-beta."* ]]; then
-    # Publish betas as the default 'latest' tag (no explicit tag)
-    PUBLISH_CMD="$PUBLISH_CMD"
+    PUBLISH_CMD="$PUBLISH_CMD --tag latest"
   elif [[ "$NEW_VERSION" == *"-"* ]]; then
     # Other pre-releases should use the 'pre' dist-tag
     PUBLISH_CMD="$PUBLISH_CMD --tag pre"
