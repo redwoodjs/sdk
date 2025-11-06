@@ -475,4 +475,52 @@ When the smoke tests or playground E2E tests fail on a peer dependency update, i
 2.  **Manual Corrective Action**:
     *   If the issue is in our SDK, a fix should be implemented and pushed directly to the failing Renovate PR branch.
     *   If the failure is a regression in the dependency itself, a maintainer must perform the following steps **on the Renovate PR branch**:
-        1.  **Revert Dependency in Starters and Playground**: In the `
+        1.  **Revert Dependency in Starters and Playground**: In the `starter/package.json` and `playground/*/package.json` files, revert the dependency version back to the previously working version.
+
+## Unreleasing a Version
+
+For security reasons, unreleasing a version must be done locally by package maintainers and cannot be performed via CI. This ensures that npm's trusted publishing workflow and repository access tokens are handled securely.
+
+### Prerequisites
+
+- Must be authenticated with npm (logged in via `npm login`)
+- Must have GitHub CLI (`gh`) installed and authenticated
+- Must have write access to the repository
+
+### Usage
+
+To unrelease a version, run the unrelease script from the monorepo root:
+
+```sh
+pnpm unrelease --version <version> [--reason <reason>] [--dry-run]
+```
+
+**Arguments:**
+
+- `--version`: The full version number to unrelease (e.g., `1.0.0-beta.25`)
+- `--reason`: Optional deprecation reason. Defaults to "This version has been unpublished due to a critical issue."
+- `--dry-run`: Run without making changes. Shows what would be done.
+
+**Example:**
+
+```sh
+# Dry run to preview changes
+pnpm unrelease --version 1.0.0-beta.25 --dry-run
+
+# Actually unrelease a version
+pnpm unrelease --version 1.0.0-beta.25 --reason "Contains a security vulnerability"
+
+# Unrelease with default reason
+pnpm unrelease --version 1.0.0-beta.25
+```
+
+### What the Script Does
+
+1. Deprecates the package version on npm using `npm deprecate`
+2. If the release is marked as latest, finds the next latest stable release and marks it as latest
+3. Deletes the GitHub release associated with the version tag
+4. Deletes the git tag from the remote repository
+
+The script requires interactive confirmation (type 'Y' and press Enter) before proceeding with any destructive operations, unless `--dry-run` is used.
+
+For details on the release process, see the [release process architecture documentation](./docs/architecture/releaseProcess.md).
