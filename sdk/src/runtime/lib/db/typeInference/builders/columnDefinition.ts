@@ -8,7 +8,7 @@ import type { Assert, AssertStillImplements } from "../assert";
 
 // This is not exported from Kysely, so we have to define it ourselves
 // based on the Kysely source code.
-type DefaultValueExpression = string | number | boolean | null | typeof sql;
+type DefaultValueExpression = string | number | boolean | null | ReturnType<typeof sql>;
 
 export interface ColumnDefinitionBuilder<TType> {
   autoIncrement(): ColumnDefinitionBuilder<TType>;
