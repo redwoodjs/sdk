@@ -70,9 +70,7 @@ jobs:
       - name: Setup .npmrc for publishing
         working-directory: sdk
         run: |
-          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
           echo "registry=https://registry.npmjs.org/" >> .npmrc
-          echo "always-auth=true" >> .npmrc
 
       - name: Run release script
         id: release_script
