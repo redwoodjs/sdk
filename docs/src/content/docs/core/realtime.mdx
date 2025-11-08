@@ -28,13 +28,13 @@ initRealtimeClient({
 
 ### 2. Export the Durable Object
 
-```ts title="src/worker.ts"
+```ts title="src/worker.tsx"
 export { RealtimeDurableObject } from "rwsdk/realtime/durableObject";
 ```
 
 ### 3. Wire Up the Worker Route
 
-```ts title="src/worker.ts"
+```ts title="src/worker.tsx"
 import { realtimeRoute } from "rwsdk/realtime/worker";
 import { env } from "cloudflare:workers";
 
@@ -59,6 +59,50 @@ export default defineApp([
 ```
 
 After updating `wrangler.jsonc`, run `pnpm generate` to update the generated type definitions.
+
+---
+
+## Synced State Hook
+
+`useSyncedState` keeps a value aligned across tabs, devices, or users by using the realtime transport and the `SyncedStateCoordinator` Durable Object. `useServerState` is an alias kept for compatibility.
+
+### Hook Factory
+
+```ts title="src/hooks/useSyncedState.ts"
+import { useState } from "react";
+import { createSyncedStateHook } from "rwsdk/use-server-state";
+
+export const useSyncedState = createSyncedStateHook(useState);
+```
+
+### Worker Routes
+
+```tsx title="src/worker.tsx"
+import { syncedStateRoutes } from "rwsdk/use-server-state/worker";
+import { env } from "cloudflare:workers";
+
+export default defineApp([
+  ...syncedStateRoutes(() => env.STATE_COORDINATOR),
+  // other routes...
+]);
+```
+
+### Durable Object Export
+
+```tsx title="src/worker.tsx"
+export { SyncedStateCoordinator } from "rwsdk/use-sync-state";
+```
+
+### Usage
+
+```tsx title="src/components/Counter.tsx"
+const Counter = () => {
+  const [count, setCount] = useSyncedState(0, "counter");
+  return <button onClick={() => setCount((n) => n + 1)}>{count}</button>;
+};
+```
+
+`setCount` applies the update locally and forwards it to the coordinator, which broadcasts the new value to every subscriber using the realtime transport.
 
 ---
 
