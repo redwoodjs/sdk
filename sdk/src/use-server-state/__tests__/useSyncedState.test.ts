@@ -6,17 +6,13 @@ import {
 import type { SyncedStateValue } from "../Coordinator.mjs";
 import { createSyncedStateHook } from "../useSyncedState";
 
-type UseStateImpl = <T>(
-  initialValue: T | (() => T),
-) => [T, (value: T | ((previous: T) => T)) => void];
-
-type HookDeps = Parameters<typeof createSyncedStateHook>[1];
-
 const createStateHarness = () => {
   let currentState: SyncedStateValue;
   const cleanups: Array<() => void> = [];
 
-  const useStateImpl: UseStateImpl = (initialValue) => {
+  const useStateImpl = <T,>(
+    initialValue: T | (() => T),
+  ): [T, (value: T | ((previous: T) => T)) => void] => {
     const resolved =
       typeof initialValue === "function"
         ? (initialValue as () => SyncedStateValue)()
@@ -33,7 +29,8 @@ const createStateHarness = () => {
     return [currentState, setState];
   };
 
-  const deps: HookDeps = {
+  const deps = {
+    useState: useStateImpl,
     useEffect: (callback) => {
       const cleanup = callback();
       if (typeof cleanup === "function") {
@@ -45,7 +42,6 @@ const createStateHarness = () => {
   };
 
   return {
-    useStateImpl,
     deps,
     getState: () => currentState,
     runCleanups: () => cleanups.forEach((fn) => fn()),
@@ -93,10 +89,7 @@ const client: SyncedStateClient = {
 
   it("loads remote state and updates local value", async () => {
     const harness = createStateHarness();
-    const useSyncedState = createSyncedStateHook(
-      harness.useStateImpl,
-      harness.deps,
-    );
+    const useSyncedState = createSyncedStateHook(harness.deps);
 
     const [value] = useSyncedState(0, "counter");
 
@@ -112,10 +105,7 @@ const client: SyncedStateClient = {
     setCalls.push({ key, value });
     };
 
-    const useSyncedState = createSyncedStateHook(
-      harness.useStateImpl,
-      harness.deps,
-    );
+    const useSyncedState = createSyncedStateHook(harness.deps);
 
     const [, setSyncedValue] = useSyncedState(0, "counter");
     setSyncedValue(9);
@@ -126,10 +116,7 @@ const client: SyncedStateClient = {
 
   it("applies remote updates from the subscription handler", async () => {
     const harness = createStateHarness();
-    const useSyncedState = createSyncedStateHook(
-      harness.useStateImpl,
-      harness.deps,
-    );
+    const useSyncedState = createSyncedStateHook(harness.deps);
 
     useSyncedState(0, "counter");
     await Promise.resolve();
@@ -148,10 +135,7 @@ const client: SyncedStateClient = {
       subscribeHandlers.delete(key);
     };
 
-    const useSyncedState = createSyncedStateHook(
-      harness.useStateImpl,
-      harness.deps,
-    );
+    const useSyncedState = createSyncedStateHook(harness.deps);
 
     useSyncedState(0, "counter");
     harness.runCleanups();
