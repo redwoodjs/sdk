@@ -69,10 +69,14 @@ After updating `wrangler.jsonc`, run `pnpm generate` to update the generated typ
 ### Hook Factory
 
 ```ts title="src/hooks/useSyncedState.ts"
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createSyncedStateHook } from "rwsdk/use-server-state";
 
-export const useSyncedState = createSyncedStateHook(useState);
+export const useSyncedState = createSyncedStateHook(useState, {
+  useEffect,
+  useRef,
+  useCallback,
+});
 ```
 
 ### Worker Routes
