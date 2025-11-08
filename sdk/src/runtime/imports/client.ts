@@ -2,11 +2,36 @@ import React from "react";
 import { ClientOnly } from "../client/client";
 import { memoizeOnId } from "../lib/memoizeOnId";
 
-// @ts-ignore
-import { useClientLookup } from "virtual:use-client-lookup.js";
+type ClientLookup = Record<string, () => Promise<unknown>>;
+
+let cachedClientLookup: ClientLookup | null = null;
+
+const loadClientLookup = async (): Promise<ClientLookup> => {
+  if (cachedClientLookup) {
+    return cachedClientLookup;
+  }
+
+  const globalLookup = (globalThis as Record<string, unknown>)
+    .__RWSDK_CLIENT_LOOKUP__;
+
+  if (globalLookup) {
+    cachedClientLookup = globalLookup as ClientLookup;
+    return cachedClientLookup;
+  }
+
+  const module = await import("virtual:use-client-lookup.js" as string);
+
+  cachedClientLookup = module.useClientLookup as ClientLookup;
+  return cachedClientLookup;
+};
+
+export const setClientLookupForTesting = (lookup: ClientLookup | null) => {
+  cachedClientLookup = lookup;
+};
 
 export const loadModule = memoizeOnId(async (id: string) => {
-  const moduleFn = useClientLookup[id];
+  const clientLookup = await loadClientLookup();
+  const moduleFn = clientLookup[id];
 
   if (!moduleFn) {
     throw new Error(

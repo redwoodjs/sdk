@@ -39,7 +39,7 @@ export const createSyncStateHook = (
     initialValue: T,
     key: string,
   ): [T, Setter<T>] {
-    if (typeof window === "undefined") {
+    if (typeof window === "undefined" && !options.hooks) {
       return [initialValue, () => {}];
     }
 
