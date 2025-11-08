@@ -9,14 +9,25 @@ type OnGetHandler = (key: string, value: SyncStateValue | undefined) => void;
 let onSetState: OnSetHandler | null = null;
 let onGetState: OnGetHandler | null = null;
 
+/**
+ * Assigns the callback that receives notifications when `setState` runs.
+ * @param handler Handler to store or `null` to disable notifications.
+ */
 export const registerSetStateCallback = (handler: OnSetHandler | null) => {
   onSetState = handler;
 };
 
+/**
+ * Assigns the callback that receives notifications when `getState` runs.
+ * @param handler Handler to store or `null` to disable notifications.
+ */
 export const registerGetStateCallback = (handler: OnGetHandler | null) => {
   onGetState = handler;
 };
 
+/**
+ * Durable Object that keeps shared state for multiple clients and notifies subscribers.
+ */
 export class SyncStateCoordinator extends DurableObject {
   #stateStore = new Map<string, SyncStateValue>();
   #subscriptions = new Map<

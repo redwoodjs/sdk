@@ -16,6 +16,12 @@ export type SyncStateRouteOptions = {
 
 const DEFAULT_SYNC_STATE_NAME = "syncedState";
 
+/**
+ * Registers routes that forward sync state requests to the configured Durable Object namespace.
+ * @param getNamespace Function that returns the Durable Object namespace from the Worker env.
+ * @param options Optional overrides for base path, reset path, and object name.
+ * @returns Router entries for the sync state API and reset endpoint.
+ */
 export const syncStateRoutes = (
   getNamespace: (
     env: Cloudflare.Env,

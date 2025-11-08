@@ -23,6 +23,11 @@ export type CreateSyncStateHookOptions = {
   hooks?: HookDeps;
 };
 
+/**
+ * Builds a `useSyncState` hook configured with optional endpoint and hook overrides.
+ * @param options Optional overrides for endpoint and React primitives.
+ * @returns Hook that syncs state through the sync state service.
+ */
 export const createSyncStateHook = (
   options: CreateSyncStateHookOptions = {},
 ) => {
