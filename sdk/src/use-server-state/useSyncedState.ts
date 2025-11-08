@@ -86,7 +86,4 @@ export const createSyncedStateHook = (
   };
 };
 
-export const createServerStateHook = createSyncedStateHook;
-
 export const useSyncedState = createSyncedStateHook(reactUseState);
-export const useServerState = useSyncedState;

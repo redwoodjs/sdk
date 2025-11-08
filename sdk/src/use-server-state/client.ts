@@ -24,8 +24,6 @@ export const initSyncedStateClient = (options: InitOptions = {}) => {
   return cachedClient;
 };
 
-export const initServerStateClient = initSyncedStateClient;
-
 export const getSyncedStateClient = (): SyncedStateClient => {
   if (cachedClient) {
     return cachedClient;
