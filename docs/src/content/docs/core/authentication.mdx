@@ -2,6 +2,7 @@
 title: Authentication
 description: Secure your application with sessions and passwordless login.
 ---
+
 import { Aside } from "@astrojs/starlight/components";
 import { Badge } from "@astrojs/starlight/components";
 
@@ -10,6 +11,10 @@ RedwoodSDK provides two paths for handling user authentication and sessions.
 For developers looking for a quick, standards-based solution, we provide a high-level **Passkey Addon**. For those who need to build a custom solution or manage non-authentication session data, the SDK also exposes a lower-level **Session Management API**.
 
 This guide covers the high-level addon first, followed by the low-level API.
+
+## Request/Response Foundations
+
+RedwoodSDK keeps the standard HTTP flow. Middleware and routes receive the platform `Request`, and they return `Response` instances. Headers and cookies are read directly from `request.headers` and set with `requestInfo.response.headers`. Persistent data and cross-cutting metadata live on `ctx`, which you populate in middleware. Arrays passed to `route()` act as interruptors: route-scoped middleware that runs after the global middleware pipeline, mutates `ctx`, and may short-circuit when needed. The rest of this guide builds on these primitives to show how authentication and session data move through the app.
 
 ## Passkey Authentication (WebAuthn) <Badge text="Experimental" type="caution" />
 
@@ -59,7 +64,9 @@ export class UserSession implements DurableObject {
 
   async getSession() {
     if (!this.session) {
-      this.session = (await this.storage.get<SessionData>("session")) ?? { userId: null };
+      this.session = (await this.storage.get<SessionData>("session")) ?? {
+        userId: null,
+      };
     }
     return { value: this.session };
   }
@@ -88,9 +95,9 @@ Add the Durable Object binding to your `wrangler.jsonc`.
   "durable_objects": {
     "bindings": [
       // ... other bindings
-      { "name": "USER_SESSION_DO", "class_name": "UserSession" }
-    ]
-  }
+      { "name": "USER_SESSION_DO", "class_name": "UserSession" },
+    ],
+  },
 }
 ```
 
@@ -118,6 +125,7 @@ export { UserSession };
 Now you can use the `sessionStore` in your application. The recommended pattern is to create a "Server Action" module that contains all the logic for interacting with the session, and a separate "Client Component" for the UI.
 
 The `sessionStore` has three primary methods:
+
 - `load(request)`: Loads the session data based on the incoming request's cookie.
 - `save(responseHeaders, data)`: Saves new session data and sets the session cookie on the outgoing response.
 - `remove(request, responseHeaders)`: Destroys the session data and removes the cookie.
@@ -127,10 +135,10 @@ The `sessionStore` has three primary methods:
 Create a file with a `"use server"` directive at the top. This file will export functions that can be called from client components.
 
 ```typescript title="src/app/actions/auth.ts"
-'use server';
+"use server";
 
-import { sessionStore } from '../../worker.js';
-import { requestInfo } from 'rwsdk/worker';
+import { sessionStore } from "../../worker.js";
+import { requestInfo } from "rwsdk/worker";
 
 export async function getCurrentUser() {
   const session = await sessionStore.load(requestInfo.request);
@@ -152,10 +160,10 @@ export async function logoutAction() {
 Create a client component with a `"use client"` directive. This component can then import and call the server actions.
 
 ```tsx title="src/app/components/AuthComponent.tsx"
-'use client';
+"use client";
 
-import { useState, useEffect, useTransition } from 'react';
-import { loginAction, logoutAction, getCurrentUser } from '../actions/auth.js';
+import { useState, useEffect, useTransition } from "react";
+import { loginAction, logoutAction, getCurrentUser } from "../actions/auth.js";
 
 export function AuthComponent() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -168,7 +176,7 @@ export function AuthComponent() {
 
   const handleLogin = () => {
     startTransition(async () => {
-      const mockUserId = 'user-123';
+      const mockUserId = "user-123";
       await loginAction(mockUserId);
       setUserId(mockUserId);
     });
@@ -183,11 +191,7 @@ export function AuthComponent() {
 
   return (
     <div>
-      {userId ? (
-        <p>Logged in as: {userId}</p>
-      ) : (
-        <p>Not logged in</p>
-      )}
+      {userId ? <p>Logged in as: {userId}</p> : <p>Not logged in</p>}
       <button onClick={handleLogin} disabled={isPending}>
         Login as Mock User
       </button>
@@ -198,3 +202,33 @@ export function AuthComponent() {
   );
 }
 ```
+
+### Populate `ctx` with middleware
+
+RedwoodSDK keeps the familiar request/response contract. Middleware receives the same `Request` object the platform provides, so you can read headers (`request.headers.get("cookie")`) or parse cookies exactly as you would in any web app. The `response.headers` object on `requestInfo` is mutable, which lets middleware append headers or set cookies that the final response will include.
+
+`ctx` is the request-scoped object that RedwoodSDK passes to middleware, routes, React Server Components, and Server Actions. Populate it inside middleware so every downstream handler sees the same session data. Place middleware near the top of `defineApp` so it runs before any route handlers. The snippet below uses the `sessionStore` defined earlier in this guide.
+
+Per-route interruptors work the same way. When you pass an array to `route()`, every function before the final handler is treated as a route-scoped middleware. These interruptors run after the global middleware, can mutate `ctx`, can read or write headers, and can short-circuit a request by returning or throwing a `Response`.
+
+```tsx title="src/worker.tsx"
+import { defineApp, ErrorResponse } from "rwsdk/worker";
+import { route } from "rwsdk/router";
+
+export default defineApp([
+  async function sessionMiddleware({ request, ctx }) {
+    const session = await sessionStore.load(request);
+    ctx.session = session ?? { userId: null };
+  },
+  async function requireUser({ ctx }) {
+    if (!ctx.session?.userId) {
+      throw new ErrorResponse(401, "Unauthorized");
+    }
+  },
+  route("/dashboard", ({ ctx }) => {
+    return new Response(`User: ${ctx.session.userId}`);
+  }),
+]);
+```
+
+When a middleware throws an `ErrorResponse`, RedwoodSDK stops the pipeline and returns the contained status code and message. Throwing a `Response` has the same effect. Throwing any other error causes the worker to log the error and rethrow, which surfaces as an unhandled exception.
