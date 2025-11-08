@@ -5,5 +5,9 @@ export {
   registerSetStateCallback,
   type SyncStateValue,
 } from "./Coordinator.mjs";
-export { createSyncStateHook, useSyncState } from "./useSyncState";
+export {
+  createSyncStateHook,
+  useSyncState,
+  type CreateSyncStateHookOptions,
+} from "./useSyncState";
 export { syncStateRoutes, type SyncStateRouteOptions } from "./worker.mjs";

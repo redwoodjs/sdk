@@ -18,10 +18,16 @@ const defaultDeps: HookDeps = {
 
 type Setter<T> = (value: T | ((previous: T) => T)) => void;
 
+export type CreateSyncStateHookOptions = {
+  url?: string;
+  hooks?: HookDeps;
+};
+
 export const createSyncStateHook = (
-  url: string = DEFAULT_SYNC_STATE_PATH,
-  deps: HookDeps = defaultDeps,
+  options: CreateSyncStateHookOptions = {},
 ) => {
+  const resolvedUrl = options.url ?? DEFAULT_SYNC_STATE_PATH;
+  const deps = options.hooks ?? defaultDeps;
   const { useState, useEffect, useRef, useCallback } = deps;
 
   return function useSyncState<T>(
@@ -32,7 +38,7 @@ export const createSyncStateHook = (
       return [initialValue, () => {}];
     }
 
-    const client = getSyncStateClient(url);
+    const client = getSyncStateClient(resolvedUrl);
     const [value, setValue] = useState(initialValue);
     const valueRef = useRef(value);
     valueRef.current = value;

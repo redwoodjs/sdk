@@ -89,7 +89,7 @@ describe("createSyncStateHook", () => {
 
   it("loads remote state and updates local value", async () => {
     const harness = createStateHarness();
-    const useSyncState = createSyncStateHook(harness.deps);
+    const useSyncState = createSyncStateHook({ hooks: harness.deps });
 
     const [value] = useSyncState(0, "counter");
 
@@ -105,7 +105,7 @@ describe("createSyncStateHook", () => {
       setCalls.push({ key, value });
     };
 
-    const useSyncState = createSyncStateHook(harness.deps);
+    const useSyncState = createSyncStateHook({ hooks: harness.deps });
 
     const [, setSyncValue] = useSyncState(0, "counter");
     setSyncValue(9);
@@ -116,7 +116,7 @@ describe("createSyncStateHook", () => {
 
   it("applies remote updates from the subscription handler", async () => {
     const harness = createStateHarness();
-    const useSyncState = createSyncStateHook(harness.deps);
+    const useSyncState = createSyncStateHook({ hooks: harness.deps });
 
     useSyncState(0, "counter");
     await Promise.resolve();
@@ -135,7 +135,7 @@ describe("createSyncStateHook", () => {
       subscribeHandlers.delete(key);
     };
 
-    const useSyncState = createSyncStateHook(harness.deps);
+    const useSyncState = createSyncStateHook({ hooks: harness.deps });
 
     useSyncState(0, "counter");
     harness.runCleanups();
