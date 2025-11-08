@@ -38,6 +38,16 @@ Go to your dashboard in Cloudflare, on the left side navigation click on **Worke
 
 ![](./images/cloudflare-visit-website.png)
 
+## Deploy to staging
+
+Staging deployments reuse the same release process but load configuration from the matching entry under `env` in `wrangler.jsonc`. Set the `CLOUDFLARE_ENV` variable before running the release command:
+
+```bash
+CLOUDFLARE_ENV=staging pnpm release
+```
+
+Wrangler applies the `env.staging` routes, bindings, and variables defined in your configuration file. The terminal output includes the staging Worker URL. Cloudflare also lists the latest staging deployment under Workers & Pages so you can confirm the release completed.
+
 ## Using a Custom Domain Name
 
 You can use a custom domain name with your application.

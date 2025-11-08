@@ -91,6 +91,39 @@ Then, you can access the environment variables through the `env` object.
 const rpID = env.WEBAUTHN_RP_ID ?? new URL(request.url).hostname;
 ```
 
+## Managing staging and production configurations
+
+Define each Cloudflare environment in `wrangler.jsonc`. Wrangler reads the `env` block to decide which variables, routes, and bindings to apply when you deploy with `CLOUDFLARE_ENV`.
+
+```jsonc title="wrangler.jsonc"
+{
+  "name": "redwood-example",
+  "main": "./dist/worker.mjs",
+  "compatibility_date": "2024-10-21",
+  "env": {
+    "staging": {
+      "vars": {
+        "APP_BASE_URL": "https://staging.example.com"
+      },
+      "routes": [
+        {
+          "pattern": "staging.example.com/*",
+          "custom_domain": true
+        }
+      ]
+    }
+  }
+}
+```
+
+Create environment-scoped secrets with the `--env` flag:
+
+```bash
+npx wrangler secret put DATABASE_URL --env staging
+```
+
+Deploy with `CLOUDFLARE_ENV=staging` to load the staging configuration, or omit it to deploy the default production configuration.
+
 ## Further Reading
 
 - [Cloudflare Environment Variables](https://developers.cloudflare.com/workers/configuration/secrets/)
