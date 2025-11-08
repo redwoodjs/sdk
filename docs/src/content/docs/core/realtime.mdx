@@ -114,6 +114,12 @@ export default defineApp([
 ]);
 ```
 
+### State callbacks
+
+`registerSetStateCallback(onSetStateHandler)` accepts a function that receives `(key, value)` each time the coordinator stores a new value. Use this to record updates or trigger downstream work whenever any client publishes new state.
+
+`registerGetStateCallback(onGetStateHandler)` accepts a function that receives `(key, value)` each time the coordinator returns a value to a subscriber. The handler runs after the lookup, so `value` is `undefined` when no entry exists for the key.
+
 ### Durable Object Export
 
 ```tsx title="src/worker.tsx"
