@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { route } from "../runtime/entries/router";
 import type { SyncStateCoordinator } from "./Coordinator.mjs";
+import { DEFAULT_SYNC_STATE_PATH } from "./constants.mjs";
 
 export {
   registerGetStateCallback,
@@ -13,8 +14,7 @@ export type SyncStateRouteOptions = {
   durableObjectName?: string;
 };
 
-const DEFAULT_SYNC_STATE_PATH = "/__sync-state";
-const DEFAULT_SYNC_STATE_NAME = "global";
+const DEFAULT_SYNC_STATE_NAME = "syncedState";
 
 export const syncStateRoutes = (
   getNamespace: (

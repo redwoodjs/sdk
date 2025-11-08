@@ -1,5 +1,6 @@
 import { React } from "../runtime/client/client";
 import { getSyncStateClient } from "./client";
+import { DEFAULT_SYNC_STATE_PATH } from "./constants.mjs";
 
 type HookDeps = {
   useState: typeof React.useState;
@@ -17,7 +18,10 @@ const defaultDeps: HookDeps = {
 
 type Setter<T> = (value: T | ((previous: T) => T)) => void;
 
-export const createSyncStateHook = (deps: HookDeps) => {
+export const createSyncStateHook = (
+  url: string = DEFAULT_SYNC_STATE_PATH,
+  deps: HookDeps = defaultDeps,
+) => {
   const { useState, useEffect, useRef, useCallback } = deps;
 
   return function useSyncState<T>(
@@ -28,7 +32,7 @@ export const createSyncStateHook = (deps: HookDeps) => {
       return [initialValue, () => {}];
     }
 
-    const client = getSyncStateClient();
+    const client = getSyncStateClient(url);
     const [value, setValue] = useState(initialValue);
     const valueRef = useRef(value);
     valueRef.current = value;
@@ -74,4 +78,4 @@ export const createSyncStateHook = (deps: HookDeps) => {
   };
 };
 
-export const useSyncState = createSyncStateHook(defaultDeps);
+export const useSyncState = createSyncStateHook();

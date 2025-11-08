@@ -1,4 +1,5 @@
 import { newWebSocketRpcSession } from "capnweb";
+import { DEFAULT_SYNC_STATE_PATH } from "./constants.mjs";
 export type SyncStateClient = {
   getState(key: string): Promise<unknown>;
   setState(value: unknown, key: string): Promise<void>;
@@ -11,7 +12,6 @@ type InitOptions = {
 };
 
 let cachedClient: SyncStateClient | null = null;
-const DEFAULT_SYNC_STATE_PATH = "/__sync-state";
 
 let cachedEndpoint = DEFAULT_SYNC_STATE_PATH;
 
@@ -26,15 +26,14 @@ export const initSyncStateClient = (options: InitOptions = {}) => {
   return cachedClient;
 };
 
-export const getSyncStateClient = (): SyncStateClient => {
-  if (cachedClient) {
+export const getSyncStateClient = (
+  endpoint: string = cachedEndpoint,
+): SyncStateClient => {
+  if (cachedClient && endpoint === cachedEndpoint) {
     return cachedClient;
   }
-  if (typeof window === "undefined") {
-    throw new Error(
-      "initSyncStateClient must be called before using useSyncState",
-    );
-  }
+  cachedEndpoint = endpoint;
+
   cachedClient = newWebSocketRpcSession(
     cachedEndpoint,
   ) as unknown as SyncStateClient;
