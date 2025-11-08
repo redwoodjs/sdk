@@ -165,6 +165,8 @@ export { Database } from "@/db/durableObject";
 }
 ```
 
+After updating `wrangler.jsonc`, run `pnpm generate` to update the generated type definitions.
+
 Ensure `src/db/index.ts`, the Durable Object export in `src/worker.tsx`, and the Wrangler configuration all refer to the same binding and class names. The examples use `Database`.
 
 ---

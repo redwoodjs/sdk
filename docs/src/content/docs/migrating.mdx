@@ -36,6 +36,8 @@ The Cloudflare Workers runtime now requires a newer compatibility date to suppor
 }
 ```
 
+After updating `wrangler.jsonc`, run `pnpm generate` to update the generated type definitions.
+
 ### 3. Review Middleware for RSC Action Compatibility
 
 React Server Component (RSC) actions now run through the global middleware pipeline. Previously, action requests bypassed all middleware.

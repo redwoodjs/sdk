@@ -47,6 +47,8 @@ This will create a bucket called `my-bucket`, which you'll have to bind to your 
 }
 ```
 
+After updating `wrangler.jsonc`, run `pnpm generate` to update the generated type definitions.
+
 This will make the `my-bucket` bucket available via the `env.R2` binding in your worker. You can then use this binding to upload, download, and manage files stored in R2 using the standard R2 API.
 
 ### Naming

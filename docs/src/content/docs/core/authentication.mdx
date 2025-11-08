@@ -101,6 +101,8 @@ Add the Durable Object binding to your `wrangler.jsonc`.
 }
 ```
 
+After updating `wrangler.jsonc`, run `pnpm generate` to update the generated type definitions.
+
 **3. Set up the Session Store in the Worker**
 
 In your `src/worker.tsx`, use `defineDurableSession` to create a `sessionStore`, then export the Durable Object class.

@@ -44,6 +44,8 @@ Replace `my-queue-name` with the name of your queue, and place the following in 
 }
 ```
 
+After updating `wrangler.jsonc`, run `pnpm generate` to update the generated type definitions.
+
 This will bind the queue to the `env.QUEUE` object in the worker. So you'll be able to send messages.
 
 
