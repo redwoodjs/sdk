@@ -66,19 +66,27 @@ After updating `wrangler.jsonc`, run `pnpm generate` to update the generated typ
 
 `useSyncState` keeps a value aligned across tabs, devices, or users by using the realtime transport and the `SyncStateCoordinator` Durable Object.
 
-### Hook Factory
+### Default Hook
+
+```ts title="src/hooks/useSyncState.ts"
+import { useSyncState } from "rwsdk/use-sync-state";
+```
+
+### Hook Factory (optional)
 
 ```ts title="src/hooks/useSyncState.ts"
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createSyncStateHook } from "rwsdk/use-sync-state";
 
-export const useSyncState = createSyncStateHook({
+export const useSyncState = createSyncStateHook("/sync-state", {
   useState,
   useEffect,
   useRef,
   useCallback,
 });
 ```
+
+Set the URL to match the base path you expose from the worker routes. In this example the worker would forward requests from `/sync-state` instead of the default `/__sync-state`.
 
 ### Worker Routes
 
@@ -121,6 +129,26 @@ const Counter = () => {
 `setCount` applies the update locally and forwards it to the coordinator, which broadcasts the new value to every subscriber using the realtime transport.
 
 ---
+
+### Customizing `createSyncStateHook`
+
+`createSyncStateHook(url?, deps?)` accepts two optional arguments:
+
+- `url`: overrides the HTTP route used by the client. The default is `/__sync-state`.
+- `deps`: overrides the React primitives. Pass this when integrating with a custom renderer or testing environment.
+
+```ts title="src/hooks/useCustomSyncState.ts"
+const useCustomSyncState = createSyncStateHook("/api/sync");
+```
+
+```ts title="src/hooks/useSyncState.test.ts"
+const useTestSyncState = createSyncStateHook(undefined, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+});
+```
 
 ## Example: Collaborative Notes
 
