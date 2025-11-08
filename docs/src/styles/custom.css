@@ -1,9 +1,19 @@
 /* Base styles */
 :root {
-  --sl-color-text-accent: #1ccabf;
+  --sl-color-text-accent: #ff7a00;
   --sl-color-banner-bg: #ffae49;
   --sl-color-banner-text: #000;
   font-size: 16px !important;
+}
+
+.sidebar-content a[aria-current="page"] {
+  background-color: #ff7a00 !important;
+  color: #0f172a !important;
+}
+
+.sidebar-content a:hover,
+.sidebar-content a:focus-visible {
+  color: #ff7a00 !important;
 }
 
 /* Desktop styles */
