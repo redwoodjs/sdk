@@ -94,9 +94,11 @@ export const migrations = {
           .createTable("todos")
           .addColumn("id", "text", (col) => col.primaryKey())
           .addColumn("text", "text", (col) => col.notNull())
-          .addColumn("completed", "integer", (col) => col.notNull().defaultTo(0))
+          .addColumn("completed", "integer", (col) =>
+            col.notNull().defaultTo(0),
+          )
           .addColumn("createdAt", "text", (col) => col.notNull())
-          .execute()
+          .execute(),
       ];
     },
 
@@ -109,7 +111,7 @@ export const migrations = {
 
 ### 2. Create Your Database Instance
 
-```ts title="src/db/db.ts"
+```ts title="src/db/index.ts"
 import { env } from "cloudflare:workers";
 import { type Database, createDb } from "rwsdk/db";
 import { type migrations } from "@/db/migrations";
@@ -118,8 +120,8 @@ export type AppDatabase = Database<typeof migrations>;
 export type Todo = AppDatabase["todos"];
 
 export const db = createDb<AppDatabase>(
-  env.APP_DURABLE_OBJECT,
-  "todo-database" // unique key for this database instance
+  env.DATABASE,
+  "todo-database", // unique key for this database instance
 );
 ```
 
@@ -129,7 +131,7 @@ export const db = createDb<AppDatabase>(
 import { SqliteDurableObject } from "rwsdk/db";
 import { migrations } from "@/db/migrations";
 
-export class AppDurableObject extends SqliteDurableObject {
+export class Database extends SqliteDurableObject {
   migrations = migrations;
 }
 ```
@@ -137,7 +139,7 @@ export class AppDurableObject extends SqliteDurableObject {
 ### 4. Export from Worker
 
 ```ts title="src/worker.tsx"
-export { AppDurableObject } from "@/db/durableObject";
+export { Database } from "@/db/durableObject";
 
 // ... rest of your worker code
 ```
@@ -149,19 +151,21 @@ export { AppDurableObject } from "@/db/durableObject";
   "durable_objects": {
     "bindings": [
       {
-        "name": "APP_DURABLE_OBJECT",
-        "class_name": "AppDurableObject"
-      }
-    ]
+        "name": "DATABASE",
+        "class_name": "Database",
+      },
+    ],
   },
   "migrations": [
     {
       "tag": "v1",
-      "new_sqlite_classes": ["AppDurableObject"]
-    }
-  ]
+      "new_sqlite_classes": ["Database"],
+    },
+  ],
 }
 ```
+
+Ensure `src/db/index.ts`, the Durable Object export in `src/worker.tsx`, and the Wrangler configuration all refer to the same binding and class names. The examples use `Database`.
 
 ---
 
@@ -210,7 +214,7 @@ Here's how the [passkey addon](https://github.com/redwoodjs/passkey-addon) uses 
 ```ts
 // Create a new credential
 export async function createCredential(
-  credential: Omit<Credential, "id" | "createdAt">
+  credential: Omit<Credential, "id" | "createdAt">,
 ): Promise<Credential> {
   const newCredential: Credential = {
     id: crypto.randomUUID(),
@@ -224,7 +228,7 @@ export async function createCredential(
 
 // Find credentials for a user
 export async function getUserCredentials(
-  userId: string
+  userId: string,
 ): Promise<Credential[]> {
   return await db
     .selectFrom("credentials")
@@ -260,9 +264,7 @@ await db.schema
   .createTable("posts")
   .addColumn("id", "text", (col) => col.primaryKey())
   .addColumn("title", "text", (col) => col.notNull())
-  .addColumn("userId", "text", (col) =>
-    col.notNull().references("users.id")
-  )
+  .addColumn("userId", "text", (col) => col.notNull().references("users.id"))
   .execute();
 ```
 
@@ -283,7 +285,7 @@ export async function getAllPostsWithAuthors() {
         eb
           .selectFrom("users")
           .select(["id", "username"])
-          .whereRef("users.id", "=", "posts.userId")
+          .whereRef("users.id", "=", "posts.userId"),
       ).as("author"),
     ])
     .execute();
@@ -317,7 +319,7 @@ For development and testing, you'll often need a consistent set of data. You can
 Create a script that exports an async function as the default export. This script will have access to your application's environment, including your Durable Object bindings, when run via `rwsdk worker-run`.
 
 ```ts title="src/scripts/seed.ts"
-import { db } from "@/db/db";
+import { db } from "@/db";
 
 export default async () => {
   console.log("… Seeding todos");
