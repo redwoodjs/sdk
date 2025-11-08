@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  type SyncedStateClient,
-  setSyncedStateClientForTesting,
+  type SyncStateClient,
+  setSyncStateClientForTesting,
 } from "../client";
-import type { SyncedStateValue } from "../Coordinator.mjs";
-import { createSyncedStateHook } from "../useSyncedState";
+import type { SyncStateValue } from "../Coordinator.mjs";
+import { createSyncStateHook } from "../useSyncState";
 
 const createStateHarness = () => {
-  let currentState: SyncedStateValue;
+  let currentState: SyncStateValue;
   const cleanups: Array<() => void> = [];
 
   const useStateImpl = <T,>(
@@ -15,13 +15,13 @@ const createStateHarness = () => {
   ): [T, (value: T | ((previous: T) => T)) => void] => {
     const resolved =
       typeof initialValue === "function"
-        ? (initialValue as () => SyncedStateValue)()
+        ? (initialValue as () => SyncStateValue)()
         : initialValue;
     currentState = resolved;
     const setState = (next) => {
       currentState =
         typeof next === "function"
-          ? (next as (previous: SyncedStateValue) => SyncedStateValue)(
+          ? (next as (previous: SyncStateValue) => SyncStateValue)(
               currentState,
             )
           : next;
@@ -48,27 +48,27 @@ const createStateHarness = () => {
   };
 };
 
-describe("createSyncedStateHook", () => {
+describe("createSyncStateHook", () => {
   const subscribeHandlers = new Map<
     string,
-    (value: SyncedStateValue) => void
+    (value: SyncStateValue) => void
   >();
-const client: SyncedStateClient = {
-  async getState() {
-    return 5;
-  },
-  async setState(_value?: SyncedStateValue, _key?: string) {},
-  async subscribe(key, handler) {
-    subscribeHandlers.set(key, handler);
-  },
-  async unsubscribe(key) {
-    subscribeHandlers.delete(key);
-  },
+  const client: SyncStateClient = {
+    async getState() {
+      return 5;
+    },
+    async setState(_value?: SyncStateValue, _key?: string) {},
+    async subscribe(key, handler) {
+      subscribeHandlers.set(key, handler);
+    },
+    async unsubscribe(key) {
+      subscribeHandlers.delete(key);
+    },
   };
 
   const resetClient = () => {
     client.getState = async () => 5;
-  client.setState = async (_value?: SyncedStateValue, _key?: string) => {};
+    client.setState = async (_value?: SyncStateValue, _key?: string) => {};
     client.subscribe = async (key, handler) => {
       subscribeHandlers.set(key, handler);
     };
@@ -79,19 +79,19 @@ const client: SyncedStateClient = {
 
   beforeEach(() => {
     resetClient();
-    setSyncedStateClientForTesting(client);
+    setSyncStateClientForTesting(client);
     subscribeHandlers.clear();
   });
 
   afterEach(() => {
-    setSyncedStateClientForTesting(null);
+    setSyncStateClientForTesting(null);
   });
 
   it("loads remote state and updates local value", async () => {
     const harness = createStateHarness();
-    const useSyncedState = createSyncedStateHook(harness.deps);
+    const useSyncState = createSyncStateHook(harness.deps);
 
-    const [value] = useSyncedState(0, "counter");
+    const [value] = useSyncState(0, "counter");
 
     expect(value).toBe(0);
     await Promise.resolve();
@@ -100,15 +100,15 @@ const client: SyncedStateClient = {
 
   it("sends updates through the client and applies optimistic value", async () => {
     const harness = createStateHarness();
-    const setCalls: Array<{ key: string; value: SyncedStateValue }> = [];
-  client.setState = async (value, key) => {
-    setCalls.push({ key, value });
+    const setCalls: Array<{ key: string; value: SyncStateValue }> = [];
+    client.setState = async (value, key) => {
+      setCalls.push({ key, value });
     };
 
-    const useSyncedState = createSyncedStateHook(harness.deps);
+    const useSyncState = createSyncStateHook(harness.deps);
 
-    const [, setSyncedValue] = useSyncedState(0, "counter");
-    setSyncedValue(9);
+    const [, setSyncValue] = useSyncState(0, "counter");
+    setSyncValue(9);
 
     expect(harness.getState()).toBe(9);
     expect(setCalls).toEqual([{ key: "counter", value: 9 }]);
@@ -116,9 +116,9 @@ const client: SyncedStateClient = {
 
   it("applies remote updates from the subscription handler", async () => {
     const harness = createStateHarness();
-    const useSyncedState = createSyncedStateHook(harness.deps);
+    const useSyncState = createSyncStateHook(harness.deps);
 
-    useSyncedState(0, "counter");
+    useSyncState(0, "counter");
     await Promise.resolve();
 
     const handler = subscribeHandlers.get("counter");
@@ -135,11 +135,12 @@ const client: SyncedStateClient = {
       subscribeHandlers.delete(key);
     };
 
-    const useSyncedState = createSyncedStateHook(harness.deps);
+    const useSyncState = createSyncStateHook(harness.deps);
 
-    useSyncedState(0, "counter");
+    useSyncState(0, "counter");
     harness.runCleanups();
 
     expect(unsubscribed).toEqual([{ key: "counter" }]);
   });
 });
+

@@ -1,5 +1,5 @@
 import { React } from "../runtime/client/client";
-import { getSyncedStateClient } from "./client";
+import { getSyncStateClient } from "./client";
 
 type HookDeps = {
   useState: typeof React.useState;
@@ -17,10 +17,10 @@ const defaultDeps: HookDeps = {
 
 type Setter<T> = (value: T | ((previous: T) => T)) => void;
 
-export const createSyncedStateHook = (deps: HookDeps) => {
+export const createSyncStateHook = (deps: HookDeps) => {
   const { useState, useEffect, useRef, useCallback } = deps;
 
-  return function useSyncedState<T>(
+  return function useSyncState<T>(
     initialValue: T,
     key: string,
   ): [T, Setter<T>] {
@@ -28,12 +28,12 @@ export const createSyncedStateHook = (deps: HookDeps) => {
       return [initialValue, () => {}];
     }
 
-    const client = getSyncedStateClient();
+    const client = getSyncStateClient();
     const [value, setValue] = useState(initialValue);
     const valueRef = useRef(value);
     valueRef.current = value;
 
-    const setSyncedValue = useCallback<Setter<T>>(
+    const setSyncValue = useCallback<Setter<T>>(
       (nextValue) => {
         const resolved =
           typeof nextValue === "function"
@@ -70,8 +70,8 @@ export const createSyncedStateHook = (deps: HookDeps) => {
       };
     }, [client, key, setValue, valueRef]);
 
-    return [value, setSyncedValue];
+    return [value, setSyncValue];
   };
 };
 
-export const useSyncedState = createSyncedStateHook(defaultDeps);
+export const useSyncState = createSyncStateHook(defaultDeps);

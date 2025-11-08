@@ -1,8 +1,9 @@
-export { initSyncedStateClient } from "./client";
+export { initSyncStateClient } from "./client";
 export {
-  DEFAULT_SYNCED_STATE_NAME,
-  DEFAULT_SYNCED_STATE_PATH,
-  DEFAULT_SYNCED_STATE_RESET_PATH,
-} from "./constants.mjs";
-export type { SyncedStateValue } from "./Coordinator.mjs";
-export { createSyncedStateHook, useSyncedState } from "./useSyncedState";
+  SyncStateCoordinator,
+  registerGetStateCallback,
+  registerSetStateCallback,
+  type SyncStateValue,
+} from "./Coordinator.mjs";
+export { createSyncStateHook, useSyncState } from "./useSyncState";
+export { syncStateRoutes, type SyncStateRouteOptions } from "./worker.mjs";

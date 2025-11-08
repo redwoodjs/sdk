@@ -1,27 +1,31 @@
 import { env } from "cloudflare:workers";
 import { route } from "../runtime/entries/router";
-import {
-  DEFAULT_SYNCED_STATE_NAME,
-  DEFAULT_SYNCED_STATE_PATH,
-} from "./constants.mjs";
-import type { SyncedStateCoordinator } from "./Coordinator.mjs";
+import type { SyncStateCoordinator } from "./Coordinator.mjs";
 
-export type SyncedStateRouteOptions = {
+export {
+  registerGetStateCallback,
+  registerSetStateCallback,
+} from "./Coordinator.mjs";
+
+export type SyncStateRouteOptions = {
   basePath?: string;
   resetPath?: string;
   durableObjectName?: string;
 };
 
-export const syncedStateRoutes = (
+const DEFAULT_SYNC_STATE_PATH = "/__sync-state";
+const DEFAULT_SYNC_STATE_NAME = "global";
+
+export const syncStateRoutes = (
   getNamespace: (
     env: Cloudflare.Env,
-  ) => DurableObjectNamespace<SyncedStateCoordinator>,
-  options: SyncedStateRouteOptions = {},
+  ) => DurableObjectNamespace<SyncStateCoordinator>,
+  options: SyncStateRouteOptions = {},
 ) => {
-  const basePath = options.basePath ?? DEFAULT_SYNCED_STATE_PATH;
+  const basePath = options.basePath ?? DEFAULT_SYNC_STATE_PATH;
   const resetPath = options.resetPath ?? `${basePath}/reset`;
   const durableObjectName =
-    options.durableObjectName ?? DEFAULT_SYNCED_STATE_NAME;
+    options.durableObjectName ?? DEFAULT_SYNC_STATE_NAME;
 
   const forwardRequest = (request: Request) => {
     const namespace = getNamespace(env);

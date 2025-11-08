@@ -1,7 +1,5 @@
 import { newWebSocketRpcSession } from "capnweb";
-import { DEFAULT_SYNCED_STATE_PATH } from "./constants.mjs";
-
-export type SyncedStateClient = {
+export type SyncStateClient = {
   getState(key: string): Promise<unknown>;
   setState(value: unknown, key: string): Promise<void>;
   subscribe(key: string, handler: (value: unknown) => void): Promise<void>;
@@ -12,34 +10,40 @@ type InitOptions = {
   endpoint?: string;
 };
 
-let cachedClient: SyncedStateClient | null = null;
-let cachedEndpoint = DEFAULT_SYNCED_STATE_PATH;
+let cachedClient: SyncStateClient | null = null;
+const DEFAULT_SYNC_STATE_PATH = "/__sync-state";
 
-export const initSyncedStateClient = (options: InitOptions = {}) => {
-  cachedEndpoint = options.endpoint ?? DEFAULT_SYNCED_STATE_PATH;
+let cachedEndpoint = DEFAULT_SYNC_STATE_PATH;
+
+export const initSyncStateClient = (options: InitOptions = {}) => {
+  cachedEndpoint = options.endpoint ?? DEFAULT_SYNC_STATE_PATH;
   if (typeof window === "undefined") {
     return null;
   }
-  cachedClient = newWebSocketRpcSession(cachedEndpoint) as SyncedStateClient;
+  cachedClient = newWebSocketRpcSession(
+    cachedEndpoint,
+  ) as unknown as SyncStateClient;
   return cachedClient;
 };
 
-export const getSyncedStateClient = (): SyncedStateClient => {
+export const getSyncStateClient = (): SyncStateClient => {
   if (cachedClient) {
     return cachedClient;
   }
   if (typeof window === "undefined") {
     throw new Error(
-      "initSyncedStateClient must be called before using useSyncedState",
+      "initSyncStateClient must be called before using useSyncState",
     );
   }
-  cachedClient = newWebSocketRpcSession(cachedEndpoint) as SyncedStateClient;
+  cachedClient = newWebSocketRpcSession(
+    cachedEndpoint,
+  ) as unknown as SyncStateClient;
   return cachedClient;
 };
 
-export const setSyncedStateClientForTesting = (
-  client: SyncedStateClient | null,
-  endpoint: string = DEFAULT_SYNCED_STATE_PATH,
+export const setSyncStateClientForTesting = (
+  client: SyncStateClient | null,
+  endpoint: string = DEFAULT_SYNC_STATE_PATH,
 ) => {
   cachedClient = client;
   cachedEndpoint = endpoint;

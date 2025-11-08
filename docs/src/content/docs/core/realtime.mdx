@@ -62,17 +62,18 @@ After updating `wrangler.jsonc`, run `pnpm generate` to update the generated typ
 
 ---
 
-## Synced State Hook
+## Sync State Hook
 
-`useSyncedState` keeps a value aligned across tabs, devices, or users by using the realtime transport and the `SyncedStateCoordinator` Durable Object.
+`useSyncState` keeps a value aligned across tabs, devices, or users by using the realtime transport and the `SyncStateCoordinator` Durable Object.
 
 ### Hook Factory
 
-```ts title="src/hooks/useSyncedState.ts"
+```ts title="src/hooks/useSyncState.ts"
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createSyncedStateHook } from "rwsdk/use-server-state";
+import { createSyncStateHook } from "rwsdk/use-sync-state";
 
-export const useSyncedState = createSyncedStateHook(useState, {
+export const useSyncState = createSyncStateHook({
+  useState,
   useEffect,
   useRef,
   useCallback,
@@ -82,11 +83,22 @@ export const useSyncedState = createSyncedStateHook(useState, {
 ### Worker Routes
 
 ```tsx title="src/worker.tsx"
-import { syncedStateRoutes } from "rwsdk/use-server-state/worker";
+import {
+  registerGetStateCallback,
+  registerSetStateCallback,
+  syncStateRoutes,
+} from "rwsdk/use-sync-state/worker";
 import { env } from "cloudflare:workers";
 
+registerGetStateCallback((key, value) => {
+  console.log("synced state requested", { key, value });
+});
+registerSetStateCallback((key, value) => {
+  console.log("synced state updated", { key, value });
+});
+
 export default defineApp([
-  ...syncedStateRoutes(() => env.STATE_COORDINATOR),
+  ...syncStateRoutes(() => env.STATE_COORDINATOR),
   // other routes...
 ]);
 ```
@@ -94,14 +106,14 @@ export default defineApp([
 ### Durable Object Export
 
 ```tsx title="src/worker.tsx"
-export { SyncedStateCoordinator } from "rwsdk/use-sync-state";
+export { SyncStateCoordinator } from "rwsdk/use-sync-state";
 ```
 
 ### Usage
 
 ```tsx title="src/components/Counter.tsx"
 const Counter = () => {
-  const [count, setCount] = useSyncedState(0, "counter");
+  const [count, setCount] = useSyncState(0, "counter");
   return <button onClick={() => setCount((n) => n + 1)}>{count}</button>;
 };
 ```

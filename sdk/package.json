@@ -105,17 +105,17 @@
       "types": "./dist/runtime/lib/realtime/durableObject.d.ts",
       "default": "./dist/runtime/lib/realtime/durableObject.js"
     },
-    "./use-server-state": {
-      "types": "./dist/use-server-state/index.d.ts",
-      "default": "./dist/use-server-state/index.js"
+    "./use-sync-state": {
+      "types": "./dist/use-sync-state/index.d.ts",
+      "default": "./dist/use-sync-state/index.js"
     },
-    "./use-server-state/worker": {
-      "types": "./dist/use-server-state/worker.d.ts",
-      "default": "./dist/use-server-state/worker.js"
+    "./use-sync-state/worker": {
+      "types": "./dist/use-sync-state/worker.d.ts",
+      "default": "./dist/use-sync-state/worker.js"
     },
-    "./use-server-state/coordinator": {
-      "types": "./dist/use-server-state/Coordinator.d.mts",
-      "default": "./dist/use-server-state/Coordinator.mjs"
+    "./use-sync-state/coordinator": {
+      "types": "./dist/use-sync-state/Coordinator.d.mts",
+      "default": "./dist/use-sync-state/Coordinator.mjs"
     }
   },
   "keywords": [

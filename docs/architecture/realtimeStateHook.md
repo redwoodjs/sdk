@@ -12,7 +12,7 @@ The design combines a Cloudflare Durable Object that stores key-value pairs, a C
 
 ## Worker Responsibilities
 
-- `SyncedStateCoordinator` is a Durable Object that stores state values in memory, tracks subscribers per key, and broadcasts updates to connected clients via CapnWeb stubs.
+- `SyncStateCoordinator` is a Durable Object that stores state values in memory, tracks subscribers per key, and broadcasts updates to connected clients via CapnWeb stubs.
 - The Durable Object exposes a CapnWeb RPC target with `getState`, `setState`, `subscribe`, and `unsubscribe` methods. This keeps the RPC surface aligned with the client hook expectations.
 - Worker routes proxy `/__synced-state` requests to the Durable Object using `newWorkersRpcResponse`.
 
@@ -22,7 +22,7 @@ The design combines a Cloudflare Durable Object that stores key-value pairs, a C
 
 ## Data Flow
 
-1. A component calls `useSyncedState(initialValue, key)`.
+1. A component calls `useSyncState(initialValue, key)`.
 2. The hook ensures the shared WebSocket RPC session exists and fetches the current value from the Durable Object.
 3. The hook subscribes to further updates; the Durable Object records the subscriber and will invoke it on updates.
 4. When any client triggers the setter, the hook sends `setState` to the Durable Object.
