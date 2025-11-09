@@ -3,9 +3,11 @@ title: Email
 description: Send and receive emails with Cloudflare Email
 ---
 
-RedwoodSDK integrates with [Cloudflare Email Routing](https://developers.cloudflare.com/email-routing/email-workers/) to send, receive, reply, and forward email directly from your Worker.
-This guide walks through the required configuration for production deployments, how to exercise the email handler locally,
-and provides a reference worker illustrating the common patterns.
+RedwoodSDK integrates with [Cloudflare Email Workers](https://developers.cloudflare.com/email-routing/email-workers/) so your application can send transactional messages, receive inbound mail, and reply in the same Worker runtime.
+
+Production deliveries currently require recipients to be verified through Cloudflare Email Routing, but Cloudflare’s forthcoming [Email Service beta](https://blog.cloudflare.com/email-service/) expands reach to general addresses.
+
+This guide walks through the configuration steps, highlights important sending considerations, and demonstrates common patterns for end-to-end email workflows.
 
 ## Implementing Email Handling
 
@@ -23,6 +25,13 @@ Update your `wrangler.jsonc` to include the `EMAIL` binding:
 
 Next, run `pnpm generate` to update the generated type definitions.
 
+Once you have a zone with Email Routing enabled, follow the [Enable Email Workers](https://developers.cloudflare.com/email-routing/email-workers/enable-email-workers/) documentation to deploy your Worker in production.
+
+Outbound email **must target a destination address that you have verified** in [Email Routing](https://developers.cloudflare.com/email-routing/email-workers/enable-email-workers/).
+When calling `env.EMAIL.send()`, pass either a verified address or leave the recipient undefined when you use a binding that specifies `destination_address` or `allowed_destination_addresses`.
+
+> ℹ️ For broader transactional delivery to arbitrary recipients, see [Cloudflare's Email Service beta](https://blog.cloudflare.com/email-service/) or an external provider such as [Resend](/guides/email/sending-email).
+
 ### Example Worker with Email Handling
 
 The example below demonstrates how to integrate the worker with email sending and receiving.
@@ -30,6 +39,8 @@ The example below demonstrates how to integrate the worker with email sending an
 To send and email, you can
 simply call the `env.EMAIL.send()` method with the email message as
 shown in the example below `route("/email", async () => { ... })`.
+
+> ℹ️ Note: In production, this must be a verified address in [Email Routing](https://developers.cloudflare.com/email-routing/email-workers/enable-email-workers/).
 
 However, to receive an email, you need to implement the `email` handler and
 export it in the default export of the worker.
@@ -58,6 +69,7 @@ const app = defineApp([
    * Then, we create a new EmailMessage object with the
    * sender, recipient, and the raw content of the email.
    * Finally, we send the email using the `env.EMAIL.send()` method.
+   * Ensure the `recipient@example.com` address is verified in Cloudflare Email Routing, or adjust the binding configuration accordingly.
    */
   route("/email", async () => {
     const msg = createMimeMessage();
@@ -97,6 +109,8 @@ export default class DefaultWorker extends WorkerEntrypoint<Env> {
    * - `subject`: The subject of the email.
    * - `body`: The body of the email.
    * - `attachments`: The attachments of the email.
+   *
+   * You can call `message.reply()` to respond directly to the inbound sender without additional verification steps.
    */
   async email(message: EmailMessage) {
     const parser = new PostalMime.default();
@@ -112,6 +126,29 @@ export default class DefaultWorker extends WorkerEntrypoint<Env> {
   override async fetch(request: Request) {
     return await app.fetch(request, this.env, this.ctx);
   }
+}
+```
+
+### Replying to inbound email
+
+You can reply directly to an inbound message without pre-verifying the recipient. The Worker runtime preserves threading headers and delivers the response through the original route. Construct your response with `mimetext` and pass the raw payload to `message.reply()`, as shown in the [Reply from Workers guide](https://developers.cloudflare.com/email-routing/email-workers/reply-email-workers/).
+
+```ts title="Replying inside the email handler"
+async email(message: EmailMessage) {
+  const parser = new PostalMime.default();
+  const raw = new Response((message as any).raw);
+  const email = await parser.parse(await raw.arrayBuffer());
+
+  const reply = createMimeMessage();
+  reply.setSender({ name: "Support", addr: "support@example.com" });
+  reply.setRecipient(email.from?.address ?? "user@example.com");
+  reply.setSubject(`Re: ${email.subject ?? "Thanks for reaching out"}`);
+  reply.addMessage({
+    contentType: "text/plain",
+    data: "Thanks for contacting us. We'll get back to you shortly.",
+  });
+
+  await message.reply(reply.asRaw());
 }
 ```
 
@@ -248,6 +285,9 @@ You can refer to the following documentation:
 - [Configure Email Routing Rules and Addresses](https://developers.cloudflare.com/email-routing/setup/email-routing-addresses/)
 - [Enable Email Workers](https://developers.cloudflare.com/email-routing/email-workers/enable-email-workers/)
 - [Send Email from Workers](https://developers.cloudflare.com/email-routing/email-workers/send-email-workers/)
+- [Reply to Email from Workers](https://developers.cloudflare.com/email-routing/email-workers/reply-email-workers/)
+- [Cloudflare Email Service Beta](https://blog.cloudflare.com/email-service/)
+- [Sending email with Resend](/guides/email/sending-email)
 
 ## Further Reading
 
