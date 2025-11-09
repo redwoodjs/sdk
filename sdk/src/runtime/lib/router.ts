@@ -84,16 +84,24 @@ type JoinPaths<Prefix extends string, Path extends string> =
 type PrefixedRouteValue<Prefix extends string, Value> =
   Value extends RouteDefinition<infer Path, infer Req>
     ? RouteDefinition<JoinPaths<Prefix, Path>, Req>
-    : Value extends readonly any[]
+    : Value extends readonly Route<any>[]
       ? PrefixedRouteArray<Prefix, Value>
       : Value;
 
 type PrefixedRouteArray<
   Prefix extends string,
-  Routes extends readonly any[],
-> = {
-  [Index in keyof Routes]: PrefixedRouteValue<Prefix, Routes[Index]>;
-};
+  Routes extends readonly Route<any>[],
+> = Routes extends readonly []
+  ? []
+  : Routes extends readonly [infer Head, ...infer Tail]
+    ? readonly [
+        PrefixedRouteValue<Prefix, Head>,
+        ...PrefixedRouteArray<
+          Prefix,
+          Tail extends readonly Route<any>[] ? Tail : []
+        >,
+      ]
+    : ReadonlyArray<PrefixedRouteValue<Prefix, Routes[number]>>;
 
 type RouteMatch<T extends RequestInfo = RequestInfo> = {
   params: Record<string, string>;
@@ -178,7 +186,7 @@ function flattenRoutes<T extends RequestInfo = RequestInfo>(
       if (Array.isArray(route)) {
         return [...acc, ...flattenRoutes(route)];
       }
-      return [...acc, route];
+      return [...acc, route as RouteMiddleware<T> | RouteDefinition<string, T>];
     },
     [],
   );
@@ -502,6 +510,7 @@ export function route<Path extends string, T extends RequestInfo = RequestInfo>(
   return {
     path: normalizedPath,
     handler,
+    __rwPath: normalizedPath as NormalizePath<Path>,
   } as RouteDefinition<NormalizePath<Path>, T>;
 }
 
@@ -544,7 +553,7 @@ export function index<T extends RequestInfo = RequestInfo>(
 export function prefix<
   Prefix extends string,
   T extends RequestInfo = RequestInfo,
-  Routes extends readonly Route<T>[],
+  Routes extends readonly Route<T>[] = readonly Route<T>[],
 >(prefixPath: Prefix, routes: Routes): PrefixedRouteArray<Prefix, Routes> {
   const prefixed = routes.map((r) => {
     if (typeof r === "function") {
@@ -561,11 +570,11 @@ export function prefix<
       // Recursively process nested route arrays
       return prefix(prefixPath, r) as PrefixedRouteValue<Prefix, typeof r>;
     }
-    // For RouteDefinition objects, update the path and preserve layouts
+    const routeDef = r as RouteDefinition<string, T>;
     return {
-      path: prefixPath + r.path,
-      handler: r.handler,
-      ...(r.layouts && { layouts: r.layouts }),
+      path: prefixPath + routeDef.path,
+      handler: routeDef.handler,
+      ...(routeDef.layouts && { layouts: routeDef.layouts }),
     } as PrefixedRouteValue<Prefix, typeof r>;
   }) as PrefixedRouteArray<Prefix, Routes>;
 
@@ -665,7 +674,6 @@ export function layout<
   T extends RequestInfo = RequestInfo,
   Routes extends readonly Route<T>[] = readonly Route<T>[],
 >(LayoutComponent: React.FC<LayoutProps<T>>, routes: Routes): Routes {
-  // Attach layouts directly to route definitions
   return routes.map((route) => {
     if (typeof route === "function") {
       // Pass through middleware as-is
@@ -673,14 +681,14 @@ export function layout<
     }
     if (Array.isArray(route)) {
       // Recursively process nested route arrays
-      return layout(LayoutComponent, route);
+      return layout(LayoutComponent, route) as Route<T>;
     }
-    // For RouteDefinition objects, prepend the layout so outer layouts come first
+    const routeDef = route as RouteDefinition<string, T>;
     return {
-      ...route,
-      layouts: [LayoutComponent, ...(route.layouts || [])],
-    };
-  }) as Routes;
+      ...routeDef,
+      layouts: [LayoutComponent, ...(routeDef.layouts || [])],
+    } as Route<T>;
+  }) as unknown as Routes;
 }
 
 /**
@@ -735,7 +743,10 @@ export function render<
     rw.ssr = options.ssr ?? true;
   };
 
-  return [documentMiddleware, ...routes] as RenderedRoutes<T, Routes>;
+  return [documentMiddleware, ...routes] as unknown as RenderedRoutes<
+    T,
+    Routes
+  >;
 }
 
 function isRouteComponent(handler: any) {
