@@ -26,12 +26,26 @@ declare global {
     DB: D1Database;
   };
 }
+export type AppDefinition<
+  Routes extends readonly Route<any>[],
+  T extends RequestInfo,
+> = {
+  fetch: (
+    request: Request,
+    env: Env,
+    cf: ExecutionContext,
+  ) => Promise<Response>;
+  __rwRoutes: Routes;
+};
+
 export const defineApp = <
   T extends RequestInfo = RequestInfo<any, DefaultAppContext>,
+  Routes extends readonly Route<T>[] = readonly Route<T>[],
 >(
-  routes: Route<T>[],
-) => {
+  routes: Routes,
+): AppDefinition<Routes, T> => {
   return {
+    __rwRoutes: routes,
     fetch: async (request: Request, env: Env, cf: ExecutionContext) => {
       globalThis.__webpack_require__ = ssrWebpackRequire;
 

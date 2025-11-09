@@ -40,13 +40,59 @@ export type MethodHandlers<T extends RequestInfo = RequestInfo> = {
 
 export type Route<T extends RequestInfo = RequestInfo> =
   | RouteMiddleware<T>
-  | RouteDefinition<T>
-  | Array<Route<T>>;
+  | RouteDefinition<string, T>
+  | readonly Route<T>[];
 
-export type RouteDefinition<T extends RequestInfo = RequestInfo> = {
+type NormalizedRouteDefinition<T extends RequestInfo = RequestInfo> = {
   path: string;
   handler: RouteHandler<T> | MethodHandlers<T>;
   layouts?: React.FC<LayoutProps<T>>[];
+};
+
+export type RouteDefinition<
+  Path extends string = string,
+  T extends RequestInfo = RequestInfo,
+> = NormalizedRouteDefinition<T> & {
+  readonly __rwPath?: Path;
+};
+
+type TrimTrailingSlash<S extends string> = S extends `${infer Head}/`
+  ? TrimTrailingSlash<Head>
+  : S;
+
+type TrimLeadingSlash<S extends string> = S extends `/${infer Rest}`
+  ? TrimLeadingSlash<Rest>
+  : S;
+
+type NormalizePrefix<Prefix extends string> =
+  TrimTrailingSlash<TrimLeadingSlash<Prefix>> extends ""
+    ? ""
+    : `/${TrimTrailingSlash<TrimLeadingSlash<Prefix>>}`;
+
+type NormalizePath<Path extends string> =
+  TrimTrailingSlash<Path> extends "/"
+    ? "/"
+    : `/${TrimTrailingSlash<TrimLeadingSlash<Path>>}`;
+
+type JoinPaths<Prefix extends string, Path extends string> =
+  NormalizePrefix<Prefix> extends ""
+    ? NormalizePath<Path>
+    : Path extends "/"
+      ? NormalizePrefix<Prefix>
+      : `${NormalizePrefix<Prefix>}${NormalizePath<Path>}`;
+
+type PrefixedRouteValue<Prefix extends string, Value> =
+  Value extends RouteDefinition<infer Path, infer Req>
+    ? RouteDefinition<JoinPaths<Prefix, Path>, Req>
+    : Value extends readonly any[]
+      ? PrefixedRouteArray<Prefix, Value>
+      : Value;
+
+type PrefixedRouteArray<
+  Prefix extends string,
+  Routes extends readonly any[],
+> = {
+  [Index in keyof Routes]: PrefixedRouteValue<Prefix, Routes[Index]>;
 };
 
 type RouteMatch<T extends RequestInfo = RequestInfo> = {
@@ -125,14 +171,17 @@ export function matchPath<T extends RequestInfo = RequestInfo>(
 }
 
 function flattenRoutes<T extends RequestInfo = RequestInfo>(
-  routes: Route<T>[],
-): (RouteMiddleware<T> | RouteDefinition<T>)[] {
-  return routes.reduce((acc: Route<T>[], route) => {
-    if (Array.isArray(route)) {
-      return [...acc, ...flattenRoutes(route)];
-    }
-    return [...acc, route];
-  }, []) as (RouteMiddleware<T> | RouteDefinition<T>)[];
+  routes: readonly Route<T>[],
+): (RouteMiddleware<T> | RouteDefinition<string, T>)[] {
+  return routes.reduce<(RouteMiddleware<T> | RouteDefinition<string, T>)[]>(
+    (acc, route) => {
+      if (Array.isArray(route)) {
+        return [...acc, ...flattenRoutes(route)];
+      }
+      return [...acc, route];
+    },
+    [],
+  );
 }
 
 function isMethodHandlers<T extends RequestInfo = RequestInfo>(
@@ -190,7 +239,7 @@ function getHandlerForMethod<T extends RequestInfo = RequestInfo>(
 }
 
 export function defineRoutes<T extends RequestInfo = RequestInfo>(
-  routes: Route<T>[],
+  routes: readonly Route<T>[],
 ): {
   routes: Route<T>[];
   handle: ({
@@ -427,12 +476,14 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
  * // Route with middleware array
  * route("/admin", [isAuthenticated, isAdmin, () => <AdminDashboard />])
  */
-export function route<T extends RequestInfo = RequestInfo>(
-  path: string,
+export function route<Path extends string, T extends RequestInfo = RequestInfo>(
+  path: Path,
   handler: RouteHandler<T> | MethodHandlers<T>,
-): RouteDefinition<T> {
-  if (!path.endsWith("/")) {
-    path = path + "/";
+): RouteDefinition<NormalizePath<Path>, T> {
+  let normalizedPath: string = path;
+
+  if (!normalizedPath.endsWith("/")) {
+    normalizedPath = normalizedPath + "/";
   }
 
   // Normalize custom method keys to lowercase
@@ -449,9 +500,9 @@ export function route<T extends RequestInfo = RequestInfo>(
   }
 
   return {
-    path,
+    path: normalizedPath,
     handler,
-  };
+  } as RouteDefinition<NormalizePath<Path>, T>;
 }
 
 /**
@@ -467,7 +518,7 @@ export function route<T extends RequestInfo = RequestInfo>(
  */
 export function index<T extends RequestInfo = RequestInfo>(
   handler: RouteHandler<T>,
-): RouteDefinition<T> {
+): RouteDefinition<"/", T> {
   return route("/", handler);
 }
 
@@ -490,11 +541,12 @@ export function index<T extends RequestInfo = RequestInfo>(
  *   ]),
  * ])
  */
-export function prefix<T extends RequestInfo = RequestInfo>(
-  prefixPath: string,
-  routes: Route<T>[],
-): Route<T>[] {
-  return routes.map((r) => {
+export function prefix<
+  Prefix extends string,
+  T extends RequestInfo = RequestInfo,
+  Routes extends readonly Route<T>[],
+>(prefixPath: Prefix, routes: Routes): PrefixedRouteArray<Prefix, Routes> {
+  const prefixed = routes.map((r) => {
     if (typeof r === "function") {
       const middleware: RouteMiddleware<T> = (requestInfo) => {
         const url = new URL(requestInfo.request.url);
@@ -503,19 +555,21 @@ export function prefix<T extends RequestInfo = RequestInfo>(
         }
         return;
       };
-      return middleware;
+      return middleware as PrefixedRouteValue<Prefix, typeof r>;
     }
     if (Array.isArray(r)) {
       // Recursively process nested route arrays
-      return prefix(prefixPath, r);
+      return prefix(prefixPath, r) as PrefixedRouteValue<Prefix, typeof r>;
     }
     // For RouteDefinition objects, update the path and preserve layouts
     return {
       path: prefixPath + r.path,
       handler: r.handler,
       ...(r.layouts && { layouts: r.layouts }),
-    };
-  });
+    } as PrefixedRouteValue<Prefix, typeof r>;
+  }) as PrefixedRouteArray<Prefix, Routes>;
+
+  return prefixed;
 }
 
 function wrapWithLayouts<T extends RequestInfo = RequestInfo>(
@@ -607,10 +661,10 @@ export const wrapHandlerToThrowResponses = <
  *   route("/post/:id", ({ params }) => <BlogPost id={params.id} />),
  * ])
  */
-export function layout<T extends RequestInfo = RequestInfo>(
-  LayoutComponent: React.FC<LayoutProps<T>>,
-  routes: Route<T>[],
-): Route<T>[] {
+export function layout<
+  T extends RequestInfo = RequestInfo,
+  Routes extends readonly Route<T>[] = readonly Route<T>[],
+>(LayoutComponent: React.FC<LayoutProps<T>>, routes: Routes): Routes {
   // Attach layouts directly to route definitions
   return routes.map((route) => {
     if (typeof route === "function") {
@@ -626,7 +680,7 @@ export function layout<T extends RequestInfo = RequestInfo>(
       ...route,
       layouts: [LayoutComponent, ...(route.layouts || [])],
     };
-  });
+  }) as Routes;
 }
 
 /**
@@ -653,14 +707,22 @@ export function layout<T extends RequestInfo = RequestInfo>(
  *   ssr: true,
  * })
  */
-export function render<T extends RequestInfo = RequestInfo>(
+type RenderedRoutes<
+  T extends RequestInfo,
+  Routes extends readonly Route<T>[],
+> = readonly [RouteMiddleware<T>, ...Routes];
+
+export function render<
+  T extends RequestInfo = RequestInfo,
+  Routes extends readonly Route<T>[] = readonly Route<T>[],
+>(
   Document: React.FC<DocumentProps<T>>,
-  routes: Route<T>[],
+  routes: Routes,
   options: {
     rscPayload?: boolean;
     ssr?: boolean;
   } = {},
-): Route<T>[] {
+): RenderedRoutes<T, Routes> {
   options = {
     rscPayload: true,
     ssr: true,
@@ -673,7 +735,7 @@ export function render<T extends RequestInfo = RequestInfo>(
     rw.ssr = options.ssr ?? true;
   };
 
-  return [documentMiddleware, ...routes];
+  return [documentMiddleware, ...routes] as RenderedRoutes<T, Routes>;
 }
 
 function isRouteComponent(handler: any) {
