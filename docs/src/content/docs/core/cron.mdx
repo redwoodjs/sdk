@@ -3,9 +3,9 @@ title: Cron Triggers
 description: Schedule background tasks
 ---
 
-If you want to schedule a background task, [Cloudflare supports Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/).
+If you want to schedule a background task, Cloudflare supports [Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/).
 
-> ⚠️ **Warning:** Cron triggers currently only work when deployed to Cloudflare Workers in production. Local development does not support cron trigger testing yet. This is a known limitation tracked in [Cloudflare Workers SDK issue #8466](https://github.com/cloudflare/workers-sdk/issues/8466).
+ℹ️ **Important:** Cron triggers only fire automatically after you deploy to Cloudflare. The local dev server does not schedule jobs for you, but you can still trigger the scheduled cron handler manually (see [Testing locally](#testing-locally) below).
 
 ## Setup
 
@@ -33,30 +33,60 @@ export default {
   fetch: app.fetch,
   async scheduled(controller: ScheduledController) {
     switch (controller.cron) {
-      // Runs every minute
-      case "* * * * *":
-        console.log("🧹 Clean up Unverified Users");
+      case "* * * * *": {
+        console.log("🧹 Run minute-by-minute cleanups");
         break;
+      }
+      case "0 * * * *": {
+        console.log("📈 Aggregate hourly metrics");
+        break;
+      }
+      case "0 21 * * *": {
+        console.log("🌙 Kick off nightly billing at 9 PM UTC");
+        break;
+      }
+      default: {
+        console.warn(`Unhandled cron: ${controller.cron}`);
+      }
     }
     console.log("⏰ cron processed");
   },
 } satisfies ExportedHandler<Env>;
 ```
 
-Notice the `case` matches the cron schedule defined within the `wrangler.jsonc` file.
-
-In the example above, `console.log("🧹 Clean up Unverified Users");` runs every minute. However, you could account for different schedules by adding more triggers to your `wrangler.jsonc` file and more cases to your `switch` statement:
+Notice each `case` matches a cron schedule that must exist in your `wrangler.jsonc` file:
 
 ```jsonc title="wrangler.jsonc"
-"crons": ["* * * * *", "0 0 * * *"]
+"crons": ["* * * * *", "0 * * * *", "0 21 * * *"]
 ```
 
-```tsx title="worker.tsx"
-// Runs every hour
-case "0 0 * * *":
-  console.log("🔄 Update something");
-  break;
+## Testing locally
+
+To simulate a scheduled run in development, hit the dev server's scheduler endpoint and pass the cron expression you want to test:
+
+```bash
+curl "http://localhost:5173/cdn-cgi/handler/scheduled?cron=*+*+*+*+*"
 ```
+
+For example, run the following commands to see the above cron handlers in action:
+
+- Every minute:
+  ```bash
+  curl "http://localhost:5173/cdn-cgi/handler/scheduled?cron=*+*+*+*+*"
+  ⏰ cron processed
+  ```
+- Every hour on the zero minute:
+  ```bash
+  curl "http://localhost:5173/cdn-cgi/handler/scheduled?cron=0+*+*+*+*"
+  📈 Aggregate hourly metrics
+  ⏰ cron processed
+  ```
+- Every day at 9 PM UTC:
+  ```bash
+  curl "http://localhost:5173/cdn-cgi/handler/scheduled?cron=0+21+*+*+*"
+  🌙 Kick off nightly billing at 9 PM UTC
+  ⏰ cron processed
+  ```
 
 ## Cloudflare Cron Triggers
 
@@ -75,4 +105,3 @@ You can see a list of all the events that have been triggered for your worker.
 ## Further Reading
 
 - [Cloudflare Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/)
-
