@@ -4,41 +4,52 @@ import {
   setSyncStateClientForTesting,
 } from "../client";
 import type { SyncStateValue } from "../Coordinator.mjs";
-import { createSyncStateHook } from "../useSyncState";
+import {
+  createSyncStateHook,
+  type CreateSyncStateHookOptions,
+} from "../useSyncState";
+
+type HookDeps = NonNullable<CreateSyncStateHookOptions["hooks"]>;
 
 const createStateHarness = () => {
-  let currentState: SyncStateValue;
+  let currentState: SyncStateValue | undefined;
   const cleanups: Array<() => void> = [];
 
-  const useStateImpl = <T,>(
-    initialValue: T | (() => T),
-  ): [T, (value: T | ((previous: T) => T)) => void] => {
+  const useStateImpl: HookDeps["useState"] = ((initialValue?: unknown) => {
     const resolved =
       typeof initialValue === "function"
-        ? (initialValue as () => SyncStateValue)()
+        ? (initialValue as () => SyncStateValue | undefined)()
         : initialValue;
     currentState = resolved;
-    const setState = (next) => {
+    const setState: ReturnType<HookDeps["useState"]>[1] = (next) => {
       currentState =
         typeof next === "function"
-          ? (next as (previous: SyncStateValue) => SyncStateValue)(
+          ? (next as (previous: SyncStateValue | undefined) => SyncStateValue)(
               currentState,
             )
           : next;
     };
     return [currentState, setState];
+  }) as HookDeps["useState"];
+
+  const useEffectImpl: HookDeps["useEffect"] = (callback) => {
+    const cleanup = callback();
+    if (typeof cleanup === "function") {
+      cleanups.push(cleanup);
+    }
   };
 
-  const deps = {
+  const useRefImpl: HookDeps["useRef"] = ((value: unknown) => ({
+    current: value,
+  })) as HookDeps["useRef"];
+
+  const useCallbackImpl: HookDeps["useCallback"] = (fn) => fn;
+
+  const deps: HookDeps = {
     useState: useStateImpl,
-    useEffect: (callback) => {
-      const cleanup = callback();
-      if (typeof cleanup === "function") {
-        cleanups.push(cleanup);
-      }
-    },
-    useRef: (value) => ({ current: value }),
-    useCallback: (fn) => fn,
+    useEffect: useEffectImpl,
+    useRef: useRefImpl,
+    useCallback: useCallbackImpl,
   };
 
   return {

@@ -2,7 +2,8 @@ import React from "react";
 import { ClientOnly } from "../client/client";
 import { memoizeOnId } from "../lib/memoizeOnId";
 
-type ClientLookup = Record<string, () => Promise<unknown>>;
+type ModuleExports = Record<string, unknown>;
+type ClientLookup = Record<string, () => Promise<ModuleExports>>;
 
 let cachedClientLookup: ClientLookup | null = null;
 
@@ -19,9 +20,11 @@ const loadClientLookup = async (): Promise<ClientLookup> => {
     return cachedClientLookup;
   }
 
-  const module = await import("virtual:use-client-lookup.js" as string);
+  const module = (await import(
+    "virtual:use-client-lookup.js" as string
+  )) as { useClientLookup: ClientLookup };
 
-  cachedClientLookup = module.useClientLookup as ClientLookup;
+  cachedClientLookup = module.useClientLookup;
   return cachedClientLookup;
 };
 
@@ -46,7 +49,9 @@ export const loadModule = memoizeOnId(async (id: string) => {
 export const clientWebpackRequire = memoizeOnId(async (id: string) => {
   const [file, name] = id.split("#");
   const promisedModule = loadModule(file);
-  const promisedComponent = promisedModule.then((module) => module[name]);
+  const promisedComponent = promisedModule.then(
+    (module) => module[name] as React.ComponentType<any>,
+  );
 
   const didSSR = (globalThis as any).__RWSDK_CONTEXT?.rw?.ssr;
 

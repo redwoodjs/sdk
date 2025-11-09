@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { RpcStub } from "capnweb";
 
 vi.mock("cloudflare:workers", () => {
   class DurableObject {}
@@ -11,14 +12,18 @@ import {
   registerGetStateCallback,
 } from "../Coordinator.mjs";
 
-const createStub = (onInvoke: (value: unknown) => Promise<void> | void) => {
+const createStub = (
+  onInvoke: (value: unknown) => Promise<void> | void,
+): RpcStub<(value: unknown) => void> => {
   const fn = Object.assign(
-    (value: unknown) => Promise.resolve(onInvoke(value)),
+    async (value: unknown) => {
+      await onInvoke(value);
+    },
     {
       dup: () => fn,
     },
   );
-  return fn;
+  return fn as unknown as RpcStub<(value: unknown) => void>;
 };
 
 describe("SyncStateCoordinator", () => {
@@ -49,11 +54,11 @@ describe("SyncStateCoordinator", () => {
 
   it("drops failing subscribers", async () => {
     const coordinator = new SyncStateCoordinator({} as any, {} as any);
-    const stub = Object.assign(() => Promise.reject(new Error("fail")), {
-      dup: () => stub,
+    const stub = createStub(async () => {
+      throw new Error("fail");
     });
 
-    coordinator.subscribe("counter", stub as any);
+    coordinator.subscribe("counter", stub);
     coordinator.setState(3, "counter");
 
     await Promise.resolve();
