@@ -4,6 +4,7 @@ import { DODialect } from "kysely-do";
 import {
   CompiledQuery,
   Kysely,
+  KyselyPlugin,
   ParseJSONResultsPlugin,
   QueryResult,
 } from "kysely";
@@ -24,6 +25,7 @@ export class SqliteDurableObject<T = any> extends DurableObject {
     env: any,
     migrations: Record<string, any>,
     migrationTableName = "__migrations",
+    plugins: KyselyPlugin[] = [new ParseJSONResultsPlugin()],
   ) {
     super(ctx, env);
     this.migrations = migrations;
@@ -31,7 +33,7 @@ export class SqliteDurableObject<T = any> extends DurableObject {
 
     this.kysely = new Kysely<T>({
       dialect: new DODialect({ ctx }),
-      plugins: [new ParseJSONResultsPlugin()],
+      plugins: plugins,
     });
   }
 
