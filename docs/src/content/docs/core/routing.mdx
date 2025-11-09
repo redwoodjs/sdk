@@ -351,67 +351,11 @@ export default defineApp([
 Use `linkFor` to derive a strongly typed helper from your `defineApp` export. The helper works anywhere you can import types, including client code, because the call only depends on the app type.
 
 ```ts title="src/app/shared/links.ts"
-import type App from "../../worker";
 import { linkFor } from "rwsdk/router";
+
+type App = typeof import("../../worker").default;
 
 export const link = linkFor<App>();
 ```
 
-`linkFor` exposes the full set of routes discovered inside `defineApp`. TypeScript verifies that the path you pass exists and that you provide the required parameters.
-
-### Type Safety
-
-If you reference a path that your app does not define, TypeScript raises an error at compile time.
-
-```tsx
-import { link } from "@/app/shared/links";
-
-function MyComponent() {
-  return (
-    <nav>
-      <a href={link("/")}>Home</a>
-      <a href={link("/about")}>About</a>
-      {/* ❌ TypeScript Error! '/contakt' is not a valid route. */}
-      <a href={link("/contakt")}>Contact</a>
-    </nav>
-  );
-}
-```
-
-### Dynamic Parameters
-
-The helper enforces the parameter shape implied by each route pattern.
-
-For named parameters, pass an object whose keys match the parameter names:
-
-```ts
-// Generates: /users/123
-link("/users/:id", { id: "123" });
-```
-
-For wildcard parameters, use `$0`, `$1`, and so on, following the order of the wildcards from left to right:
-
-```ts
-// Generates: /files/documents/report.pdf
-link("/files/*", { $0: "documents/report.pdf" });
-```
-
-### API Reference
-
-#### `link(path[, params]): string`
-
-Generates a URL string for a given path, interpolating any dynamic parameters.
-
-- **path**: `string` — A route pattern defined in your app.
-- **params** (optional): `Record<string, string>` — An object for dynamic segments.
-  - For named parameters (e.g., `/users/:id`), the key should match the parameter name (e.g., `{ id: "123" }`).
-  - For wildcard parameters (e.g., `/files/*`), keys should be `$0`, `$1`, etc., in the order the wildcards appear (e.g., `{ $0: "image.jpg" }`).
-
-#### `linkFor<App>(): function`
-Returns a `link` helper whose path union is inferred from the `defineApp` routes. Use `import type` to reference the app without bundling the worker.
-
-#### `createLinks<App>(): function`
-Alias of `linkFor`; kept for symmetry with the legacy API.
-
-#### `defineLinks(routes): function`
-Manual escape hatch that accepts a route list when you cannot reference the app type directly (for example, in isolated tests).
+`linkFor` exposes the full set of routes discovered inside `defineApp`. TypeScript verifies that the path you pass exists and that you provide the required parameters. The `typeof import("../../worker").default` pattern keeps the reference type-only, so bundlers do not include the worker code in client bundles.

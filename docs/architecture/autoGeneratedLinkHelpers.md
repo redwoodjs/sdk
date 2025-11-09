@@ -29,13 +29,14 @@ The runtime interpolation mirrors the previous `defineLinks` implementation but 
 Shared modules import the helper with a type-only reference to the worker:
 
 ```ts
-import type App from "../../worker";
 import { linkFor } from "rwsdk/router";
+
+type App = typeof import("../../worker").default;
 
 export const link = linkFor<App>();
 ```
 
-Because the helper is created from types, client bundles do not pull in the worker implementation.
+Because the helper is created from types, client bundles do not pull in the worker implementation. The `typeof import("../../worker").default` alias keeps the reference purely at the type level while still giving `linkFor` access to the inferred routes.
 
 ## Tasks
 
@@ -43,4 +44,3 @@ Because the helper is created from types, client bundles do not pull in the work
 - Update the runtime link helper to operate without manifest inputs while still enforcing parameter usage.
 - Document the `linkFor` workflow and adjust starter/playground examples to rely on type-only imports.
 - Add unit tests for runtime interpolation and TypeScript tests (future) that exercise inference scenarios.
-
