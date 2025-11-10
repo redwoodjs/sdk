@@ -47,6 +47,10 @@ export it in the default export of the worker.
 
 This is a change to how `defineApp` is often used in the worker.
 
+The default export of the worker is the `DefaultWorker` class that extends the `WorkerEntrypoint` class.
+
+This tells Cloudflare that the worker is also email worker and can be selected to route inbound emails to.
+
 > Note: If you are just sending emails, you can still use `defineApp` as usual and just call `env.EMAIL.send()` in the route handler or in a server function.
 
 ```file title="worker.ts"
@@ -99,20 +103,13 @@ const app = defineApp([
 export default class DefaultWorker extends WorkerEntrypoint<Env> {
   /**
    * Email handler for the Worker.
-   * It parses the inbound email message and logs the email
-   * content to the console.
-   * The `message` parameter is an EmailMessage object
-   * that contains the inbound email message.
-   * The `message` object has the following properties:
-   * - `from`: The sender of the email.
-   * - `to`: The recipient of the email.
-   * - `subject`: The subject of the email.
-   * - `body`: The body of the email.
-   * - `attachments`: The attachments of the email.
+   * The `message` parameter is an ForwardableEmailMessage object
    *
-   * You can call `message.reply()` to respond directly to the inbound sender without additional verification steps.
+   * You can call `message.reply()` to respond directly to the
+   * inbound sender without additional verification steps.
    */
-  async email(message: EmailMessage) {
+  async email(message: ForwardableEmailMessage) {
+
     const parser = new PostalMime.default();
     const rawEmail = new Response((message as any).raw);
     const email = await parser.parse(await rawEmail.arrayBuffer());
@@ -131,29 +128,62 @@ export default class DefaultWorker extends WorkerEntrypoint<Env> {
 
 ### Replying to inbound email
 
-You can reply directly to an inbound message without pre-verifying the recipient. The Worker runtime preserves threading headers and delivers the response through the original route. Construct your response with `mimetext` and pass the raw payload to `message.reply()`, as shown in the [Reply from Workers guide](https://developers.cloudflare.com/email-routing/email-workers/reply-email-workers/).
+You can reply directly to an inbound message without pre-verifying the recipient.
+
+The Worker runtime preserves threading headers and delivers the response through the original route. Construct your response with `mimetext` and pass the raw payload to `message.reply()`, as shown in the [Reply from Workers guide](https://developers.cloudflare.com/email-routing/email-workers/reply-email-workers/).
+
+It is important to note that the `In-Reply-To` header is required to reply to the inbound email.
 
 ```ts title="Replying inside the email handler"
-async email(message: EmailMessage) {
-  const parser = new PostalMime.default();
-  const raw = new Response((message as any).raw);
-  const email = await parser.parse(await raw.arrayBuffer());
+async email(message: ForwardableEmailMessage) {
+  console.log("📧 Email received");
 
-  const reply = createMimeMessage();
-  reply.setSender({ name: "Support", addr: "support@example.com" });
-  reply.setRecipient(email.from?.address ?? "user@example.com");
-  reply.setSubject(`Re: ${email.subject ?? "Thanks for reaching out"}`);
-  reply.addMessage({
+  // Parse the inbound email
+  const parser = new PostalMime.default();
+  const rawEmail = new Response((message as any).raw);
+
+  const receivedEmail = await parser.parse(await rawEmail.arrayBuffer());
+  console.log("📧 Email received and parsed", receivedEmail);
+
+  // Create a new message to reply to the inbound email
+  const replyToMessage = createMimeMessage();
+
+  // ❗️ Important:This In-Reply-To header is required to reply to the inbound email
+  replyToMessage.setHeader(
+    "In-Reply-To",
+    message.headers.get("Message-ID") ?? ""
+  );
+
+  replyToMessage.setSender({ name: "Contact Person", addr: "<SENDER>@example.com" });
+  replyToMessage.setRecipient(receivedEmail.from);
+  replyToMessage.setSubject(`Re: ${receivedEmail.subject}`);
+  replyToMessage.addMessage({
     contentType: "text/plain",
     data: "Thanks for contacting us. We'll get back to you shortly.",
   });
 
-  await message.reply(reply.asRaw());
+  console.log("📧 New message created", replyToMessage.asRaw());
+
+  const replyMessage = new EmailMessage(
+    "<SENDER>@example.com",
+    message.from,
+    replyToMessage.asRaw()
+  );
+
+  console.log("📧 Sending reply email");
+
+  await message.reply(replyMessage);
+
+  console.log("📧 Reply email sent");
 }
 ```
 
 ### Key points
 
+- By default, the worker is not an email worker. You need to extend the `WorkerEntrypoint` class and implement the `email` handler to make it an email worker.
+- By extending the `WorkerEntrypoint` class, you are telling Cloudflare that the worker is also email worker and can be selected to route inbound emails to.
+- The `message` parameter is an `ForwardableEmailMessage` object that contains the inbound email message.
+- The `In-Reply-To` header is required to reply to the inbound email.
 - Use `PostalMime` to parse inbound messages for headers, text, HTML, and attachments.
 - Construct outbound MIME content with `mimetext` to control subject, sender, and body.
 - Call `env.EMAIL.send()` to deliver new messages, or `message.reply()` / `message.forward()` inside the email handler.
