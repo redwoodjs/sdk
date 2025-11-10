@@ -499,7 +499,7 @@ The beta version type requires the current version to be in beta format (`X.Y.Z-
 
 ### Releasing a Major Version After Pre-Releases
 
-When the current version is a pre-release (e.g., `1.0.0-beta.27`, `1.0.0-rc.1`, `1.0.0-alpha.5`), the `patch` and `minor` version types are disabled. This prevents accidentally releasing a patch or minor version when transitioning from a pre-release to a stable release. Note that `test` releases are excluded from this restriction.
+When the current version is a pre-release (e.g., `1.0.0-beta.27`, `1.0.0-rc.1`, `1.0.0-alpha.5`), the `patch`, `minor`, and `major` version types are disabled. This prevents accidentally releasing a version when transitioning from a pre-release to a stable release. Note that `test` releases are excluded from this restriction.
 
 To release a major version after a pre-release, use the `explicit` version type and specify the exact version string.
 
