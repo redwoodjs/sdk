@@ -7,11 +7,11 @@ on:
         description: "The type of version bump"
         required: true
         type: choice
-        default: "patch"
+        default: "beta"
         options:
+          - beta
           - patch
           - minor
-          - beta
           - explicit
           - test
       version:

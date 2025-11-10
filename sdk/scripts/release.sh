@@ -153,6 +153,15 @@ NODE_ENV=production pnpm build
 
 CURRENT_VERSION=$(npm pkg get version | tr -d '"')
 
+# Validate that patch/minor cannot be used when currently in a pre-release (excluding test)
+if [[ "$VERSION_TYPE" == "patch" || "$VERSION_TYPE" == "minor" ]]; then
+  if [[ "$CURRENT_VERSION" == *"-"* && "$CURRENT_VERSION" != *"-test."* ]]; then
+    echo "Error: Cannot use '$VERSION_TYPE' version type when current version is a pre-release ($CURRENT_VERSION)."
+    echo "To release a major version after a pre-release, use 'explicit' version type and specify the exact version."
+    exit 1
+  fi
+fi
+
 if [[ "$VERSION_TYPE" == "explicit" ]]; then
   NEW_VERSION="$MANUAL_VERSION"
 elif [[ "$VERSION_TYPE" == "test" ]]; then
