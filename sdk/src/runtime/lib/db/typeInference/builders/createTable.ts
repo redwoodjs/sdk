@@ -50,14 +50,27 @@ export interface CreateTableBuilder<
   addColumn<K extends string, T extends string>(
     name: K,
     type: T,
-    build?: (
-      col: ColumnDefinitionBuilder<SqlToTsType<T>>,
-    ) => ColumnDefinitionBuilder<SqlToTsType<T>>,
   ): CreateTableBuilder<
     TName,
     Prettify<
       (TSchema extends Record<string, any> ? TSchema : {}) &
-        Record<K, SqlToTsType<T>>
+        Record<K, SqlToTsType<T> | null>
+    >
+  >;
+  addColumn<K extends string, T extends string, TNullable extends boolean>(
+    name: K,
+    type: T,
+    build: (
+      col: ColumnDefinitionBuilder<SqlToTsType<T>>,
+    ) => ColumnDefinitionBuilder<SqlToTsType<T>, TNullable>,
+  ): CreateTableBuilder<
+    TName,
+    Prettify<
+      (TSchema extends Record<string, any> ? TSchema : {}) &
+        Record<
+          K,
+          TNullable extends true ? SqlToTsType<T> | null : SqlToTsType<T>
+        >
     >
   >;
   addUniqueConstraint(

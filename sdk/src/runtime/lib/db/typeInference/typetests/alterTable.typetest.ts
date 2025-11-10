@@ -31,7 +31,7 @@ declare let _it: any;
   type Expected = {
     users: {
       username: string;
-      displayName: string;
+      displayName: string | null;
     };
   };
   (_test: Expect<Equal<Actual, Expected>>) => {};
@@ -63,8 +63,8 @@ declare let _it: any;
   type Expected = {
     users: {
       id: number;
-      username: string;
-      nickname: string;
+      username: string | null;
+      nickname: string | null;
     };
   };
 
@@ -209,7 +209,7 @@ declare let _it: any;
       up: async (db) => [
         await db.schema
           .createTable("users")
-          .addColumn("id", "integer")
+          .addColumn("id", "integer", (c) => c.primaryKey().autoIncrement())
           .execute(),
       ],
     },
@@ -267,7 +267,7 @@ declare let _it: any;
   type Actual = Database<typeof migrations>;
   type Expected = {
     users: {
-      givenName: string;
+      givenName: string | null;
     };
   };
 
@@ -311,7 +311,7 @@ declare let _it: any;
   type Actual = Database<typeof migrations>;
   type Expected = {
     users: {
-      name: string;
+      name: string | null;
     };
   };
 
@@ -325,7 +325,7 @@ declare let _it: any;
         return [
           await db.schema
             .createTable("users")
-            .addColumn("id", "integer")
+            .addColumn("id", "integer", (col) => col.notNull())
             .execute(),
         ];
       },
@@ -363,7 +363,9 @@ declare let _it: any;
         return [
           await db.schema
             .createTable("users")
-            .addColumn("id", "integer")
+            .addColumn("id", "integer", (col) =>
+              col.primaryKey().autoIncrement(),
+            )
             .execute(),
         ];
       },
@@ -467,9 +469,109 @@ declare let _it: any;
   type Actual = Database<typeof migrations>;
   type Expected = {
     users: {
-      name: string;
+      name: string | null;
     };
   };
 
+  (_test: Expect<Equal<Actual, Expected>>) => {};
+};
+
+(_it = "alterTable addColumn with notNull") => {
+  const migrations = {
+    "0": {
+      async up(db) {
+        return [
+          await db.schema
+            .createTable("users")
+            .addColumn("id", "integer", (col) => col.primaryKey())
+            .execute(),
+        ];
+      },
+    },
+    "1": {
+      async up(db) {
+        return [
+          await db.schema
+            .alterTable("users")
+            .addColumn("email", "text", (col) => col.notNull())
+            .execute(),
+        ];
+      },
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+  type Expected = {
+    users: {
+      id: number;
+      email: string;
+    };
+  };
+  (_test: Expect<Equal<Actual, Expected>>) => {};
+};
+
+(_it = "alterTable modifyColumn with notNull") => {
+  const migrations = {
+    "0": {
+      async up(db) {
+        return [
+          await db.schema
+            .createTable("products")
+            .addColumn("price", "real")
+            .execute(),
+        ];
+      },
+    },
+    "1": {
+      async up(db) {
+        return [
+          await db.schema
+            .alterTable("products")
+            .modifyColumn("price", "real", (col) => col.notNull())
+            .execute(),
+        ];
+      },
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+  type Expected = {
+    products: {
+      price: number;
+    };
+  };
+  (_test: Expect<Equal<Actual, Expected>>) => {};
+};
+
+(_it = "alterTable modifyColumn nullable to non-nullable") => {
+  const migrations = {
+    "0": {
+      async up(db) {
+        return [
+          await db.schema
+            .createTable("orders")
+            .addColumn("status", "text")
+            .execute(),
+        ];
+      },
+    },
+    "1": {
+      async up(db) {
+        return [
+          await db.schema
+            .alterTable("orders")
+            .modifyColumn("status", "text", (col) => col.notNull().defaultTo("pending"))
+            .execute(),
+        ];
+      },
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+  type Expected = {
+    orders: {
+      status: string;
+    };
+  };
   (_test: Expect<Equal<Actual, Expected>>) => {};
 };

@@ -37,7 +37,11 @@ import type { Equal, Expect } from "./testUtils";
             .addColumn("username", "text", (col) => col.notNull())
             .addColumn("age", "integer", (col) => col.defaultTo(18))
             .addColumn("active", "boolean", (col) => col.defaultTo(true))
-            .addColumn("anotherBoolean", "boolean", (col) => col.defaultTo(sql`true`))
+            .addColumn("anotherBoolean", "boolean", (col) =>
+              col.defaultTo(sql`true`),
+            )
+            .addColumn("email", "text", (col) => col)
+            .addColumn("name", "text", (col) => col.defaultTo("John Doe"))
             .execute(),
         ];
       },
@@ -51,6 +55,82 @@ import type { Equal, Expect } from "./testUtils";
       age: number;
       active: boolean;
       anotherBoolean: boolean;
+      email: string | null;
+    };
+  };
+  (_test: Expect<Equal<Actual, Expected>>) => {};
+};
+
+(_it = "createTable column without callback is nullable") => {
+  const migrations = {
+    "001_init": {
+      async up(db) {
+        return [
+          await db.schema
+            .createTable("posts")
+            .addColumn("title", "text")
+            .addColumn("body", "text")
+            .execute(),
+        ];
+      },
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+  type Expected = {
+    posts: {
+      title: string | null;
+      body: string | null;
+    };
+  };
+  (_test: Expect<Equal<Actual, Expected>>) => {};
+};
+
+(_it = "createTable with primaryKey is non-nullable") => {
+  const migrations = {
+    "001_init": {
+      async up(db) {
+        return [
+          await db.schema
+            .createTable("users")
+            .addColumn("id", "integer", (col) => col.primaryKey())
+            .addColumn("email", "text", (col) => col.notNull())
+            .execute(),
+        ];
+      },
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+  type Expected = {
+    users: {
+      id: number;
+      email: string;
+    };
+  };
+  (_test: Expect<Equal<Actual, Expected>>) => {};
+};
+
+(_it = "createTable with unique but no notNull is nullable") => {
+  const migrations = {
+    "001_init": {
+      async up(db) {
+        return [
+          await db.schema
+            .createTable("products")
+            .addColumn("sku", "text", (col) => col.unique())
+            .addColumn("name", "text", (col) => col)
+            .execute(),
+        ];
+      },
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+  type Expected = {
+    products: {
+      sku: string | null;
+      name: string | null;
     };
   };
   (_test: Expect<Equal<Actual, Expected>>) => {};

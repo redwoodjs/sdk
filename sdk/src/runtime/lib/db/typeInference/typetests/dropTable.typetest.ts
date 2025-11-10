@@ -104,10 +104,10 @@ import type { Equal, Expect } from "./testUtils";
   type Actual = Database<typeof migrations>;
   type Expected = {
     users: {
-      username: string;
+      username: string | null;
     };
     comments: {
-      text: string;
+      text: string | null;
     };
   };
 
@@ -146,7 +146,7 @@ import type { Equal, Expect } from "./testUtils";
   type Actual = Database<typeof migrations>;
   type Expected = {
     users: {
-      username: string;
+      username: string | null;
     };
   };
 

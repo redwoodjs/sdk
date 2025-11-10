@@ -75,13 +75,17 @@ export interface AlterTableBuilder<
     newTableName: TNewName,
   ): AlterTableBuilder<TNewName, TOps> & { readonly __renamedFrom: TName };
   setSchema(newSchema: string): AlterTableBuilder<TName, TOps>;
-  addColumn<K extends string, T extends DataTypeExpression>(
+  addColumn<
+    K extends string,
+    T extends DataTypeExpression,
+    TNullable extends boolean = true,
+  >(
     name: K,
     type: T,
     build?: (
       col: ColumnDefinitionBuilder<SqlToTsType<T>>,
-    ) => ColumnDefinitionBuilder<SqlToTsType<T>>,
-  ): AlterTableBuilder<TName, [...TOps, AddColumnOp<K, T>]>;
+    ) => ColumnDefinitionBuilder<SqlToTsType<T>, TNullable>,
+  ): AlterTableBuilder<TName, [...TOps, AddColumnOp<K, T, TNullable>]>;
   dropColumn<K extends string>(
     name: K,
   ): AlterTableBuilder<TName, [...TOps, DropColumnOp<K>]>;
@@ -99,13 +103,17 @@ export interface AlterTableBuilder<
     TName,
     [...TOps, AlterColumnOp<K, ReturnType<TCallback>["__alteration"]>]
   >;
-  modifyColumn<K extends string, T extends DataTypeExpression>(
+  modifyColumn<
+    K extends string,
+    T extends DataTypeExpression,
+    TNullable extends boolean = true,
+  >(
     column: K,
     type: T,
     build?: (
       col: ColumnDefinitionBuilder<SqlToTsType<T>>,
-    ) => ColumnDefinitionBuilder<SqlToTsType<T>>,
-  ): AlterTableBuilder<TName, [...TOps, ModifyColumnOp<K, T>]>;
+    ) => ColumnDefinitionBuilder<SqlToTsType<T>, TNullable>,
+  ): AlterTableBuilder<TName, [...TOps, ModifyColumnOp<K, T, TNullable>]>;
   addUniqueConstraint(
     constraintName: string,
     columns: string[],
