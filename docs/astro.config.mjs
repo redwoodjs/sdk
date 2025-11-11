@@ -57,6 +57,7 @@ export default defineConfig({
             { slug: "core/realtime" },
             { slug: "core/queues" },
             { slug: "core/cron" },
+            { slug: "core/email" },
             { label: "Environment variables", slug: "core/env-vars" },
             { slug: "core/authentication" },
             { slug: "core/security" },

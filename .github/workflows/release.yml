@@ -4,10 +4,16 @@ on:
   workflow_dispatch:
     inputs:
       version_type:
-        description: "The type of version bump (patch, minor, explicit, test)"
+        description: "The type of version bump"
         required: true
-        type: string
-        default: "patch"
+        type: choice
+        default: "beta"
+        options:
+          - beta
+          - patch
+          - minor
+          - explicit
+          - test
       version:
         description: "The explicit version to use (for 'explicit' type)"
         required: false
@@ -102,7 +108,7 @@ jobs:
           VERSION_TYPE="${{ github.event.inputs.version_type }}"
           VERSION="${{ github.event.inputs.version }}"
 
-          if [[ "$VERSION_TYPE" == "patch" || "$VERSION_TYPE" == "minor" ]]; then
+          if [[ "$VERSION_TYPE" == "patch" || "$VERSION_TYPE" == "minor" || "$VERSION_TYPE" == "beta" ]]; then
             FLAGS="$FLAGS --latest"
           elif [[ "$VERSION_TYPE" == "explicit" ]]; then
             # For explicit versions, we check the version string to determine if it's a pre-release

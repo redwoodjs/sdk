@@ -477,6 +477,39 @@ When the smoke tests or playground E2E tests fail on a peer dependency update, i
     *   If the failure is a regression in the dependency itself, a maintainer must perform the following steps **on the Renovate PR branch**:
         1.  **Revert Dependency in Starters and Playground**: In the `starter/package.json` and `playground/*/package.json` files, revert the dependency version back to the previously working version.
 
+## Releasing Versions
+
+Releases are performed via GitHub Actions workflow dispatch. To trigger a release, go to the [Release workflow](https://github.com/redwoodjs/sdk/actions/workflows/release.yml) and click "Run workflow".
+
+The release workflow supports several version types:
+
+- `patch`: Increments the patch version (e.g., `1.0.0` → `1.0.1`)
+- `minor`: Increments the minor version (e.g., `1.0.0` → `1.1.0`)
+- `beta`: Increments the beta number (e.g., `1.0.0-beta.27` → `1.0.0-beta.28`)
+- `test`: Creates a test version with a timestamp (e.g., `1.0.0` → `1.0.0-test.20250101120000`)
+- `explicit`: Requires manually specifying the exact version string
+
+### Releasing a Beta Version
+
+To release a new beta version, use the `beta` version type in the GitHub Actions workflow dispatch. This automatically increments the beta number from the current version.
+
+**Example:** If the current version is `1.0.0-beta.27`, selecting `beta` as the version type will release `1.0.0-beta.28`.
+
+The beta version type requires the current version to be in beta format (`X.Y.Z-beta.N`). If the current version is not a beta version, the release will fail with an error.
+
+### Releasing a Major Version After Pre-Releases
+
+When the current version is a pre-release (e.g., `1.0.0-beta.27`, `1.0.0-rc.1`, `1.0.0-alpha.5`), the `patch`, `minor`, and `major` version types are disabled. This prevents accidentally releasing a version when transitioning from a pre-release to a stable release. Note that `test` releases are excluded from this restriction.
+
+To release a major version after a pre-release, use the `explicit` version type and specify the exact version string.
+
+**Example:** If the current version is `1.0.0-beta.27` and you want to release `1.0.0`:
+
+1. Select `explicit` as the version type
+2. Enter `1.0.0` as the version
+
+The release script will validate that patch/minor cannot be used when in a pre-release and will provide a clear error message directing you to use `explicit` instead.
+
 ## Unreleasing a Version
 
 For security reasons, unreleasing a version must be done locally by package maintainers and cannot be performed via CI. This ensures that npm's trusted publishing workflow and repository access tokens are handled securely.

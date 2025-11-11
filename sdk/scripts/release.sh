@@ -7,18 +7,18 @@ SUCCESS_FLAG=false # Default to failure. This will be checked by the cleanup tra
 DEPENDENCY_NAME="rwsdk"  # Replace with the actual package name
 
 show_help() {
-  echo "Usage: pnpm release <patch|minor|test|explicit> [--version <string>] [--dry]"
+  echo "Usage: pnpm release <patch|minor|beta|test|explicit> [--version <string>] [--dry]"
   echo
   echo "Automates version bumping, publishing, and dependency updates for $DEPENDENCY_NAME."
-  echo "For safety, only 'patch', 'minor', and 'test' bumps can be calculated automatically."
+  echo "For safety, only 'patch', 'minor', 'beta', and 'test' bumps can be calculated automatically."
   echo "To release a major or pre-release version, you MUST use the 'explicit' version_type and provide the exact version string with '--version'."
   echo
   echo "Arguments:"
-  echo "  patch|minor|test    Calculates the next version of this type automatically."
-  echo "  explicit            Requires the '--version' flag to specify the exact version to release."
+  echo "  patch|minor|beta|test    Calculates the next version of this type automatically."
+  echo "  explicit                 Requires the '--version' flag to specify the exact version to release."
   echo ""
   echo "Process:"
-  echo "  1.  Calculates new version (for patch/minor/test) or uses the manual version (for explicit), and updates package.json."
+  echo "  1.  Calculates new version (for patch/minor/beta/test) or uses the manual version (for explicit), and updates package.json."
   echo "  2.  Commits the version change."
   echo "  3.  Builds the package with NODE_ENV=production."
   echo "  4.  Bundles the package into a .tgz tarball using \`npm pack\`."
@@ -43,6 +43,7 @@ show_help() {
   echo "Examples:"
   echo "  pnpm release patch                    # 0.1.0 -> 0.1.1"
   echo "  pnpm release minor                    # 0.1.1 -> 0.2.0"
+  echo "  pnpm release beta                     # 1.0.0-beta.27 -> 1.0.0-beta.28"
   echo "  pnpm release test                     # 1.0.0 -> 1.0.0-test.0 (published as @test)"
   echo "  pnpm release explicit --version 1.0.0 # Release a major version"
   echo "  pnpm release explicit --version 1.0.0-rc.0 # Release a pre-release"
@@ -92,7 +93,7 @@ while [[ $i -le $# ]]; do
         show_help
       fi
       ;;
-    patch|minor|test|explicit)
+    patch|minor|beta|test|explicit)
       VERSION_TYPE=$arg
       ;;
   esac
@@ -108,7 +109,7 @@ fi
 
 # Validate required arguments
 if [[ -z "$VERSION_TYPE" ]]; then
-  echo "Error: Version type (patch|minor|test|explicit) is required."
+  echo "Error: Version type (patch|minor|beta|test|explicit) is required."
   echo ""
   show_help
 fi
@@ -152,6 +153,15 @@ NODE_ENV=production pnpm build
 
 CURRENT_VERSION=$(npm pkg get version | tr -d '"')
 
+# Validate that patch/minor/major cannot be used when currently in a pre-release (excluding test)
+if [[ "$VERSION_TYPE" == "patch" || "$VERSION_TYPE" == "minor" || "$VERSION_TYPE" == "major" ]]; then
+  if [[ "$CURRENT_VERSION" == *"-"* && "$CURRENT_VERSION" != *"-test."* ]]; then
+    echo "Error: Cannot use '$VERSION_TYPE' version type when current version is a pre-release ($CURRENT_VERSION)."
+    echo "To release a major version after a pre-release, use 'explicit' version type and specify the exact version."
+    exit 1
+  fi
+fi
+
 if [[ "$VERSION_TYPE" == "explicit" ]]; then
   NEW_VERSION="$MANUAL_VERSION"
 elif [[ "$VERSION_TYPE" == "test" ]]; then
@@ -165,6 +175,17 @@ elif [[ "$VERSION_TYPE" == "test" ]]; then
     BASE_VERSION="$CURRENT_VERSION"
   fi
   NEW_VERSION="$BASE_VERSION-test.$TIMESTAMP"
+elif [[ "$VERSION_TYPE" == "beta" ]]; then
+  # Handle beta version bumping: 1.0.0-beta.27 -> 1.0.0-beta.28
+  if [[ "$CURRENT_VERSION" =~ ^(.*)-beta\.([0-9]+)$ ]]; then
+    BASE_VERSION="${BASH_REMATCH[1]}"
+    BETA_NUMBER="${BASH_REMATCH[2]}"
+    NEW_BETA_NUMBER=$((BETA_NUMBER + 1))
+    NEW_VERSION="$BASE_VERSION-beta.$NEW_BETA_NUMBER"
+  else
+    echo "Error: Current version '$CURRENT_VERSION' is not a beta version. Beta bump requires a version in the format X.Y.Z-beta.N"
+    exit 1
+  fi
 else
   # Handle regular versions (patch, minor, major)
   NEW_VERSION=$(npx semver -i "$VERSION_TYPE" "$CURRENT_VERSION")
@@ -248,7 +269,7 @@ if [[ "$DRY_RUN" == true ]]; then
     echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag test"
   elif [[ "$NEW_VERSION" == *"-beta."* ]]; then
     echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag latest"
-  elif [[ "$NEW_VERSION" =~ - ]]; then
+  elif [[ "$NEW_VERSION" == *"-"* ]]; then
     echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag pre"
   else
     echo "  [DRY RUN] npm publish '$TARBALL_PATH'"
