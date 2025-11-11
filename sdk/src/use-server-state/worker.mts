@@ -1,12 +1,10 @@
+import { RpcTarget, newWorkersRpcResponse } from "capnweb";
 import { env } from "cloudflare:workers";
 import { route } from "../runtime/entries/router";
-import type { SyncStateCoordinator } from "./Coordinator.mjs";
+import { SyncStateCoordinator, type SyncStateValue } from "./Coordinator.mjs";
 import { DEFAULT_SYNC_STATE_PATH } from "./constants.mjs";
 
-export {
-  registerGetStateCallback,
-  registerSetStateCallback,
-} from "./Coordinator.mjs";
+export { SyncStateCoordinator } from "./Coordinator.mjs";
 
 export type SyncStateRouteOptions = {
   basePath?: string;
@@ -15,6 +13,40 @@ export type SyncStateRouteOptions = {
 };
 
 const DEFAULT_SYNC_STATE_NAME = "syncedState";
+
+class SyncStateProxy extends RpcTarget {
+  #stub: any;
+  #keyHandler: ((key: string) => Promise<string>) | null;
+
+  constructor(
+    stub: any,
+    keyHandler: ((key: string) => Promise<string>) | null,
+  ) {
+    super();
+    this.#stub = stub;
+    this.#keyHandler = keyHandler;
+  }
+
+  async getState(key: string): Promise<SyncStateValue> {
+    const transformedKey = this.#keyHandler ? await this.#keyHandler(key) : key;
+    return this.#stub.getState(transformedKey);
+  }
+
+  async setState(value: SyncStateValue, key: string): Promise<void> {
+    const transformedKey = this.#keyHandler ? await this.#keyHandler(key) : key;
+    return this.#stub.setState(value, transformedKey);
+  }
+
+  async subscribe(key: string, client: any): Promise<void> {
+    const transformedKey = this.#keyHandler ? await this.#keyHandler(key) : key;
+    return this.#stub.subscribe(transformedKey, client);
+  }
+
+  async unsubscribe(key: string, client: any): Promise<void> {
+    const transformedKey = this.#keyHandler ? await this.#keyHandler(key) : key;
+    return this.#stub.unsubscribe(transformedKey, client);
+  }
+}
 
 /**
  * Registers routes that forward sync state requests to the configured Durable Object namespace.
@@ -33,10 +65,21 @@ export const syncStateRoutes = (
   const durableObjectName =
     options.durableObjectName ?? DEFAULT_SYNC_STATE_NAME;
 
-  const forwardRequest = (request: Request) => {
+  const forwardRequest = async (request: Request) => {
+    const keyHandler = SyncStateCoordinator.getKeyHandler();
+
+    if (!keyHandler) {
+      const namespace = getNamespace(env);
+      const id = namespace.idFromName(durableObjectName);
+      return namespace.get(id).fetch(request);
+    }
+
     const namespace = getNamespace(env);
     const id = namespace.idFromName(durableObjectName);
-    return namespace.get(id).fetch(request);
+    const coordinator = namespace.get(id);
+    const proxy = new SyncStateProxy(coordinator, keyHandler);
+
+    return newWorkersRpcResponse(request, proxy);
   };
 
   return [

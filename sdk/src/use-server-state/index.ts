@@ -1,8 +1,6 @@
 export { initSyncStateClient } from "./client";
 export {
   SyncStateCoordinator,
-  registerGetStateCallback,
-  registerSetStateCallback,
   type SyncStateValue,
 } from "./Coordinator.mjs";
 export {

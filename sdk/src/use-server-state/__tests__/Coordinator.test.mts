@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { RpcStub } from "capnweb";
 
 vi.mock("cloudflare:workers", () => {
@@ -6,11 +6,7 @@ vi.mock("cloudflare:workers", () => {
   return { DurableObject };
 });
 
-import {
-  SyncStateCoordinator,
-  registerSetStateCallback,
-  registerGetStateCallback,
-} from "../Coordinator.mjs";
+import { SyncStateCoordinator } from "../Coordinator.mjs";
 
 const createStub = (
   onInvoke: (value: unknown) => Promise<void> | void,
@@ -70,7 +66,7 @@ describe("SyncStateCoordinator", () => {
   it("invokes registered onSet handler", () => {
     const coordinator = new SyncStateCoordinator({} as any, {} as any);
     const calls: Array<{ key: string; value: unknown }> = [];
-    registerSetStateCallback((key, value) => {
+    SyncStateCoordinator.registerSetStateHandler((key, value) => {
       calls.push({ key, value });
     });
 
@@ -78,13 +74,13 @@ describe("SyncStateCoordinator", () => {
 
     expect(calls).toEqual([{ key: "counter", value: 2 }]);
 
-    registerSetStateCallback(null);
+    SyncStateCoordinator.registerSetStateHandler(null);
   });
 
   it("invokes registered onGet handler", () => {
     const coordinator = new SyncStateCoordinator({} as any, {} as any);
     const calls: Array<{ key: string; value: unknown }> = [];
-    registerGetStateCallback((key, value) => {
+    SyncStateCoordinator.registerGetStateHandler((key, value) => {
       calls.push({ key, value });
     });
 
@@ -92,6 +88,57 @@ describe("SyncStateCoordinator", () => {
     expect(coordinator.getState("counter")).toBe(4);
     expect(calls).toEqual([{ key: "counter", value: 4 }]);
 
-    registerGetStateCallback(null);
+    SyncStateCoordinator.registerGetStateHandler(null);
+  });
+
+  describe("registerKeyHandler", () => {
+    afterEach(() => {
+      SyncStateCoordinator.registerKeyHandler(async (key) => key);
+    });
+
+    it("stores and retrieves the registered handler", async () => {
+      const handler = async (key: string) => `transformed:${key}`;
+      SyncStateCoordinator.registerKeyHandler(handler);
+
+      const retrievedHandler = SyncStateCoordinator.getKeyHandler();
+      expect(retrievedHandler).toBe(handler);
+    });
+
+    it("transforms keys using the registered handler", async () => {
+      const handler = async (key: string) => `user:123:${key}`;
+      SyncStateCoordinator.registerKeyHandler(handler);
+
+      const result = await handler("counter");
+      expect(result).toBe("user:123:counter");
+    });
+
+    it("returns null when no handler is registered", () => {
+      SyncStateCoordinator.registerKeyHandler(async (key) => key);
+      const handler = SyncStateCoordinator.getKeyHandler();
+      expect(handler).not.toBeNull();
+    });
+
+    it("allows handler to be async", async () => {
+      const handler = async (key: string) => {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        return `async:${key}`;
+      };
+      SyncStateCoordinator.registerKeyHandler(handler);
+
+      const result = await handler("test");
+      expect(result).toBe("async:test");
+    });
+
+    it("handler receives the correct key parameter", async () => {
+      let receivedKey = "";
+      const handler = async (key: string) => {
+        receivedKey = key;
+        return key;
+      };
+      SyncStateCoordinator.registerKeyHandler(handler);
+
+      await handler("myKey");
+      expect(receivedKey).toBe("myKey");
+    });
   });
 });

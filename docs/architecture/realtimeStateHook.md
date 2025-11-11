@@ -29,6 +29,18 @@ The design combines a Cloudflare Durable Object that stores key-value pairs, a C
 5. The Durable Object updates its map, iterates subscribers for the key, and invokes their RPC stubs, which push the new value to each client hook instance.
 6. Each hook instance updates its local React state, keeping the UI in sync.
 
+## Key Transformation
+
+Applications often need to scope state to individual users or other request-specific context. The key transformation feature allows worker-level code to intercept and modify state keys before they reach the Durable Object.
+
+The `SyncStateCoordinator.registerKeyHandler` method accepts an async function that receives a client-provided key and returns a transformed key. The handler runs in the worker request context where `requestInfo` and session data are available.
+
+When a handler is registered, the worker routes create an RPC proxy that sits between the client and the Durable Object. For each RPC method call (`getState`, `setState`, `subscribe`, `unsubscribe`), the proxy invokes the handler to transform the key, then forwards the call to the Durable Object with the transformed key. The Durable Object operates only on transformed keys and never sees the original client-provided keys.
+
+This approach keeps scoping logic centralized in the worker while maintaining security. The client provides simple, unscoped keys like `"counter"`, and the worker transforms them to scoped keys like `"user:123:counter"` based on the authenticated session. If the handler throws an error, the error propagates to the client.
+
+When no handler is registered, keys pass through unchanged, and the worker routes forward requests directly to the Durable Object without creating a proxy.
+
 ## Failure Handling
 
 - Subscriber invocation failures remove the subscriber stub from the Durable Object, preventing repeated errors.

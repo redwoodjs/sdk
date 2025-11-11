@@ -95,16 +95,15 @@ Set the URL to match the base path you expose from the worker routes. In this ex
 
 ```tsx title="src/worker.tsx"
 import {
-  registerGetStateCallback,
-  registerSetStateCallback,
+  SyncStateCoordinator,
   syncStateRoutes,
 } from "rwsdk/use-sync-state/worker";
 import { env } from "cloudflare:workers";
 
-registerGetStateCallback((key, value) => {
+SyncStateCoordinator.registerGetStateHandler((key, value) => {
   console.log("synced state requested", { key, value });
 });
-registerSetStateCallback((key, value) => {
+SyncStateCoordinator.registerSetStateHandler((key, value) => {
   console.log("synced state updated", { key, value });
 });
 
@@ -114,11 +113,11 @@ export default defineApp([
 ]);
 ```
 
-### State callbacks
+### State handlers
 
-`registerSetStateCallback(onSetStateHandler)` accepts a function that receives `(key, value)` each time the coordinator stores a new value. Use this to record updates or trigger downstream work whenever any client publishes new state.
+`SyncStateCoordinator.registerSetStateHandler(handler)` accepts a function that receives `(key, value)` each time the coordinator stores a new value. Use this to record updates or trigger downstream work whenever any client publishes new state.
 
-`registerGetStateCallback(onGetStateHandler)` accepts a function that receives `(key, value)` each time the coordinator returns a value to a subscriber. The handler runs after the lookup, so `value` is `undefined` when no entry exists for the key.
+`SyncStateCoordinator.registerGetStateHandler(handler)` accepts a function that receives `(key, value)` each time the coordinator returns a value to a subscriber. The handler runs after the lookup, so `value` is `undefined` when no entry exists for the key.
 
 ### Durable Object Export
 
@@ -136,6 +135,41 @@ const Counter = () => {
 ```
 
 `setCount` applies the update locally and forwards it to the coordinator, which broadcasts the new value to every subscriber using the realtime transport.
+
+---
+
+### Per-User State Scoping
+
+To scope synced state to individual users, register a key transformation handler in your worker. The handler runs on every state operation and can transform client-provided keys based on the authenticated session.
+
+```tsx title="src/worker.tsx"
+import { SyncStateCoordinator } from "rwsdk/use-sync-state/worker";
+import { sessionStore } from "./session";
+import { requestInfo } from "rwsdk/worker";
+
+SyncStateCoordinator.registerKeyHandler(async (key) => {
+  const session = await sessionStore.load(requestInfo.request);
+  const userId = session?.userId ?? "anonymous";
+  return `user:${userId}:${key}`;
+});
+```
+
+With this handler registered, client components use simple, unscoped keys:
+
+```tsx title="src/components/UserCounter.tsx"
+"use client";
+
+import { useSyncedState } from "rwsdk/use-sync-state";
+
+export const UserCounter = () => {
+  const [count, setCount] = useSyncedState(0, "counter");
+  return <button onClick={() => setCount((n) => n + 1)}>{count}</button>;
+};
+```
+
+The worker transforms `"counter"` to `"user:123:counter"` before storing or retrieving state. Each user sees their own counter value without needing to pass user IDs from the client.
+
+If the handler throws an error, that error propagates to the client where it can be caught using error boundaries or try-catch blocks in event handlers.
 
 ---
 

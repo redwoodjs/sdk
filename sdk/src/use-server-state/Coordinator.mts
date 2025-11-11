@@ -6,29 +6,30 @@ export type SyncStateValue = unknown;
 type OnSetHandler = (key: string, value: SyncStateValue) => void;
 type OnGetHandler = (key: string, value: SyncStateValue | undefined) => void;
 
-let onSetState: OnSetHandler | null = null;
-let onGetState: OnGetHandler | null = null;
-
-/**
- * Assigns the callback that receives notifications when `setState` runs.
- * @param handler Handler to store or `null` to disable notifications.
- */
-export const registerSetStateCallback = (handler: OnSetHandler | null) => {
-  onSetState = handler;
-};
-
-/**
- * Assigns the callback that receives notifications when `getState` runs.
- * @param handler Handler to store or `null` to disable notifications.
- */
-export const registerGetStateCallback = (handler: OnGetHandler | null) => {
-  onGetState = handler;
-};
-
 /**
  * Durable Object that keeps shared state for multiple clients and notifies subscribers.
  */
 export class SyncStateCoordinator extends DurableObject {
+  static #keyHandler: ((key: string) => Promise<string>) | null = null;
+  static #setStateHandler: OnSetHandler | null = null;
+  static #getStateHandler: OnGetHandler | null = null;
+
+  static registerKeyHandler(handler: (key: string) => Promise<string>): void {
+    SyncStateCoordinator.#keyHandler = handler;
+  }
+
+  static getKeyHandler(): ((key: string) => Promise<string>) | null {
+    return SyncStateCoordinator.#keyHandler;
+  }
+
+  static registerSetStateHandler(handler: OnSetHandler | null): void {
+    SyncStateCoordinator.#setStateHandler = handler;
+  }
+
+  static registerGetStateHandler(handler: OnGetHandler | null): void {
+    SyncStateCoordinator.#getStateHandler = handler;
+  }
+
   #stateStore = new Map<string, SyncStateValue>();
   #subscriptions = new Map<
     string,
@@ -44,16 +45,16 @@ export class SyncStateCoordinator extends DurableObject {
 
   getState(key: string): SyncStateValue {
     const value = this.#stateStore.get(key);
-    if (onGetState) {
-      onGetState(key, value);
+    if (SyncStateCoordinator.#getStateHandler) {
+      SyncStateCoordinator.#getStateHandler(key, value);
     }
     return value;
   }
 
   setState(value: SyncStateValue, key: string): void {
     this.#stateStore.set(key, value);
-    if (onSetState) {
-      onSetState(key, value);
+    if (SyncStateCoordinator.#setStateHandler) {
+      SyncStateCoordinator.#setStateHandler(key, value);
     }
     const subscribers = this.#subscriptions.get(key);
     if (!subscribers) {
