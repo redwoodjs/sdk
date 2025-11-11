@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { setSyncStateClientForTesting, type SyncStateClient } from "../client";
+import {
+  type SyncStateClient,
+  setSyncStateClientForTesting,
+} from "../client";
 import type { SyncStateValue } from "../Coordinator.mjs";
 import {
   createSyncStateHook,
@@ -57,7 +60,10 @@ const createStateHarness = () => {
 };
 
 describe("createSyncStateHook", () => {
-  const subscribeHandlers = new Map<string, (value: SyncStateValue) => void>();
+  const subscribeHandlers = new Map<
+    string,
+    (value: SyncStateValue) => void
+  >();
   const client: SyncStateClient = {
     async getState() {
       return 5;
@@ -123,7 +129,7 @@ describe("createSyncStateHook", () => {
     const harness = createStateHarness();
     const useSyncedState = createSyncStateHook({ hooks: harness.deps });
 
-    useSyncState(0, "counter");
+    useSyncedState(0, "counter");
     await Promise.resolve();
 
     const handler = subscribeHandlers.get("counter");
@@ -148,3 +154,4 @@ describe("createSyncStateHook", () => {
     expect(unsubscribed).toEqual([{ key: "counter" }]);
   });
 });
+

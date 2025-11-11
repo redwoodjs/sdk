@@ -7,7 +7,7 @@ export {
 } from "./Coordinator.mjs";
 export {
   createSyncStateHook,
-  useSyncState,
+  useSyncedState,
   type CreateSyncStateHookOptions,
-} from "./useSyncState";
+} from "./useSyncedState";
 export { syncStateRoutes, type SyncStateRouteOptions } from "./worker.mjs";

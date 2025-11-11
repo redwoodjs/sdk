@@ -64,21 +64,21 @@ After updating `wrangler.jsonc`, run `pnpm generate` to update the generated typ
 
 ## Sync State Hook
 
-`useSyncState` keeps a value aligned across tabs, devices, or users by using the realtime transport and the `SyncStateCoordinator` Durable Object.
+`useSyncedState` keeps a value aligned across tabs, devices, or users by using the realtime transport and the `SyncStateCoordinator` Durable Object.
 
 ### Default Hook
 
-```ts title="src/hooks/useSyncState.ts"
-import { useSyncState } from "rwsdk/use-sync-state";
+```ts title="src/hooks/useSyncedState.ts"
+import { useSyncedState } from "rwsdk/use-sync-state";
 ```
 
 ### Hook Factory (optional)
 
-```ts title="src/hooks/useSyncState.ts"
+```ts title="src/hooks/useSyncedState.ts"
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createSyncStateHook } from "rwsdk/use-sync-state";
 
-export const useSyncState = createSyncStateHook({
+export const useSyncedState = createSyncStateHook({
   url: "/sync-state",
   hooks: {
     useState,
@@ -130,7 +130,7 @@ export { SyncStateCoordinator } from "rwsdk/use-sync-state";
 
 ```tsx title="src/components/Counter.tsx"
 const Counter = () => {
-  const [count, setCount] = useSyncState(0, "counter");
+  const [count, setCount] = useSyncedState(0, "counter");
   return <button onClick={() => setCount((n) => n + 1)}>{count}</button>;
 };
 ```
@@ -150,7 +150,7 @@ const Counter = () => {
 const useCustomSyncState = createSyncStateHook({ url: "/api/sync" });
 ```
 
-```ts title="src/hooks/useSyncState.test.ts"
+```ts title="src/hooks/useSyncedState.test.ts"
 const useTestSyncState = createSyncStateHook({
   hooks: {
     useState,

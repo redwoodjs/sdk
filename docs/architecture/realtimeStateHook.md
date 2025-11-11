@@ -22,7 +22,7 @@ The design combines a Cloudflare Durable Object that stores key-value pairs, a C
 
 ## Data Flow
 
-1. A component calls `useSyncState(initialValue, key)`.
+1. A component calls `useSyncedState(initialValue, key)`.
 2. The hook ensures the shared WebSocket RPC session exists and fetches the current value from the Durable Object.
 3. The hook subscribes to further updates; the Durable Object records the subscriber and will invoke it on updates.
 4. When any client triggers the setter, the hook sends `setState` to the Durable Object.
