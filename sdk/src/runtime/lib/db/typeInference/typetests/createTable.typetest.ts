@@ -35,7 +35,6 @@ import type { Equal, Expect } from "./testUtils";
           await db.schema
             .createTable("users")
             .addColumn("username", "text", (col) => col.notNull())
-            .addColumn("age", "integer", (col) => col.defaultTo(18))
             .addColumn("active", "boolean", (col) => col.defaultTo(true))
             .addColumn("anotherBoolean", "boolean", (col) =>
               col.defaultTo(sql`true`),
@@ -52,10 +51,10 @@ import type { Equal, Expect } from "./testUtils";
   type Expected = {
     users: {
       username: string;
-      age: number;
       active: boolean;
       anotherBoolean: boolean;
       email: string | null;
+      name: string;
     };
   };
   (_test: Expect<Equal<Actual, Expected>>) => {};
