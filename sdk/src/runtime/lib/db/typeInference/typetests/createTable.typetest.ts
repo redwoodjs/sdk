@@ -40,6 +40,7 @@ import type { Equal, Expect } from "./testUtils";
               col.defaultTo(sql`true`),
             )
             .addColumn("email", "text", (col) => col)
+            .addColumn("favoriteColor", "text", (col) => col.unique())
             .addColumn("name", "text", (col) => col.defaultTo("John Doe"))
             .execute(),
         ];
@@ -53,6 +54,7 @@ import type { Equal, Expect } from "./testUtils";
       username: string;
       active: boolean;
       anotherBoolean: boolean;
+      favoriteColor: string | null;
       email: string | null;
       name: string;
     };
