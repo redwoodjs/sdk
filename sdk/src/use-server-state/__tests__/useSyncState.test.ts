@@ -123,7 +123,7 @@ describe("createSyncStateHook", () => {
     const harness = createStateHarness();
     const useSyncedState = createSyncStateHook({ hooks: harness.deps });
 
-    useSyncState(0, "counter");
+    useSyncedState(0, "counter");
     await Promise.resolve();
 
     const handler = subscribeHandlers.get("counter");
