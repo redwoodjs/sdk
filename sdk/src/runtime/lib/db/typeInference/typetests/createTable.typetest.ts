@@ -139,10 +139,6 @@ import type { Equal, Expect } from "./testUtils";
 
 // --- Insert/Update Type Tests ---
 
-type GetValuesType<TDb, TTableName extends keyof TDb & string> = Parameters<
-  Kysely<TDb>["insertInto"]<TTableName>["values"]
->[0];
-
 (_it = "makes autoIncrement columns optional on insert") => {
   const migrations = {
     "001_init": {
