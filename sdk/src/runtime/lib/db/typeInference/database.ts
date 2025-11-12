@@ -1,4 +1,4 @@
-import { Kysely } from "kysely";
+import { Generated, Kysely } from "kysely";
 import { AlterTableBuilder } from "./builders/alterTable";
 import { CreateTableBuilder } from "./builders/createTable";
 import { DropTableBuilder } from "./builders/dropTable";
@@ -9,6 +9,7 @@ import {
   ProcessAlteredTable,
   UnionToTuple,
 } from "./utils";
+import { ColumnDescriptor } from "./builders/columnDefinition";
 
 export interface InferenceBuilder {
   schema: SchemaBuilder;
@@ -84,5 +85,45 @@ type ProcessMigrations<
     : TSchema
   : TSchema;
 
-export type Database<TMigrations extends Migrations = Migrations> =
+// --- Schema Transformation ---
+
+type TableToSelectType<TTable> = Prettify<{
+  [K in keyof TTable]: TTable[K] extends ColumnDescriptor
+    ? TTable[K]["isNullable"] extends true
+      ? TTable[K]["tsType"] | null
+      : TTable[K]["tsType"]
+    : TTable[K];
+}>;
+
+type TableToKyselySchema<TTable> = Prettify<{
+  [K in keyof TTable]: TTable[K] extends ColumnDescriptor
+    ? TTable[K]["hasDefault"] extends true
+      ? Generated<
+          TTable[K]["isNullable"] extends true
+            ? TTable[K]["tsType"] | null
+            : TTable[K]["tsType"]
+        >
+      : TTable[K]["isAutoIncrement"] extends true
+        ? Generated<TTable[K]["tsType"]>
+        : TTable[K]["isNullable"] extends true
+          ? TTable[K]["tsType"] | null
+          : TTable[K]["tsType"]
+    : TTable[K];
+}>;
+
+type DatabaseWithDescriptors<TMigrations extends Migrations = Migrations> =
   ProcessMigrations<TMigrations, UnionToTuple<keyof TMigrations>>;
+
+export type Database<TMigrations extends Migrations = Migrations> = Prettify<
+  {
+    [K in keyof DatabaseWithDescriptors<TMigrations>]: TableToSelectType<
+      DatabaseWithDescriptors<TMigrations>[K]
+    >;
+  } & {
+    __kyselySchema: {
+      [K in keyof DatabaseWithDescriptors<TMigrations>]: TableToKyselySchema<
+        DatabaseWithDescriptors<TMigrations>[K]
+      >;
+    };
+  }
+>;

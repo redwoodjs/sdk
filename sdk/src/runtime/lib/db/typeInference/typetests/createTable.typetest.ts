@@ -1,6 +1,6 @@
 import { Kysely, sql } from "kysely";
 import type { Database, Migrations } from "../database";
-import type { Equal, Expect } from "./testUtils";
+import type { ExpectDb } from "./testUtils";
 
 (_it = "createTable") => {
   const migrations = {
@@ -24,7 +24,7 @@ import type { Equal, Expect } from "./testUtils";
     };
   };
 
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: ExpectDb<Actual, Expected>) => {};
 };
 
 (_it = "createTable with multiple columns and defaults") => {
@@ -59,7 +59,7 @@ import type { Equal, Expect } from "./testUtils";
       name: string;
     };
   };
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: ExpectDb<Actual, Expected>) => {};
 };
 
 (_it = "createTable column without callback is nullable") => {
@@ -84,7 +84,7 @@ import type { Equal, Expect } from "./testUtils";
       body: string | null;
     };
   };
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: ExpectDb<Actual, Expected>) => {};
 };
 
 (_it = "createTable with primaryKey is non-nullable") => {
@@ -109,7 +109,7 @@ import type { Equal, Expect } from "./testUtils";
       email: string;
     };
   };
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: ExpectDb<Actual, Expected>) => {};
 };
 
 (_it = "createTable with unique but no notNull is nullable") => {
@@ -134,7 +134,7 @@ import type { Equal, Expect } from "./testUtils";
       name: string | null;
     };
   };
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: ExpectDb<Actual, Expected>) => {};
 };
 
 // --- Insert/Update Type Tests ---
@@ -159,7 +159,6 @@ import type { Equal, Expect } from "./testUtils";
   type DB = Database<typeof migrations>;
   const db = {} as Kysely<DB>;
 
-  // This fails because `id` is required, but it should be optional.
   db.insertInto("users").values({ username: "test" });
 };
 
@@ -183,6 +182,5 @@ import type { Equal, Expect } from "./testUtils";
   type DB = Database<typeof migrations>;
   const db = {} as Kysely<DB>;
 
-  // This fails because `status` is required, but it should be optional.
   db.insertInto("users").values({ username: "test" });
 };

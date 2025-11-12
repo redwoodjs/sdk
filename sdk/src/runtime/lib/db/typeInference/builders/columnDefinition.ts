@@ -15,48 +15,66 @@ type DefaultValueExpression =
   | null
   | ReturnType<typeof sql>;
 
+export type ColumnDescriptor = {
+  tsType: any;
+  isNullable: boolean;
+  hasDefault: boolean;
+  isAutoIncrement: boolean;
+};
+
 export interface ColumnDefinitionBuilder<
-  TType,
-  TNullable extends boolean = true,
+  TDescriptor extends ColumnDescriptor,
 > {
-  autoIncrement(): ColumnDefinitionBuilder<TType, TNullable>;
-  identity(): ColumnDefinitionBuilder<TType, TNullable>;
-  primaryKey(): ColumnDefinitionBuilder<TType, false>;
-  references(ref: string): ColumnDefinitionBuilder<TType, TNullable>;
+  autoIncrement(): ColumnDefinitionBuilder<{
+    [K in keyof TDescriptor]: K extends "isAutoIncrement" ? true : TDescriptor[K];
+  }>;
+  identity(): ColumnDefinitionBuilder<TDescriptor>;
+  primaryKey(): ColumnDefinitionBuilder<{
+    [K in keyof TDescriptor]: K extends "isNullable" ? false : TDescriptor[K];
+  }>;
+  references(ref: string): ColumnDefinitionBuilder<TDescriptor>;
   onDelete(
     onDelete: "no action" | "restrict" | "cascade" | "set null" | "set default",
-  ): ColumnDefinitionBuilder<TType, TNullable>;
+  ): ColumnDefinitionBuilder<TDescriptor>;
   onUpdate(
     onUpdate: "no action" | "restrict" | "cascade" | "set null" | "set default",
-  ): ColumnDefinitionBuilder<TType, TNullable>;
-  unique(): ColumnDefinitionBuilder<TType, TNullable>;
-  notNull(): ColumnDefinitionBuilder<TType, false>;
-  unsigned(): ColumnDefinitionBuilder<TType, TNullable>;
+  ): ColumnDefinitionBuilder<TDescriptor>;
+  unique(): ColumnDefinitionBuilder<TDescriptor>;
+  notNull(): ColumnDefinitionBuilder<{
+    [K in keyof TDescriptor]: K extends "isNullable" ? false : TDescriptor[K];
+  }>;
+  unsigned(): ColumnDefinitionBuilder<TDescriptor>;
   defaultTo(
     value: DefaultValueExpression,
-  ): ColumnDefinitionBuilder<TType, false>;
-  check(expression: Expression<any>): ColumnDefinitionBuilder<TType, TNullable>;
+  ): ColumnDefinitionBuilder<{
+    [K in keyof TDescriptor]: K extends "isNullable"
+      ? false
+      : K extends "hasDefault"
+        ? true
+        : TDescriptor[K];
+  }>;
+  check(expression: Expression<any>): ColumnDefinitionBuilder<TDescriptor>;
   generatedAlwaysAs(
     expression: Expression<any>,
-  ): ColumnDefinitionBuilder<TType, TNullable>;
-  generatedAlwaysAsIdentity(): ColumnDefinitionBuilder<TType, TNullable>;
-  generatedByDefaultAsIdentity(): ColumnDefinitionBuilder<TType, TNullable>;
-  stored(): ColumnDefinitionBuilder<TType, TNullable>;
+  ): ColumnDefinitionBuilder<TDescriptor>;
+  generatedAlwaysAsIdentity(): ColumnDefinitionBuilder<TDescriptor>;
+  generatedByDefaultAsIdentity(): ColumnDefinitionBuilder<TDescriptor>;
+  stored(): ColumnDefinitionBuilder<TDescriptor>;
   modifyFront(
     modifier: Expression<any>,
-  ): ColumnDefinitionBuilder<TType, TNullable>;
-  nullsNotDistinct(): ColumnDefinitionBuilder<TType, TNullable>;
-  ifNotExists(): ColumnDefinitionBuilder<TType, TNullable>;
+  ): ColumnDefinitionBuilder<TDescriptor>;
+  nullsNotDistinct(): ColumnDefinitionBuilder<TDescriptor>;
+  ifNotExists(): ColumnDefinitionBuilder<TDescriptor>;
   modifyEnd(
     modifier: Expression<any>,
-  ): ColumnDefinitionBuilder<TType, TNullable>;
+  ): ColumnDefinitionBuilder<TDescriptor>;
   $call<T>(func: (qb: this) => T): T;
   toOperationNode(): ColumnDefinitionNode;
 }
 
 type _Assert = Assert<
   AssertStillImplements<
-    ColumnDefinitionBuilder<any, any>,
+    ColumnDefinitionBuilder<any>,
     KyselyColumnDefinitionBuilder
   >
 >;

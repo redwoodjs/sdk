@@ -1,4 +1,5 @@
 import { sql } from "kysely";
+import { ColumnDescriptor } from "./builders/columnDefinition";
 
 // --- AST Node Types for Alterations ---
 // These will be consumed by ProcessAlteredTable to calculate the final schema.
@@ -6,12 +7,12 @@ type DataTypeExpression = string | typeof sql;
 export type AddColumnOp<
   K extends string,
   T extends DataTypeExpression,
-  TNullable extends boolean = true
+  TDescriptor extends ColumnDescriptor,
 > = {
   op: "addColumn";
   name: K;
   type: T;
-  nullable: TNullable;
+  descriptor: TDescriptor;
 };
 export type DropColumnOp<K extends string> = { op: "dropColumn"; name: K };
 export type RenameColumnOp<KFrom extends string, KTo extends string> = {
@@ -22,12 +23,12 @@ export type RenameColumnOp<KFrom extends string, KTo extends string> = {
 export type ModifyColumnOp<
   K extends string,
   T extends DataTypeExpression,
-  TNullable extends boolean = true
+  TDescriptor extends ColumnDescriptor,
 > = {
   op: "modifyColumn";
   name: K;
   type: T;
-  nullable: TNullable;
+  descriptor: TDescriptor;
 };
 // This is not exhaustive yet.
 export type Alteration =
@@ -97,14 +98,8 @@ export type Cast<A, B> = A extends B ? A : B;
  * Applies a single alteration operation to a schema.
  */
 type ApplyOp<TSchema, THeadOp> =
-  THeadOp extends AddColumnOp<infer K, infer T, infer TNullable>
-    ? Prettify<
-        TSchema & {
-          [P in K]: TNullable extends true
-            ? SqlToTsType<T> | null
-            : SqlToTsType<T>;
-        }
-      >
+  THeadOp extends AddColumnOp<infer K, any, infer TDescriptor>
+    ? Prettify<TSchema & { [P in K]: TDescriptor }>
     : THeadOp extends DropColumnOp<infer K>
       ? Omit<TSchema, K>
       : THeadOp extends RenameColumnOp<infer KFrom, infer KTo>
@@ -116,16 +111,29 @@ type ApplyOp<TSchema, THeadOp> =
               kind: "setDataType";
               dataType: infer DT extends string;
             }
-            ? Prettify<Omit<TSchema, K> & { [P in K]: SqlToTsType<DT> }>
+            ? K extends keyof TSchema
+              ? Prettify<
+                  Omit<TSchema, K> & {
+                    [P in K]: {
+                      tsType: SqlToTsType<DT>;
+                      isNullable: TSchema[K] extends { isNullable: infer N }
+                        ? N
+                        : true;
+                      hasDefault: TSchema[K] extends { hasDefault: infer D }
+                        ? D
+                        : false;
+                      isAutoIncrement: TSchema[K] extends {
+                        isAutoIncrement: infer A;
+                      }
+                        ? A
+                        : false;
+                    };
+                  }
+                >
+              : TSchema
             : TSchema // For other alterations (e.g., setDefault), the TS type doesn't change.
-          : THeadOp extends ModifyColumnOp<infer K, infer T, infer TNullable>
-            ? Prettify<
-                Omit<TSchema, K> & {
-                  [P in K]: TNullable extends true
-                    ? SqlToTsType<T> | null
-                    : SqlToTsType<T>;
-                }
-              >
+          : THeadOp extends ModifyColumnOp<infer K, any, infer TDescriptor>
+            ? Prettify<Omit<TSchema, K> & { [P in K]: TDescriptor }>
             : TSchema;
 
 /**

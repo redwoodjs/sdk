@@ -3,3 +3,9 @@ export type Equal<X, Y> =
     ? true
     : false;
 export type Expect<T extends true> = T;
+
+export type ExpectDb<
+  TActual,
+  TExpected,
+  TResult extends true = Equal<Omit<TActual, "__kyselySchema">, TExpected>
+> = TResult;
