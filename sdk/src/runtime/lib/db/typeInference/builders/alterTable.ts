@@ -82,6 +82,13 @@ export interface AlterTableBuilder<
     newTableName: TNewName,
   ): AlterTableBuilder<TNewName, TOps> & { readonly __renamedFrom: TName };
   setSchema(newSchema: string): AlterTableBuilder<TName, TOps>;
+  addColumn<K extends string, T extends DataTypeExpression>(
+    name: K,
+    type: T,
+  ): AlterTableBuilder<
+    TName,
+    [...TOps, AddColumnOp<K, T, InitialDescriptor<SqlToTsType<T>>>]
+  >;
   addColumn<
     K extends string,
     T extends DataTypeExpression,
@@ -89,7 +96,7 @@ export interface AlterTableBuilder<
   >(
     name: K,
     type: T,
-    build?: (
+    build: (
       col: ColumnDefinitionBuilder<InitialDescriptor<SqlToTsType<T>>>,
     ) => ColumnDefinitionBuilder<TDescriptor>,
   ): AlterTableBuilder<TName, [...TOps, AddColumnOp<K, T, TDescriptor>]>;

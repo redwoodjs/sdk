@@ -107,11 +107,8 @@ type ApplyOp<TSchema, THeadOp> =
           ? Prettify<Omit<TSchema, KFrom> & { [P in KTo]: TSchema[KFrom] }>
           : TSchema // If KFrom is not in TSchema, do nothing.
         : THeadOp extends AlterColumnOp<infer K, infer TAlt>
-          ? TAlt extends {
-              kind: "setDataType";
-              dataType: infer DT extends string;
-            }
-            ? K extends keyof TSchema
+          ? K extends keyof TSchema
+            ? TAlt extends { kind: "setDataType"; dataType: infer DT extends string }
               ? Prettify<
                   Omit<TSchema, K> & {
                     [P in K]: {
@@ -130,8 +127,60 @@ type ApplyOp<TSchema, THeadOp> =
                     };
                   }
                 >
-              : TSchema
-            : TSchema // For other alterations (e.g., setDefault), the TS type doesn't change.
+              : TAlt extends { kind: "setDefault" }
+                ? Prettify<
+                    Omit<TSchema, K> & {
+                      [P in K]: TSchema[K] extends ColumnDescriptor
+                        ? {
+                            tsType: TSchema[K]["tsType"];
+                            isNullable: false;
+                            hasDefault: true;
+                            isAutoIncrement: TSchema[K]["isAutoIncrement"];
+                          }
+                        : TSchema[K];
+                    }
+                  >
+                : TAlt extends { kind: "dropDefault" }
+                  ? Prettify<
+                      Omit<TSchema, K> & {
+                        [P in K]: TSchema[K] extends ColumnDescriptor
+                          ? {
+                              tsType: TSchema[K]["tsType"];
+                              isNullable: TSchema[K]["isNullable"];
+                              hasDefault: false;
+                              isAutoIncrement: TSchema[K]["isAutoIncrement"];
+                            }
+                          : TSchema[K];
+                      }
+                    >
+                  : TAlt extends { kind: "setNotNull" }
+                    ? Prettify<
+                        Omit<TSchema, K> & {
+                          [P in K]: TSchema[K] extends ColumnDescriptor
+                            ? {
+                                tsType: TSchema[K]["tsType"];
+                                isNullable: false;
+                                hasDefault: TSchema[K]["hasDefault"];
+                                isAutoIncrement: TSchema[K]["isAutoIncrement"];
+                              }
+                            : TSchema[K];
+                        }
+                      >
+                    : TAlt extends { kind: "dropNotNull" }
+                      ? Prettify<
+                          Omit<TSchema, K> & {
+                            [P in K]: TSchema[K] extends ColumnDescriptor
+                              ? {
+                                  tsType: TSchema[K]["tsType"];
+                                  isNullable: true;
+                                  hasDefault: TSchema[K]["hasDefault"];
+                                  isAutoIncrement: TSchema[K]["isAutoIncrement"];
+                                }
+                              : TSchema[K];
+                          }
+                        >
+                      : TSchema
+            : TSchema
           : THeadOp extends ModifyColumnOp<infer K, any, infer TDescriptor>
             ? Prettify<Omit<TSchema, K> & { [P in K]: TDescriptor }>
             : TSchema;
