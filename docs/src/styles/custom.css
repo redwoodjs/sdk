@@ -11,8 +11,8 @@
   color: #0f172a !important;
 }
 
-.sidebar-content a:hover,
-.sidebar-content a:focus-visible {
+.sidebar-content a:not([aria-current="page"]):hover,
+.sidebar-content a:not([aria-current="page"]):focus-visible {
   color: #ff7a00 !important;
 }
 
