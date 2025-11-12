@@ -18,40 +18,38 @@ type DefaultValueExpression =
 export interface ColumnDefinitionBuilder<
   TType,
   TNullable extends boolean = true,
-  THasDefault extends boolean = false,
-  TIsAutoIncrement extends boolean = false,
 > {
-  autoIncrement(): ColumnDefinitionBuilder<TType, TNullable, THasDefault, true>;
-  identity(): ColumnDefinitionBuilder<TType, TNullable, THasDefault, TIsAutoIncrement>;
-  primaryKey(): ColumnDefinitionBuilder<TType, false, THasDefault, TIsAutoIncrement>;
-  references(ref: string): ColumnDefinitionBuilder<TType, TNullable, THasDefault, TIsAutoIncrement>;
+  autoIncrement(): ColumnDefinitionBuilder<TType, TNullable>;
+  identity(): ColumnDefinitionBuilder<TType, TNullable>;
+  primaryKey(): ColumnDefinitionBuilder<TType, false>;
+  references(ref: string): ColumnDefinitionBuilder<TType, TNullable>;
   onDelete(
     onDelete: "no action" | "restrict" | "cascade" | "set null" | "set default",
-  ): ColumnDefinitionBuilder<TType, TNullable, THasDefault, TIsAutoIncrement>;
+  ): ColumnDefinitionBuilder<TType, TNullable>;
   onUpdate(
     onUpdate: "no action" | "restrict" | "cascade" | "set null" | "set default",
-  ): ColumnDefinitionBuilder<TType, TNullable, THasDefault, TIsAutoIncrement>;
-  unique(): ColumnDefinitionBuilder<TType, TNullable, THasDefault, TIsAutoIncrement>;
-  notNull(): ColumnDefinitionBuilder<TType, false, THasDefault, TIsAutoIncrement>;
-  unsigned(): ColumnDefinitionBuilder<TType, TNullable, THasDefault, TIsAutoIncrement>;
+  ): ColumnDefinitionBuilder<TType, TNullable>;
+  unique(): ColumnDefinitionBuilder<TType, TNullable>;
+  notNull(): ColumnDefinitionBuilder<TType, false>;
+  unsigned(): ColumnDefinitionBuilder<TType, TNullable>;
   defaultTo(
     value: DefaultValueExpression,
-  ): ColumnDefinitionBuilder<TType, false, true, TIsAutoIncrement>;
-  check(expression: Expression<any>): ColumnDefinitionBuilder<TType, TNullable, THasDefault, TIsAutoIncrement>;
+  ): ColumnDefinitionBuilder<TType, false>;
+  check(expression: Expression<any>): ColumnDefinitionBuilder<TType, TNullable>;
   generatedAlwaysAs(
     expression: Expression<any>,
-  ): ColumnDefinitionBuilder<TType, TNullable, THasDefault, TIsAutoIncrement>;
-  generatedAlwaysAsIdentity(): ColumnDefinitionBuilder<TType, TNullable, THasDefault, TIsAutoIncrement>;
-  generatedByDefaultAsIdentity(): ColumnDefinitionBuilder<TType, TNullable, THasDefault, TIsAutoIncrement>;
-  stored(): ColumnDefinitionBuilder<TType, TNullable, THasDefault, TIsAutoIncrement>;
+  ): ColumnDefinitionBuilder<TType, TNullable>;
+  generatedAlwaysAsIdentity(): ColumnDefinitionBuilder<TType, TNullable>;
+  generatedByDefaultAsIdentity(): ColumnDefinitionBuilder<TType, TNullable>;
+  stored(): ColumnDefinitionBuilder<TType, TNullable>;
   modifyFront(
     modifier: Expression<any>,
-  ): ColumnDefinitionBuilder<TType, TNullable, THasDefault, TIsAutoIncrement>;
-  nullsNotDistinct(): ColumnDefinitionBuilder<TType, TNullable, THasDefault, TIsAutoIncrement>;
-  ifNotExists(): ColumnDefinitionBuilder<TType, TNullable, THasDefault, TIsAutoIncrement>;
+  ): ColumnDefinitionBuilder<TType, TNullable>;
+  nullsNotDistinct(): ColumnDefinitionBuilder<TType, TNullable>;
+  ifNotExists(): ColumnDefinitionBuilder<TType, TNullable>;
   modifyEnd(
     modifier: Expression<any>,
-  ): ColumnDefinitionBuilder<TType, TNullable, THasDefault, TIsAutoIncrement>;
+  ): ColumnDefinitionBuilder<TType, TNullable>;
   $call<T>(func: (qb: this) => T): T;
   toOperationNode(): ColumnDefinitionNode;
 }

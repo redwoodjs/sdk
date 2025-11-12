@@ -1,4 +1,4 @@
-import { sql } from "kysely";
+import { Kysely, sql } from "kysely";
 import type { Database, Migrations } from "../database";
 import type { Equal, Expect } from "./testUtils";
 
@@ -135,4 +135,58 @@ import type { Equal, Expect } from "./testUtils";
     };
   };
   (_test: Expect<Equal<Actual, Expected>>) => {};
+};
+
+// --- Insert/Update Type Tests ---
+
+type GetValuesType<TDb, TTableName extends keyof TDb & string> = Parameters<
+  Kysely<TDb>["insertInto"]<TTableName>["values"]
+>[0];
+
+(_it = "makes autoIncrement columns optional on insert") => {
+  const migrations = {
+    "001_init": {
+      async up(db) {
+        return [
+          await db.schema
+            .createTable("users")
+            .addColumn("id", "integer", (col) =>
+              col.primaryKey().autoIncrement(),
+            )
+            .addColumn("username", "text", (col) => col.notNull())
+            .execute(),
+        ];
+      },
+    },
+  } satisfies Migrations;
+
+  type DB = Database<typeof migrations>;
+  const db = {} as Kysely<DB>;
+
+  // This fails because `id` is required, but it should be optional.
+  db.insertInto("users").values({ username: "test" });
+};
+
+(_it = "makes defaultTo columns optional on insert") => {
+  const migrations = {
+    "001_init": {
+      async up(db) {
+        return [
+          await db.schema
+            .createTable("users")
+            .addColumn("username", "text", (col) => col.notNull())
+            .addColumn("status", "text", (col) =>
+              col.notNull().defaultTo("active"),
+            )
+            .execute(),
+        ];
+      },
+    },
+  } satisfies Migrations;
+
+  type DB = Database<typeof migrations>;
+  const db = {} as Kysely<DB>;
+
+  // This fails because `status` is required, but it should be optional.
+  db.insertInto("users").values({ username: "test" });
 };

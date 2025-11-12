@@ -9,12 +9,7 @@ import {
   UniqueConstraintNode,
 } from "kysely";
 import type { Assert, AssertStillImplements } from "../assert";
-import {
-  ColumnDescriptor,
-  ExecutedBuilder,
-  Prettify,
-  SqlToTsType,
-} from "../utils";
+import { ExecutedBuilder, Prettify, SqlToTsType } from "../utils";
 import { ColumnDefinitionBuilder } from "./columnDefinition";
 
 interface CheckConstraintBuilder {
@@ -59,33 +54,22 @@ export interface CreateTableBuilder<
     TName,
     Prettify<
       (TSchema extends Record<string, any> ? TSchema : {}) &
-        Record<K, ColumnDescriptor<SqlToTsType<T>, true, false, false>>
+        Record<K, SqlToTsType<T> | null>
     >
   >;
-  addColumn<
-    K extends string,
-    T extends string,
-    TNullable extends boolean,
-    THasDefault extends boolean = false,
-    TIsAutoIncrement extends boolean = false,
-  >(
+  addColumn<K extends string, T extends string, TNullable extends boolean>(
     name: K,
     type: T,
     build: (
       col: ColumnDefinitionBuilder<SqlToTsType<T>>,
-    ) => ColumnDefinitionBuilder<
-      SqlToTsType<T>,
-      TNullable,
-      THasDefault,
-      TIsAutoIncrement
-    >,
+    ) => ColumnDefinitionBuilder<SqlToTsType<T>, TNullable>,
   ): CreateTableBuilder<
     TName,
     Prettify<
       (TSchema extends Record<string, any> ? TSchema : {}) &
         Record<
           K,
-          ColumnDescriptor<SqlToTsType<T>, TNullable, THasDefault, TIsAutoIncrement>
+          TNullable extends true ? SqlToTsType<T> | null : SqlToTsType<T>
         >
     >
   >;

@@ -65,25 +65,11 @@ Here's the plan:
 
 This approach lets us keep the core of the existing sequential processing logic, but enhances it to capture the information we need. It's a surgical change that will give us the power to accurately model the database behavior for all CRUD operations.
 
-## Implementation
+### Implementation Constraints
 
-I've implemented the solution according to the plan:
+Before starting the implementation, I need to adhere to a strict set of rules to ensure the change is non-disruptive for users.
 
-1. **Enhanced ColumnDefinitionBuilder**: Added `THasDefault` and `TIsAutoIncrement` type parameters that track metadata through the builder chain. Methods like `defaultTo()` set `THasDefault` to `true`, and `autoIncrement()` sets `TIsAutoIncrement` to `true`.
-
-2. **Updated Operation Types**: Modified `AddColumnOp` and `ModifyColumnOp` to include `hasDefault` and `isAutoIncrement` flags alongside the existing `nullable` flag.
-
-3. **Metadata-Rich Schema**: Changed the internal schema representation to use `ColumnDescriptor` objects that store `tsType`, `isNullable`, `hasDefault`, and `isAutoIncrement` for each column.
-
-4. **Type Conversion Utilities**: Created `TableToSelectType`, `TableToInsertType`, and `TableToUpdateType` utilities that convert the descriptor-based schema to the appropriate type for each operation:
-   - `TableToSelectType`: Converts descriptors to the select type (for backward compatibility)
-   - `TableToInsertType`: Makes columns with `hasDefault` or `isAutoIncrement` optional
-   - `TableToUpdateType`: Makes all columns optional
-
-5. **Updated Database Type**: Modified the `Database` type to convert descriptors to select types for backward compatibility, and added `Insertable` and `Updatable` utility types that take the migrations type and table name.
-
-6. **Updated Builders**: Modified `createTable` and `alterTable` builders to pass through the metadata when columns are defined.
-
-7. **Added Type Tests**: Created comprehensive type tests for insert and update operations that verify columns with defaults and auto-increment are optional.
-
-All type errors are resolved and the implementation is complete. The next step is to verify that existing tests still pass and that the new functionality works as expected.
+1.  **No User Code Changes**: The user-facing API must remain identical. Existing code, like the `passkey` addon, which uses `Database<typeof migrations>` and `createDb<DB>()`, must continue to work without any modifications.
+2.  **No Existing Test Changes**: All current type tests must continue to pass without any changes. The structure of the final `Database` type must remain a plain object with primitive types.
+3.  **No Utility Type Wrappers in Final Output**: The final inferred `Database` type that users interact with cannot contain any special utility types or wrappers. It must resolve to simple, primitive TypeScript types (`string`, `number | null`, etc.) to ensure it doesn't break existing type assertions.
+4.  **Changes Must Be Internal**: All modifications must be confined to the internal implementation of the type inference engine. The user experience and public-facing types are to be considered a stable, immutable contract.

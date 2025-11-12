@@ -7,9 +7,6 @@ import {
   ExecutedBuilder,
   Prettify,
   ProcessAlteredTable,
-  TableToInsertType,
-  TableToSelectType,
-  TableToUpdateType,
   UnionToTuple,
 } from "./utils";
 
@@ -87,25 +84,5 @@ type ProcessMigrations<
     : TSchema
   : TSchema;
 
-type DatabaseWithDescriptors<TMigrations extends Migrations = Migrations> =
+export type Database<TMigrations extends Migrations = Migrations> =
   ProcessMigrations<TMigrations, UnionToTuple<keyof TMigrations>>;
-
-export type Database<TMigrations extends Migrations = Migrations> = {
-  [K in keyof DatabaseWithDescriptors<TMigrations>]: TableToSelectType<
-    DatabaseWithDescriptors<TMigrations>[K]
-  >;
-};
-
-export type Insertable<
-  TMigrations extends Migrations,
-  TTableName extends string,
-> = TTableName extends keyof DatabaseWithDescriptors<TMigrations>
-  ? TableToInsertType<DatabaseWithDescriptors<TMigrations>[TTableName]>
-  : never;
-
-export type Updatable<
-  TMigrations extends Migrations,
-  TTableName extends string,
-> = TTableName extends keyof DatabaseWithDescriptors<TMigrations>
-  ? TableToUpdateType<DatabaseWithDescriptors<TMigrations>[TTableName]>
-  : never;
