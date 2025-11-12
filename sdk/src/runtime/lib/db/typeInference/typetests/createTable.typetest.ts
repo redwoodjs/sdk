@@ -139,6 +139,32 @@ type ExtractKyselySchema<T> = T extends { __kyselySchema: infer S } ? S : T;
   (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
+(_it = "defaultTo makes columns non-nullable in Database type") => {
+  const migrations = {
+    "001_init": {
+      async up(db) {
+        return [
+          await db.schema
+            .createTable("users")
+            .addColumn("status", "text", (col) => col.defaultTo("active"))
+            .addColumn("count", "integer", (col) => col.defaultTo(0))
+            .execute(),
+        ];
+      },
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+  type Expected = {
+    users: {
+      status: string;
+      count: number;
+    };
+  };
+
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
+};
+
 // --- Insert/Update Type Tests ---
 
 (_it = "makes autoIncrement columns optional on insert") => {
