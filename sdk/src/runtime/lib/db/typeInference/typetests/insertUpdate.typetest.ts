@@ -1,9 +1,10 @@
-import type { Database, Migrations, Insertable, Updatable } from "../database";
+import { Kysely } from "kysely";
+import type { Database, Insertable, Migrations, Updatable } from "../database";
 import type { Equal, Expect } from "./testUtils";
 
 declare let _it: any;
 
-(_it = "insertable type with defaultTo column should be optional") => {
+(_it = "insertInto values accepts optional defaultTo columns") => {
   const migrations = {
     "001_init": {
       async up(db) {
@@ -21,7 +22,7 @@ declare let _it: any;
   } satisfies Migrations;
 
   type Db = Database<typeof migrations>;
-  type Actual = Insertable<typeof migrations, "users">;
+  type InsertType = Insertable<typeof migrations, "users">;
   type Expected = {
     id: string;
     username: string;
@@ -29,10 +30,24 @@ declare let _it: any;
     createdAt?: string;
   };
 
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: Expect<Equal<InsertType, Expected>>) => {};
+
+  function testInsert(db: Kysely<Db>) {
+    db.insertInto("users").values({
+      id: "123",
+      username: "test",
+      status: "active",
+      createdAt: "now",
+    });
+
+    db.insertInto("users").values({
+      id: "123",
+      username: "test",
+    });
+  }
 };
 
-(_it = "insertable type with autoIncrement column should be optional") => {
+(_it = "insertInto values accepts optional autoIncrement columns") => {
   const migrations = {
     "001_init": {
       async up(db) {
@@ -51,17 +66,30 @@ declare let _it: any;
   } satisfies Migrations;
 
   type Db = Database<typeof migrations>;
-  type Actual = Insertable<typeof migrations, "posts">;
+  type InsertType = Insertable<typeof migrations, "posts">;
   type Expected = {
     id?: number;
     title: string;
     content: string | null;
   };
 
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: Expect<Equal<InsertType, Expected>>) => {};
+
+  const insert1: InsertType = {
+    id: 1,
+    title: "Post",
+    content: "Content",
+  };
+
+  const insert2: InsertType = {
+    title: "Post",
+    content: null,
+  };
 };
 
-(_it = "insertable type with both defaultTo and autoIncrement") => {
+(
+  _it = "insertInto values accepts optional defaultTo and autoIncrement columns",
+) => {
   const migrations = {
     "001_init": {
       async up(db) {
@@ -82,7 +110,7 @@ declare let _it: any;
   } satisfies Migrations;
 
   type Db = Database<typeof migrations>;
-  type Actual = Insertable<typeof migrations, "orders">;
+  type InsertType = Insertable<typeof migrations, "orders">;
   type Expected = {
     id?: number;
     userId: string;
@@ -91,10 +119,23 @@ declare let _it: any;
     notes: string | null;
   };
 
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: Expect<Equal<InsertType, Expected>>) => {};
+
+  const insert1: InsertType = {
+    userId: "user123",
+    notes: null,
+  };
+
+  const insert2: InsertType = {
+    id: 1,
+    userId: "user123",
+    status: "completed",
+    createdAt: "2024-01-01",
+    notes: "Some notes",
+  };
 };
 
-(_it = "updatable type should make all columns optional") => {
+(_it = "updateTable set accepts all columns as optional") => {
   const migrations = {
     "001_init": {
       async up(db) {
@@ -112,7 +153,7 @@ declare let _it: any;
   } satisfies Migrations;
 
   type Db = Database<typeof migrations>;
-  type Actual = Updatable<typeof migrations, "users">;
+  type UpdateType = Updatable<typeof migrations, "users">;
   type Expected = {
     id?: string;
     username?: string;
@@ -120,10 +161,19 @@ declare let _it: any;
     status?: string;
   };
 
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: Expect<Equal<UpdateType, Expected>>) => {};
+
+  const update1: UpdateType = {
+    username: "newuser",
+  };
+
+  const update2: UpdateType = {
+    email: "new@email.com",
+    status: "inactive",
+  };
 };
 
-(_it = "updatable type with nullable columns") => {
+(_it = "updateTable set accepts nullable columns as optional") => {
   const migrations = {
     "001_init": {
       async up(db) {
@@ -141,7 +191,7 @@ declare let _it: any;
   } satisfies Migrations;
 
   type Db = Database<typeof migrations>;
-  type Actual = Updatable<typeof migrations, "posts">;
+  type UpdateType = Updatable<typeof migrations, "posts">;
   type Expected = {
     id?: number;
     title?: string;
@@ -149,6 +199,14 @@ declare let _it: any;
     publishedAt?: string | null;
   };
 
-  (_test: Expect<Equal<Actual, Expected>>) => {};
-};
+  (_test: Expect<Equal<UpdateType, Expected>>) => {};
 
+  const update1: UpdateType = {
+    title: "New Title",
+  };
+
+  const update2: UpdateType = {
+    content: null,
+    publishedAt: "2024-01-01",
+  };
+};
