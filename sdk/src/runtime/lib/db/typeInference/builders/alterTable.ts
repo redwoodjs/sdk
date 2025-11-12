@@ -79,13 +79,23 @@ export interface AlterTableBuilder<
     K extends string,
     T extends DataTypeExpression,
     TNullable extends boolean = true,
+    THasDefault extends boolean = false,
+    TIsAutoIncrement extends boolean = false,
   >(
     name: K,
     type: T,
     build?: (
       col: ColumnDefinitionBuilder<SqlToTsType<T>>,
-    ) => ColumnDefinitionBuilder<SqlToTsType<T>, TNullable>,
-  ): AlterTableBuilder<TName, [...TOps, AddColumnOp<K, T, TNullable>]>;
+    ) => ColumnDefinitionBuilder<
+      SqlToTsType<T>,
+      TNullable,
+      THasDefault,
+      TIsAutoIncrement
+    >,
+  ): AlterTableBuilder<
+    TName,
+    [...TOps, AddColumnOp<K, T, TNullable, THasDefault, TIsAutoIncrement>]
+  >;
   dropColumn<K extends string>(
     name: K,
   ): AlterTableBuilder<TName, [...TOps, DropColumnOp<K>]>;
@@ -107,13 +117,23 @@ export interface AlterTableBuilder<
     K extends string,
     T extends DataTypeExpression,
     TNullable extends boolean = true,
+    THasDefault extends boolean = false,
+    TIsAutoIncrement extends boolean = false,
   >(
     column: K,
     type: T,
     build?: (
       col: ColumnDefinitionBuilder<SqlToTsType<T>>,
-    ) => ColumnDefinitionBuilder<SqlToTsType<T>, TNullable>,
-  ): AlterTableBuilder<TName, [...TOps, ModifyColumnOp<K, T, TNullable>]>;
+    ) => ColumnDefinitionBuilder<
+      SqlToTsType<T>,
+      TNullable,
+      THasDefault,
+      TIsAutoIncrement
+    >,
+  ): AlterTableBuilder<
+    TName,
+    [...TOps, ModifyColumnOp<K, T, TNullable, THasDefault, TIsAutoIncrement>]
+  >;
   addUniqueConstraint(
     constraintName: string,
     columns: string[],
