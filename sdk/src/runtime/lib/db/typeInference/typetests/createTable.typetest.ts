@@ -1,6 +1,8 @@
 import { Kysely, sql } from "kysely";
 import type { Database, Migrations } from "../database";
-import type { ExpectDb } from "./testUtils";
+import type { Equal, Expect, OmitInternals } from "./testUtils";
+
+type ExtractKyselySchema<T> = T extends { __kyselySchema: infer S } ? S : T;
 
 (_it = "createTable") => {
   const migrations = {
@@ -24,7 +26,7 @@ import type { ExpectDb } from "./testUtils";
     };
   };
 
-  (_test: ExpectDb<Actual, Expected>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "createTable with multiple columns and defaults") => {
@@ -59,7 +61,7 @@ import type { ExpectDb } from "./testUtils";
       name: string;
     };
   };
-  (_test: ExpectDb<Actual, Expected>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "createTable column without callback is nullable") => {
@@ -84,7 +86,7 @@ import type { ExpectDb } from "./testUtils";
       body: string | null;
     };
   };
-  (_test: ExpectDb<Actual, Expected>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "createTable with primaryKey is non-nullable") => {
@@ -109,7 +111,7 @@ import type { ExpectDb } from "./testUtils";
       email: string;
     };
   };
-  (_test: ExpectDb<Actual, Expected>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "createTable with unique but no notNull is nullable") => {
@@ -134,7 +136,7 @@ import type { ExpectDb } from "./testUtils";
       name: string | null;
     };
   };
-  (_test: ExpectDb<Actual, Expected>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 // --- Insert/Update Type Tests ---
@@ -157,7 +159,7 @@ import type { ExpectDb } from "./testUtils";
   } satisfies Migrations;
 
   type DB = Database<typeof migrations>;
-  const db = {} as Kysely<DB>;
+  const db = {} as Kysely<ExtractKyselySchema<DB>>;
 
   db.insertInto("users").values({ username: "test" });
 };
@@ -180,7 +182,7 @@ import type { ExpectDb } from "./testUtils";
   } satisfies Migrations;
 
   type DB = Database<typeof migrations>;
-  const db = {} as Kysely<DB>;
+  const db = {} as Kysely<ExtractKyselySchema<DB>>;
 
   db.insertInto("users").values({ username: "test" });
 };

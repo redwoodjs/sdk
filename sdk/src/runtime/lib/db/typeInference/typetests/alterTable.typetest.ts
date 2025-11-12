@@ -1,5 +1,5 @@
 import type { Database, Migrations } from "../database";
-import type { ExpectDb } from "./testUtils";
+import type { Equal, Expect, OmitInternals } from "./testUtils";
 
 declare let _it: any;
 
@@ -34,7 +34,7 @@ declare let _it: any;
       displayName: string | null;
     };
   };
-  (_test: ExpectDb<Actual, Expected>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "alterTable renameColumn") => {
@@ -68,7 +68,7 @@ declare let _it: any;
     };
   };
 
-  (_test: ExpectDb<Actual, Expected>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "alterTable alterColumn setDataType and setDefault") => {
@@ -103,7 +103,7 @@ declare let _it: any;
     };
   };
 
-  (_test: ExpectDb<Actual, Expected>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "alterTable alterColumn dropDefault, setNotNull, dropNotNull") => {
@@ -200,7 +200,7 @@ declare let _it: any;
   type Expected = {
     users: {};
   };
-  (_test: ExpectDb<Actual, Expected>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "alterTable renameTable") => {
@@ -227,7 +227,7 @@ declare let _it: any;
     };
   };
 
-  (_test: ExpectDb<Actual, Expected>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "alterTable renameColumn then rename again") => {
@@ -271,7 +271,7 @@ declare let _it: any;
     };
   };
 
-  (_test: ExpectDb<Actual, Expected>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "alterTable renameColumn then rename back") => {
@@ -315,7 +315,7 @@ declare let _it: any;
     };
   };
 
-  (_test: ExpectDb<Actual, Expected>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "alterTable renameTable then rename again") => {
@@ -353,7 +353,7 @@ declare let _it: any;
     };
   };
 
-  (_test: ExpectDb<Actual, Expected>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "alterTable renameTable then rename back") => {
@@ -393,7 +393,7 @@ declare let _it: any;
     };
   };
 
-  (_test: ExpectDb<Actual, Expected>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "alterTable renameColumn then drop") => {
@@ -432,7 +432,7 @@ declare let _it: any;
     users: {};
   };
 
-  (_test: ExpectDb<Actual, Expected>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "alterTable dropColumn then add back") => {
@@ -473,7 +473,7 @@ declare let _it: any;
     };
   };
 
-  (_test: ExpectDb<Actual, Expected>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "alterTable addColumn with notNull") => {
@@ -507,7 +507,7 @@ declare let _it: any;
       email: string;
     };
   };
-  (_test: ExpectDb<Actual, Expected>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "alterTable modifyColumn with notNull") => {
@@ -540,7 +540,7 @@ declare let _it: any;
       price: number;
     };
   };
-  (_test: ExpectDb<Actual, Expected>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "alterTable modifyColumn nullable to non-nullable") => {
@@ -575,5 +575,5 @@ declare let _it: any;
       status: string;
     };
   };
-  (_test: ExpectDb<Actual, Expected>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
