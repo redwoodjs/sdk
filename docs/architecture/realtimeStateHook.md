@@ -12,7 +12,7 @@ The design combines a Cloudflare Durable Object that stores key-value pairs, a C
 
 ## Worker Responsibilities
 
-- `SyncStateCoordinator` is a Durable Object that stores state values in memory, tracks subscribers per key, and broadcasts updates to connected clients via CapnWeb stubs.
+- `SyncStateServer` is a Durable Object that stores state values in memory, tracks subscribers per key, and broadcasts updates to connected clients via CapnWeb stubs.
 - The Durable Object exposes a CapnWeb RPC target with `getState`, `setState`, `subscribe`, and `unsubscribe` methods. This keeps the RPC surface aligned with the client hook expectations.
 - Worker routes proxy `/__synced-state` requests to the Durable Object using `newWorkersRpcResponse`.
 
@@ -33,7 +33,7 @@ The design combines a Cloudflare Durable Object that stores key-value pairs, a C
 
 Applications often need to scope state to individual users or other request-specific context. The key transformation feature allows worker-level code to intercept and modify state keys before they reach the Durable Object.
 
-The `SyncStateCoordinator.registerKeyHandler` method accepts an async function that receives a client-provided key and returns a transformed key. The handler runs in the worker request context where `requestInfo` and session data are available.
+The `SyncStateServer.registerKeyHandler` method accepts an async function that receives a client-provided key and returns a transformed key. The handler runs in the worker request context where `requestInfo` and session data are available.
 
 When a handler is registered, the worker routes create an RPC proxy that sits between the client and the Durable Object. For each RPC method call (`getState`, `setState`, `subscribe`, `unsubscribe`), the proxy invokes the handler to transform the key, then forwards the call to the Durable Object with the transformed key. The Durable Object operates only on transformed keys and never sees the original client-provided keys.
 
@@ -45,6 +45,8 @@ When no handler is registered, keys pass through unchanged, and the worker route
 
 - Subscriber invocation failures remove the subscriber stub from the Durable Object, preventing repeated errors.
 - If the Durable Object binding is missing, worker routes return a 500 response instructing the developer to restart the dev server.
+
+For planned enhancements to error handling, retry logic, and offline queues, see [Realtime State Error Handling and Offline Queue](./realtimeStateErrorHandling.md).
 
 ## Testing
 

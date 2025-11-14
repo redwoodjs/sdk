@@ -53,5 +53,11 @@ This collection of documents provides a high-level overview of the core architec
 - [**Executing Worker Scripts**](./workerScripts.md)
   This document details the mechanism for running one-off scripts, such as database seeds, within the context of the application's worker environment.
 
+- [**Realtime Shared State Hook**](./realtimeStateHook.md)
+  Describes the realtime synced state feature that keeps shared values aligned across browser sessions through the worker runtime, using a Durable Object and CapnWeb RPC surface.
+
+- [**Realtime State Error Handling and Offline Queue**](./realtimeStateErrorHandling.md)
+  Outlines planned enhancements for error handling, retry logic, and offline queue support in `useSyncedState`, including connection status monitoring and pluggable storage backends.
+
 - [**Smoke Testing Strategy for Package Manager Compatibility**](./smokeTestingStrategy.md)
   This document details the strategy for our smoke tests, which are designed to ensure the SDK functions correctly across various package managers and environments. It explains why we use a tarball-based testing approach instead of more common monorepo linking techniques.

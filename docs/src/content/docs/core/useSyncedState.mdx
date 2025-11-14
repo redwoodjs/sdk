@@ -1,0 +1,204 @@
+---
+title: useSyncedState
+description: Keep state synchronized across tabs, devices, and users with realtime updates.
+experimental: true
+---
+
+import { Aside, Code, LinkCard, Badge } from "@astrojs/starlight/components";
+
+`useSyncedState` keeps a value aligned across tabs, devices, or users by using the realtime transport and the `SyncStateServer` Durable Object.
+
+---
+
+## Setup
+
+### 1. Default Hook
+
+```ts title="src/hooks/useSyncedState.ts"
+import { useSyncedState } from "rwsdk/use-sync-state";
+```
+
+### 2. Hook Factory (optional)
+
+```ts title="src/hooks/useSyncedState.ts"
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createSyncStateHook } from "rwsdk/use-sync-state";
+
+export const useSyncedState = createSyncStateHook({
+  url: "/sync-state",
+  hooks: {
+    useState,
+    useEffect,
+    useRef,
+    useCallback,
+  },
+});
+```
+
+Set the URL to match the base path you expose from the worker routes. In this example the worker would forward requests from `/sync-state` instead of the default `/__sync-state`.
+
+### 3. Worker Routes
+
+```tsx title="src/worker.tsx"
+import { SyncStateServer, syncStateRoutes } from "rwsdk/use-sync-state/worker";
+import { env } from "cloudflare:workers";
+
+SyncStateServer.registerGetStateHandler((key, value) => {
+  console.log("synced state requested", { key, value });
+});
+SyncStateServer.registerSetStateHandler((key, value) => {
+  console.log("synced state updated", { key, value });
+});
+
+export default defineApp([
+  ...syncStateRoutes(() => env.STATE_COORDINATOR),
+  // other routes...
+]);
+```
+
+### 4. State handlers
+
+`SyncStateServer.registerSetStateHandler(handler)` accepts a function that receives `(key, value)` each time the coordinator stores a new value. Use this to record updates or trigger downstream work whenever any client publishes new state.
+
+`SyncStateServer.registerGetStateHandler(handler)` accepts a function that receives `(key, value)` each time the coordinator returns a value to a subscriber. The handler runs after the lookup, so `value` is `undefined` when no entry exists for the key.
+
+### 5. Durable Object Export
+
+```tsx title="src/worker.tsx"
+export { SyncStateServer } from "rwsdk/use-sync-state";
+```
+
+### 6. Add the Durable Object to `wrangler.jsonc`
+
+```
+"durable_objects": {
+  "bindings": [
+    // ...
+    {
+      "name": "STATE_COORDINATOR",
+      "class_name": "SyncStateServer",
+    },
+  ],
+},
+```
+
+After updating `wrangler.jsonc`, run `pnpm generate` to update the generated type definitions.
+
+---
+
+## Usage
+
+```tsx title="src/components/Counter.tsx"
+const Counter = () => {
+  const [count, setCount] = useSyncedState(0, "counter");
+  return <button onClick={() => setCount((n) => n + 1)}>{count}</button>;
+};
+```
+
+`setCount` applies the update locally and forwards it to the coordinator, which broadcasts the new value to every subscriber using the realtime transport.
+
+---
+
+## Per-User State Scoping
+
+To scope synced state to individual users, register a key transformation handler in your worker. The handler runs on every state operation and can transform client-provided keys based on the authenticated session.
+
+```tsx title="src/worker.tsx"
+import { SyncStateServer } from "rwsdk/use-sync-state/worker";
+import { sessionStore } from "./session";
+import { requestInfo } from "rwsdk/worker";
+
+SyncStateServer.registerKeyHandler(async (key) => {
+  const session = await sessionStore.load(requestInfo.request);
+  const userId = session?.userId ?? "anonymous";
+  return `user:${userId}:${key}`;
+});
+```
+
+With this handler registered, client components use simple, unscoped keys:
+
+```tsx title="src/components/UserCounter.tsx"
+"use client";
+
+import { useSyncedState } from "rwsdk/use-sync-state";
+
+export const UserCounter = () => {
+  const [count, setCount] = useSyncedState(0, "counter");
+  return <button onClick={() => setCount((n) => n + 1)}>{count}</button>;
+};
+```
+
+The worker transforms `"counter"` to `"user:123:counter"` before storing or retrieving state. Each user sees their own counter value without needing to pass user IDs from the client.
+
+If the handler throws an error, that error propagates to the client where it can be caught using error boundaries or try-catch blocks in event handlers.
+
+---
+
+## Customizing `createSyncStateHook`
+
+`createSyncStateHook({ url?, hooks? })` accepts an options object:
+
+- `url`: overrides the HTTP route used by the client. The default is `/__sync-state`.
+- `hooks`: overrides the React primitives. Pass this when integrating with a custom renderer or testing environment.
+
+```ts title="src/hooks/useCustomSyncState.ts"
+const useCustomSyncState = createSyncStateHook({ url: "/api/sync" });
+```
+
+```ts title="src/hooks/useSyncedState.test.ts"
+const useTestSyncState = createSyncStateHook({
+  hooks: {
+    useState,
+    useEffect,
+    useRef,
+    useCallback,
+  },
+});
+```
+
+---
+
+## Future: Error Handling and Offline Support
+
+<Aside type="note">
+  These features are planned but not yet implemented. See the [architecture
+  documentation](https://github.com/redwoodjs/sdk/blob/main/docs/architecture/realtimeStateErrorHandling.md)
+  for the full design.
+</Aside>
+
+Future versions will include:
+
+### Connection Status Monitoring
+
+A separate `useSyncedStateStatus` hook will expose connection state and sync progress:
+
+```tsx
+const [count, setCount] = useSyncedState(0, "counter");
+const { connected, syncing, error } = useSyncedStateStatus("counter");
+
+if (!connected) {
+  return <Banner>Working offline - changes will sync when reconnected</Banner>;
+}
+```
+
+### Offline Queue with Pluggable Storage
+
+An offline queue will store failed operations and retry them when connectivity returns. The queue interface will be pluggable, allowing you to choose between:
+
+- **InMemoryQueue (default)**: Fast, no setup, lost on page refresh
+- **IndexedDBQueue**: Persists across page reloads
+- **SqliteQueue**: Browser SQLite for complex offline scenarios
+- **Custom implementations**: Use any storage backend
+
+```tsx
+import { initSyncStateClient } from "rwsdk/use-sync-state";
+import { IndexedDBQueue } from "rwsdk/use-sync-state/queues";
+
+initSyncStateClient({
+  queue: new IndexedDBQueue(),
+});
+```
+
+### Automatic Retry Logic
+
+Failed operations will automatically retry with exponential backoff, handling transient network failures without user intervention.
