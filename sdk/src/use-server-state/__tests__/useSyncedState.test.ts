@@ -3,7 +3,7 @@ import {
   type SyncStateClient,
   setSyncStateClientForTesting,
 } from "../client";
-import type { SyncStateValue } from "../Coordinator.mjs";
+import type { SyncStateValue } from "../SyncStateServer.mjs";
 import {
   createSyncStateHook,
   type CreateSyncStateHookOptions,

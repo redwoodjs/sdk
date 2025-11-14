@@ -114,8 +114,8 @@
       "default": "./dist/use-sync-state/worker.js"
     },
     "./use-sync-state/coordinator": {
-      "types": "./dist/use-sync-state/Coordinator.d.mts",
-      "default": "./dist/use-sync-state/Coordinator.mjs"
+      "types": "./dist/use-sync-state/SyncStateServer.d.mts",
+      "default": "./dist/use-sync-state/SyncStateServer.mjs"
     }
   },
   "keywords": [

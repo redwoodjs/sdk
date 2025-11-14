@@ -9,25 +9,25 @@ type OnGetHandler = (key: string, value: SyncStateValue | undefined) => void;
 /**
  * Durable Object that keeps shared state for multiple clients and notifies subscribers.
  */
-export class SyncStateCoordinator extends DurableObject {
+export class SyncStateServer extends DurableObject {
   static #keyHandler: ((key: string) => Promise<string>) | null = null;
   static #setStateHandler: OnSetHandler | null = null;
   static #getStateHandler: OnGetHandler | null = null;
 
   static registerKeyHandler(handler: (key: string) => Promise<string>): void {
-    SyncStateCoordinator.#keyHandler = handler;
+    SyncStateServer.#keyHandler = handler;
   }
 
   static getKeyHandler(): ((key: string) => Promise<string>) | null {
-    return SyncStateCoordinator.#keyHandler;
+    return SyncStateServer.#keyHandler;
   }
 
   static registerSetStateHandler(handler: OnSetHandler | null): void {
-    SyncStateCoordinator.#setStateHandler = handler;
+    SyncStateServer.#setStateHandler = handler;
   }
 
   static registerGetStateHandler(handler: OnGetHandler | null): void {
-    SyncStateCoordinator.#getStateHandler = handler;
+    SyncStateServer.#getStateHandler = handler;
   }
 
   #stateStore = new Map<string, SyncStateValue>();
@@ -45,16 +45,16 @@ export class SyncStateCoordinator extends DurableObject {
 
   getState(key: string): SyncStateValue {
     const value = this.#stateStore.get(key);
-    if (SyncStateCoordinator.#getStateHandler) {
-      SyncStateCoordinator.#getStateHandler(key, value);
+    if (SyncStateServer.#getStateHandler) {
+      SyncStateServer.#getStateHandler(key, value);
     }
     return value;
   }
 
   setState(value: SyncStateValue, key: string): void {
     this.#stateStore.set(key, value);
-    if (SyncStateCoordinator.#setStateHandler) {
-      SyncStateCoordinator.#setStateHandler(key, value);
+    if (SyncStateServer.#setStateHandler) {
+      SyncStateServer.#setStateHandler(key, value);
     }
     const subscribers = this.#subscriptions.get(key);
     if (!subscribers) {
@@ -118,9 +118,9 @@ export class SyncStateCoordinator extends DurableObject {
 }
 
 class CoordinatorApi extends RpcTarget {
-  #coordinator: SyncStateCoordinator;
+  #coordinator: SyncStateServer;
 
-  constructor(coordinator: SyncStateCoordinator) {
+  constructor(coordinator: SyncStateServer) {
     super();
     this.#coordinator = coordinator;
   }
@@ -147,3 +147,4 @@ class CoordinatorApi extends RpcTarget {
     this.#coordinator.unsubscribe(key, client);
   }
 }
+

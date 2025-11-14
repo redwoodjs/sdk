@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { setSyncStateClientForTesting, type SyncStateClient } from "../client";
-import type { SyncStateValue } from "../Coordinator.mjs";
+import type { SyncStateValue } from "../SyncStateServer.mjs";
 import {
   createSyncStateHook,
   type CreateSyncStateHookOptions,

@@ -1,8 +1,5 @@
 export { initSyncStateClient } from "./client";
-export {
-  SyncStateCoordinator,
-  type SyncStateValue,
-} from "./Coordinator.mjs";
+export { SyncStateServer, type SyncStateValue } from "./SyncStateServer.mjs";
 export {
   createSyncStateHook,
   useSyncedState,

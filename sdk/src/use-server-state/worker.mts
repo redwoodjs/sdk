@@ -1,10 +1,10 @@
 import { RpcTarget, newWorkersRpcResponse } from "capnweb";
 import { env } from "cloudflare:workers";
 import { route } from "../runtime/entries/router";
-import { SyncStateCoordinator, type SyncStateValue } from "./Coordinator.mjs";
+import { SyncStateServer, type SyncStateValue } from "./SyncStateServer.mjs";
 import { DEFAULT_SYNC_STATE_PATH } from "./constants.mjs";
 
-export { SyncStateCoordinator } from "./Coordinator.mjs";
+export { SyncStateServer } from "./SyncStateServer.mjs";
 
 export type SyncStateRouteOptions = {
   basePath?: string;
@@ -57,7 +57,7 @@ class SyncStateProxy extends RpcTarget {
 export const syncStateRoutes = (
   getNamespace: (
     env: Cloudflare.Env,
-  ) => DurableObjectNamespace<SyncStateCoordinator>,
+  ) => DurableObjectNamespace<SyncStateServer>,
   options: SyncStateRouteOptions = {},
 ) => {
   const basePath = options.basePath ?? DEFAULT_SYNC_STATE_PATH;
@@ -66,7 +66,7 @@ export const syncStateRoutes = (
     options.durableObjectName ?? DEFAULT_SYNC_STATE_NAME;
 
   const forwardRequest = async (request: Request) => {
-    const keyHandler = SyncStateCoordinator.getKeyHandler();
+    const keyHandler = SyncStateServer.getKeyHandler();
 
     if (!keyHandler) {
       const namespace = getNamespace(env);

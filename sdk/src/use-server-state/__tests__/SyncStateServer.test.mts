@@ -1,12 +1,12 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
 import type { RpcStub } from "capnweb";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("cloudflare:workers", () => {
   class DurableObject {}
   return { DurableObject };
 });
 
-import { SyncStateCoordinator } from "../Coordinator.mjs";
+import { SyncStateServer } from "../SyncStateServer.mjs";
 
 const createStub = (
   onInvoke: (value: unknown) => Promise<void> | void,
@@ -22,9 +22,9 @@ const createStub = (
   return fn as unknown as RpcStub<(value: unknown) => void>;
 };
 
-describe("SyncStateCoordinator", () => {
+describe("SyncStateServer", () => {
   it("notifies subscribers when state changes", async () => {
-    const coordinator = new SyncStateCoordinator({} as any, {} as any);
+    const coordinator = new SyncStateServer({} as any, {} as any);
     const received: unknown[] = [];
     const stub = createStub((value) => {
       received.push(value);
@@ -38,7 +38,7 @@ describe("SyncStateCoordinator", () => {
   });
 
   it("removes subscriptions on unsubscribe", () => {
-    const coordinator = new SyncStateCoordinator({} as any, {} as any);
+    const coordinator = new SyncStateServer({} as any, {} as any);
     const stub = createStub(() => {});
 
     coordinator.subscribe("counter", stub);
@@ -49,7 +49,7 @@ describe("SyncStateCoordinator", () => {
   });
 
   it("drops failing subscribers", async () => {
-    const coordinator = new SyncStateCoordinator({} as any, {} as any);
+    const coordinator = new SyncStateServer({} as any, {} as any);
     const stub = createStub(async () => {
       throw new Error("fail");
     });
@@ -64,9 +64,9 @@ describe("SyncStateCoordinator", () => {
   });
 
   it("invokes registered onSet handler", () => {
-    const coordinator = new SyncStateCoordinator({} as any, {} as any);
+    const coordinator = new SyncStateServer({} as any, {} as any);
     const calls: Array<{ key: string; value: unknown }> = [];
-    SyncStateCoordinator.registerSetStateHandler((key, value) => {
+    SyncStateServer.registerSetStateHandler((key, value) => {
       calls.push({ key, value });
     });
 
@@ -74,13 +74,13 @@ describe("SyncStateCoordinator", () => {
 
     expect(calls).toEqual([{ key: "counter", value: 2 }]);
 
-    SyncStateCoordinator.registerSetStateHandler(null);
+    SyncStateServer.registerSetStateHandler(null);
   });
 
   it("invokes registered onGet handler", () => {
-    const coordinator = new SyncStateCoordinator({} as any, {} as any);
+    const coordinator = new SyncStateServer({} as any, {} as any);
     const calls: Array<{ key: string; value: unknown }> = [];
-    SyncStateCoordinator.registerGetStateHandler((key, value) => {
+    SyncStateServer.registerGetStateHandler((key, value) => {
       calls.push({ key, value });
     });
 
@@ -88,33 +88,33 @@ describe("SyncStateCoordinator", () => {
     expect(coordinator.getState("counter")).toBe(4);
     expect(calls).toEqual([{ key: "counter", value: 4 }]);
 
-    SyncStateCoordinator.registerGetStateHandler(null);
+    SyncStateServer.registerGetStateHandler(null);
   });
 
   describe("registerKeyHandler", () => {
     afterEach(() => {
-      SyncStateCoordinator.registerKeyHandler(async (key) => key);
+      SyncStateServer.registerKeyHandler(async (key) => key);
     });
 
     it("stores and retrieves the registered handler", async () => {
       const handler = async (key: string) => `transformed:${key}`;
-      SyncStateCoordinator.registerKeyHandler(handler);
+      SyncStateServer.registerKeyHandler(handler);
 
-      const retrievedHandler = SyncStateCoordinator.getKeyHandler();
+      const retrievedHandler = SyncStateServer.getKeyHandler();
       expect(retrievedHandler).toBe(handler);
     });
 
     it("transforms keys using the registered handler", async () => {
       const handler = async (key: string) => `user:123:${key}`;
-      SyncStateCoordinator.registerKeyHandler(handler);
+      SyncStateServer.registerKeyHandler(handler);
 
       const result = await handler("counter");
       expect(result).toBe("user:123:counter");
     });
 
     it("returns null when no handler is registered", () => {
-      SyncStateCoordinator.registerKeyHandler(async (key) => key);
-      const handler = SyncStateCoordinator.getKeyHandler();
+      SyncStateServer.registerKeyHandler(async (key) => key);
+      const handler = SyncStateServer.getKeyHandler();
       expect(handler).not.toBeNull();
     });
 
@@ -123,7 +123,7 @@ describe("SyncStateCoordinator", () => {
         await new Promise((resolve) => setTimeout(resolve, 10));
         return `async:${key}`;
       };
-      SyncStateCoordinator.registerKeyHandler(handler);
+      SyncStateServer.registerKeyHandler(handler);
 
       const result = await handler("test");
       expect(result).toBe("async:test");
@@ -135,10 +135,11 @@ describe("SyncStateCoordinator", () => {
         receivedKey = key;
         return key;
       };
-      SyncStateCoordinator.registerKeyHandler(handler);
+      SyncStateServer.registerKeyHandler(handler);
 
       await handler("myKey");
       expect(receivedKey).toBe("myKey");
     });
   });
 });
+
