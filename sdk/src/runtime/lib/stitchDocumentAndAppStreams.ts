@@ -50,7 +50,7 @@ export function stitchDocumentAndAppStreams(
         const { done, value } = await innerReader.read();
 
         if (done) {
-          // The app stream is finished. What we have in the buffer is all there is.
+          // The app stream is finished. Process what's in the buffer.
           const match = buffer.match(hoistableTagRegex);
           if (match) {
             controller.enqueue(encoder.encode(match[0]));
@@ -59,25 +59,25 @@ export function stitchDocumentAndAppStreams(
           phase = "outer-head";
         } else {
           buffer += decoder.decode(value, { stream: true });
-          // If the buffer does not start with a '<', it's not a tag, so hoisting is done.
-          if (!buffer.startsWith("<")) {
+          const match = buffer.match(hoistableTagRegex);
+
+          // We transition out of the hoist phase if:
+          // 1. The buffer doesn't start with a tag (i.e., it's just text).
+          // 2. We find a match for hoistable tags, but there's other content after it.
+          // 3. We don't find any match at all.
+          if (!buffer.startsWith("<") || !match) {
+            // No hoistable tags found, or we've hit text content.
             phase = "outer-head";
-          } else {
-            const match = buffer.match(hoistableTagRegex);
-            if (!match) {
-              // No match, means we've hit non-hoistable content.
-              phase = "outer-head";
-            } else if (match[0].length < buffer.length) {
-              // We had a match, but there's more in the buffer.
-              // This means we've found all hoistable tags.
-              controller.enqueue(encoder.encode(match[0]));
-              buffer = buffer.slice(match[0].length);
-              phase = "outer-head";
-            }
-            // If the entire buffer is a match, we continue to the next chunk.
+          } else if (match[0].length < buffer.length) {
+            // We found the boundary. Enqueue the tags and keep the rest.
+            controller.enqueue(encoder.encode(match[0]));
+            buffer = buffer.slice(match[0].length);
+            phase = "outer-head";
           }
+          // If the whole buffer is a match, we loop to get the next chunk.
         }
 
+        // If we are still in the hoist-meta phase, we need to read more.
         if (phase === "hoist-meta") {
           return pump(controller);
         }
