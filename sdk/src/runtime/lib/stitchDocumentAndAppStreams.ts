@@ -63,6 +63,12 @@ export function stitchDocumentAndAppStreams(
         }
       } else if (phase === "inner-shell") {
         const { done, value } = await innerReader.read();
+        if (value) {
+          console.log(
+            "--- app stream chunk ---",
+            decoder.decode(value, { stream: true }),
+          );
+        }
         if (done) {
           if (buffer) controller.enqueue(encoder.encode(buffer));
           phase = "outer-tail";
