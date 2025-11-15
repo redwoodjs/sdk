@@ -28,13 +28,13 @@ initRealtimeClient({
 
 ### 2. Export the Durable Object
 
-```ts title="src/worker.ts"
+```ts title="src/worker.tsx"
 export { RealtimeDurableObject } from "rwsdk/realtime/durableObject";
 ```
 
 ### 3. Wire Up the Worker Route
 
-```ts title="src/worker.ts"
+```ts title="src/worker.tsx"
 import { realtimeRoute } from "rwsdk/realtime/worker";
 import { env } from "cloudflare:workers";
 
@@ -62,11 +62,13 @@ After updating `wrangler.jsonc`, run `pnpm generate` to update the generated typ
 
 ---
 
-## Example: Collaborative Notes
+## Sync State Hook (Experimental)
 
-To see realtime updates in action, check out our [collaborative notes example](https://github.com/redwoodjs/example-realtime-notes).
-
-Multiple users can edit the same note at the same time, and see each other's changes as they happen.
+<LinkCard
+  title="useSyncedState"
+  description="Keep state synchronized across tabs, devices, and users with realtime updates."
+  href="/core/usesyncedstate/"
+/>
 
 ---
 

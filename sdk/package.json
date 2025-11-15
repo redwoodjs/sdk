@@ -104,6 +104,14 @@
     "./realtime/durableObject": {
       "types": "./dist/runtime/lib/realtime/durableObject.d.ts",
       "default": "./dist/runtime/lib/realtime/durableObject.js"
+    },
+    "./use-synced-state/client": {
+      "types": "./dist/use-synced-state/client.d.ts",
+      "default": "./dist/use-synced-state/client.js"
+    },
+    "./use-synced-state/worker": {
+      "types": "./dist/use-synced-state/worker.d.ts",
+      "default": "./dist/use-synced-state/worker.js"
     }
   },
   "keywords": [
@@ -144,10 +152,12 @@
     "@puppeteer/browsers": "~2.10.0",
     "@types/decompress": "~4.2.7",
     "@types/fs-extra": "~11.0.4",
+    "@types/glob": "^8.1.0",
     "@types/react": "~19.1.2",
     "@types/react-dom": "~19.1.2",
     "@types/react-is": "~19.0.0",
     "@vitejs/plugin-react": "~5.0.0",
+    "capnweb": "~0.2.0",
     "chokidar": "~4.0.0",
     "debug": "~4.4.0",
     "decompress": "~4.2.1",
@@ -173,8 +183,7 @@
     "ts-morph": "~27.0.0",
     "unique-names-generator": "~4.7.1",
     "vibe-rules": "~0.3.0",
-    "vite-tsconfig-paths": "~5.1.4",
-    "@types/glob": "^8.1.0"
+    "vite-tsconfig-paths": "~5.1.4"
   },
   "peerDependencies": {
     "@cloudflare/vite-plugin": "^1.13.10",
