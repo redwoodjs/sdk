@@ -6,7 +6,7 @@ experimental: true
 
 import { Aside, Code, LinkCard, Badge } from "@astrojs/starlight/components";
 
-`useSyncedState` keeps a value aligned across tabs, devices, or users by using the realtime transport and the `SyncStateServer` Durable Object.
+`useSyncedState` keeps a value aligned across tabs, devices, or users by using the realtime transport and the `SyncedStateServer` Durable Object.
 
 ---
 
@@ -22,9 +22,9 @@ import { useSyncedState } from "rwsdk/use-sync-state";
 
 ```ts title="src/hooks/useSyncedState.ts"
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createSyncStateHook } from "rwsdk/use-sync-state";
+import { createSyncedStateHook } from "rwsdk/use-sync-state";
 
-export const useSyncedState = createSyncStateHook({
+export const useSyncedState = createSyncedStateHook({
   url: "/sync-state",
   hooks: {
     useState,
@@ -40,32 +40,35 @@ Set the URL to match the base path you expose from the worker routes. In this ex
 ### 3. Worker Routes
 
 ```tsx title="src/worker.tsx"
-import { SyncStateServer, syncStateRoutes } from "rwsdk/use-sync-state/worker";
+import {
+  SyncedStateServer,
+  SyncedStateRoutes,
+} from "rwsdk/use-sync-state/worker";
 import { env } from "cloudflare:workers";
 
-SyncStateServer.registerGetStateHandler((key, value) => {
+SyncedStateServer.registerGetStateHandler((key, value) => {
   console.log("synced state requested", { key, value });
 });
-SyncStateServer.registerSetStateHandler((key, value) => {
+SyncedStateServer.registerSetStateHandler((key, value) => {
   console.log("synced state updated", { key, value });
 });
 
 export default defineApp([
-  ...syncStateRoutes(() => env.STATE_COORDINATOR),
+  ...SyncedStateRoutes(() => env.STATE_COORDINATOR),
   // other routes...
 ]);
 ```
 
 ### 4. State handlers
 
-`SyncStateServer.registerSetStateHandler(handler)` accepts a function that receives `(key, value)` each time the coordinator stores a new value. Use this to record updates or trigger downstream work whenever any client publishes new state.
+`SyncedStateServer.registerSetStateHandler(handler)` accepts a function that receives `(key, value)` each time the coordinator stores a new value. Use this to record updates or trigger downstream work whenever any client publishes new state.
 
-`SyncStateServer.registerGetStateHandler(handler)` accepts a function that receives `(key, value)` each time the coordinator returns a value to a subscriber. The handler runs after the lookup, so `value` is `undefined` when no entry exists for the key.
+`SyncedStateServer.registerGetStateHandler(handler)` accepts a function that receives `(key, value)` each time the coordinator returns a value to a subscriber. The handler runs after the lookup, so `value` is `undefined` when no entry exists for the key.
 
 ### 5. Durable Object Export
 
 ```tsx title="src/worker.tsx"
-export { SyncStateServer } from "rwsdk/use-sync-state";
+export { SyncedStateServer } from "rwsdk/use-sync-state";
 ```
 
 ### 6. Add the Durable Object to `wrangler.jsonc`
@@ -76,7 +79,7 @@ export { SyncStateServer } from "rwsdk/use-sync-state";
     // ...
     {
       "name": "STATE_COORDINATOR",
-      "class_name": "SyncStateServer",
+      "class_name": "SyncedStateServer",
     },
   ],
 },
@@ -104,11 +107,11 @@ const Counter = () => {
 To scope synced state to individual users, register a key transformation handler in your worker. The handler runs on every state operation and can transform client-provided keys based on the authenticated session.
 
 ```tsx title="src/worker.tsx"
-import { SyncStateServer } from "rwsdk/use-sync-state/worker";
+import { SyncedStateServer } from "rwsdk/use-sync-state/worker";
 import { sessionStore } from "./session";
 import { requestInfo } from "rwsdk/worker";
 
-SyncStateServer.registerKeyHandler(async (key) => {
+SyncedStateServer.registerKeyHandler(async (key) => {
   const session = await sessionStore.load(requestInfo.request);
   const userId = session?.userId ?? "anonymous";
   return `user:${userId}:${key}`;
@@ -134,19 +137,19 @@ If the handler throws an error, that error propagates to the client where it can
 
 ---
 
-## Customizing `createSyncStateHook`
+## Customizing `createSyncedStateHook`
 
-`createSyncStateHook({ url?, hooks? })` accepts an options object:
+`createSyncedStateHook({ url?, hooks? })` accepts an options object:
 
 - `url`: overrides the HTTP route used by the client. The default is `/__sync-state`.
 - `hooks`: overrides the React primitives. Pass this when integrating with a custom renderer or testing environment.
 
-```ts title="src/hooks/useCustomSyncState.ts"
-const useCustomSyncState = createSyncStateHook({ url: "/api/sync" });
+```ts title="src/hooks/useCustomSyncedState.ts"
+const useCustomSyncedState = createSyncedStateHook({ url: "/api/sync" });
 ```
 
 ```ts title="src/hooks/useSyncedState.test.ts"
-const useTestSyncState = createSyncStateHook({
+const useTestSyncedState = createSyncedStateHook({
   hooks: {
     useState,
     useEffect,
@@ -191,10 +194,10 @@ An offline queue will store failed operations and retry them when connectivity r
 - **Custom implementations**: Use any storage backend
 
 ```tsx
-import { initSyncStateClient } from "rwsdk/use-sync-state";
+import { initSyncedStateClient } from "rwsdk/use-sync-state";
 import { IndexedDBQueue } from "rwsdk/use-sync-state/queues";
 
-initSyncStateClient({
+initSyncedStateClient({
   queue: new IndexedDBQueue(),
 });
 ```

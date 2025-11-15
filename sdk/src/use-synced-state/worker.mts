@@ -1,12 +1,15 @@
 import { RpcTarget, newWorkersRpcResponse } from "capnweb";
 import { env } from "cloudflare:workers";
 import { route } from "../runtime/entries/router";
-import { SyncStateServer, type SyncStateValue } from "./SyncStateServer.mjs";
-import { DEFAULT_SYNC_STATE_PATH } from "./constants.mjs";
+import {
+  SyncedStateServer,
+  type SyncedStateValue,
+} from "./SyncedStateServer.mjs";
+import { DEFAULT_SYNCED_STATE_PATH } from "./constants.mjs";
 
-export { SyncStateServer } from "./SyncStateServer.mjs";
+export { SyncedStateServer };
 
-export type SyncStateRouteOptions = {
+export type SyncedStateRouteOptions = {
   basePath?: string;
   resetPath?: string;
   durableObjectName?: string;
@@ -14,7 +17,7 @@ export type SyncStateRouteOptions = {
 
 const DEFAULT_SYNC_STATE_NAME = "syncedState";
 
-class SyncStateProxy extends RpcTarget {
+class SyncedStateProxy extends RpcTarget {
   #stub: any;
   #keyHandler: ((key: string) => Promise<string>) | null;
 
@@ -27,12 +30,12 @@ class SyncStateProxy extends RpcTarget {
     this.#keyHandler = keyHandler;
   }
 
-  async getState(key: string): Promise<SyncStateValue> {
+  async getState(key: string): Promise<SyncedStateValue> {
     const transformedKey = this.#keyHandler ? await this.#keyHandler(key) : key;
     return this.#stub.getState(transformedKey);
   }
 
-  async setState(value: SyncStateValue, key: string): Promise<void> {
+  async setState(value: SyncedStateValue, key: string): Promise<void> {
     const transformedKey = this.#keyHandler ? await this.#keyHandler(key) : key;
     return this.#stub.setState(value, transformedKey);
   }
@@ -54,19 +57,19 @@ class SyncStateProxy extends RpcTarget {
  * @param options Optional overrides for base path, reset path, and object name.
  * @returns Router entries for the sync state API and reset endpoint.
  */
-export const syncStateRoutes = (
+export const syncedStateRoutes = (
   getNamespace: (
     env: Cloudflare.Env,
-  ) => DurableObjectNamespace<SyncStateServer>,
-  options: SyncStateRouteOptions = {},
+  ) => DurableObjectNamespace<SyncedStateServer>,
+  options: SyncedStateRouteOptions = {},
 ) => {
-  const basePath = options.basePath ?? DEFAULT_SYNC_STATE_PATH;
+  const basePath = options.basePath ?? DEFAULT_SYNCED_STATE_PATH;
   const resetPath = options.resetPath ?? `${basePath}/reset`;
   const durableObjectName =
     options.durableObjectName ?? DEFAULT_SYNC_STATE_NAME;
 
   const forwardRequest = async (request: Request) => {
-    const keyHandler = SyncStateServer.getKeyHandler();
+    const keyHandler = SyncedStateServer.getKeyHandler();
 
     if (!keyHandler) {
       const namespace = getNamespace(env);
@@ -77,7 +80,7 @@ export const syncStateRoutes = (
     const namespace = getNamespace(env);
     const id = namespace.idFromName(durableObjectName);
     const coordinator = namespace.get(id);
-    const proxy = new SyncStateProxy(coordinator, keyHandler);
+    const proxy = new SyncedStateProxy(coordinator, keyHandler);
 
     return newWorkersRpcResponse(request, proxy);
   };

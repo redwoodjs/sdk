@@ -1,6 +1,6 @@
 import { React } from "../runtime/client/client";
-import { getSyncStateClient } from "./client";
-import { DEFAULT_SYNC_STATE_PATH } from "./constants.mjs";
+import { getSyncedStateClient } from "./client";
+import { DEFAULT_SYNCED_STATE_PATH } from "./constants.mjs";
 
 type HookDeps = {
   useState: typeof React.useState;
@@ -18,7 +18,7 @@ const defaultDeps: HookDeps = {
 
 type Setter<T> = (value: T | ((previous: T) => T)) => void;
 
-export type CreateSyncStateHookOptions = {
+export type CreateSyncedStateHookOptions = {
   url?: string;
   hooks?: HookDeps;
 };
@@ -28,10 +28,10 @@ export type CreateSyncStateHookOptions = {
  * @param options Optional overrides for endpoint and React primitives.
  * @returns Hook that syncs state through the sync state service.
  */
-export const createSyncStateHook = (
-  options: CreateSyncStateHookOptions = {},
+export const createSyncedStateHook = (
+  options: CreateSyncedStateHookOptions = {},
 ) => {
-  const resolvedUrl = options.url ?? DEFAULT_SYNC_STATE_PATH;
+  const resolvedUrl = options.url ?? DEFAULT_SYNCED_STATE_PATH;
   const deps = options.hooks ?? defaultDeps;
   const { useState, useEffect, useRef, useCallback } = deps;
 
@@ -43,7 +43,7 @@ export const createSyncStateHook = (
       return [initialValue, () => {}];
     }
 
-    const client = getSyncStateClient(resolvedUrl);
+    const client = getSyncedStateClient(resolvedUrl);
     const [value, setValue] = useState(initialValue);
     const valueRef = useRef(value);
     valueRef.current = value;
@@ -89,4 +89,4 @@ export const createSyncStateHook = (
   };
 };
 
-export const useSyncedState = createSyncStateHook();
+export const useSyncedState = createSyncedStateHook();

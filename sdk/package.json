@@ -110,8 +110,8 @@
       "default": "./dist/use-synced-state/client.js"
     },
     "./use-synced-state/worker": {
-      "types": "./dist/use-synced-state/worker.d.ts",
-      "default": "./dist/use-synced-state/worker.js"
+      "types": "./dist/use-synced-state/worker.d.mts",
+      "default": "./dist/use-synced-state/worker.mjs"
     }
   },
   "keywords": [

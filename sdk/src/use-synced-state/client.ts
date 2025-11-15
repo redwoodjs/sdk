@@ -1,6 +1,6 @@
 import { newWebSocketRpcSession } from "capnweb";
-import { DEFAULT_SYNC_STATE_PATH } from "./constants.mjs";
-export type SyncStateClient = {
+import { DEFAULT_SYNCED_STATE_PATH } from "./constants.mjs";
+export type SyncedStateClient = {
   getState(key: string): Promise<unknown>;
   setState(value: unknown, key: string): Promise<void>;
   subscribe(key: string, handler: (value: unknown) => void): Promise<void>;
@@ -11,34 +11,36 @@ type InitOptions = {
   endpoint?: string;
 };
 
-let cachedClient: SyncStateClient | null = null;
+let cachedClient: SyncedStateClient | null = null;
 
-let cachedEndpoint = DEFAULT_SYNC_STATE_PATH;
+let cachedEndpoint = DEFAULT_SYNCED_STATE_PATH;
 
 /**
  * Initializes and caches an RPC client instance for the sync state endpoint.
  * @param options Optional endpoint override.
  * @returns Cached client instance or `null` when running without `window`.
  */
-export const initSyncStateClient = (options: InitOptions = {}) => {
-  cachedEndpoint = options.endpoint ?? DEFAULT_SYNC_STATE_PATH;
+export const initSyncedStateClient = (options: InitOptions = {}) => {
+  cachedEndpoint = options.endpoint ?? DEFAULT_SYNCED_STATE_PATH;
   if (typeof window === "undefined") {
     return null;
   }
   cachedClient = newWebSocketRpcSession(
     cachedEndpoint,
-  ) as unknown as SyncStateClient;
+  ) as unknown as SyncedStateClient;
   return cachedClient;
 };
+
+export { useSyncedState } from "./useSyncedState";
 
 /**
  * Returns a cached client for the provided endpoint, creating it when necessary.
  * @param endpoint Endpoint to connect to.
  * @returns RPC client instance.
  */
-export const getSyncStateClient = (
+export const getSyncedStateClient = (
   endpoint: string = cachedEndpoint,
-): SyncStateClient => {
+): SyncedStateClient => {
   if (cachedClient && endpoint === cachedEndpoint) {
     return cachedClient;
   }
@@ -46,7 +48,7 @@ export const getSyncStateClient = (
 
   cachedClient = newWebSocketRpcSession(
     cachedEndpoint,
-  ) as unknown as SyncStateClient;
+  ) as unknown as SyncedStateClient;
   return cachedClient;
 };
 
@@ -55,9 +57,9 @@ export const getSyncStateClient = (
  * @param client Stub client instance or `null` to clear the cache.
  * @param endpoint Endpoint associated with the injected client.
  */
-export const setSyncStateClientForTesting = (
-  client: SyncStateClient | null,
-  endpoint: string = DEFAULT_SYNC_STATE_PATH,
+export const setSyncedStateClientForTesting = (
+  client: SyncedStateClient | null,
+  endpoint: string = DEFAULT_SYNCED_STATE_PATH,
 ) => {
   cachedClient = client;
   cachedEndpoint = endpoint;
