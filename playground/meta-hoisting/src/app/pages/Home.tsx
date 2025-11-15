@@ -1,11 +1,11 @@
 import { RequestInfo } from "rwsdk/worker";
+import { ComponentA } from "../components/ComponentA.js";
 
 export function Home({ ctx }: RequestInfo) {
   return (
     <>
-      <title>Hoisted Title</title>
-      <meta name="description" content="This is a hoisted description." />
       <div>Hello World</div>
+      <ComponentA />
     </>
   );
 }
