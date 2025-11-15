@@ -4,11 +4,12 @@
  * race condition in streaming Server-Side Rendering (SSR) with Suspense.
  *
  * The logic is as follows:
- * 1. Stream the document until a start marker is found.
- * 2. Switch to the app stream and stream it until an end marker is found. This is the non-suspended shell.
- * 3. Switch back to the document stream and stream it until the closing body tag. This sends the client script.
- * 4. Switch back to the app stream and stream the remainder (the suspended content).
- * 5. Switch back to the document stream and stream the remainder (closing body and html tags).
+ * 1. **Hoisting Phase**: Read from the app stream first to capture any hoisted tags (`<title>`, `<meta>`, etc.).
+ * 2. Stream the document until a start marker is found.
+ * 3. Switch to the app stream (with hoisted tags removed) and stream it until an end marker is found.
+ * 4. Switch back to the document stream and stream it until the closing body tag.
+ * 5. Switch back to the app stream and stream the remainder (the suspended content).
+ * 6. Switch back to the document stream and stream the remainder (closing body and html tags).
  *
  * @param outerHtml The stream for the document shell (`<Document>`).
  * @param innerHtml The stream for the application's content.
@@ -30,16 +31,58 @@ export function stitchDocumentAndAppStreams(
   let buffer = "";
   let outerBufferRemains = "";
   let phase:
+    | "hoist-meta"
     | "outer-head"
     | "inner-shell"
     | "outer-tail"
     | "inner-suspended"
-    | "outer-end" = "outer-head";
+    | "outer-end" = "hoist-meta";
+
+  // This regex is designed to be non-greedy and match hoistable tags
+  // that appear at the very beginning of the stream.
+  const hoistableTagRegex = /^(<title>.*?<\/title>|<meta[^>]*>|<link[^>]*>)+/;
 
   const pump = async (
     controller: ReadableStreamDefaultController<Uint8Array>,
   ): Promise<void> => {
     try {
+      if (phase === "hoist-meta") {
+        const { done, value } = await innerReader.read();
+
+        if (done) {
+          // The app stream is finished. What we have in the buffer is all there is.
+          const match = buffer.match(hoistableTagRegex);
+          if (match) {
+            controller.enqueue(encoder.encode(match[0]));
+            buffer = buffer.slice(match[0].length);
+          }
+          phase = "outer-head";
+        } else {
+          buffer += decoder.decode(value, { stream: true });
+          // If the buffer does not start with a '<', it's not a tag, so hoisting is done.
+          if (!buffer.startsWith("<")) {
+            phase = "outer-head";
+          } else {
+            const match = buffer.match(hoistableTagRegex);
+            if (!match) {
+              // No match, means we've hit non-hoistable content.
+              phase = "outer-head";
+            } else if (match[0].length < buffer.length) {
+              // We had a match, but there's more in the buffer.
+              // This means we've found all hoistable tags.
+              controller.enqueue(encoder.encode(match[0]));
+              buffer = buffer.slice(match[0].length);
+              phase = "outer-head";
+            }
+            // If the entire buffer is a match, we continue to the next chunk.
+          }
+        }
+
+        if (phase === "hoist-meta") {
+          return pump(controller);
+        }
+      }
+
       if (phase === "outer-head") {
         const { done, value } = await outerReader.read();
         if (done) {
@@ -52,7 +95,7 @@ export function stitchDocumentAndAppStreams(
         if (markerIndex !== -1) {
           controller.enqueue(encoder.encode(buffer.slice(0, markerIndex)));
           outerBufferRemains = buffer.slice(markerIndex + startMarker.length);
-          buffer = "";
+          buffer = ""; // Clear buffer for the next phase
           phase = "inner-shell";
         } else {
           const flushIndex = buffer.lastIndexOf("\n");
@@ -62,18 +105,8 @@ export function stitchDocumentAndAppStreams(
           }
         }
       } else if (phase === "inner-shell") {
-        const { done, value } = await innerReader.read();
-        if (value) {
-          console.log(
-            "--- app stream chunk ---",
-            decoder.decode(value, { stream: true }),
-          );
-        }
-        if (done) {
-          if (buffer) controller.enqueue(encoder.encode(buffer));
-          phase = "outer-tail";
-        } else {
-          buffer += decoder.decode(value, { stream: true });
+        // We might have leftover from the hoist-meta phase
+        if (buffer) {
           const markerIndex = buffer.indexOf(endMarker);
           if (markerIndex !== -1) {
             const endOfMarkerIndex = markerIndex + endMarker.length;
@@ -83,18 +116,40 @@ export function stitchDocumentAndAppStreams(
             buffer = buffer.slice(endOfMarkerIndex);
             phase = "outer-tail";
           } else {
-            const flushIndex = buffer.lastIndexOf("\n");
-            if (flushIndex !== -1) {
+            controller.enqueue(encoder.encode(buffer));
+            buffer = "";
+          }
+        }
+
+        if (phase === "inner-shell") {
+          const { done, value } = await innerReader.read();
+          if (done) {
+            if (buffer) controller.enqueue(encoder.encode(buffer));
+            phase = "outer-tail";
+          } else {
+            buffer += decoder.decode(value, { stream: true });
+            const markerIndex = buffer.indexOf(endMarker);
+            if (markerIndex !== -1) {
+              const endOfMarkerIndex = markerIndex + endMarker.length;
               controller.enqueue(
-                encoder.encode(buffer.slice(0, flushIndex + 1)),
+                encoder.encode(buffer.slice(0, endOfMarkerIndex)),
               );
-              buffer = buffer.slice(flushIndex + 1);
+              buffer = buffer.slice(endOfMarkerIndex);
+              phase = "outer-tail";
+            } else {
+              const flushIndex = buffer.lastIndexOf("\n");
+              if (flushIndex !== -1) {
+                controller.enqueue(
+                  encoder.encode(buffer.slice(0, flushIndex + 1)),
+                );
+                buffer = buffer.slice(flushIndex + 1);
+              }
             }
           }
         }
       } else if (phase === "outer-tail") {
         if (outerBufferRemains) {
-          buffer = outerBufferRemains;
+          buffer += outerBufferRemains;
           outerBufferRemains = "";
         }
         const { done, value } = await outerReader.read();
@@ -106,7 +161,8 @@ export function stitchDocumentAndAppStreams(
           const markerIndex = buffer.indexOf("</body>");
           if (markerIndex !== -1) {
             controller.enqueue(encoder.encode(buffer.slice(0, markerIndex)));
-            buffer = buffer.slice(markerIndex);
+            outerBufferRemains = buffer.slice(markerIndex);
+            buffer = "";
             phase = "inner-suspended";
           } else {
             const flushIndex = buffer.lastIndexOf("\n");
@@ -119,6 +175,10 @@ export function stitchDocumentAndAppStreams(
           }
         }
       } else if (phase === "inner-suspended") {
+        if (buffer) {
+          controller.enqueue(encoder.encode(buffer));
+          buffer = "";
+        }
         const { done, value } = await innerReader.read();
         if (done) {
           phase = "outer-end";
@@ -126,9 +186,9 @@ export function stitchDocumentAndAppStreams(
           controller.enqueue(value);
         }
       } else if (phase === "outer-end") {
-        if (buffer) {
-          controller.enqueue(encoder.encode(buffer));
-          buffer = "";
+        if (outerBufferRemains) {
+          controller.enqueue(encoder.encode(outerBufferRemains));
+          outerBufferRemains = "";
         }
         const { done, value } = await outerReader.read();
         if (done) {
@@ -137,9 +197,11 @@ export function stitchDocumentAndAppStreams(
         }
         controller.enqueue(value);
       }
-      await pump(controller);
-    } catch (e) {
-      controller.error(e);
+
+      // Continue pumping
+      return pump(controller);
+    } catch (error) {
+      controller.error(error);
     }
   };
 
@@ -147,11 +209,11 @@ export function stitchDocumentAndAppStreams(
     start(controller) {
       outerReader = outerHtml.getReader();
       innerReader = innerHtml.getReader();
-      pump(controller).catch((e) => controller.error(e));
+      pump(controller);
     },
-    cancel(reason) {
-      outerReader?.cancel(reason);
-      innerReader?.cancel(reason);
+    cancel() {
+      outerReader?.cancel();
+      innerReader?.cancel();
     },
   });
 }
