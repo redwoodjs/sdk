@@ -1,0 +1,89 @@
+body {
+  min-height: 100vh;
+  padding: 0;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+#root,
+#hydrate-root {
+  width: 100vw;
+  min-height: 100vh;
+  padding: 2rem;
+  box-sizing: border-box;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+h1 {
+  margin-top: 0;
+  margin-bottom: 2rem;
+}
+
+.section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #f9f9f9;
+}
+
+.section h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.counter-display {
+  font-size: 2rem;
+  font-weight: bold;
+  margin: 1rem 0;
+  color: #333;
+}
+
+.button-group {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+button {
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+button:hover {
+  background: #f0f0f0;
+}
+
+button:active {
+  background: #e0e0e0;
+}
+
+input[type="text"] {
+  width: 100%;
+  padding: 0.5rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin-top: 0.5rem;
+  box-sizing: border-box;
+}
+
+.message-display {
+  margin-top: 1rem;
+  padding: 0.5rem;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  min-height: 2rem;
+}
