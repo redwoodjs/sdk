@@ -50,6 +50,160 @@ describe("stitchDocumentAndAppStreams", () => {
   const startMarker = '<div id="rwsdk-app-start" />';
   const endMarker = '<div id="rwsdk-app-end"></div>';
 
+  describe("meta tag hoisting", () => {
+    it("extracts and prepends single title tag", async () => {
+      const outerHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+</head>
+<body>
+  ${startMarker}
+  <script src="/client.js"></script>
+</body>
+</html>`;
+
+      const innerHtml = `<title>Page Title</title><div>App content</div>${endMarker}`;
+
+      const result = await streamToString(
+        stitchDocumentAndAppStreams(
+          stringToStream(outerHtml),
+          stringToStream(innerHtml),
+          startMarker,
+          endMarker,
+        ),
+      );
+
+      expect(result).toContain(`<title>Page Title</title>`);
+      expect(result.indexOf(`<title>Page Title</title>`)).toBeLessThan(
+        result.indexOf(`<!DOCTYPE html>`),
+      );
+      expect(result).toContain(`<div>App content</div>`);
+    });
+
+    it("extracts and prepends multiple hoisted tags", async () => {
+      const outerHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+</head>
+<body>
+  ${startMarker}
+  <script src="/client.js"></script>
+</body>
+</html>`;
+
+      const innerHtml = `<title>Page Title</title><meta name="description" content="Test" /><link rel="stylesheet" href="/styles.css" /><div>App content</div>${endMarker}`;
+
+      const result = await streamToString(
+        stitchDocumentAndAppStreams(
+          stringToStream(outerHtml),
+          stringToStream(innerHtml),
+          startMarker,
+          endMarker,
+        ),
+      );
+
+      expect(result).toContain(`<title>Page Title</title>`);
+      expect(result).toContain(`<meta name="description" content="Test" />`);
+      expect(result).toContain(`<link rel="stylesheet" href="/styles.css" />`);
+      const hoistedStart = result.indexOf(`<title>Page Title</title>`);
+      const doctypeStart = result.indexOf(`<!DOCTYPE html>`);
+      expect(hoistedStart).toBeLessThan(doctypeStart);
+    });
+
+    it("handles app stream with no hoisted tags", async () => {
+      const outerHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+</head>
+<body>
+  ${startMarker}
+  <script src="/client.js"></script>
+</body>
+</html>`;
+
+      const innerHtml = `<div>App content</div>${endMarker}`;
+
+      const result = await streamToString(
+        stitchDocumentAndAppStreams(
+          stringToStream(outerHtml),
+          stringToStream(innerHtml),
+          startMarker,
+          endMarker,
+        ),
+      );
+
+      expect(result).toContain(`<div>App content</div>`);
+      expect(result).not.toContain(`<title>`);
+    });
+
+    it("handles hoisted tags split across chunks", async () => {
+      const outerHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+</head>
+<body>
+  ${startMarker}
+  <script src="/client.js"></script>
+</body>
+</html>`;
+
+      const innerHtmlChunks = [
+        `<title>Page `,
+        `Title</title><meta name="description" `,
+        `content="Test" /><div>App content</div>${endMarker}`,
+      ];
+
+      const result = await streamToString(
+        stitchDocumentAndAppStreams(
+          stringToStream(outerHtml),
+          createChunkedStream(innerHtmlChunks),
+          startMarker,
+          endMarker,
+        ),
+      );
+
+      expect(result).toContain(`<title>Page Title</title>`);
+      expect(result).toContain(`<meta name="description" content="Test" />`);
+      const hoistedStart = result.indexOf(`<title>Page Title</title>`);
+      const doctypeStart = result.indexOf(`<!DOCTYPE html>`);
+      expect(hoistedStart).toBeLessThan(doctypeStart);
+    });
+
+    it("stops extraction at first non-hoisted tag", async () => {
+      const outerHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+</head>
+<body>
+  ${startMarker}
+  <script src="/client.js"></script>
+</body>
+</html>`;
+
+      const innerHtml = `<title>Page Title</title><div>Should not be hoisted</div><meta name="description" content="Should not be hoisted" /><div>App content</div>${endMarker}`;
+
+      const result = await streamToString(
+        stitchDocumentAndAppStreams(
+          stringToStream(outerHtml),
+          stringToStream(innerHtml),
+          startMarker,
+          endMarker,
+        ),
+      );
+
+      expect(result).toContain(`<title>Page Title</title>`);
+      expect(result).not.toContain(
+        `<meta name="description" content="Should not be hoisted" />`,
+      );
+      expect(result).toContain(`<div>Should not be hoisted</div>`);
+    });
+  });
+
   describe("basic stitching flow", () => {
     it("stitches document head, app shell, and document tail", async () => {
       const outerHtml = `<!DOCTYPE html>
