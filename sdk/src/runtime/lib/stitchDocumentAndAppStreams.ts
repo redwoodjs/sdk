@@ -15,33 +15,153 @@
  * @param startMarker The marker in the document to start injecting the app.
  * @param endMarker The marker in the app stream that signals the end of the initial, non-suspended render.
  */
+
+function splitStreamOnFirstNonHoistedTag(
+  sourceStream: ReadableStream<Uint8Array>,
+): [ReadableStream<Uint8Array>, ReadableStream<Uint8Array>] {
+  const decoder = new TextDecoder();
+  const encoder = new TextEncoder();
+  const nonHoistedTagPattern =
+    /<(?!(?:\/)?(?:title|meta|link|style|base)[\s>\/])(?![!?])/i;
+
+  let sourceReader: ReadableStreamDefaultReader<Uint8Array>;
+  let appBodyController: ReadableStreamDefaultController<Uint8Array> | null =
+    null;
+  let buffer = "";
+  let hoistedTagsDone = false;
+
+  const hoistedTagsStream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      sourceReader = sourceStream.getReader();
+
+      const pump = async () => {
+        try {
+          if (hoistedTagsDone) {
+            controller.close();
+            return;
+          }
+
+          const { done, value } = await sourceReader.read();
+
+          if (done) {
+            if (buffer) {
+              const match = buffer.match(nonHoistedTagPattern);
+              if (match && typeof match.index === "number") {
+                const hoistedPart = buffer.slice(0, match.index);
+                controller.enqueue(encoder.encode(hoistedPart));
+              } else {
+                controller.enqueue(encoder.encode(buffer));
+              }
+            }
+            controller.close();
+            hoistedTagsDone = true;
+            if (appBodyController) {
+              appBodyController.close();
+            }
+            return;
+          }
+
+          buffer += decoder.decode(value, { stream: true });
+          const match = buffer.match(nonHoistedTagPattern);
+
+          if (match && typeof match.index === "number") {
+            const hoistedPart = buffer.slice(0, match.index);
+            const appPart = buffer.slice(match.index);
+            buffer = "";
+
+            controller.enqueue(encoder.encode(hoistedPart));
+            controller.close();
+            hoistedTagsDone = true;
+
+            if (appBodyController) {
+              if (appPart) {
+                appBodyController.enqueue(encoder.encode(appPart));
+              }
+
+              while (true) {
+                const { done, value } = await sourceReader.read();
+                if (done) {
+                  appBodyController.close();
+                  return;
+                }
+                appBodyController.enqueue(value);
+              }
+            }
+          } else {
+            const flushIndex = buffer.lastIndexOf("\n");
+            if (flushIndex !== -1) {
+              controller.enqueue(
+                encoder.encode(buffer.slice(0, flushIndex + 1)),
+              );
+              buffer = buffer.slice(flushIndex + 1);
+            }
+            await pump();
+          }
+        } catch (e) {
+          controller.error(e);
+          if (appBodyController) {
+            appBodyController.error(e);
+          }
+        }
+      };
+
+      pump().catch((e) => {
+        controller.error(e);
+        if (appBodyController) {
+          appBodyController.error(e);
+        }
+      });
+    },
+  });
+
+  const appBodyStream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      appBodyController = controller;
+    },
+  });
+
+  return [hoistedTagsStream, appBodyStream];
+}
+
 export function stitchDocumentAndAppStreams(
   outerHtml: ReadableStream<Uint8Array>,
   innerHtml: ReadableStream<Uint8Array>,
   startMarker: string,
   endMarker: string,
 ): ReadableStream<Uint8Array> {
+  const [hoistedTagsStream, appBodyStream] =
+    splitStreamOnFirstNonHoistedTag(innerHtml);
+
   const decoder = new TextDecoder();
   const encoder = new TextEncoder();
 
   let outerReader: ReadableStreamDefaultReader<Uint8Array>;
   let innerReader: ReadableStreamDefaultReader<Uint8Array>;
+  let hoistedTagsReader: ReadableStreamDefaultReader<Uint8Array>;
 
   let buffer = "";
   let outerBufferRemains = "";
   let innerSuspendedRemains = "";
   let phase:
+    | "enqueue-hoisted"
     | "outer-head"
     | "inner-shell"
     | "outer-tail"
     | "inner-suspended"
-    | "outer-end" = "outer-head";
+    | "outer-end" = "enqueue-hoisted";
 
   const pump = async (
     controller: ReadableStreamDefaultController<Uint8Array>,
   ): Promise<void> => {
     try {
-      if (phase === "outer-head") {
+      if (phase === "enqueue-hoisted") {
+        const { done, value } = await hoistedTagsReader.read();
+        if (done) {
+          phase = "outer-head";
+        } else {
+          controller.enqueue(value);
+        }
+      } else if (phase === "outer-head") {
         const { done, value } = await outerReader.read();
         if (done) {
           if (buffer) {
@@ -168,12 +288,14 @@ export function stitchDocumentAndAppStreams(
   return new ReadableStream({
     start(controller) {
       outerReader = outerHtml.getReader();
-      innerReader = innerHtml.getReader();
+      innerReader = appBodyStream.getReader();
+      hoistedTagsReader = hoistedTagsStream.getReader();
       pump(controller).catch((e) => controller.error(e));
     },
     cancel(reason) {
       outerReader?.cancel(reason);
       innerReader?.cancel(reason);
+      hoistedTagsReader?.cancel(reason);
     },
   });
 }

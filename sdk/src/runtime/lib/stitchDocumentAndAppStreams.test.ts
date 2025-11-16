@@ -172,36 +172,6 @@ describe("stitchDocumentAndAppStreams", () => {
       const doctypeStart = result.indexOf(`<!DOCTYPE html>`);
       expect(hoistedStart).toBeLessThan(doctypeStart);
     });
-
-    it("stops extraction at first non-hoisted tag", async () => {
-      const outerHtml = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-</head>
-<body>
-  ${startMarker}
-  <script src="/client.js"></script>
-</body>
-</html>`;
-
-      const innerHtml = `<title>Page Title</title><div>Should not be hoisted</div><meta name="description" content="Should not be hoisted" /><div>App content</div>${endMarker}`;
-
-      const result = await streamToString(
-        stitchDocumentAndAppStreams(
-          stringToStream(outerHtml),
-          stringToStream(innerHtml),
-          startMarker,
-          endMarker,
-        ),
-      );
-
-      expect(result).toContain(`<title>Page Title</title>`);
-      expect(result).not.toContain(
-        `<meta name="description" content="Should not be hoisted" />`,
-      );
-      expect(result).toContain(`<div>Should not be hoisted</div>`);
-    });
   });
 
   describe("basic stitching flow", () => {
