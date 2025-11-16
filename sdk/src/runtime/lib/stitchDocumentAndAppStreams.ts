@@ -29,6 +29,7 @@ export function stitchDocumentAndAppStreams(
 
   let buffer = "";
   let outerBufferRemains = "";
+  let innerSuspendedRemains = "";
   let phase:
     | "outer-head"
     | "inner-shell"
@@ -43,22 +44,35 @@ export function stitchDocumentAndAppStreams(
       if (phase === "outer-head") {
         const { done, value } = await outerReader.read();
         if (done) {
-          if (buffer) controller.enqueue(encoder.encode(buffer));
-          controller.close();
-          return;
-        }
-        buffer += decoder.decode(value, { stream: true });
-        const markerIndex = buffer.indexOf(startMarker);
-        if (markerIndex !== -1) {
-          controller.enqueue(encoder.encode(buffer.slice(0, markerIndex)));
-          outerBufferRemains = buffer.slice(markerIndex + startMarker.length);
-          buffer = "";
+          if (buffer) {
+            const markerIndex = buffer.indexOf(startMarker);
+            if (markerIndex !== -1) {
+              controller.enqueue(encoder.encode(buffer.slice(0, markerIndex)));
+              outerBufferRemains = buffer.slice(
+                markerIndex + startMarker.length,
+              );
+            } else {
+              controller.enqueue(encoder.encode(buffer));
+            }
+            buffer = "";
+          }
           phase = "inner-shell";
         } else {
-          const flushIndex = buffer.lastIndexOf("\n");
-          if (flushIndex !== -1) {
-            controller.enqueue(encoder.encode(buffer.slice(0, flushIndex + 1)));
-            buffer = buffer.slice(flushIndex + 1);
+          buffer += decoder.decode(value, { stream: true });
+          const markerIndex = buffer.indexOf(startMarker);
+          if (markerIndex !== -1) {
+            controller.enqueue(encoder.encode(buffer.slice(0, markerIndex)));
+            outerBufferRemains = buffer.slice(markerIndex + startMarker.length);
+            buffer = "";
+            phase = "inner-shell";
+          } else {
+            const flushIndex = buffer.lastIndexOf("\n");
+            if (flushIndex !== -1) {
+              controller.enqueue(
+                encoder.encode(buffer.slice(0, flushIndex + 1)),
+              );
+              buffer = buffer.slice(flushIndex + 1);
+            }
           }
         }
       } else if (phase === "inner-shell") {
@@ -74,7 +88,8 @@ export function stitchDocumentAndAppStreams(
             controller.enqueue(
               encoder.encode(buffer.slice(0, endOfMarkerIndex)),
             );
-            buffer = buffer.slice(endOfMarkerIndex);
+            innerSuspendedRemains = buffer.slice(endOfMarkerIndex);
+            buffer = "";
             phase = "outer-tail";
           } else {
             const flushIndex = buffer.lastIndexOf("\n");
@@ -93,7 +108,16 @@ export function stitchDocumentAndAppStreams(
         }
         const { done, value } = await outerReader.read();
         if (done) {
-          if (buffer) controller.enqueue(encoder.encode(buffer));
+          if (buffer) {
+            const markerIndex = buffer.indexOf("</body>");
+            if (markerIndex !== -1) {
+              controller.enqueue(encoder.encode(buffer.slice(0, markerIndex)));
+              buffer = buffer.slice(markerIndex);
+            } else {
+              controller.enqueue(encoder.encode(buffer));
+              buffer = "";
+            }
+          }
           phase = "inner-suspended";
         } else {
           buffer += decoder.decode(value, { stream: true });
@@ -113,6 +137,10 @@ export function stitchDocumentAndAppStreams(
           }
         }
       } else if (phase === "inner-suspended") {
+        if (innerSuspendedRemains) {
+          controller.enqueue(encoder.encode(innerSuspendedRemains));
+          innerSuspendedRemains = "";
+        }
         const { done, value } = await innerReader.read();
         if (done) {
           phase = "outer-end";
