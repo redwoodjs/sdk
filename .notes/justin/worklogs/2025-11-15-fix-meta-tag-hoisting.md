@@ -120,8 +120,12 @@ The refined solution extracts the tag-hoisting logic into a dedicated utility fu
 
 ### fix(ssr): Ensure hoisted meta tags are correctly placed in document head
 
-During server-side rendering, React's hoisted tags (e.g., `<title>`, `<meta>`) were incorrectly rendered in the `<body>` instead of the document `<head>`. This occurred because the framework's two-stream rendering architecture sent the document shell, including the `<head>`, before the application stream containing the hoisted tags was processed.
+#### Problem
 
-This change introduces a stream-splitting utility, `splitStreamOnFirstNonHoistedTag`, that pre-processes the application's HTML stream. The function separates the stream into two distinct streams: one containing the hoisted tags from the beginning of the stream, and a second containing the remainder of the application body.
+During server-side rendering, React's hoisted tags (e.g., `<title>`, `<meta>`) were incorrectly rendered in the `<body>` instead of the document `<head>`. This occurred because the framework's two-stream rendering architecture sent the document shell, including the `<head>`, before the application stream containing the hoisted tags was processed. While React correctly hoisted the tags to the beginning of the application stream, they arrived too late to be placed in the document head.
 
-The main stream-stitching logic is updated to first exhaust and prepend the hoisted tags stream to the response, ensuring they appear before the `<!DOCTYPE html>` declaration. It then proceeds with the existing logic for interleaving the document and application body streams. This approach isolates the new logic and preserves the integrity of the two-stream architecture, which is necessary for client-side navigation and hydration.
+#### Solution
+
+This change introduces a stream-splitting utility that pre-processes the application's HTML stream. The function separates the stream into two distinct streams: one containing the hoisted tags from the beginning of the stream, and a second containing the remainder of the application body.
+
+The main stream-stitching logic is updated to first exhaust and prepend the hoisted tags stream to the response, ensuring they appear before the `<!DOCTYPE html>` declaration. It then proceeds with the existing logic for interleaving the document and application body streams.
