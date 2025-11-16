@@ -111,7 +111,7 @@
     },
     "./use-synced-state/worker": {
       "types": "./dist/use-synced-state/worker.d.mts",
-      "default": "./dist/use-synced-state/worker.mjs"
+      "workerd": "./dist/use-synced-state/worker.mjs"
     }
   },
   "keywords": [
