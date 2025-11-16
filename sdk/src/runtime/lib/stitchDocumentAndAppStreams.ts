@@ -48,18 +48,12 @@ export function stitchDocumentAndAppStreams(
         const { done, value } = await innerReader.read();
         if (done) {
           if (buffer) {
-            const hoistedEndIndex = buffer.search(
-              /<(?!(?:title|meta|link|style|base)[\s>\/])/i,
+            const hoistedTagsMatch = buffer.match(
+              /^((?:<title[^>]*>.*?<\/title>|<style[^>]*>.*?<\/style>|<meta[^>]*\/?>|<link[^>]*\/?>|<base[^>]*\/?>)+)/is,
             );
-            if (hoistedEndIndex > 0) {
-              hoistedTags = buffer.slice(0, hoistedEndIndex).trim();
-              innerBufferRemains = buffer.slice(hoistedEndIndex);
-            } else if (
-              hoistedEndIndex === -1 &&
-              /^<(?:title|meta|link|style|base)/i.test(buffer.trim())
-            ) {
-              hoistedTags = buffer.trim();
-              innerBufferRemains = "";
+            if (hoistedTagsMatch) {
+              hoistedTags = hoistedTagsMatch[1];
+              innerBufferRemains = buffer.slice(hoistedTagsMatch[0].length);
             } else {
               innerBufferRemains = buffer;
             }
@@ -72,22 +66,34 @@ export function stitchDocumentAndAppStreams(
         } else {
           buffer += decoder.decode(value, { stream: true });
 
-          const nonHoistedTagPattern =
-            /<(?!(?:title|meta|link|style|base)[\s>\/])/i;
-          const nonHoistedIndex = buffer.search(nonHoistedTagPattern);
+          const hoistedTagsMatch = buffer.match(
+            /^((?:<title[^>]*>.*?<\/title>|<style[^>]*>.*?<\/style>|<meta[^>]*\/?>|<link[^>]*\/?>|<base[^>]*\/?>)+)/is,
+          );
 
-          if (nonHoistedIndex > 0) {
-            hoistedTags = buffer.slice(0, nonHoistedIndex).trim();
-            innerBufferRemains = buffer.slice(nonHoistedIndex);
-            buffer = "";
-            if (hoistedTags) {
-              controller.enqueue(encoder.encode(hoistedTags));
+          if (hoistedTagsMatch) {
+            const afterHoisted = buffer.slice(hoistedTagsMatch[0].length);
+            const nonHoistedTag = afterHoisted.match(
+              /^<(?!(?:title|meta|link|style|base)[\s>\/])/i,
+            );
+
+            if (nonHoistedTag || afterHoisted.trim().length === 0) {
+              hoistedTags = hoistedTagsMatch[1];
+              innerBufferRemains = afterHoisted;
+              buffer = "";
+              if (hoistedTags) {
+                controller.enqueue(encoder.encode(hoistedTags));
+              }
+              phase = "outer-head";
             }
-            phase = "outer-head";
-          } else if (nonHoistedIndex === 0) {
-            innerBufferRemains = buffer;
-            buffer = "";
-            phase = "outer-head";
+          } else {
+            const nonHoistedTag = buffer.match(
+              /^<(?!(?:title|meta|link|style|base)[\s>\/])/i,
+            );
+            if (nonHoistedTag) {
+              innerBufferRemains = buffer;
+              buffer = "";
+              phase = "outer-head";
+            }
           }
         }
       } else if (phase === "outer-head") {
