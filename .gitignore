@@ -67,6 +67,9 @@ web_modules/
 
 \*.tsbuildinfo
 
+# Generated worker configuration types (massive auto-generated files in playground examples)
+playground/**/worker-configuration.d.ts
+
 # Optional npm cache directory
 
 .npm
