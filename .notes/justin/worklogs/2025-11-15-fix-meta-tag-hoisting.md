@@ -61,3 +61,22 @@ This idea explores abandoning the two-stream approach in favor of a single, nest
 **Idea 1 (Pre-emptive Stream Parsing)** is the clear path forward. It directly addresses the problem by intercepting the hoisted tags at the only point they are available, while respecting the architectural constraints that make Idea 2 unworkable.
 
 The implementation will involve modifying the `stitchDocumentAndAppStreams` function to include a preliminary parsing step that extracts the meta tags from the beginning of the app stream and prepends them to the final output.
+
+## Implementation
+
+Added a new `extract-hoisted` phase to the `stitchDocumentAndAppStreams` function that runs before the main stitching logic:
+
+1. **Hoisted Tag Extraction:** The function reads from the `innerHtml` stream and buffers chunks until it can identify where hoisted tags end. It uses a regex pattern `/<(?!(?:title|meta|link|style|base)[\s>\/])/i` to find the first tag that is not a hoistable tag (title, meta, link, style, or base).
+
+2. **Tag Storage:** When a non-hoistable tag is found, everything before it is extracted as hoisted tags. The remainder of the buffer (containing the non-hoistable content) is stored in `innerBufferRemains` for use in the subsequent `inner-shell` phase.
+
+3. **Prepending:** The extracted hoisted tags are immediately enqueued to the output stream controller, placing them at the very beginning of the final HTML output (before the `<!DOCTYPE html>` declaration).
+
+4. **Stream Continuation:** The existing stitching logic continues unchanged, but now uses `innerBufferRemains` when entering the `inner-shell` phase to ensure no content is lost or duplicated.
+
+The implementation handles edge cases:
+- Stream ending during extraction (checks if remaining buffer contains hoisted tags)
+- No hoisted tags present (proceeds normally without prepending)
+- Hoisted tags split across multiple chunks (buffers until non-hoistable tag is found)
+
+The regex approach is intentionally simple and focused on identifying where hoisted tags end, rather than trying to parse the exact structure of each tag. This reduces brittleness while still correctly extracting the hoisted content that React places at the start of the app stream.

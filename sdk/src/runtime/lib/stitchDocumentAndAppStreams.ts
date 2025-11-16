@@ -4,11 +4,12 @@
  * race condition in streaming Server-Side Rendering (SSR) with Suspense.
  *
  * The logic is as follows:
- * 1. Stream the document until a start marker is found.
- * 2. Switch to the app stream and stream it until an end marker is found. This is the non-suspended shell.
- * 3. Switch back to the document stream and stream it until the closing body tag. This sends the client script.
- * 4. Switch back to the app stream and stream the remainder (the suspended content).
- * 5. Switch back to the document stream and stream the remainder (closing body and html tags).
+ * 1. Extract hoisted tags (title, meta, link) from the beginning of the app stream.
+ * 2. Stream the document until a start marker is found.
+ * 3. Switch to the app stream and stream it until an end marker is found. This is the non-suspended shell.
+ * 4. Switch back to the document stream and stream it until the closing body tag. This sends the client script.
+ * 5. Switch back to the app stream and stream the remainder (the suspended content).
+ * 6. Switch back to the document stream and stream the remainder (closing body and html tags).
  *
  * @param outerHtml The stream for the document shell (`<Document>`).
  * @param innerHtml The stream for the application's content.
@@ -29,18 +30,67 @@ export function stitchDocumentAndAppStreams(
 
   let buffer = "";
   let outerBufferRemains = "";
+  let hoistedTags = "";
+  let innerBufferRemains = "";
   let phase:
+    | "extract-hoisted"
     | "outer-head"
     | "inner-shell"
     | "outer-tail"
     | "inner-suspended"
-    | "outer-end" = "outer-head";
+    | "outer-end" = "extract-hoisted";
 
   const pump = async (
     controller: ReadableStreamDefaultController<Uint8Array>,
   ): Promise<void> => {
     try {
-      if (phase === "outer-head") {
+      if (phase === "extract-hoisted") {
+        const { done, value } = await innerReader.read();
+        if (done) {
+          if (buffer) {
+            const hoistedEndIndex = buffer.search(
+              /<(?!(?:title|meta|link|style|base)[\s>\/])/i,
+            );
+            if (hoistedEndIndex > 0) {
+              hoistedTags = buffer.slice(0, hoistedEndIndex).trim();
+              innerBufferRemains = buffer.slice(hoistedEndIndex);
+            } else if (
+              hoistedEndIndex === -1 &&
+              /^<(?:title|meta|link|style|base)/i.test(buffer.trim())
+            ) {
+              hoistedTags = buffer.trim();
+              innerBufferRemains = "";
+            } else {
+              innerBufferRemains = buffer;
+            }
+            buffer = "";
+          }
+          if (hoistedTags) {
+            controller.enqueue(encoder.encode(hoistedTags));
+          }
+          phase = "outer-head";
+        } else {
+          buffer += decoder.decode(value, { stream: true });
+
+          const nonHoistedTagPattern =
+            /<(?!(?:title|meta|link|style|base)[\s>\/])/i;
+          const nonHoistedIndex = buffer.search(nonHoistedTagPattern);
+
+          if (nonHoistedIndex > 0) {
+            hoistedTags = buffer.slice(0, nonHoistedIndex).trim();
+            innerBufferRemains = buffer.slice(nonHoistedIndex);
+            buffer = "";
+            if (hoistedTags) {
+              controller.enqueue(encoder.encode(hoistedTags));
+            }
+            phase = "outer-head";
+          } else if (nonHoistedIndex === 0) {
+            innerBufferRemains = buffer;
+            buffer = "";
+            phase = "outer-head";
+          }
+        }
+      } else if (phase === "outer-head") {
         const { done, value } = await outerReader.read();
         if (done) {
           if (buffer) controller.enqueue(encoder.encode(buffer));
@@ -62,6 +112,10 @@ export function stitchDocumentAndAppStreams(
           }
         }
       } else if (phase === "inner-shell") {
+        if (innerBufferRemains) {
+          buffer = innerBufferRemains;
+          innerBufferRemains = "";
+        }
         const { done, value } = await innerReader.read();
         if (done) {
           if (buffer) controller.enqueue(encoder.encode(buffer));
