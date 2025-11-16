@@ -80,3 +80,36 @@ The implementation handles edge cases:
 - Hoisted tags split across multiple chunks (buffers until non-hoistable tag is found)
 
 The regex approach is intentionally simple and focused on identifying where hoisted tags end, rather than trying to parse the exact structure of each tag. This reduces brittleness while still correctly extracting the hoisted content that React places at the start of the app stream.
+
+## Refined Implementation: Stream Splitting
+
+The initial implementation, while functional, added complexity to the core `stitchDocumentAndAppStreams` state machine. A cleaner, more surgical approach was developed to better separate concerns.
+
+The refined solution extracts the tag-hoisting logic into a dedicated utility function, `splitStreamOnFirstNonHoistedTag`, which acts as a pre-processor for the application stream.
+
+### Rationale
+
+1.  **Separation of Concerns:** The primary motivation was to isolate the two distinct responsibilities: extracting hoisted tags and stitching the main document streams. The `splitStreamOnFirstNonHoistedTag` function is now solely responsible for parsing the beginning of the application stream, while `stitchDocumentAndAppStreams` focuses purely on interleaving the document and app body.
+
+2.  **Surgical Change:** This approach avoids complex modifications to the existing, well-tested stitching state machine. Instead of adding a new phase and conditional buffer logic to the main function, we simply pre-process the input stream. This minimizes the risk of introducing regressions into the complex stream-stitching logic.
+
+3.  **Clarity and Maintainability:** The code is now easier to understand and maintain. The stream transformation is explicit and self-contained. Any future logic related to hoisted tags can be managed within the `split...` function without affecting the core stream stitching.
+
+### How It Works
+
+1.  **`splitStreamOnFirstNonHoistedTag(innerHtml)`:**
+    *   This new helper function is called at the beginning of `stitchDocumentAndAppStreams`.
+    *   It takes the original `innerHtml` stream as input.
+    *   It returns a tuple of two new `ReadableStream` instances: `[hoistedTagsStream, appBodyStream]`.
+
+2.  **Stream Processing Logic:**
+    *   The function reads from the source `innerHtml` stream and buffers the initial chunks.
+    *   It uses a regular expression (`/<(?!(?:\/)?(?:title|meta|link|style|base)[\s>\/])(?![!?])/i`) to find the first occurrence of an HTML tag that is **not** a hoistable tag (e.g., `<div>`). This regex correctly handles both opening and closing hoistable tags (like `</title>`).
+    *   All content *before* this marker is piped to the `hoistedTagsStream`. Once the marker is found, this stream is closed.
+    *   The marker itself and all subsequent content from the original stream are piped to the `appBodyStream`.
+
+3.  **Updated Stitching Process:**
+    *   The `stitchDocumentAndAppStreams` function introduces a new initial phase, `"enqueue-hoisted"`.
+    *   In this phase, it reads everything from the `hoistedTagsStream` and immediately enqueues it to the final output. This places the hoisted tags at the very beginning of the response.
+    *   Once the `hoistedTagsStream` is fully consumed, the function transitions to the `"outer-head"` phase.
+    *   The rest of the state machine proceeds exactly as it did before, but it now uses the `appBodyStream` as its source for the application content.
