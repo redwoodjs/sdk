@@ -1,5 +1,5 @@
-import { React } from "../runtime/client/client";
-import { getSyncedStateClient } from "./client";
+import { React } from "../runtime/client/client.js";
+import { getSyncedStateClient } from "./client-core.js";
 import { DEFAULT_SYNCED_STATE_PATH } from "./constants.mjs";
 
 type HookDeps = {

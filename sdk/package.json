@@ -157,7 +157,6 @@
     "@types/react-dom": "~19.1.2",
     "@types/react-is": "~19.0.0",
     "@vitejs/plugin-react": "~5.0.0",
-    "capnweb": "~0.2.0",
     "chokidar": "~4.0.0",
     "debug": "~4.4.0",
     "decompress": "~4.2.1",
@@ -187,6 +186,7 @@
   },
   "peerDependencies": {
     "@cloudflare/vite-plugin": "^1.13.10",
+    "capnweb": "~0.2.0",
     "react": ">=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0",
     "react-dom": ">=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0",
     "react-server-dom-webpack": ">=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0",
@@ -196,6 +196,7 @@
   "packageManager": "pnpm@10.0.0+sha512.b8fef5494bd3fe4cbd4edabd0745df2ee5be3e4b0b8b08fa643aa3e4c6702ccc0f00d68fa8a8c9858a735a0032485a44990ed2810526c875e416f001b17df12b",
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.13.3",
+    "capnweb": "~0.2.0",
     "@types/debug": "~4.1.12",
     "@types/js-beautify": "~1.14.3",
     "@types/lodash": "~4.17.16",
