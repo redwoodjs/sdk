@@ -1,4 +1,4 @@
-import { React } from "../runtime/client/client.js";
+import React from "react";
 import { getSyncedStateClient } from "./client-core.js";
 import { DEFAULT_SYNCED_STATE_PATH } from "./constants.mjs";
 
