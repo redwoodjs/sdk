@@ -121,28 +121,6 @@ export const ssrBridgePlugin = ({
         // SSR modules, so we return the virtual id so that the dynamic loading
         // can happen in load()
         if (id.startsWith(VIRTUAL_SSR_PREFIX)) {
-          try {
-            const realId = id.slice(VIRTUAL_SSR_PREFIX.length);
-            const resolved =
-              await devServer.environments.ssr.pluginContainer.resolveId(
-                realId,
-                importer,
-              );
-
-            if (resolved?.external) {
-              log(
-                "Propagating external module from ssr to worker: %s",
-                resolved.id,
-              );
-              return { id: resolved.id, external: true };
-            }
-          } catch (e) {
-            log(
-              "Failed to resolve module in ssr environment, falling back. Error: %s",
-              e,
-            );
-          }
-
           if (id.endsWith(".css")) {
             const newId = id + ".js";
             log(
