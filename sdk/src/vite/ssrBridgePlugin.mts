@@ -2,6 +2,7 @@ import debug from "debug";
 import MagicString from "magic-string";
 import type { Plugin, ViteDevServer } from "vite";
 import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
+import { externalModulesSet } from "./constants.mjs";
 import { findSsrImportCallSites } from "./findSsrSpecifiers.mjs";
 
 const log = debug("rwsdk:vite:ssr-bridge-plugin");
@@ -289,6 +290,16 @@ export const ssrBridgePlugin = ({
                 const normalized = site.specifier.startsWith("/@id/")
                   ? site.specifier.slice("/@id/".length)
                   : site.specifier;
+
+                // If the import is for a known external module, we must leave it
+                // as a bare specifier. Rewriting it with any prefix (`/@id/` or
+                // our virtual one) will break Vite's default externalization.
+                if (externalModulesSet.has(normalized)) {
+                  const replacement = `import("${normalized}")`;
+                  s.overwrite(site.start, site.end, replacement);
+                  continue;
+                }
+
                 // context(justinvdm, 11 Aug 2025):
                 // - We replace __vite_ssr_import__ and __vite_ssr_dynamic_import__
                 //   with import() calls so that the module graph can be built
