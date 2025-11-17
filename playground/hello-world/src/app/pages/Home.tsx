@@ -1,5 +1,5 @@
-"use client";
+import { RequestInfo } from "rwsdk/worker";
 
-export function Home() {
+export function Home({ ctx }: RequestInfo) {
   return <div>Hello World</div>;
 }
