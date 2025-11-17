@@ -45,22 +45,36 @@ In parallel, the document shell is rendered in its own isolated context.
 1.  **True Server Component `Document`**: The user-defined `<Document>` is rendered as a true Server Component, allowing developers to use `async/await` and other server-only features.
 2.  **RSC and SSR Render**: The `<Document>` component is also rendered through the same two-phase RSC-then-SSR process to produce a complete HTML stream for the document shell, containing a unique placeholder for the application content.
 
-#### Final Composition: Suspense-Aware Stream Stitching
+#### Final Composition: Advanced Stream Stitching
 
-The final and most critical step is to combine the document and application HTML streams into a single response. A simple injection is insufficient because a `<Suspense>` boundary in the application could pause its stream, blocking the rest of the document (including the client script) from being sent.
+The final step is to combine the document and application HTML streams into a single, valid HTML response. This process must solve two critical challenges:
 
-To solve this, the framework uses a "Suspense-Aware Stream Stitching" strategy that interleaves the two streams based on explicit markers that are guaranteed to be consistent between the server render and the client RSC payload.
+1.  **Non-Blocking Hydration:** A `<Suspense>` boundary in the application could pause its HTML stream. A naive stitching approach would block the rest of the document, including the client-side `<script>` tags, from being sent, defeating the purpose of streaming.
+2.  **Meta Tag Hoisting:** React components can declare `<title>` and `<meta>` tags. React correctly hoists these to the beginning of the application's HTML stream. However, by the time this stream is processed, the document's `<head>` has often already been sent to the browser, causing the tags to be incorrectly placed in the `<body>`.
 
-1.  **Marker Injection into the RSC Payload:** The key to this strategy is injecting markers into the React Server Component (RSC) payload itself. Before the application is rendered to an RSC stream in the worker, it is wrapped in markers (e.g., `<div id="rwsdk-app-start" />` and `<div id="rwsdk-app-end" />`). Because these markers are now part of the component tree in the RSC payload, they are guaranteed to exist and be identical in both the server-rendered HTML and the client-side render tree, preventing any structural mismatches that would break hydration.
+To solve both, the framework uses a multi-phase stream interleaving strategy, orchestrated by a dedicated utility.
 
-2.  **Stream Interleaving:** A dedicated utility orchestrates the final response stream with the following logic:
-    *   **Step 1: Stream Document Head:** The document stream is sent until the start marker (`<div id="rwsdk-app-start"></div>`) is found and discarded.
-    *   **Step 2: Stream Initial App Shell:** The process switches to the application stream and sends chunks until it finds the end marker (`<div id="rwsdk-app-end"></div>`). This represents the complete, non-suspended UI. This marker is left in the stream to ensure the client sees the exact same DOM structure.
-    *   **Step 3: Stream Document Body Tail:** The process switches back to the document stream to send the remainder of the body, which critically includes the client-side script tag that initiates hydration.
-    *   **Step 4: Stream Suspended Content:** The process switches back to the application stream and sends all remaining chunks. This is the content from any `<Suspense>` boundaries that have now resolved.
-    *   **Step 5: Finish Document:** Finally, the process returns to the document stream to send the closing `</body>` and `</html>` tags.
+**1. Application Stream Pre-processing**
 
-This interleaving process guarantees that the browser receives the static HTML and the script needed to make it interactive as quickly as possible, fulfilling the promise of a non-blocking, streaming-first architecture.
+Before stitching begins, the application HTML stream is pre-processed. The utility reads from the start of the stream to isolate the block of hoisted tags (`<title>`, `<meta>`, etc.) that React places at the beginning. The stream is effectively split into two new virtual streams: one containing only the hoisted tags, and a second containing the rest of the application body.
+
+**2. Multi-Phase Interleaving**
+
+The utility then proceeds through a series of phases to construct the final HTML:
+
+*   **Phase 1: Stream Document Head & Inject Hoisted Tags:** The process begins by streaming the document shell. It reads until it finds the closing `</head>` tag. It sends the document content *up to* that point, then injects the complete block of hoisted tags, and finally sends the `</head>` tag. This ensures all meta tags are correctly placed within the head, after any content defined in the server-side `Document` component.
+
+*   **Phase 2: Stream Remainder of Document up to App Marker:** The process continues reading the document stream until it finds the application start marker (`<div id="rwsdk-app-start" />`). This part of the document typically contains the opening `<body>` tag. The marker itself is discarded.
+
+*   **Phase 3: Stream Initial App Shell:** The process switches to the application body stream and sends chunks until it finds the end marker (`<div id="rwsdk-app-end" />`). This represents the complete, non-suspended UI. This marker is left in the stream to ensure the client-side render tree matches the server-rendered DOM structure, preventing hydration errors.
+
+*   **Phase 4: Stream Document Body Tail:** The process switches back to the document stream to send the remainder of the body. This is a critical step, as this section contains the client-side `<script>` tag that initiates hydration.
+
+*   **Phase 5: Stream Suspended Content:** The process switches back to the application body stream for the final time and sends all remaining chunks. This is the content from any `<Suspense>` boundaries that have now resolved on the server.
+
+*   **Phase 6: Finish Document:** Finally, the process returns to the document stream to send any remaining content, typically the closing `</body>` and `</html>` tags.
+
+This precise interleaving process guarantees that the doctype is sent first, hoisted tags are correctly placed in the head, and the browser receives the static HTML and the script needed to make it interactive as quickly as possible, fulfilling the promise of a non-blocking, SEO-friendly, streaming-first architecture.
 
 #### Client-Side Hydration
 

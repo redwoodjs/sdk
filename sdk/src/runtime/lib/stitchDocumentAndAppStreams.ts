@@ -123,6 +123,72 @@ function splitStreamOnFirstNonHoistedTag(
   return [hoistedTagsStream, appBodyStream];
 }
 
+/**
+ * A utility that orchestrates and interleaves three ReadableStreams to produce a
+ * single, valid HTML response stream. It uses two special markers:
+ *
+ * - `startMarker`: Placed in the `outerHtml` stream (the document shell) to
+ *   designate where the application's content should be injected.
+ * - `endMarker`: Injected into the `innerHtml` stream's RSC payload to signal
+ *   the end of the initial, non-suspended render. This marker is needed for
+ *   non-blocking hydration, as it allows the stitching process to send the
+ *   client `<script>` tags before all suspended content has resolved.
+ *
+ * It manages three main stream readers:
+ *
+ * - `hoistedTagsReader`: Reads from the `hoistedTagsStream`, which contains only
+ *   the hoisted meta tags (e.g., `<title>`, `<meta>`).
+ * - `outerReader`: Reads from the `outerHtml` stream, which is the server-rendered
+ *   document shell (containing `<html>`, `<head>`, etc.).
+ * - `innerReader`: Reads from the `appBodyStream`, which contains the main
+ *   application content, stripped of its hoisted tags.
+ *
+ * The function proceeds through a multi-phase state machine, managed by the
+ * `pump` function, to correctly interleave these streams.
+ *
+ * The state machine moves through the following phases:
+ *
+ * 1. `read-hoisted`:
+ *    - **Goal:** Buffer all hoisted tags from the `hoistedTagsStream`.
+ *    - **Action:** Reads from `hoistedTagsReader` and appends all content into
+ *      the `hoistedTagsBuffer`. Does not enqueue anything yet.
+ *    - **Transition:** Moves to `outer-head` when the stream is exhausted.
+ *
+ * 2. `outer-head`:
+ *    - **Goal:** Stream the document up to the closing `</head>` tag, inject the
+ *      hoisted tags, and then continue until the app `startMarker`.
+ *    - **Action:** Reads from `outerReader`. When it finds `</head>`, it enqueues
+ *      the content before it, then enqueues the `hoistedTagsBuffer`, and finally
+ *      enqueues the `</head>` tag itself. It then continues reading from
+ *      `outerReader` until it finds the `startMarker`.
+ *    - **Transition:** Moves to `inner-shell` after finding and discarding the
+ *      `startMarker`.
+ *
+ * 3. `inner-shell`:
+ *    - **Goal:** Stream the initial, non-suspended part of the application.
+ *    - **Action:** Switches to `innerReader`. It enqueues chunks until it finds
+ *      the `endMarker`. Any content after the marker is stored in
+ *      `innerSuspendedRemains`.
+ *    - **Transition:** Moves to `outer-tail` after finding the `endMarker`.
+ *
+ * 4. `outer-tail`:
+ *    - **Goal:** Stream the rest of the document's `<body>`, including client
+ *      `<script>` tags.
+ *    - **Action:** Switches back to `outerReader` and enqueues chunks until it
+ *      finds the `</body>` tag.
+ *    - **Transition:** Moves to `inner-suspended` after finding `</body>`.
+ *
+ * 5. `inner-suspended`:
+ *    - **Goal:** Stream any suspended content from the React app.
+ *    - **Action:** First enqueues any content from `innerSuspendedRemains`, then
+ *      continues reading from `innerReader` until the stream is exhausted.
+ *    - **Transition:** Moves to `outer-end` when the stream is exhausted.
+ *
+ * 6. `outer-end`:
+ *    - **Goal:** Finish the document.
+ *    - **Action:** Switches back to `outerReader` for the last time to send the
+ *      closing `</body>` and `</html>` tags.
+ */
 export function stitchDocumentAndAppStreams(
   outerHtml: ReadableStream<Uint8Array>,
   innerHtml: ReadableStream<Uint8Array>,
@@ -155,8 +221,24 @@ export function stitchDocumentAndAppStreams(
   const pump = async (
     controller: ReadableStreamDefaultController<Uint8Array>,
   ): Promise<void> => {
+    const enqueue = (text: string) => {
+      if (text) {
+        controller.enqueue(encoder.encode(text));
+      }
+    };
+
+    const flush = () => {
+      const flushIndex = buffer.lastIndexOf("\n");
+      if (flushIndex !== -1) {
+        enqueue(buffer.slice(0, flushIndex + 1));
+        buffer = buffer.slice(flushIndex + 1);
+      }
+    };
+
     try {
       if (phase === "read-hoisted") {
+        // Continuously read from the hoisted tags stream and buffer the
+        // content. Once the stream is finished, transition to the next phase.
         const { done, value } = await hoistedTagsReader.read();
         if (done) {
           hoistedTagsReady = true;
@@ -165,6 +247,10 @@ export function stitchDocumentAndAppStreams(
           hoistedTagsBuffer += decoder.decode(value, { stream: true });
         }
       } else if (phase === "outer-head") {
+        // Read from the document stream. Search for the closing `</head>` tag
+        // to inject the buffered hoisted tags. Then, search for the
+        // `startMarker` to know when to start injecting the app shell. Once
+        // the marker is found, transition to the next phase.
         const { done, value } = await outerReader.read();
         if (done) {
           if (buffer) {
@@ -174,27 +260,25 @@ export function stitchDocumentAndAppStreams(
               hoistedTagsReady &&
               hoistedTagsBuffer
             ) {
-              controller.enqueue(
-                encoder.encode(buffer.slice(0, headCloseIndex)),
-              );
-              controller.enqueue(encoder.encode(hoistedTagsBuffer));
+              enqueue(buffer.slice(0, headCloseIndex));
+              enqueue(hoistedTagsBuffer);
               hoistedTagsBuffer = "";
-              controller.enqueue(encoder.encode("</head>"));
+              enqueue("</head>");
               buffer = buffer.slice(headCloseIndex + "</head>".length);
             }
 
             const markerIndex = buffer.indexOf(startMarker);
             if (markerIndex !== -1) {
-              controller.enqueue(encoder.encode(buffer.slice(0, markerIndex)));
+              enqueue(buffer.slice(0, markerIndex));
               outerBufferRemains = buffer.slice(
                 markerIndex + startMarker.length,
               );
             } else {
-              controller.enqueue(encoder.encode(buffer));
+              enqueue(buffer);
             }
             buffer = "";
           } else if (hoistedTagsReady && hoistedTagsBuffer) {
-            controller.enqueue(encoder.encode(hoistedTagsBuffer));
+            enqueue(hoistedTagsBuffer);
             hoistedTagsBuffer = "";
           }
           phase = "inner-shell";
@@ -203,56 +287,50 @@ export function stitchDocumentAndAppStreams(
 
           const headCloseIndex = buffer.indexOf("</head>");
           if (headCloseIndex !== -1 && hoistedTagsReady && hoistedTagsBuffer) {
-            controller.enqueue(encoder.encode(buffer.slice(0, headCloseIndex)));
-            controller.enqueue(encoder.encode(hoistedTagsBuffer));
+            enqueue(buffer.slice(0, headCloseIndex));
+            enqueue(hoistedTagsBuffer);
             hoistedTagsBuffer = "";
-            controller.enqueue(encoder.encode("</head>"));
+            enqueue("</head>");
             buffer = buffer.slice(headCloseIndex + "</head>".length);
           }
 
           const markerIndex = buffer.indexOf(startMarker);
           if (markerIndex !== -1) {
-            controller.enqueue(encoder.encode(buffer.slice(0, markerIndex)));
+            enqueue(buffer.slice(0, markerIndex));
             outerBufferRemains = buffer.slice(markerIndex + startMarker.length);
             buffer = "";
             phase = "inner-shell";
           } else {
-            const flushIndex = buffer.lastIndexOf("\n");
-            if (flushIndex !== -1) {
-              controller.enqueue(
-                encoder.encode(buffer.slice(0, flushIndex + 1)),
-              );
-              buffer = buffer.slice(flushIndex + 1);
-            }
+            flush();
           }
         }
       } else if (phase === "inner-shell") {
+        // Now read from the app stream. We send the initial part of the app
+        // content until we find the `endMarker`. This marker tells us that the
+        // non-suspended part of the app is rendered. Any content after this
+        // marker is considered suspended and is buffered. Then, transition.
         const { done, value } = await innerReader.read();
         if (done) {
-          if (buffer) controller.enqueue(encoder.encode(buffer));
+          if (buffer) enqueue(buffer);
           phase = "outer-tail";
         } else {
           buffer += decoder.decode(value, { stream: true });
           const markerIndex = buffer.indexOf(endMarker);
           if (markerIndex !== -1) {
             const endOfMarkerIndex = markerIndex + endMarker.length;
-            controller.enqueue(
-              encoder.encode(buffer.slice(0, endOfMarkerIndex)),
-            );
+            enqueue(buffer.slice(0, endOfMarkerIndex));
             innerSuspendedRemains = buffer.slice(endOfMarkerIndex);
             buffer = "";
             phase = "outer-tail";
           } else {
-            const flushIndex = buffer.lastIndexOf("\n");
-            if (flushIndex !== -1) {
-              controller.enqueue(
-                encoder.encode(buffer.slice(0, flushIndex + 1)),
-              );
-              buffer = buffer.slice(flushIndex + 1);
-            }
+            flush();
           }
         }
       } else if (phase === "outer-tail") {
+        // Switch back to the document stream. The goal is to send the rest of
+        // the document's body, which critically includes the client-side
+        // `<script>` tags for hydration. We stream until we find the closing
+        // `</body>` tag and then transition.
         if (outerBufferRemains) {
           buffer = outerBufferRemains;
           outerBufferRemains = "";
@@ -262,10 +340,10 @@ export function stitchDocumentAndAppStreams(
           if (buffer) {
             const markerIndex = buffer.indexOf("</body>");
             if (markerIndex !== -1) {
-              controller.enqueue(encoder.encode(buffer.slice(0, markerIndex)));
+              enqueue(buffer.slice(0, markerIndex));
               buffer = buffer.slice(markerIndex);
             } else {
-              controller.enqueue(encoder.encode(buffer));
+              enqueue(buffer);
               buffer = "";
             }
           }
@@ -274,22 +352,20 @@ export function stitchDocumentAndAppStreams(
           buffer += decoder.decode(value, { stream: true });
           const markerIndex = buffer.indexOf("</body>");
           if (markerIndex !== -1) {
-            controller.enqueue(encoder.encode(buffer.slice(0, markerIndex)));
+            enqueue(buffer.slice(0, markerIndex));
             buffer = buffer.slice(markerIndex);
             phase = "inner-suspended";
           } else {
-            const flushIndex = buffer.lastIndexOf("\n");
-            if (flushIndex !== -1) {
-              controller.enqueue(
-                encoder.encode(buffer.slice(0, flushIndex + 1)),
-              );
-              buffer = buffer.slice(flushIndex + 1);
-            }
+            flush();
           }
         }
       } else if (phase === "inner-suspended") {
+        // Switch back to the app stream. First, send any buffered suspended
+        // content from the `inner-shell` phase. Then, stream the rest of the
+        // app content until it's finished. This is all the content that was
+        // behind a `<Suspense>` boundary.
         if (innerSuspendedRemains) {
-          controller.enqueue(encoder.encode(innerSuspendedRemains));
+          enqueue(innerSuspendedRemains);
           innerSuspendedRemains = "";
         }
         const { done, value } = await innerReader.read();
@@ -299,8 +375,10 @@ export function stitchDocumentAndAppStreams(
           controller.enqueue(value);
         }
       } else if (phase === "outer-end") {
+        // Finally, switch back to the document stream one last time to send
+        // the closing `</body>` and `</html>` tags and finish the response.
         if (buffer) {
-          controller.enqueue(encoder.encode(buffer));
+          enqueue(buffer);
           buffer = "";
         }
         const { done, value } = await outerReader.read();
