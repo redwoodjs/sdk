@@ -19,9 +19,16 @@ import {
   SqlToTsType,
 } from "../utils";
 import { AlterColumnBuilderCallback } from "./alterColumn";
-import { ColumnDefinitionBuilder } from "./columnDefinition";
+import { ColumnDefinitionBuilder, ColumnDescriptor } from "./columnDefinition";
 
 type DataTypeExpression = string | typeof sql;
+
+type InitialDescriptor<TType> = {
+  tsType: TType;
+  isNullable: true;
+  hasDefault: false;
+  isAutoIncrement: false;
+};
 
 type MapAlterationToSchema<
   K extends string,
@@ -78,10 +85,21 @@ export interface AlterTableBuilder<
   addColumn<K extends string, T extends DataTypeExpression>(
     name: K,
     type: T,
-    build?: (
-      col: ColumnDefinitionBuilder<SqlToTsType<T>>,
-    ) => ColumnDefinitionBuilder<SqlToTsType<T>>,
-  ): AlterTableBuilder<TName, [...TOps, AddColumnOp<K, T>]>;
+  ): AlterTableBuilder<
+    TName,
+    [...TOps, AddColumnOp<K, T, InitialDescriptor<SqlToTsType<T>>>]
+  >;
+  addColumn<
+    K extends string,
+    T extends DataTypeExpression,
+    TDescriptor extends ColumnDescriptor,
+  >(
+    name: K,
+    type: T,
+    build: (
+      col: ColumnDefinitionBuilder<InitialDescriptor<SqlToTsType<T>>>,
+    ) => ColumnDefinitionBuilder<TDescriptor>,
+  ): AlterTableBuilder<TName, [...TOps, AddColumnOp<K, T, TDescriptor>]>;
   dropColumn<K extends string>(
     name: K,
   ): AlterTableBuilder<TName, [...TOps, DropColumnOp<K>]>;
@@ -99,13 +117,17 @@ export interface AlterTableBuilder<
     TName,
     [...TOps, AlterColumnOp<K, ReturnType<TCallback>["__alteration"]>]
   >;
-  modifyColumn<K extends string, T extends DataTypeExpression>(
+  modifyColumn<
+    K extends string,
+    T extends DataTypeExpression,
+    TDescriptor extends ColumnDescriptor,
+  >(
     column: K,
     type: T,
     build?: (
-      col: ColumnDefinitionBuilder<SqlToTsType<T>>,
-    ) => ColumnDefinitionBuilder<SqlToTsType<T>>,
-  ): AlterTableBuilder<TName, [...TOps, ModifyColumnOp<K, T>]>;
+      col: ColumnDefinitionBuilder<InitialDescriptor<SqlToTsType<T>>>,
+    ) => ColumnDefinitionBuilder<TDescriptor>,
+  ): AlterTableBuilder<TName, [...TOps, ModifyColumnOp<K, T, TDescriptor>]>;
   addUniqueConstraint(
     constraintName: string,
     columns: string[],

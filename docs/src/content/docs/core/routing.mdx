@@ -14,14 +14,18 @@ import { env } from "cloudflare:workers";
 
 export default defineApp([
   // Middleware
-  function middleware({ request, ctx }) { /* Modify context */ },
-  function middleware({ request, ctx }) { /* Modify context */ },
+  function middleware({ request, ctx }) {
+    /* Modify context */
+  },
+  function middleware({ request, ctx }) {
+    /* Modify context */
+  },
   // Request Handlers
   route("/", function handler({ request, ctx }) {
-    return new Response("Hello, world!")
+    return new Response("Hello, world!");
   }),
   route("/ping", function handler({ request, ctx }) {
-    return new Response("Pong!")
+    return new Response("Pong!");
   }),
   route("/api/users", {
     get: () => new Response(JSON.stringify(users)),
@@ -43,14 +47,13 @@ Routes are matched in the order they are defined. You define routes using the `r
 ```tsx title="src/worker.tsx" mark={4}
 import { route } from "rwsdk/router";
 
-defineApp([
-  route("/match-this", () => new Response("Hello, world!"))
-])
+defineApp([route("/match-this", () => new Response("Hello, world!"))]);
 ```
 
 ---
 
 `route` parameters:
+
 1. The matching pattern string
 2. The request handler function
 
@@ -99,12 +102,12 @@ import { route } from "rwsdk/router";
 
 defineApp([
   route("/a-standard-response", ({ request, params, ctx }) => {
-    return new Response("Hello, world!")
+    return new Response("Hello, world!");
   }),
-  route('/a-jsx-response', () => {
-    return <div>Hello, JSX world!</div>
+  route("/a-jsx-response", () => {
+    return <div>Hello, JSX world!</div>;
   }),
-])
+]);
 ```
 
 ---
@@ -112,6 +115,7 @@ defineApp([
 The request handler function takes a [RequestInfo](#request-info) object as its parameter.
 
 Return values:
+
 - `Response`: A standard response object.
 - `JSX`: A React component, which is statically rendered to HTML on the server, streamed to the client, and then hydrated on the client side.
 
@@ -173,6 +177,7 @@ route("/api/users", {
   head: getHandler, // Explicitly reuse handler
 });
 ```
+
 </Aside>
 
 ---
@@ -189,13 +194,11 @@ import { EditBlogPage } from "src/pages/blog/EditBlogPage";
 function isAuthenticated({ request, ctx }) {
   // Ensure that this user is authenticated
   if (!ctx.user) {
-    return new Response("Unauthorized", { status: 401 })
+    return new Response("Unauthorized", { status: 401 });
   }
 }
 
-defineApp([
-  route("/blog/:slug/edit", [isAuthenticated, EditBlogPage])
-])
+defineApp([route("/blog/:slug/edit", [isAuthenticated, EditBlogPage])]);
 ```
 
 ---
@@ -211,9 +214,9 @@ The context object (`ctx`) is a mutable object that is passed to each request ha
 Middleware runs before the request is matched to a route. You can specify multiple middleware functions, they'll be executed in the order they are defined.
 
 <Aside type="note" title="Server Actions">
-  Requests made by Server Actions also pass through the middleware pipeline. This
-  means you can rely on middleware to populate context or perform checks for your
-  actions, just as you would for page requests.
+  Requests made by Server Actions also pass through the middleware pipeline.
+  This means you can rely on middleware to populate context or perform checks
+  for your actions, just as you would for page requests.
 </Aside>
 
 ```tsx title="src/worker.tsx" mark={5-10}
@@ -248,8 +251,9 @@ The context object:
 1. `sessionMiddleware` is a function that is used to populate the `ctx.session` object
 2. `getUserMiddleware` is a middleware function that is used to populate the `ctx.user` object
 3. `"/hello"` is a an array of route handlers that are executed when "/hello" is matched:
-  - if the user is not authenticated the request will be interrupted and a 401 Unauthorized response will be returned
-  - if the user is authenticated the request will be passed to the next request handler and `"Hello {ctx.user.username}!"` will be returned
+
+- if the user is not authenticated the request will be interrupted and a 401 Unauthorized response will be returned
+- if the user is authenticated the request will be passed to the next request handler and `"Hello {ctx.user.username}!"` will be returned
 
 ---
 
@@ -264,9 +268,7 @@ import { route, render } from "rwsdk/router";
 import { Document } from "@/pages/Document";
 import { HomePage } from "@/pages/HomePage";
 
-export default defineApp([
-  render(Document, [route("/", HomePage)])
-]);
+export default defineApp([render(Document, [route("/", HomePage)])]);
 ```
 
 ---
@@ -274,8 +276,9 @@ export default defineApp([
 The `render` function takes a React component and an array of route handlers. The document will be applied to all the routes that are passed to it.
 
 This component will be rendered on the server side when the page loads. When defining this component, you'd add:
-* Your application's stylesheets and scripts
-* A mount point for your page content (`id="root"` in the code below): this is where your actual page will be rendered - the "dynamic stuff" which updates using React Server Components.
+
+- Your application's stylesheets and scripts
+- A mount point for your page content (`id="root"` in the code below): this is where your actual page will be rendered - the "dynamic stuff" which updates using React Server Components.
 
 ---
 
@@ -330,11 +333,11 @@ import { route } from "rwsdk/router";
 const NotFound = () => <div>Not Found</div>;
 
 export default defineApp([
-  route('/some-resource', async () => {
+  route("/some-resource", async () => {
     // some logic to determine if the resource is not found
-    
+
     response.status = 404;
-    response.headers.set('Cache-Control', 'no-store');
+    response.headers.set("Cache-Control", "no-store");
 
     return <NotFound />;
   }),
@@ -345,77 +348,14 @@ export default defineApp([
 
 ## Generating Links
 
-While `route` handles incoming requests, `defineLinks` is used to generate the URLs for those routes. This function can be used in both server and client components to create type-safe links (e.g., in `<a>` tags or for programmatic navigation), helping prevent typos and providing compile-time errors for invalid routes.
-
-First, define all your application's routes in a shared file:
+Use `linkFor` to derive a strongly typed helper from your `defineApp` export. The helper works anywhere you can import types, including client code, because the call only depends on the app type.
 
 ```ts title="src/app/shared/links.ts"
-import { defineLinks } from "rwsdk/router";
+import { linkFor } from "rwsdk/router";
 
-export const link = defineLinks([
-  "/",
-  "/about",
-  "/users/:id",
-  "/files/*"
-]);
+type App = typeof import("../../worker").default;
+
+export const link = linkFor<App>();
 ```
 
-<Aside type="note">
-  It is a good practice to keep your link definitions in a file that is shared between your server and client code.
-</Aside>
-
-Now you can import and use the `link` function throughout your application to generate URLs.
-
-### Type Safety
-
-`defineLinks` creates a strongly-typed function. If you attempt to generate a URL for a route that was not included in the initial array, TypeScript will raise a compile-time error.
-
-```tsx
-import { link } from "@/app/shared/links";
-
-function MyComponent() {
-  return (
-    <nav>
-      <a href={link("/")}>Home</a>
-      <a href={link("/about")}>About</a>
-      {/* ❌ TypeScript Error! '/contakt' is not a valid route. */}
-      <a href={link("/contakt")}>Contact</a>
-    </nav>
-  )
-}
-```
-
-### Dynamic Parameters
-
-The generated function also handles dynamic parameters for you.
-
-For named parameters, pass an object with keys matching the parameter names:
-
-```ts
-// Generates: /users/123
-link("/users/:id", { id: "123" });
-```
-
-For wildcard parameters, use special keys `$0`, `$1`, and so on, corresponding to the wildcards (`*`) in the route from left to right.
-
-```ts
-// Generates: /files/documents/report.pdf
-link("/files/*", { $0: "documents/report.pdf" });
-```
-
-### API Reference
-
-#### `defineLinks(routes): function`
-Takes an array of route patterns and returns a type-safe link-generating function.
-
--   **routes**: `string[]` - An array of route pattern strings.
-
-The returned function has the following signature:
-
-#### `link(path[, params]): string`
-Generates a URL string for a given path, interpolating any dynamic parameters.
-
--   **path**: `string` - A route pattern from the original `routes` array.
--   **params** (optional): `Record<string, string>` - An object for dynamic segments.
-    -   For named parameters (e.g., `/users/:id`), the key should match the parameter name (e.g., `{ id: '123' }`).
-    -   For wildcard parameters (e.g., `/files/*`), keys should be `$0`, `$1`, etc., for each `*` from left to right (e.g., `{ $0: 'image.jpg' }`).
+`linkFor` exposes the full set of routes discovered inside `defineApp`. TypeScript verifies that the path you pass exists and that you provide the required parameters. The `typeof import("../../worker").default` pattern keeps the reference type-only, so bundlers do not include the worker code in client bundles.

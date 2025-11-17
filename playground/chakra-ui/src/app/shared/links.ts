@@ -1,3 +1,5 @@
-import { defineLinks } from "rwsdk/router";
+import { linkFor } from "rwsdk/router";
 
-export const link = defineLinks(["/"]);
+type App = typeof import("../../worker").default;
+
+export const link = linkFor<App>();

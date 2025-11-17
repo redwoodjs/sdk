@@ -3,3 +3,5 @@ export type Equal<X, Y> =
     ? true
     : false;
 export type Expect<T extends true> = T;
+
+export type OmitInternals<T> = Omit<T, "__kyselySchema">;

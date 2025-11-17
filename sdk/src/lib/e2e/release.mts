@@ -343,10 +343,17 @@ export async function runRelease(
     // Extract worker name from directory name to ensure consistency
     const dirName = cwd ? basename(cwd) : "unknown-worker";
 
+    // Extract hash part from resourceUniqueKey for matching
+    // resourceUniqueKey format is typically "adjective-animal-hash" or just "hash"
+    const hashPart = resourceUniqueKey.includes("-")
+      ? resourceUniqueKey.split("-").pop() || resourceUniqueKey.substring(0, 8)
+      : resourceUniqueKey.substring(0, 8);
+    const uniqueKeyForMatching = hashPart.substring(0, 8);
+
     // Ensure resource unique key is included in worker name for tracking
-    if (resourceUniqueKey && !dirName.includes(resourceUniqueKey)) {
+    if (resourceUniqueKey && !dirName.includes(uniqueKeyForMatching)) {
       log(
-        `Worker name doesn't contain our unique key, this is unexpected: ${dirName}, key: ${resourceUniqueKey}`,
+        `Worker name doesn't contain our unique key, this is unexpected: ${dirName}, key: ${uniqueKeyForMatching}`,
       );
       console.log(
         `⚠️ Worker name doesn't contain our unique key. This might cause cleanup issues.`,
@@ -512,12 +519,19 @@ export async function runRelease(
 /**
  * Check if a resource name includes a specific resource unique key
  * This is used to identify resources created during our tests
+ * Handles both full format (adjective-animal-hash) and hash-only format
  */
 export function isRelatedToTest(
   resourceName: string,
   resourceUniqueKey: string,
 ): boolean {
-  return resourceName.includes(resourceUniqueKey);
+  // Extract hash part if resourceUniqueKey contains dashes (full format)
+  // Otherwise use as-is (hash-only format)
+  const hashPart = resourceUniqueKey.includes("-")
+    ? resourceUniqueKey.split("-").pop() || resourceUniqueKey.substring(0, 8)
+    : resourceUniqueKey;
+  const uniqueKeyForMatching = hashPart.substring(0, 8);
+  return resourceName.includes(uniqueKeyForMatching);
 }
 
 /**

@@ -1,113 +1,163 @@
-// Type that parses a route string into parameter types
-type ParseRoute<T extends string> =
-  T extends `${infer Start}:${infer Param}/${infer Rest}`
-    ? { [K in Param]: string } & ParseRoute<Rest>
-    : T extends `${infer Start}:${infer Param}`
+import type {
+  Route,
+  RouteDefinition,
+  RouteMiddleware,
+} from "./router";
+
+type PathParams<Path extends string> =
+  Path extends `${string}:${infer Param}/${infer Rest}`
+    ? { [K in Param]: string } & PathParams<Rest>
+    : Path extends `${string}:${infer Param}`
       ? { [K in Param]: string }
-      : T extends `${infer Start}*${infer Rest}`
-        ? { $0: string } & ParseRoute<Rest>
-        : T extends `${infer Start}*`
+      : Path extends `${string}*${infer Rest}`
+        ? { $0: string } & PathParams<Rest>
+        : Path extends `${string}*`
           ? { $0: string }
           : {};
 
-// Helper type to count stars in a string
-type CountStars<T extends string> = T extends `${infer Start}*${infer Rest}`
-  ? { $0: string } & ShiftIndices<CountStars<Rest>>
-  : {};
+type ParamsForPath<Path extends string> = PathParams<Path> extends Record<
+  string,
+  never
+>
+  ? undefined
+  : PathParams<Path>;
 
-// Helper type to shift indices
-type ShiftIndices<T> = T extends { [K in `$${infer N}`]: string }
-  ? { [K in `$${AddOne<N>}`]: string }
-  : {};
-
-// Helper type to add one to a number string
-type AddOne<T extends string> = T extends "0"
-  ? "1"
-  : T extends "1"
-    ? "2"
-    : T extends "2"
-      ? "3"
-      : T extends "3"
-        ? "4"
-        : T extends "4"
-          ? "5"
-          : never;
-
-// Extracts all possible parameters from an array of routes
-type ExtractParams<T extends string[]> = {
-  [K in T[number]]: ParseRoute<K>;
-}[T[number]];
-
-// The link function type with proper type checking
-type LinkFunction<T extends readonly string[]> = {
-  <Path extends T[number]>(
+export type LinkFunction<Paths extends string> = {
+  <Path extends Paths>(
     path: Path,
-    params?: ParseRoute<Path> extends Record<string, never>
-      ? undefined
-      : ParseRoute<Path>,
+    params?: ParamsForPath<Path>,
   ): string;
 };
 
-/**
- * Creates a type-safe link generation function from route patterns.
- *
- * @example
- * // Define your routes
- * const link = defineLinks([
- *   "/",
- *   "/about",
- *   "/users/:id",
- *   "/files/*",
- * ] as const)
- *
- * // Generate links with type checking
- * link("/")                                  // "/"
- * link("/about")                             // "/about"
- * link("/users/:id", { id: "123" })          // "/users/123"
- * link("/files/*", { $0: "docs/guide.pdf" }) // "/files/docs/guide.pdf"
- */
+type RoutePaths<Value> =
+  Value extends RouteDefinition<infer Path, any>
+    ? Path
+    : Value extends readonly (infer Item)[]
+      ? RouteArrayPaths<Value>
+      : Value extends RouteMiddleware<any>
+        ? never
+        : never;
+
+type RouteArrayPaths<Routes extends readonly any[]> = number extends Routes["length"]
+  ? RoutePaths<Routes[number]>
+  : Routes extends readonly [infer Head, ...infer Tail]
+    ? RoutePaths<Head> | RouteArrayPaths<Tail>
+    : never;
+
+type AppRoutes<App> = App extends { __rwRoutes: infer Routes }
+  ? Routes
+  : never;
+
+export type AppRoutePaths<App> = RoutePaths<AppRoutes<App>>;
+
+export type AppLink<App> = LinkFunction<AppRoutePaths<App>>;
+
+export function linkFor<App>(): AppLink<App> {
+  return createLinkFunction<AppRoutePaths<App>>();
+}
+
+export function createLinks<App>(_app?: App): AppLink<App> {
+  return linkFor<App>();
+}
+
 export function defineLinks<const T extends readonly string[]>(
   routes: T,
-): LinkFunction<T> {
-  // Validate routes at runtime
+): LinkFunction<T[number]> {
   routes.forEach((route) => {
     if (typeof route !== "string") {
       throw new Error(`Invalid route: ${route}. Routes must be strings.`);
     }
   });
 
-  return (path: T[number], params?: Record<string, string>): string => {
+  const link = createLinkFunction<T[number]>();
+  return ((path: T[number], params?: Record<string, string>) => {
     if (!routes.includes(path)) {
       throw new Error(`Invalid route: ${path}`);
     }
+    return link(path, params as any);
+  }) as LinkFunction<T[number]>;
+}
 
-    if (!params) return path;
+const TOKEN_REGEX = /:([a-zA-Z0-9_]+)|\*/g;
 
-    let result = path;
+function createLinkFunction<Paths extends string>(): LinkFunction<Paths> {
+  return ((path: string, params?: Record<string, string>) => {
+    const expectsParams = hasRouteParameters(path);
 
-    // Replace named parameters
-    for (const [key, value] of Object.entries(params)) {
-      if (key.startsWith("$")) {
-        // Replace each star with its corresponding $ parameter
-        const starIndex = parseInt(key.slice(1));
-        const stars = result.match(/\*/g) || [];
-        if (starIndex >= stars.length) {
-          throw new Error(`Parameter ${key} has no corresponding * in route`);
-        }
-        // Replace the nth star with the value
-        let count = 0;
-        result = result.replace(/\*/g, (match) =>
-          count++ === starIndex ? value : match,
-        );
-      } else {
-        // Handle named parameters
-        if (typeof value !== "string") {
-          throw new Error(`Parameter ${key} must be a string`);
-        }
-        result = result.replace(`:${key}`, value);
+    if (!params || Object.keys(params).length === 0) {
+      if (expectsParams) {
+        throw new Error(`Route ${path} requires an object of parameters`);
       }
+      return path;
     }
 
-    return result;
-  };
+    return interpolate(path, params);
+  }) as LinkFunction<Paths>;
+}
+
+function hasRouteParameters(path: string): boolean {
+  TOKEN_REGEX.lastIndex = 0;
+  const result = TOKEN_REGEX.test(path);
+  TOKEN_REGEX.lastIndex = 0;
+  return result;
+}
+
+function interpolate(
+  template: string,
+  params: Record<string, string>,
+): string {
+  let result = "";
+  let lastIndex = 0;
+  let wildcardIndex = 0;
+  const consumed = new Set<string>();
+
+  TOKEN_REGEX.lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = TOKEN_REGEX.exec(template)) !== null) {
+    result += template.slice(lastIndex, match.index);
+
+    if (match[1]) {
+      const name = match[1];
+      const value = params[name];
+      if (value === undefined) {
+        throw new Error(
+          `Missing parameter "${name}" for route ${template}`,
+        );
+      }
+      result += encodeURIComponent(value);
+      consumed.add(name);
+    } else {
+      const key = `$${wildcardIndex}`;
+      const value = params[key];
+      if (value === undefined) {
+        throw new Error(
+          `Missing parameter "${key}" for route ${template}`,
+        );
+      }
+      result += encodeWildcardValue(value);
+      consumed.add(key);
+      wildcardIndex += 1;
+    }
+
+    lastIndex = TOKEN_REGEX.lastIndex;
+  }
+
+  result += template.slice(lastIndex);
+
+  for (const key of Object.keys(params)) {
+    if (!consumed.has(key)) {
+      throw new Error(`Parameter "${key}" is not used by route ${template}`);
+    }
+  }
+
+  TOKEN_REGEX.lastIndex = 0;
+  return result;
+}
+
+function encodeWildcardValue(value: string): string {
+  return value
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
 }

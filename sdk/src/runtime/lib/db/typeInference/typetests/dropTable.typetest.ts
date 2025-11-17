@@ -1,5 +1,5 @@
 import type { Database, Migrations } from "../database";
-import type { Equal, Expect } from "./testUtils";
+import type { Equal, Expect, OmitInternals } from "./testUtils";
 
 (_it = "dropTable") => {
   const migrations = {
@@ -32,7 +32,7 @@ import type { Equal, Expect } from "./testUtils";
     };
   };
 
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "dropTable non-existent table") => {
@@ -45,7 +45,7 @@ import type { Equal, Expect } from "./testUtils";
   } satisfies Migrations;
   type Actual = Database<typeof migrations>;
   type Expected = {};
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "dropTable all tables") => {
@@ -69,7 +69,7 @@ import type { Equal, Expect } from "./testUtils";
   } satisfies Migrations;
   type Actual = Database<typeof migrations>;
   type Expected = {};
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "chaining createTable and dropTable") => {
@@ -104,14 +104,14 @@ import type { Equal, Expect } from "./testUtils";
   type Actual = Database<typeof migrations>;
   type Expected = {
     users: {
-      username: string;
+      username: string | null;
     };
     comments: {
-      text: string;
+      text: string | null;
     };
   };
 
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "drop table then add it back") => {
@@ -146,11 +146,11 @@ import type { Equal, Expect } from "./testUtils";
   type Actual = Database<typeof migrations>;
   type Expected = {
     users: {
-      username: string;
+      username: string | null;
     };
   };
 
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "rename table then drop it") => {
@@ -182,5 +182,5 @@ import type { Equal, Expect } from "./testUtils";
   type Actual = Database<typeof migrations>;
   type Expected = {};
 
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };

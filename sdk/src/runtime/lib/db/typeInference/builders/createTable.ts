@@ -10,7 +10,10 @@ import {
 } from "kysely";
 import type { Assert, AssertStillImplements } from "../assert";
 import { ExecutedBuilder, Prettify, SqlToTsType } from "../utils";
-import { ColumnDefinitionBuilder } from "./columnDefinition";
+import {
+  ColumnDefinitionBuilder,
+  ColumnDescriptor,
+} from "./columnDefinition";
 
 interface CheckConstraintBuilder {
   $call<T>(func: (qb: this) => T): T;
@@ -36,6 +39,13 @@ interface PrimaryKeyConstraintBuilder {
   toOperationNode(): PrimaryKeyConstraintNode;
 }
 
+type InitialDescriptor<TType> = {
+  tsType: TType;
+  isNullable: true;
+  hasDefault: false;
+  isAutoIncrement: false;
+};
+
 export interface CreateTableBuilder<
   TName extends string,
   TSchema extends Record<string, any> = {},
@@ -50,14 +60,27 @@ export interface CreateTableBuilder<
   addColumn<K extends string, T extends string>(
     name: K,
     type: T,
-    build?: (
-      col: ColumnDefinitionBuilder<SqlToTsType<T>>,
-    ) => ColumnDefinitionBuilder<SqlToTsType<T>>,
   ): CreateTableBuilder<
     TName,
     Prettify<
       (TSchema extends Record<string, any> ? TSchema : {}) &
-        Record<K, SqlToTsType<T>>
+        Record<K, InitialDescriptor<SqlToTsType<T>>>
+    >
+  >;
+  addColumn<
+    K extends string,
+    T extends string,
+    TDescriptor extends ColumnDescriptor,
+  >(
+    name: K,
+    type: T,
+    build: (
+      col: ColumnDefinitionBuilder<InitialDescriptor<SqlToTsType<T>>>,
+    ) => ColumnDefinitionBuilder<TDescriptor>,
+  ): CreateTableBuilder<
+    TName,
+    Prettify<
+      (TSchema extends Record<string, any> ? TSchema : {}) & Record<K, TDescriptor>
     >
   >;
   addUniqueConstraint(
