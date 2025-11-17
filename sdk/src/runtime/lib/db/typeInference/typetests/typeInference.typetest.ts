@@ -1,5 +1,5 @@
 import type { Database, Migrations } from "../database";
-import type { Equal, Expect } from "./testUtils";
+import type { Equal, Expect, OmitInternals } from "./testUtils";
 
 (_it = "addColumn with default value") => {
   const migrations = {
@@ -24,5 +24,5 @@ import type { Equal, Expect } from "./testUtils";
     };
   };
 
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };

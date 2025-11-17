@@ -1,5 +1,5 @@
 import type { Database, Migrations } from "../database";
-import type { Equal, Expect } from "./testUtils";
+import type { Equal, Expect, OmitInternals } from "./testUtils";
 
 declare let _it: any;
 
@@ -31,10 +31,10 @@ declare let _it: any;
   type Expected = {
     users: {
       username: string;
-      displayName: string;
+      displayName: string | null;
     };
   };
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "alterTable renameColumn") => {
@@ -63,12 +63,12 @@ declare let _it: any;
   type Expected = {
     users: {
       id: number;
-      username: string;
-      nickname: string;
+      username: string | null;
+      nickname: string | null;
     };
   };
 
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "alterTable alterColumn setDataType and setDefault") => {
@@ -103,7 +103,7 @@ declare let _it: any;
     };
   };
 
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "alterTable alterColumn dropDefault, setNotNull, dropNotNull") => {
@@ -137,7 +137,7 @@ declare let _it: any;
       age: number;
     };
   };
-  //(_test: Expect<Equal<Actual, Expected>>) => {};
+  //(_test: ExpectDb<Actual, Expected>) => {};
 };
 
 (_it = "alterTable addUniqueConstraint") => {
@@ -172,7 +172,7 @@ declare let _it: any;
       lastName: string;
     };
   };
-  //(_test: Expect<Equal<Actual, Expected>>) => {};
+  //(_test: ExpectDb<Actual, Expected>) => {};
 };
 
 (_it = "alterTable drop column") => {
@@ -200,7 +200,7 @@ declare let _it: any;
   type Expected = {
     users: {};
   };
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "alterTable renameTable") => {
@@ -209,7 +209,7 @@ declare let _it: any;
       up: async (db) => [
         await db.schema
           .createTable("users")
-          .addColumn("id", "integer")
+          .addColumn("id", "integer", (c) => c.primaryKey().autoIncrement())
           .execute(),
       ],
     },
@@ -227,7 +227,7 @@ declare let _it: any;
     };
   };
 
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "alterTable renameColumn then rename again") => {
@@ -267,11 +267,11 @@ declare let _it: any;
   type Actual = Database<typeof migrations>;
   type Expected = {
     users: {
-      givenName: string;
+      givenName: string | null;
     };
   };
 
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "alterTable renameColumn then rename back") => {
@@ -311,11 +311,11 @@ declare let _it: any;
   type Actual = Database<typeof migrations>;
   type Expected = {
     users: {
-      name: string;
+      name: string | null;
     };
   };
 
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "alterTable renameTable then rename again") => {
@@ -325,7 +325,7 @@ declare let _it: any;
         return [
           await db.schema
             .createTable("users")
-            .addColumn("id", "integer")
+            .addColumn("id", "integer", (col) => col.notNull())
             .execute(),
         ];
       },
@@ -353,7 +353,7 @@ declare let _it: any;
     };
   };
 
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "alterTable renameTable then rename back") => {
@@ -363,7 +363,9 @@ declare let _it: any;
         return [
           await db.schema
             .createTable("users")
-            .addColumn("id", "integer")
+            .addColumn("id", "integer", (col) =>
+              col.primaryKey().autoIncrement(),
+            )
             .execute(),
         ];
       },
@@ -391,7 +393,7 @@ declare let _it: any;
     };
   };
 
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "alterTable renameColumn then drop") => {
@@ -430,7 +432,7 @@ declare let _it: any;
     users: {};
   };
 
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
 
 (_it = "alterTable dropColumn then add back") => {
@@ -467,9 +469,111 @@ declare let _it: any;
   type Actual = Database<typeof migrations>;
   type Expected = {
     users: {
-      name: string;
+      name: string | null;
     };
   };
 
-  (_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
+};
+
+(_it = "alterTable addColumn with notNull") => {
+  const migrations = {
+    "0": {
+      async up(db) {
+        return [
+          await db.schema
+            .createTable("users")
+            .addColumn("id", "integer", (col) => col.primaryKey())
+            .execute(),
+        ];
+      },
+    },
+    "1": {
+      async up(db) {
+        return [
+          await db.schema
+            .alterTable("users")
+            .addColumn("email", "text", (col) => col.notNull())
+            .execute(),
+        ];
+      },
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+  type Expected = {
+    users: {
+      id: number;
+      email: string;
+    };
+  };
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
+};
+
+(_it = "alterTable modifyColumn with notNull") => {
+  const migrations = {
+    "0": {
+      async up(db) {
+        return [
+          await db.schema
+            .createTable("products")
+            .addColumn("price", "real")
+            .execute(),
+        ];
+      },
+    },
+    "1": {
+      async up(db) {
+        return [
+          await db.schema
+            .alterTable("products")
+            .modifyColumn("price", "real", (col) => col.notNull())
+            .execute(),
+        ];
+      },
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+  type Expected = {
+    products: {
+      price: number;
+    };
+  };
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
+};
+
+(_it = "alterTable modifyColumn nullable to non-nullable") => {
+  const migrations = {
+    "0": {
+      async up(db) {
+        return [
+          await db.schema
+            .createTable("orders")
+            .addColumn("status", "text")
+            .execute(),
+        ];
+      },
+    },
+    "1": {
+      async up(db) {
+        return [
+          await db.schema
+            .alterTable("orders")
+            .modifyColumn("status", "text", (col) =>
+              col.notNull().defaultTo("pending"),
+            )
+            .execute(),
+        ];
+      },
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+  type Expected = {
+    orders: {
+      status: string;
+    };
+  };
+  (_test: Expect<Equal<OmitInternals<Actual>, Expected>>) => {};
 };
