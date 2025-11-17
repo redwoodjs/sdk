@@ -48,3 +48,57 @@ This means the Cloudflare plugin relies on Vite's default behavior for SSR envir
 Our mistake was in the `ssrBridgePlugin`'s `load` hook. When we processed the code coming from the `ssr` environment, our logic would rewrite an import for `cloudflare:workers` into `import("/@id/cloudflare:workers")` (or a variation with our virtual prefix). The `/@id/` prefix is a signal to Vite to treat the import as an internal module that it must resolve and load. This broke the default externalization behavior that the Cloudflare plugin depends on.
 
 You were right that we were on the right track by trying to avoid prefixing, but we were incomplete. The correct, minimal solution is to modify the import rewriting logic to check if an import specifier is one of our known external modules. If it is, we must leave it completely untouched, preserving it as a bare specifier. This allows Vite's default externalization to work as the Cloudflare plugin expects.
+
+## 2025-11-17 Part 4: Full Circle and the Real Culprit
+
+After all the previous attempts, the error still persisted. This forced a re-examination of our core assumptions and a deeper look at the Vite `ModuleRunner`'s source code (`packages/vite/src/module-runner/runner.ts`).
+
+The insight we were missing is simple and fundamental: the decision to use `runExternalModule` vs. `runInlinedModule` depends *entirely* on the result of the `fetchModule` transport call. Specifically, the `directRequest` method inside the `ModuleRunner` checks for one thing: `if ('externalize' in fetchResult)`.
+
+This is the root of our problem. Our `ssrBridgePlugin`'s `load` hook, in its effort to serve modules from the `ssr` environment, has been acting as a man-in-the-middle. It calls `devServer.environments.ssr.fetchModule()`, gets the code, transforms it, and then returns it. The critical flaw is that when the `ssr` environment's `fetchModule` resolves an external module like `cloudflare:workers`, it returns a result that signals it is external. Our `load` hook, however, is only designed to handle results that contain `code`. It doesn't recognize or preserve the "external" signal.
+
+So, the `worker` environment's module runner never sees the `externalize` property it needs. All our attempts to fix this in `resolveId` were misguided because `resolveId` only determines the module's ID; it doesn't provide the final fetch result that the runner inspects.
+
+The solution must be in the `load` hook. We need to:
+1.  Call `devServer.environments.ssr.fetchModule()`.
+2.  Inspect the result.
+3.  If the result from the `ssr` environment indicates the module is external (i.e., it has the `externalize` property), we must stop and find a way to propagate this information. Returning `null` or an empty object from `load` should trigger Vite to re-run resolution, hopefully now with the correct context.
+
+## 2025-11-17 Part 5: The Diagnostic Logs and the Real Root Cause
+
+After adding diagnostic logs directly into the Cloudflare `ModuleRunner`'s distributed code, the evidence became undeniable. The logs showed the `fetchModule` call for `cloudflare:workers` was returning a result *without* the `externalize` property. This was the smoking gun.
+
+However, a closer look at the logs revealed the true culprit, which we had missed. The `url` being requested was not `cloudflare:workers` but `/@id/cloudflare:workers`. This `/@id/` prefix, added automatically by Vite's dev server to handle bare imports, was the root of all the cascading failures. It caused our `externalModulesSet.has(id)` check in `resolveId` to fail and, more importantly, caused the `ModuleRunner`'s internal `isBuiltin` check to fail because it was not designed to handle prefixed paths.
+
+This led to a frustrating and extended detour to solve what appeared to be a separate issue.
+
+### The React Mismatch Detour
+
+While investigating, we ran into a new, seemingly unrelated error: a React version mismatch between the `rwsdk` and the `use-synced-state` playground. `pnpm ls` confirmed two different canary versions were active. This happened because the playground had an explicit, newer version in its `package.json`, while the linked `rwsdk` was resolving its peer dependency against an older version recorded in the monorepo root's lockfile.
+
+We attempted several fixes:
+1.  **`pnpm.overrides`:** Added overrides to the root `package.json` to enforce a single version.
+2.  **SDK `devDependencies`:** Added matching React versions to the SDK's `devDependencies`.
+3.  **Renovate Config:** Updated `renovate.json` to keep these new `devDependencies` in sync.
+
+While these were technically correct solutions for forcing version alignment, they were merely treating a symptom.
+
+### The True Culprit Unveiled
+
+The React mismatch was not the disease, but a symptom of a deeper problem. The SSR environment was optimizing `react-dom/client`, which should never happen. We traced the import chain and found the cause in `sdk/src/use-synced-state/useSyncedState.ts`:
+
+```typescript
+import { React } from "../runtime/client/client.js";
+```
+
+This relative import was pulling the SDK's entire client-side entry point into any module that used `useSyncedState`. Because this was happening in the SSR context, it incorrectly pulled client-only dependencies like `react-dom/client` into the SSR dependency graph. This relative path also completely bypassed our `knownDepsResolverPlugin`, which is designed to handle bare specifiers like `"react"`, causing the version mismatch that sent us on the long detour.
+
+### The Final, Correct Solution
+
+Once we identified the faulty import, the solution path became clear:
+
+1.  **Fix the Isomorphic Path:** The import in `useSyncedState.ts` was changed to a standard, direct import: `import React from "react";`. This immediately stopped the client-side code from leaking into the SSR environment, which fixed the `react-dom/client` optimization issue and, by extension, the React version mismatch. All the workarounds (`overrides`, `devDependencies`, `renovate` changes) were no longer necessary and were reverted.
+
+2.  **Revisit the Original Problem:** With all other noise eliminated, we could finally solve the `cloudflare:workers` issue. The core problem was that our `ssrBridgePlugin`'s `load` hook was indiscriminately rewriting all import specifiers found in modules fetched from the `ssr` environment. It would take a bare import like `cloudflare:workers` and transform it into `import("/@id/virtual:rwsdk:ssr:cloudflare:workers")`. This broke the `worker` environment's ability to recognize it as a platform-native module that should be externalized.
+
+The final solution was a single, targeted change within the `load` hook. Before rewriting an import, we now check if the specifier is a known external module. If it is, we preserve it as a bare specifier (e.g., `import("cloudflare:workers")`); otherwise, we apply our virtual prefix. This single change ensures external modules are handled correctly without needing any corresponding logic in the `resolveId` hook.

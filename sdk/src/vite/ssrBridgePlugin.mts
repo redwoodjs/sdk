@@ -263,12 +263,6 @@ export const ssrBridgePlugin = ({
 
             log("Dev mode: fetching SSR module for realPath=%s", idForFetch);
 
-            // We use `fetchModule` with `cached: false` as a safeguard. Since
-            // we're in a `load` hook, we know the worker-side cache for this
-            // virtual module is stale. `cached: false` ensures that we also
-            // bypass any potentially stale transform result in the SSR
-            // environment's cache, guaranteeing we get the freshest possible
-            // code.
             const result = await devServer.environments.ssr.fetchModule(
               idForFetch,
               undefined,
@@ -312,6 +306,10 @@ export const ssrBridgePlugin = ({
                 // our virtual one) will break Vite's default externalization.
                 if (externalModulesSet.has(normalized)) {
                   const replacement = `import("${normalized}")`;
+                  console.log("############## replacement", {
+                    replacement,
+                    original: s.slice(site.start, site.end),
+                  });
                   s.overwrite(site.start, site.end, replacement);
                   continue;
                 }
