@@ -118,25 +118,9 @@ export const ssrBridgePlugin = ({
       }
 
       if (isDev) {
-        // Handle external modules that are imported from within our virtual SSR
-        // modules. In the `load` hook, we rewrite them to be bare specifiers.
-        // When the module runner then tries to resolve them, we need to catch
-        // them here and explicitly mark them as external.
-        if (
-          externalModulesSet.has(id) &&
-          this.environment.name === "worker" &&
-          importer?.startsWith(VIRTUAL_SSR_PREFIX)
-        ) {
-          log(
-            "Marking external module as external (imported from virtual SSR module): %s",
-            id,
-          );
-          return { id, external: true };
-        }
-
         // context(justinvdm, 27 May 2025): In dev, we need to dynamically load
         // SSR modules, so we return the virtual id so that the dynamic loading
-        // logic can be triggered.
+        // can happen in load()
         if (id.startsWith(VIRTUAL_SSR_PREFIX)) {
           if (id.endsWith(".css")) {
             const newId = id + ".js";
@@ -263,6 +247,12 @@ export const ssrBridgePlugin = ({
 
             log("Dev mode: fetching SSR module for realPath=%s", idForFetch);
 
+            // We use `fetchModule` with `cached: false` as a safeguard. Since
+            // we're in a `load` hook, we know the worker-side cache for this
+            // virtual module is stale. `cached: false` ensures that we also
+            // bypass any potentially stale transform result in the SSR
+            // environment's cache, guaranteeing we get the freshest possible
+            // code.
             const result = await devServer.environments.ssr.fetchModule(
               idForFetch,
               undefined,
@@ -306,10 +296,6 @@ export const ssrBridgePlugin = ({
                 // our virtual one) will break Vite's default externalization.
                 if (externalModulesSet.has(normalized)) {
                   const replacement = `import("${normalized}")`;
-                  console.log("############## replacement", {
-                    replacement,
-                    original: s.slice(site.start, site.end),
-                  });
                   s.overwrite(site.start, site.end, replacement);
                   continue;
                 }
