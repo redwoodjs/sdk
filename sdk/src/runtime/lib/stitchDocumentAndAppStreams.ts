@@ -240,10 +240,12 @@ export function stitchDocumentAndAppStreams(
         // Continuously read from the hoisted tags stream and buffer the
         // content. Once the stream is finished, transition to the next phase.
         const { done, value } = await hoistedTagsReader.read();
+        // When the stream is done, we're ready to process the document head.
         if (done) {
           hoistedTagsReady = true;
           phase = "outer-head";
         } else {
+          // Otherwise, keep appending to the buffer.
           hoistedTagsBuffer += decoder.decode(value, { stream: true });
         }
       } else if (phase === "outer-head") {
@@ -252,7 +254,9 @@ export function stitchDocumentAndAppStreams(
         // `startMarker` to know when to start injecting the app shell. Once
         // the marker is found, transition to the next phase.
         const { done, value } = await outerReader.read();
+        // Handle the case where the document stream ends.
         if (done) {
+          // If there's content left in the buffer, process it for markers.
           if (buffer) {
             const headCloseIndex = buffer.indexOf("</head>");
             if (
@@ -281,10 +285,13 @@ export function stitchDocumentAndAppStreams(
             enqueue(hoistedTagsBuffer);
             hoistedTagsBuffer = "";
           }
+          // Even if the stream ends, we must proceed to the app shell phase.
           phase = "inner-shell";
         } else {
+          // As chunks arrive, append them to the buffer.
           buffer += decoder.decode(value, { stream: true });
 
+          // Search for the closing head tag to inject hoisted tags.
           const headCloseIndex = buffer.indexOf("</head>");
           if (headCloseIndex !== -1 && hoistedTagsReady && hoistedTagsBuffer) {
             enqueue(buffer.slice(0, headCloseIndex));
@@ -294,6 +301,7 @@ export function stitchDocumentAndAppStreams(
             buffer = buffer.slice(headCloseIndex + "</head>".length);
           }
 
+          // Search for the start marker to switch to the app stream.
           const markerIndex = buffer.indexOf(startMarker);
           if (markerIndex !== -1) {
             enqueue(buffer.slice(0, markerIndex));
@@ -301,6 +309,8 @@ export function stitchDocumentAndAppStreams(
             buffer = "";
             phase = "inner-shell";
           } else {
+            // If no marker is found yet, flush the buffer up to the last
+            // newline to keep the stream flowing.
             flush();
           }
         }
@@ -310,12 +320,16 @@ export function stitchDocumentAndAppStreams(
         // non-suspended part of the app is rendered. Any content after this
         // marker is considered suspended and is buffered. Then, transition.
         const { done, value } = await innerReader.read();
+        // Handle the case where the app stream ends.
         if (done) {
           if (buffer) enqueue(buffer);
           phase = "outer-tail";
         } else {
+          // As chunks arrive, append them to the buffer.
           buffer += decoder.decode(value, { stream: true });
           const markerIndex = buffer.indexOf(endMarker);
+          // If the end marker is found, enqueue content up to the marker,
+          // buffer the rest, and switch to the document tail phase.
           if (markerIndex !== -1) {
             const endOfMarkerIndex = markerIndex + endMarker.length;
             enqueue(buffer.slice(0, endOfMarkerIndex));
@@ -323,6 +337,7 @@ export function stitchDocumentAndAppStreams(
             buffer = "";
             phase = "outer-tail";
           } else {
+            // If no marker is found yet, flush the buffer.
             flush();
           }
         }
@@ -331,13 +346,16 @@ export function stitchDocumentAndAppStreams(
         // the document's body, which critically includes the client-side
         // `<script>` tags for hydration. We stream until we find the closing
         // `</body>` tag and then transition.
+        // First, process any leftover buffer from the `outer-head` phase.
         if (outerBufferRemains) {
           buffer = outerBufferRemains;
           outerBufferRemains = "";
         }
         const { done, value } = await outerReader.read();
+        // Handle the case where the document stream ends.
         if (done) {
           if (buffer) {
+            // Search the remaining buffer for the closing body tag.
             const markerIndex = buffer.indexOf("</body>");
             if (markerIndex !== -1) {
               enqueue(buffer.slice(0, markerIndex));
@@ -347,15 +365,19 @@ export function stitchDocumentAndAppStreams(
               buffer = "";
             }
           }
+          // Proceed to the suspended content phase.
           phase = "inner-suspended";
         } else {
+          // As chunks arrive, append them to the buffer.
           buffer += decoder.decode(value, { stream: true });
+          // Search for the closing body tag to switch to suspended content.
           const markerIndex = buffer.indexOf("</body>");
           if (markerIndex !== -1) {
             enqueue(buffer.slice(0, markerIndex));
             buffer = buffer.slice(markerIndex);
             phase = "inner-suspended";
           } else {
+            // If no marker is found yet, flush the buffer.
             flush();
           }
         }
@@ -364,28 +386,34 @@ export function stitchDocumentAndAppStreams(
         // content from the `inner-shell` phase. Then, stream the rest of the
         // app content until it's finished. This is all the content that was
         // behind a `<Suspense>` boundary.
+        // First, send any buffered suspended content from the `inner-shell` phase.
         if (innerSuspendedRemains) {
           enqueue(innerSuspendedRemains);
           innerSuspendedRemains = "";
         }
         const { done, value } = await innerReader.read();
+        // When the app stream is done, transition to the final phase.
         if (done) {
           phase = "outer-end";
         } else {
+          // Otherwise, pass through the remaining app content directly.
           controller.enqueue(value);
         }
       } else if (phase === "outer-end") {
         // Finally, switch back to the document stream one last time to send
         // the closing `</body>` and `</html>` tags and finish the response.
+        // First, send any leftover buffer from the `outer-tail` phase.
         if (buffer) {
           enqueue(buffer);
           buffer = "";
         }
         const { done, value } = await outerReader.read();
+        // When the document stream is done, we're finished.
         if (done) {
           controller.close();
           return;
         }
+        // Otherwise, pass through the final document content.
         controller.enqueue(value);
       }
       await pump(controller);
