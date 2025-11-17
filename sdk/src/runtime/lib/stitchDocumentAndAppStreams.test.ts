@@ -51,7 +51,7 @@ describe("stitchDocumentAndAppStreams", () => {
   const endMarker = '<div id="rwsdk-app-end"></div>';
 
   describe("meta tag hoisting", () => {
-    it("extracts and prepends single title tag", async () => {
+    it("places hoisted tags inside head, after existing head content", async () => {
       const outerHtml = `<!DOCTYPE html>
 <html>
 <head>
@@ -75,13 +75,24 @@ describe("stitchDocumentAndAppStreams", () => {
       );
 
       expect(result).toContain(`<title>Page Title</title>`);
-      expect(result.indexOf(`<title>Page Title</title>`)).toBeLessThan(
-        result.indexOf(`<!DOCTYPE html>`),
+      expect(result).toMatch(
+        /<head>[\s\S]*<meta charset="utf-8" \/>[\s\S]*<title>Page Title<\/title>[\s\S]*<\/head>/,
       );
       expect(result).toContain(`<div>App content</div>`);
+
+      const doctypeIndex = result.indexOf(`<!DOCTYPE html>`);
+      const headIndex = result.indexOf(`<head>`);
+      const charsetIndex = result.indexOf(`<meta charset="utf-8" />`);
+      const titleIndex = result.indexOf(`<title>Page Title</title>`);
+      const headCloseIndex = result.indexOf(`</head>`);
+
+      expect(doctypeIndex).toBe(0);
+      expect(doctypeIndex).toBeLessThan(headIndex);
+      expect(charsetIndex).toBeLessThan(titleIndex);
+      expect(titleIndex).toBeLessThan(headCloseIndex);
     });
 
-    it("extracts and prepends multiple hoisted tags", async () => {
+    it("places multiple hoisted tags inside head, after existing head content", async () => {
       const outerHtml = `<!DOCTYPE html>
 <html>
 <head>
@@ -107,9 +118,19 @@ describe("stitchDocumentAndAppStreams", () => {
       expect(result).toContain(`<title>Page Title</title>`);
       expect(result).toContain(`<meta name="description" content="Test" />`);
       expect(result).toContain(`<link rel="stylesheet" href="/styles.css" />`);
-      const hoistedStart = result.indexOf(`<title>Page Title</title>`);
-      const doctypeStart = result.indexOf(`<!DOCTYPE html>`);
-      expect(hoistedStart).toBeLessThan(doctypeStart);
+
+      expect(result).toMatch(
+        /<head>[\s\S]*<meta charset="utf-8" \/>[\s\S]*<title>Page Title<\/title>[\s\S]*<meta name="description" content="Test" \/>[\s\S]*<link rel="stylesheet" href="\/styles.css" \/>[\s\S]*<\/head>/,
+      );
+
+      const doctypeIndex = result.indexOf(`<!DOCTYPE html>`);
+      const charsetIndex = result.indexOf(`<meta charset="utf-8" />`);
+      const titleIndex = result.indexOf(`<title>Page Title</title>`);
+      const headCloseIndex = result.indexOf(`</head>`);
+
+      expect(doctypeIndex).toBe(0);
+      expect(charsetIndex).toBeLessThan(titleIndex);
+      expect(titleIndex).toBeLessThan(headCloseIndex);
     });
 
     it("handles app stream with no hoisted tags", async () => {
@@ -168,9 +189,45 @@ describe("stitchDocumentAndAppStreams", () => {
 
       expect(result).toContain(`<title>Page Title</title>`);
       expect(result).toContain(`<meta name="description" content="Test" />`);
-      const hoistedStart = result.indexOf(`<title>Page Title</title>`);
-      const doctypeStart = result.indexOf(`<!DOCTYPE html>`);
-      expect(hoistedStart).toBeLessThan(doctypeStart);
+
+      expect(result).toMatch(
+        /<head>[\s\S]*<meta charset="utf-8" \/>[\s\S]*<title>Page Title<\/title>[\s\S]*<\/head>/,
+      );
+
+      const doctypeIndex = result.indexOf(`<!DOCTYPE html>`);
+      const charsetIndex = result.indexOf(`<meta charset="utf-8" />`);
+      const titleIndex = result.indexOf(`<title>Page Title</title>`);
+      const headCloseIndex = result.indexOf(`</head>`);
+
+      expect(doctypeIndex).toBe(0);
+      expect(charsetIndex).toBeLessThan(titleIndex);
+      expect(titleIndex).toBeLessThan(headCloseIndex);
+    });
+
+    it("ensures doctype is always first", async () => {
+      const outerHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+</head>
+<body>
+  ${startMarker}
+  <script src="/client.js"></script>
+</body>
+</html>`;
+
+      const innerHtml = `<title>Page Title</title><div>App content</div>${endMarker}`;
+
+      const result = await streamToString(
+        stitchDocumentAndAppStreams(
+          stringToStream(outerHtml),
+          stringToStream(innerHtml),
+          startMarker,
+          endMarker,
+        ),
+      );
+
+      expect(result.trim().startsWith(`<!DOCTYPE html>`)).toBe(true);
     });
   });
 

@@ -142,29 +142,47 @@ export function stitchDocumentAndAppStreams(
   let buffer = "";
   let outerBufferRemains = "";
   let innerSuspendedRemains = "";
+  let hoistedTagsBuffer = "";
+  let hoistedTagsReady = false;
   let phase:
-    | "enqueue-hoisted"
+    | "read-hoisted"
     | "outer-head"
     | "inner-shell"
     | "outer-tail"
     | "inner-suspended"
-    | "outer-end" = "enqueue-hoisted";
+    | "outer-end" = "read-hoisted";
 
   const pump = async (
     controller: ReadableStreamDefaultController<Uint8Array>,
   ): Promise<void> => {
     try {
-      if (phase === "enqueue-hoisted") {
+      if (phase === "read-hoisted") {
         const { done, value } = await hoistedTagsReader.read();
         if (done) {
+          hoistedTagsReady = true;
           phase = "outer-head";
         } else {
-          controller.enqueue(value);
+          hoistedTagsBuffer += decoder.decode(value, { stream: true });
         }
       } else if (phase === "outer-head") {
         const { done, value } = await outerReader.read();
         if (done) {
           if (buffer) {
+            const headCloseIndex = buffer.indexOf("</head>");
+            if (
+              headCloseIndex !== -1 &&
+              hoistedTagsReady &&
+              hoistedTagsBuffer
+            ) {
+              controller.enqueue(
+                encoder.encode(buffer.slice(0, headCloseIndex)),
+              );
+              controller.enqueue(encoder.encode(hoistedTagsBuffer));
+              hoistedTagsBuffer = "";
+              controller.enqueue(encoder.encode("</head>"));
+              buffer = buffer.slice(headCloseIndex + "</head>".length);
+            }
+
             const markerIndex = buffer.indexOf(startMarker);
             if (markerIndex !== -1) {
               controller.enqueue(encoder.encode(buffer.slice(0, markerIndex)));
@@ -175,10 +193,23 @@ export function stitchDocumentAndAppStreams(
               controller.enqueue(encoder.encode(buffer));
             }
             buffer = "";
+          } else if (hoistedTagsReady && hoistedTagsBuffer) {
+            controller.enqueue(encoder.encode(hoistedTagsBuffer));
+            hoistedTagsBuffer = "";
           }
           phase = "inner-shell";
         } else {
           buffer += decoder.decode(value, { stream: true });
+
+          const headCloseIndex = buffer.indexOf("</head>");
+          if (headCloseIndex !== -1 && hoistedTagsReady && hoistedTagsBuffer) {
+            controller.enqueue(encoder.encode(buffer.slice(0, headCloseIndex)));
+            controller.enqueue(encoder.encode(hoistedTagsBuffer));
+            hoistedTagsBuffer = "";
+            controller.enqueue(encoder.encode("</head>"));
+            buffer = buffer.slice(headCloseIndex + "</head>".length);
+          }
+
           const markerIndex = buffer.indexOf(startMarker);
           if (markerIndex !== -1) {
             controller.enqueue(encoder.encode(buffer.slice(0, markerIndex)));

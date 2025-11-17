@@ -109,10 +109,10 @@ The refined solution extracts the tag-hoisting logic into a dedicated utility fu
     *   The marker itself and all subsequent content from the original stream are piped to the `appBodyStream`.
 
 3.  **Updated Stitching Process:**
-    *   The `stitchDocumentAndAppStreams` function introduces a new initial phase, `"enqueue-hoisted"`.
-    *   In this phase, it reads everything from the `hoistedTagsStream` and immediately enqueues it to the final output. This places the hoisted tags at the very beginning of the response.
-    *   Once the `hoistedTagsStream` is fully consumed, the function transitions to the `"outer-head"` phase.
-    *   The rest of the state machine proceeds exactly as it did before, but it now uses the `appBodyStream` as its source for the application content.
+    *   The `stitchDocumentAndAppStreams` function introduces a new initial phase, `"read-hoisted"`, which reads all hoisted tags from the `hoistedTagsStream` into a buffer before processing the outer document stream.
+    *   The `"outer-head"` phase is modified to detect the `</head>` closing tag in the document stream. When found, it injects the buffered hoisted tags immediately before `</head>`, ensuring they appear at the bottom of the `<head>` section, after any existing head content from the document shell.
+    *   The doctype declaration (`<!DOCTYPE html>`) remains the first element in the output, maintaining valid HTML structure.
+    *   The rest of the state machine proceeds as before, using the `appBodyStream` as its source for the application content.
 
 ---
 
@@ -128,4 +128,4 @@ During server-side rendering, React's hoisted tags (e.g., `<title>`, `<meta>`) w
 
 This change introduces a stream-splitting utility that pre-processes the application's HTML stream. The function separates the stream into two distinct streams: one containing the hoisted tags from the beginning of the stream, and a second containing the remainder of the application body.
 
-The main stream-stitching logic is updated to first exhaust and prepend the hoisted tags stream to the response, ensuring they appear before the `<!DOCTYPE html>` declaration. It then proceeds with the existing logic for interleaving the document and application body streams.
+The main stream-stitching logic is updated to read all hoisted tags first, then process the outer document stream. When the `</head>` closing tag is detected, the hoisted tags are injected immediately before it, ensuring they appear at the bottom of the `<head>` section, after any existing head content. The doctype declaration remains the first element in the output, maintaining valid HTML structure. The rest of the stitching logic proceeds unchanged, interleaving the document and application body streams as before.
