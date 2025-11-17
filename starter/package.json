@@ -22,20 +22,20 @@
     "types": "tsc"
   },
   "dependencies": {
-    "react": "19.3.0-canary-fa50caf5-20251107",
-    "react-dom": "19.3.0-canary-fa50caf5-20251107",
-    "react-server-dom-webpack": "19.3.0-canary-fa50caf5-20251107",
+    "react": "19.3.0-canary-fb2177c1-20251114",
+    "react-dom": "19.3.0-canary-fb2177c1-20251114",
+    "react-server-dom-webpack": "19.3.0-canary-fb2177c1-20251114",
     "rwsdk": "workspace:*"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.14.0",
-    "@cloudflare/workers-types": "4.20251109.0",
+    "@cloudflare/vite-plugin": "1.14.2",
+    "@cloudflare/workers-types": "4.20251117.0",
     "@types/node": "~24.5.2",
     "@types/react": "19.1.2",
     "@types/react-dom": "19.1.2",
     "typescript": "5.8.3",
     "vite": "7.2.2",
-    "wrangler": "4.46.0"
+    "wrangler": "4.47.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
