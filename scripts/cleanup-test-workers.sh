@@ -42,6 +42,7 @@ echo ""
 # Test patterns to identify test workers
 test_patterns=(
     "-test-"
+    "-t-"
     "smoke-test"
     "e2e-test"
     "test-project"

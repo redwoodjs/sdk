@@ -1,7 +1,7 @@
 import fs from "fs-extra";
-import os from "os";
 import path, { basename, dirname, join as pathJoin } from "path";
 import puppeteer, { type Browser, type Page } from "puppeteer-core";
+import { fileURLToPath } from "url";
 import {
   afterAll,
   afterEach,
@@ -11,7 +11,6 @@ import {
   test,
 } from "vitest";
 import { launchBrowser } from "./browser.mjs";
-import { ensureTmpDir } from "./utils.mjs";
 import {
   DEPLOYMENT_CHECK_TIMEOUT,
   DEPLOYMENT_MIN_TRIES,
@@ -35,7 +34,7 @@ import {
   runRelease,
 } from "./release.mjs";
 import { setupTarballEnvironment } from "./tarball.mjs";
-import { fileURLToPath } from "url";
+import { ensureTmpDir } from "./utils.mjs";
 export type { Browser, Page } from "puppeteer-core";
 
 export {
@@ -381,7 +380,11 @@ export function createDeployment() {
       const newInstance = await pollValue(
         async () => {
           const dirName = basename(projectDir);
-          const match = dirName.match(/-e2e-test-([a-f0-9]+)$/);
+          // Match formats: {projectName}-t-{hash}, {projectName}-test-{hash}, or {projectName}-e2e-test-{hash}
+          const match =
+            dirName.match(/-t-([a-f0-9]+)$/) ||
+            dirName.match(/-test-([a-f0-9]+)$/) ||
+            dirName.match(/-e2e-test-([a-f0-9]+)$/);
           const resourceUniqueKey = match
             ? match[1]
             : Math.random().toString(36).substring(2, 15);

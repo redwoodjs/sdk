@@ -2,16 +2,8 @@ import { createHash } from "crypto";
 import { $ } from "execa";
 import fs from "node:fs";
 import path from "node:path";
-import {
-  adjectives,
-  animals,
-  uniqueNamesGenerator,
-} from "unique-names-generator";
-import { INTERMEDIATES_OUTPUT_DIR, ROOT_DIR } from "../constants.mjs";
-import {
-  copyProjectToTempDir,
-  getFilesRecursively,
-} from "./environment.mjs";
+import { ROOT_DIR } from "../constants.mjs";
+import { copyProjectToTempDir } from "./environment.mjs";
 
 const log = (message: string) => console.log(message);
 
@@ -112,20 +104,13 @@ export async function setupTarballEnvironment({
   log(`🚀 Setting up tarball environment for ${projectDir}`);
 
   // Generate a resource unique key for this test run
-  const uniqueNameSuffix = uniqueNamesGenerator({
-    dictionaries: [adjectives, animals],
-    separator: "-",
-    length: 2,
-    style: "lowerCase",
-  });
-
-  // Create a short unique hash based on the timestamp
+  // Use just the hash to keep worker names short (under Cloudflare's 54 char limit)
   const hash = createHash("md5")
     .update(Date.now().toString())
     .digest("hex")
     .substring(0, 8);
 
-  const resourceUniqueKey = `${uniqueNameSuffix}-${hash}`;
+  const resourceUniqueKey = hash;
 
   try {
     const { tempDir, targetDir } = await copyProjectToTempDir(
