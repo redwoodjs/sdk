@@ -118,20 +118,9 @@ export const ssrBridgePlugin = ({
       }
 
       if (isDev) {
-        // context(justinvdm, 27 May 2025): In dev, we need to dynamically load
-        // SSR modules, so we return the virtual id so that the dynamic loading
-        // can happen in load()
+        // Handle external modules that might be imported from within virtual SSR modules
+        // (they get rewritten without the virtual prefix, so we need to catch them here)
         if (id.startsWith(VIRTUAL_SSR_PREFIX)) {
-          const realId = id.slice(VIRTUAL_SSR_PREFIX.length);
-
-          if (externalModulesSet.has(realId)) {
-            log(
-              "Marking module as external based on predefined list: %s",
-              realId,
-            );
-            return { id: realId, external: true };
-          }
-
           if (id.endsWith(".css")) {
             const newId = id + ".js";
             log(
@@ -300,6 +289,16 @@ export const ssrBridgePlugin = ({
                 const normalized = site.specifier.startsWith("/@id/")
                   ? site.specifier.slice("/@id/".length)
                   : site.specifier;
+
+                // If the import is for a known external module, we must leave it
+                // as a bare specifier. Rewriting it with any prefix (`/@id/` or
+                // our virtual one) will break Vite's default externalization.
+                if (externalModulesSet.has(normalized)) {
+                  const replacement = `import("${normalized}")`;
+                  s.overwrite(site.start, site.end, replacement);
+                  continue;
+                }
+
                 // context(justinvdm, 11 Aug 2025):
                 // - We replace __vite_ssr_import__ and __vite_ssr_dynamic_import__
                 //   with import() calls so that the module graph can be built
