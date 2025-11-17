@@ -102,3 +102,15 @@ Once we identified the faulty import, the solution path became clear:
 2.  **Revisit the Original Problem:** With all other noise eliminated, we could finally solve the `cloudflare:workers` issue. The core problem was that our `ssrBridgePlugin`'s `load` hook was indiscriminately rewriting all import specifiers found in modules fetched from the `ssr` environment. It would take a bare import like `cloudflare:workers` and transform it into `import("/@id/virtual:rwsdk:ssr:cloudflare:workers")`. This broke the `worker` environment's ability to recognize it as a platform-native module that should be externalized.
 
 The final solution was a single, targeted change within the `load` hook. Before rewriting an import, we now check if the specifier is a known external module. If it is, we preserve it as a bare specifier (e.g., `import("cloudflare:workers")`); otherwise, we apply our virtual prefix. This single change ensures external modules are handled correctly without needing any corresponding logic in the `resolveId` hook.
+
+---
+
+# PR Description: fix(vite): Correctly handle external modules in SSR bridge
+
+## Problem
+
+SSR builds failed when a dependency imported a platform-specific package like `cloudflare:workers`. The SSR bridge plugin was indiscriminately rewriting all import paths with a virtual prefix to keep them within the SSR dependency subgraph. This rewriting prevented the `worker` environment from recognizing and correctly externalizing these platform-native modules.
+
+## Solution
+
+The SSR bridge plugin's `load` hook now checks import specifiers against a predefined list of external modules. If an import is external, its bare specifier is preserved, allowing the module runner to correctly externalize it. For all other imports, the virtual prefix is still applied to keep them scoped to the SSR subgraph.
