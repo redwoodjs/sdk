@@ -202,8 +202,13 @@ export async function copyProjectToTempDir(
     const sourceDir = monorepoRoot || projectDir;
 
     // Create unique project directory name
+    // Format: {projectName}-t-{hash} (kept under 54 chars for Cloudflare limit)
     const originalDirName = basename(sourceDir);
-    const workerName = `${slugify(originalDirName)}-test-${resourceUniqueKey}`;
+    const slugified = slugify(originalDirName);
+    // Truncate project name to leave room for "-t-" (3 chars) + hash (8 chars) = 11 chars
+    // Max project name: 54 - 11 = 43 chars
+    const truncatedProjectName = slugified.substring(0, 43);
+    const workerName = `${truncatedProjectName}-t-${resourceUniqueKey}`;
     const tempCopyRoot = resolve(tempDir.path, workerName);
 
     // If it's a monorepo, the targetDir for commands is a subdirectory
