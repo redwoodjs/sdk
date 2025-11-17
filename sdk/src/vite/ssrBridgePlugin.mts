@@ -2,7 +2,6 @@ import debug from "debug";
 import MagicString from "magic-string";
 import type { Plugin, ViteDevServer } from "vite";
 import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
-import { externalModulesSet } from "./constants.mjs";
 import { findSsrImportCallSites } from "./findSsrSpecifiers.mjs";
 
 const log = debug("rwsdk:vite:ssr-bridge-plugin");
@@ -122,14 +121,26 @@ export const ssrBridgePlugin = ({
         // SSR modules, so we return the virtual id so that the dynamic loading
         // can happen in load()
         if (id.startsWith(VIRTUAL_SSR_PREFIX)) {
-          const realId = id.slice(VIRTUAL_SSR_PREFIX.length);
+          try {
+            const realId = id.slice(VIRTUAL_SSR_PREFIX.length);
+            const resolved =
+              await devServer.environments.ssr.pluginContainer.resolveId(
+                realId,
+                importer,
+              );
 
-          if (externalModulesSet.has(realId)) {
+            if (resolved?.external) {
+              log(
+                "Propagating external module from ssr to worker: %s",
+                resolved.id,
+              );
+              return { id: resolved.id, external: true };
+            }
+          } catch (e) {
             log(
-              "Marking module as external based on predefined list: %s",
-              realId,
+              "Failed to resolve module in ssr environment, falling back. Error: %s",
+              e,
             );
-            return { id: realId, external: true };
           }
 
           if (id.endsWith(".css")) {

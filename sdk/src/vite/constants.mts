@@ -12,5 +12,3 @@ export const externalModules = [
   ...builtinModules,
   ...builtinModules.map((m) => `node:${m}`),
 ];
-
-export const externalModulesSet = new Set(externalModules);
