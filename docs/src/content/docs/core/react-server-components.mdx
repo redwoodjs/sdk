@@ -112,7 +112,9 @@ To render your component tree to a [`ReadableStream`](https://developer.mozilla.
 
 Takes in a React Server Component (can be a client component or server component), and returns a stream that decodes to html.
 
-**Limitations:** `renderToStream` is designed for generating HTML streams. It does *not* automatically handle the negotiation required for React Server Components features like Server Actions or client-side transitions (which require a different response format). If you use `renderToStream` in a route handler, interactivity like form submissions may fail. For fully interactive routes, please use the standard `render()` function in `defineApp` which handles this negotiation automatically.
+<Aside type="caution" title="Limitations">
+  `renderToStream` is designed for generating HTML streams. It does *not* automatically handle the negotiation required for React Server Components features like Server Actions or client-side transitions (which require a different response format). If you use `renderToStream` in a route handler, interactivity like form submissions may fail. For fully interactive routes, please use the standard `render()` function in `defineApp` which handles this negotiation automatically.
+</Aside>
 
 ```tsx
 const stream = await renderToStream(<NotFound />, { Document })
