@@ -96,7 +96,7 @@ Instead of patching `renderToStream`, we need a new API (e.g., `renderToResponse
 
 Trying to force `renderToStream` to handle RSC requests breaks its contract and confuses the user consumption model (stream vs response headers).
 
-Instead of patching `renderToStream`, we need a new API (e.g., `renderToResponse`) that encapsulates the entire response generation logic (negotiating Content-Type and body format)
+Instead of patching `renderToStream`, we need a new API (e.g., `renderToResponse`) that encapsulates the entire response generation logic (negotiating Content-Type and body format), or we need to explicitly document that `renderToStream` does *not* support interactivity/actions on its own and is strictly for HTML generation.
 
 **Proposed Solution**
 Introduce a new high-level helper: `renderToResponse`.
@@ -118,10 +118,10 @@ This helper will:
     *   Generate the HTML stream (with injected RSC payload).
     *   Return a `Response` with `Content-Type: text/html`.
 
-**This gives us**
+**Benefits**
 *   **Safe Default**: Users get the correct behavior for both initial loads and interactivity without manual configuration.
 *   **DRY**: This logic is currently embedded in internal logic for `defineApp`. Extracting it to a public helper allows "manual" routes to have feature parity with standard `render()` routes.
-*   **Clear API Boundary**: `renderToStream` remains a low-level primitive for "give me HTML", while `renderToResponse` becomes the standard for "render this page".
+*   **Clear API Boundary**: `renderToStream` remains a low-level primitive for "give me HTML", while `renderToResponse` becomes the standard for "render this page" when users need to do so programmatically/imperatively instead of the default declarative `route()` API.
 
 **Example Usage**
 
