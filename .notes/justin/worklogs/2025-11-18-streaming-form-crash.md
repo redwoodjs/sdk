@@ -16,3 +16,32 @@ Error: `Uncaught error: Error: Connection closed.` in `react-server-dom-webpack-
 5. Fix the issue.
 6. Add regression tests.
 
+## Work Log
+
+### Reproduction Setup
+I created `playground/streaming-form-crash` based on `hello-world` and copied source from the reproduction repo.
+The user reported the crash happens on `/stream` when clicking the button. The standard route `/` works fine.
+
+The `/stream` route implementation:
+```tsx
+route("/stream", async () => {
+  return new Response(await renderToStream(<Home />, { Document }), {
+    status: 200,
+    headers: {
+      "content-type": "text/html",
+      "cache-control": "no-transform",
+    },
+  });
+}),
+```
+versus the working `/` route:
+```tsx
+render(Document, [
+  route("/", Home),
+]),
+```
+
+The error "Connection closed" typically implies the server action response isn't making it back or is malformed in a way the client RSC runtime doesn't like when it expects a stream update.
+
+### Reproduction Verification
+I verified the crash on the `/stream` link. The default route works as expected. Now investigating the root cause.
