@@ -73,8 +73,16 @@ export const directiveModulesDevPlugin = ({
 
   return {
     name: "rwsdk:directive-modules-dev",
+    enforce: "pre",
 
     configureServer(server) {
+      // context(justinvdm, 19 Nov 2025): We must run this hook before the
+      // Cloudflare plugin's `configureServer` hook. The Cloudflare plugin makes
+      // a request back to the dev server to determine worker exports, which
+      // triggers Vite's dependency optimizer. Our esbuild plugin for the
+      // optimizer blocks on `scanPromise`. By running this first with `enforce: 'pre'`,
+      // we ensure our scan is kicked off before the Cloudflare plugin can trigger
+      // the optimizer, preventing a deadlock.
       if (!process.env.VITE_IS_DEV_SERVER) {
         resolveScanPromise();
         return;
@@ -173,7 +181,6 @@ export const directiveModulesDevPlugin = ({
                   namespace: "rwsdk-app-barrel-ns",
                 };
               }
-
               // context(justinvdm, 11 Sep 2025): Prevent Vite from
               // externalizing our application files. If we don't, paths
               // imported in our application barrel files will be marked as
