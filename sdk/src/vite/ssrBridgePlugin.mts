@@ -117,6 +117,16 @@ export const ssrBridgePlugin = ({
         return;
       }
 
+      // context(justinvdm, 19 Nov 2025):
+      // Ensure platform-specific modules are always treated as external in the
+      // SSR environment. This is critical for builds, where we produce a
+      // standalone SSR bundle. Without this, Vite might try to bundle these
+      // virtual modules or fail to resolve them.
+      if (this.environment.name === "ssr" && externalModulesSet.has(id)) {
+        log("SSR environment: marking %s as external", id);
+        return { id, external: true };
+      }
+
       if (isDev) {
         // context(justinvdm, 27 May 2025): In dev, we need to dynamically load
         // SSR modules, so we return the virtual id so that the dynamic loading

@@ -94,9 +94,10 @@ defineApp([
 ```tsx title="src/worker.tsx"
 import { defineApp } from "rwsdk/worker";
 import { route } from "rwsdk/router";
+import { env } from "cloudflare:workers";
 
 defineApp([
-  route("/download/*", async ({ request, params, env }) => {
+  route("/download/*", async ({ request, params }) => {
     const object = await env.R2.get("/storage/" + params.$0);
     if (object === null) {
       return new Response("Object Not Found", { status: 404 });

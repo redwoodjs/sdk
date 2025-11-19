@@ -9,7 +9,15 @@ This guide is for users who have an existing RedwoodSDK project and wish to upgr
 
 To upgrade your project, you must first take the following steps to avoid breaking changes.
 
-### 1. Update `package.json` Dependencies
+### 1. Upgrade `rwsdk`
+
+First, upgrade to the latest version of `rwsdk`:
+
+```sh
+pnpm add rwsdk@latest
+```
+
+### 2. Update `package.json` Dependencies
 
 In version `1.x`, several core packages like `react` and `wrangler` have been moved to `peerDependencies`. You must now explicitly add them to your project's `package.json`.
 
@@ -22,7 +30,7 @@ pnpm add -D @cloudflare/vite-plugin@latest wrangler@latest @cloudflare/workers-t
 
 After updating, run `pnpm install` to apply the updates.
 
-### 2. Update `wrangler.jsonc`
+### 3. Update `wrangler.jsonc`
 
 The Cloudflare Workers runtime now requires a newer compatibility date to support the features used by modern React.
 
@@ -38,7 +46,7 @@ The Cloudflare Workers runtime now requires a newer compatibility date to suppor
 
 After updating `wrangler.jsonc`, run `pnpm generate` to update the generated type definitions.
 
-### 3. Review Middleware for RSC Action Compatibility
+### 4. Review Middleware for RSC Action Compatibility
 
 React Server Component (RSC) actions now run through the global middleware pipeline. Previously, action requests bypassed all middleware.
 
@@ -69,7 +77,7 @@ export default defineApp([
 ]);
 ```
 
-### 4. Update response header usage
+### 5. Update response header usage
 
 The `headers` property on the request context was removed. Set response headers using `response.headers`.
 
@@ -89,7 +97,7 @@ const myMiddleware = (requestInfo) => {
 };
 ```
 
-### 5. Remove `resolveSSRValue` wrapper
+### 6. Remove `resolveSSRValue` wrapper
 
 The `resolveSSRValue` helper was removed. Call SSR-only functions directly from worker code.
 

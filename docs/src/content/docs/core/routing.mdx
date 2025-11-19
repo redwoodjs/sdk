@@ -117,7 +117,7 @@ The request handler function takes a [RequestInfo](#request-info) object as its 
 Return values:
 
 - `Response`: A standard response object.
-- `JSX`: A React component, which is statically rendered to HTML on the server, streamed to the client, and then hydrated on the client side.
+- `JSX`: A React component, which is rendered to HTML on the server and **streamed** to the client. This allows the browser to progressively render the page before it is hydrated on the client side.
 
 ---
 
