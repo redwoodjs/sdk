@@ -11,7 +11,6 @@ export { SyncedStateServer };
 
 export type SyncedStateRouteOptions = {
   basePath?: string;
-  resetPath?: string;
   durableObjectName?: string;
 };
 
@@ -54,8 +53,8 @@ class SyncedStateProxy extends RpcTarget {
 /**
  * Registers routes that forward sync state requests to the configured Durable Object namespace.
  * @param getNamespace Function that returns the Durable Object namespace from the Worker env.
- * @param options Optional overrides for base path, reset path, and object name.
- * @returns Router entries for the sync state API and reset endpoint.
+ * @param options Optional overrides for base path and object name.
+ * @returns Router entries for the sync state API.
  */
 export const syncedStateRoutes = (
   getNamespace: (
@@ -64,7 +63,6 @@ export const syncedStateRoutes = (
   options: SyncedStateRouteOptions = {},
 ) => {
   const basePath = options.basePath ?? DEFAULT_SYNCED_STATE_PATH;
-  const resetPath = options.resetPath ?? `${basePath}/reset`;
   const durableObjectName =
     options.durableObjectName ?? DEFAULT_SYNC_STATE_NAME;
 
@@ -85,8 +83,5 @@ export const syncedStateRoutes = (
     return newWorkersRpcResponse(request, proxy);
   };
 
-  return [
-    route(basePath, ({ request }) => forwardRequest(request)),
-    route(resetPath, ({ request }) => forwardRequest(request)),
-  ];
+  return [route(basePath, ({ request }) => forwardRequest(request))];
 };

@@ -28,3 +28,4 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
     </body>
   </html>
 );
+

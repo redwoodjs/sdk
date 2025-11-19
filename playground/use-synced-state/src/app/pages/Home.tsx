@@ -9,12 +9,13 @@ export function Home() {
   return (
     <div className="container">
       <h1>Synced State Test</h1>
-      
+
       <div className="section">
         <h2>Counter</h2>
         <div className="counter-display">Count: {count}</div>
         <div className="button-group">
           <button onClick={() => setCount((c) => c + 1)}>Increment</button>
+          <button onClick={() => setCount((c) => c - 1)}>Decrement</button>
           <button onClick={() => setCount(0)}>Reset</button>
         </div>
       </div>
@@ -34,4 +35,3 @@ export function Home() {
     </div>
   );
 }
-

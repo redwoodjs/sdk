@@ -1,4 +1,4 @@
-import { RpcStub, RpcTarget } from "capnweb";
+import { RpcStub, RpcTarget, newWorkersRpcResponse } from "capnweb";
 import { DurableObject } from "cloudflare:workers";
 
 export type SyncedStateValue = unknown;
@@ -114,6 +114,11 @@ export class SyncedStateServer extends DurableObject {
         this.#subscriptionRefs.delete(key);
       }
     }
+  }
+
+  async fetch(request: Request): Promise<Response> {
+    const api = new CoordinatorApi(this);
+    return newWorkersRpcResponse(request, api);
   }
 }
 
