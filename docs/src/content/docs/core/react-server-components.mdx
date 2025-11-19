@@ -75,7 +75,7 @@ export async function addTodo(formData: FormData) {
 }
 ```
 
-The `addTodo` function is a server function. It is executed on the server when the form is submitted from a client side component. The form data is sent to the server and the function is executed. The result is sent back to the client, parsed by React, and the view is updated with the new todo.
+The `addTodo` function is a server function. It is executed on the server when the form is submitted from a client side component. The form data is sent to the server and the function is executed. The result is **streamed** back to the client, parsed by React, and the view is updated with the new todo.
 
 ```tsx title="@/pages/todos/AddTodo.tsx" mark={1, 3}
 "use client";
