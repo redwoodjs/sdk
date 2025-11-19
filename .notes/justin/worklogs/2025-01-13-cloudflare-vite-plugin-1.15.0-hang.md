@@ -434,3 +434,51 @@ This revealed the real sequence of events:
 ### The `enforce: 'pre'` Solution
 
 The `enforce: 'pre'` fix works because it forces our `directiveModulesDevPlugin`'s `configureServer` hook to run before other plugins. This allows us to initiate the `runDirectivesScan` *before* the Cloudflare plugin has a chance to trigger the dependency optimizer. By the time the optimizer runs and hits our blocking `esbuild` plugin, the scan is already in progress and will eventually resolve the promise, breaking the deadlock.
+
+## PR Title and Description
+
+### Title
+
+fix(vite): Resolve dev server hang and React version mismatch with Cloudflare Vite plugin v1.15.0
+
+### Description
+
+#### Problem
+
+This change addresses two critical issues that arose after upgrading to `@cloudflare/vite-plugin@1.15.0`:
+
+1.  A dev server hang during startup, preventing the server from becoming ready.
+2.  An `Incompatible React versions` error, caused by incorrect dependency resolution during server startup.
+
+#### Root Cause
+
+The root cause of both issues is a new feature in the Cloudflare Vite plugin v1.15.0. To determine worker exports, the plugin now executes the worker entry file early in the dev server startup process (during the `configureServer` hook). This change in timing had two downstream effects on RedwoodSDK:
+
+1.  **Deadlock with Directive Scanning:** The Cloudflare plugin's early execution created a deadlock due to an interaction between Vite's lifecycle hooks and our directive scanning process. The sequence is as follows:
+    1.  During the `configResolved` hook, our `directiveModulesDevPlugin` injects an `esbuild` plugin into Vite's dependency optimizer. This plugin is configured to block (`await scanPromise`) until our directive scan is complete.
+    2.  The Cloudflare plugin's `configureServer` hook runs. Inside this hook, it makes a request back to the dev server to determine worker exports and, critically, **blocks** by awaiting the result of this request.
+    3.  This internal request indirectly triggers Vite's dependency optimizer to start processing the worker entry file.
+    4.  The optimizer starts, immediately hits our blocking `esbuild` plugin, and freezes.
+    5.  Because the optimizer is frozen, the Cloudflare plugin's request never completes, and because Vite's startup process is blocked waiting for the Cloudflare plugin's hook to finish, Vite never proceeds to the next stage.
+    6.  Since our `configureServer` hook (the only place the directive scan is initiated) is never called - since it is blocked on Cloudflare plugin's configureServer completing, the `scanPromise` is never resolved, and the server is permanently deadlocked.
+
+2.  **Broken Dependency Optimization Timing:** The early execution of the worker entry file also caused SSR code to be evaluated *before* Vite's SSR dependency optimizer had been initialized. This broke Vite's normal dependency discovery flow, causing modules listed in `optimizeDeps.include` (like `react-dom/server.edge`) to be treated as "new" dependencies instead of being recognized from the initial configuration. This led to the React version mismatch error.
+
+#### Solution
+
+The solution is a multi-part fix that addresses the new timing challenges and resolves several latent bugs that were exposed by this change:
+
+1.  **Forced Plugin Ordering (`enforce: 'pre'`):**
+    -   We added `enforce: 'pre'` to `directiveModulesDevPlugin` to ensure its `configureServer` hook runs before the Cloudflare plugin's. This allows our directive scan to be initiated *before* the dependency optimizer is triggered, preventing the deadlock.
+    -   We also added `enforce: 'pre'` to `knownDepsResolverPlugin` for the same reason.
+
+2.  **Explicit Optimizer Initialization:**
+    -   In `knownDepsResolverPlugin`, we now explicitly call `await server.environments.ssr.depsOptimizer.init()` within our `pre`-enforced `configureServer` hook. This ensures that the SSR optimizer is fully initialized and has processed `optimizeDeps.include` *before* the Cloudflare plugin executes any SSR code.
+
+3.  **Bug Fixes in Dependency Resolver:**
+    -   Corrected an incorrect slugification pattern that prevented our resolver from matching Vite's pre-bundled dependency names (e.g., `react-dom_server__edge`).
+    -   Fixed a bug where our resolver was ignoring optimizer entry points (modules with an empty `importer`), which prevented it from correctly handling modules from `optimizeDeps.include`.
+
+4.  **Cleanup:**
+    -   Removed unused `AsyncLocalStorage` promise logic (`requestInfoDeferred`) that was causing a "cross-request promise resolution" warning in Cloudflare Workers.
+    -   Added extensive `context(...)` comments to all plugins with `configureServer` hooks to document the rationale for their execution order.
