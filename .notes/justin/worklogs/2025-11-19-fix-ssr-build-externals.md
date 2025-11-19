@@ -39,6 +39,14 @@ This plugin:
 
 This effectively "hoists" the imports outside the IIFE without needing to parse and move them manually. The imports remain at the top level, while the body of the module is wrapped to ensure scope isolation.
 
+## Root Cause: Regex Matching Comments
+
+The initial implementation used simple line-based regex to find import statements, which incorrectly matched import-like text inside comments. For example, a comment containing `import { StyleSheet } from '@emotion/sheet'` was being treated as a real import, causing the IIFE banner to be inserted in the wrong location.
+
+## Solution: AST-Based Parsing
+
+Refactored `ssrBridgeWrapPlugin` to use AST parsing (via `@ast-grep/napi`) to find actual import and export statements, ignoring comments. This ensures we only operate on real code constructs, not text that happens to look like imports/exports in comments.
+
 ---
 
 # PR Description: fix(build): Support external modules in SSR bundle

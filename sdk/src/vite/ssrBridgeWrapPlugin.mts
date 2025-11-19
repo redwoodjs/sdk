@@ -1,3 +1,4 @@
+import { Lang, parse as sgParse } from "@ast-grep/napi";
 import debug from "debug";
 import MagicString from "magic-string";
 import type { Plugin } from "vite";
@@ -9,77 +10,90 @@ export const ssrBridgeWrapPlugin = (): Plugin => {
     name: "rwsdk:ssr-bridge-wrap",
     apply: "build",
     renderChunk(code, chunk) {
-      if (!chunk.fileName.endsWith("ssr_bridge.js")) {
-        return null;
-      }
-
-      log("Wrapping SSR bridge chunk: %s", chunk.fileName);
-
-      const s = new MagicString(code);
-
-      // We need to find the last import statement so we can start the IIFE
-      // *after* all imports.
-      //
-      // We can rely on the fact that in an ES module (which this bundle is),
-      // imports are static and hoisted to the top. However, they might be
-      // interspersed with comments or newlines.
-      //
-      // A robust heuristic for a generated bundle is to find the last line
-      // starting with "import ".
-      const lines = code.split("\n");
-      let lastImportLineIndex = -1;
-      // Keep track of the actual character index for the insertion point
-      let insertCharIndex = 0;
-
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (line.startsWith("import ") || line.startsWith("import{")) {
-          lastImportLineIndex = i;
+      try {
+        if (!chunk.fileName.endsWith("ssr_bridge.js")) {
+          return null;
         }
-      }
 
-      // Calculate character index for insertion (start of the line after the last import)
-      // If no imports, we insert at the very beginning (index 0)
-      if (lastImportLineIndex !== -1) {
-        // Sum lengths of lines up to lastImportLineIndex + 1
-        let charCount = 0;
-        for (let i = 0; i <= lastImportLineIndex; i++) {
-          charCount += lines[i].length + 1; // +1 for newline
+        const s = new MagicString(code);
+
+        // Use AST parsing to find actual import statements (not in comments)
+        const root = sgParse(Lang.JavaScript, code);
+
+        // Find all import statements using AST patterns
+        const importPatterns = [
+          'import { $$$ } from "$MODULE"',
+          "import { $$$ } from '$MODULE'",
+          'import $DEFAULT from "$MODULE"',
+          "import $DEFAULT from '$MODULE'",
+          'import * as $NS from "$MODULE"',
+          "import * as $NS from '$MODULE'",
+          'import "$MODULE"',
+          "import '$MODULE'",
+        ];
+
+        let lastImportEnd = -1;
+        for (const pattern of importPatterns) {
+          const matches = root.root().findAll(pattern);
+          for (const match of matches) {
+            const range = match.range();
+            if (range.end.index > lastImportEnd) {
+              lastImportEnd = range.end.index;
+            }
+          }
         }
-        insertCharIndex = charCount;
+
+        // Find the export statement using AST
+        const exportPatterns = [
+          "export { $$$ }",
+          'export { $$$ } from "$MODULE"',
+          "export { $$$ } from '$MODULE'",
+        ];
+
+        let exportStart = -1;
+        let exportEnd = -1;
+        for (const pattern of exportPatterns) {
+          const matches = root.root().findAll(pattern);
+          for (const match of matches) {
+            const range = match.range();
+            // Check if this export contains our target symbols
+            const text = match.text();
+            if (
+              text.includes("renderHtmlStream") &&
+              text.includes("ssrLoadModule") &&
+              text.includes("ssrWebpackRequire")
+            ) {
+              exportStart = range.start.index;
+              exportEnd = range.end.index;
+              break;
+            }
+          }
+          if (exportStart !== -1) break;
+        }
+
+        const banner = `export const { renderHtmlStream, ssrLoadModule, ssrWebpackRequire, ssrGetModuleExport, createThenableFromReadableStream } = (function() {`;
+        const footer = `return { renderHtmlStream, ssrLoadModule, ssrWebpackRequire, ssrGetModuleExport, createThenableFromReadableStream };\n})();`;
+
+        // Insert banner after the last import (or at the beginning if no imports)
+        const insertIndex = lastImportEnd === -1 ? 0 : lastImportEnd;
+        s.appendLeft(insertIndex, banner + "\n");
+
+        // Append footer at the end
+        s.append(footer);
+
+        // Remove the original export statement if found
+        if (exportStart !== -1 && exportEnd !== -1) {
+          s.remove(exportStart, exportEnd);
+        }
+
+        return {
+          code: s.toString(),
+          map: s.generateMap(),
+        };
+      } catch (e) {
+        console.error("Error in ssrBridgeWrapPlugin:", e);
+        throw e;
       }
-
-      const banner = `export const { renderHtmlStream, ssrLoadModule, ssrWebpackRequire, ssrGetModuleExport, createThenableFromReadableStream } = (function() {`;
-      const footer = `return { renderHtmlStream, ssrLoadModule, ssrWebpackRequire, ssrGetModuleExport, createThenableFromReadableStream };\n})();`;
-
-      // Insert banner
-      s.appendLeft(insertCharIndex, banner + "\n");
-
-      // Append footer
-      s.append(footer);
-
-      // Also, we need to remove the original export statement for these symbols,
-      // as we are now re-exporting them from the IIFE result.
-      // We look for a standard export statement block. Since we are wrapping
-      // the whole file (minus imports), this should be the only export statement
-      // we care about. The regex matches `export` followed by whitespace/newlines,
-      // `{`, any content until `}`, and optional semicolon.
-      const exportRegex = /export\s*\{[\s\S]*?\}\s*;?/;
-      const match = exportRegex.exec(code);
-
-      if (match) {
-        log("Removing original export statement at index %d", match.index);
-        s.remove(match.index, match.index + match[0].length);
-      } else {
-        log(
-          "WARNING: Failed to find export statement to remove from SSR bridge chunk",
-        );
-      }
-
-      return {
-        code: s.toString(),
-        map: s.generateMap(),
-      };
     },
   };
 };
