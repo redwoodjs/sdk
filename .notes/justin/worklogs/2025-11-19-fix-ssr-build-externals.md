@@ -1,0 +1,40 @@
+# Work Log: 2025-11-19 - Fix External Modules in SSR Build
+
+## Problem
+We recently fixed an issue in development where platform-specific modules (like `cloudflare:workers`) were not being correctly treated as external when crossing the SSR bridge. This was fixed by modifying the `load` hook in `ssrBridgePlugin` to preserve these imports as bare specifiers in development.
+
+However, we need to ensure the same behavior applies to production builds. In builds, the `ssr` environment is bundled separately. We need to ensure that these platform-specific modules are marked as external in the SSR bundle so they are not attempted to be bundled (which would fail) and remain as external imports.
+
+## Solution
+We modified `ssrBridgePlugin.mts` to intercept resolution of these external modules in the `ssr` environment. By checking if a module ID is in `externalModulesSet` and if we are in the `ssr` environment, we explicitly return `{ id, external: true }` from the `resolveId` hook. This prevents Vite/Rollup from trying to bundle them and preserves them as external imports in the final SSR bundle.
+
+This change was applied in the `resolveId` hook, before the `isDev` check, to ensure it covers both development (as a safeguard/consistency) and production builds.
+
+## Handling External Imports in the SSR Bridge Wrapper
+After implementing the external fix, the build failed with `ERROR: Unexpected "*"` on the line `import * as cfw from 'cloudflare:workers';`.
+
+This occurred because `configPlugin.mts` wraps the entire SSR bundle in an IIFE to prevent symbol collisions when it's later merged into the worker bundle.
+```typescript
+// Old implementation:
+banner: `export const { ... } = (function() {`,
+footer: `return { ... };\n})();`,
+```
+This resulted in imports being placed inside the function scope, which is a syntax error:
+```javascript
+export const { ... } = (function() {
+  import * as cfw from 'cloudflare:workers'; // Syntax Error
+  // ...
+})();
+```
+
+### The Smarter Wrapping Plugin
+To solve this, we replaced the static banner/footer with a dedicated plugin, `ssrBridgeWrapPlugin`.
+
+This plugin:
+1. Hooks into `renderChunk`.
+2. Scans the code to find the last `import` statement.
+3. Injects the "start IIFE" code *after* the last import.
+4. Appends the "end IIFE" code at the end of the file.
+5. Removes the original export statement from the bundle using a robust regex (`/export\s*\{[\s\S]*?\}\s*;?/`) that handles varied formatting.
+
+This effectively "hoists" the imports outside the IIFE without needing to parse and move them manually. The imports remain at the top level, while the body of the module is wrapped to ensure scope isolation.

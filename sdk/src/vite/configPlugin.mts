@@ -6,6 +6,8 @@ import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import { buildApp } from "./buildApp.mjs";
 import { externalModules } from "./constants.mjs";
 
+import { ssrBridgeWrapPlugin } from "./ssrBridgeWrapPlugin.mjs";
+
 export const configPlugin = ({
   silent,
   projectRootDir,
@@ -185,22 +187,14 @@ export const configPlugin = ({
                 // causes a redeclaration error. To solve this, we wrap the SSR
                 // bundle in an exporting IIFE. This creates a scope boundary,
                 // preventing symbol collisions while producing a valid,
-                // tree-shakeable ES module. The inline plugin below removes the
-                // original `export` statement from the bundle to prevent syntax
-                // errors.
+                // tree-shakeable ES module.
+                //
+                // context(justinvdm, 19 Nov 2025): We use a custom plugin
+                // (ssrBridgeWrapPlugin) to intelligently inject the IIFE *after*
+                // any top-level external imports, ensuring they remain valid.
                 inlineDynamicImports: true,
-                banner: `export const { renderHtmlStream, ssrLoadModule, ssrWebpackRequire, ssrGetModuleExport, createThenableFromReadableStream } = (function() {`,
-                footer: `return { renderHtmlStream, ssrLoadModule, ssrWebpackRequire, ssrGetModuleExport, createThenableFromReadableStream };\n})();`,
               },
-              plugins: [
-                {
-                  name: "rwsdk:ssr-bridge-exports",
-                  renderChunk(code) {
-                    // Remove the original export statement as it's now handled by the banner/footer
-                    return code.replace(/export\s*{[^}]+};?/, "");
-                  },
-                },
-              ],
+              plugins: [ssrBridgeWrapPlugin()],
             },
           },
         },
