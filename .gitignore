@@ -197,3 +197,4 @@ starters/standard/.pnpm-store
 .cursor/rules/user
 
 **/*.tsbuildinfo
+**/worker-configuration.d.ts

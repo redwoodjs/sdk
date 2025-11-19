@@ -332,46 +332,105 @@ Removed the unused code:
 
 `runWithRequestInfo()` now runs the function directly in the AsyncLocalStorage context, which is all that's needed. Since no code was waiting for the promise, removing it eliminates the warning without affecting functionality.
 
----
+## Experiment: Non-blocking Directive Scan
 
-## PR Title
+After implementing the proactive scanning architecture, we're testing a simpler alternative: removing the blocking `await scanPromise` calls in `directiveModulesDevPlugin.mts`.
 
-fix(dev): Proactive directive scanning to prevent deadlock with Cloudflare Vite plugin 1.15.0
+### Hypothesis
 
-## PR Description
+The deadlock occurs because:
+1. Cloudflare plugin triggers dependency optimization (via `depsOptimizer.init()`)
+2. Dependency optimization hits our esbuild plugin's `onResolve` hook
+3. The hook blocks on `await scanPromise`
+4. The scan is running but can't complete because the main thread is blocked
 
-### Problem
+If we remove the blocking, the optimizer should proceed immediately. The scan will run in the background and update barrel files when complete. Vite should handle the file updates via HMR or re-optimization.
 
-After upgrading to `@cloudflare/vite-plugin@1.15.0`, the dev server would hang during startup. The Cloudflare plugin's `ctx.exports` feature runs the worker entry module during `configureServer` to detect exports, which triggers SSR code evaluation before SSR's dependency optimizer initializes. This caused:
+### Changes Made
 
-1. **Deadlock:** Our directive scan blocked Vite's dependency optimizer, which the Cloudflare plugin was waiting for, creating a circular dependency.
-2. **React version mismatch:** SSR dependencies were discovered lazily instead of being pre-processed from `optimizeDeps.include`, causing version conflicts.
-3. **Cross-request promise warning:** Unused promise resolution code triggered Cloudflare Workers warnings.
+Restored files from `main` branch to get the original blocking implementation, then removed:
+- `await scanPromise` in `build.onResolve` hook (line 162 in `directiveModulesDevPlugin.mts`)
 
-### Solution
+The scan still runs in `configureServer`, but no longer blocks:
+- Dependency optimization can proceed immediately (even with empty barrel files initially)
+- Scan completes asynchronously and updates barrel files
+- Vite should pick up changes when files are updated
 
-**Proactive directive scanning:** Run the directive scan before Vite's lifecycle hooks begin using `vite.resolveConfig()`. This ensures the scan completes before any plugins execute, eliminating timing dependencies and compatibility concerns.
+### Expected Outcomes
 
-**SSR optimizer initialization:** Explicitly initialize SSR's dependency optimizer in `configureServer` (with `enforce: "pre"`) before the Cloudflare plugin runs, ensuring `optimizeDeps.include` dependencies are processed before SSR code executes.
+**If successful:**
+- Dev server starts without hanging
+- Initial optimization may see empty barrel files, but should complete
+- When scan finishes, barrel files update and Vite handles the change
+- No deadlock, simpler code than proactive scanning
 
-**Code cleanup:** Removed unused `requestInfoDeferred` promise resolution code that was causing cross-request warnings.
+**If unsuccessful:**
+- App may start with missing exports (if code imports from barrel files before scan completes)
+- May need to add back blocking or use proactive scanning approach
 
-### Changes
+### Testing Status
 
-- Made `redwoodPlugin()` async and added proactive `resolveConfig()` call before returning plugins
-- Moved directive scan to run during proactive config resolution
-- Removed blocking logic from `directiveModulesDevPlugin` (no longer needed)
-- Added SSR optimizer initialization in `knownDepsResolverPlugin.configureServer()`
-- Fixed slugification handling in esbuild resolver plugin (`.` → `__` conversion)
-- Fixed entry point resolution (removed `importer !== ""` check)
-- Changed `knownDepsResolverPlugin` to `enforce: "pre"` for earlier execution
-- Updated `runDirectivesScan` to accept `ResolvedConfig["environments"]` type
-- Removed unused `requestInfoDeferred` and `waitForRequestInfo()` code
+**First attempt:** Removed blocking `await` in `directiveModulesDevPlugin.mts`. Result: Still hangs.
 
-### Testing
+**Revised Theory - Cloudflare Virtual Module Deadlock:**
 
-- Dev server starts successfully without hanging
-- No React version mismatch errors
-- No cross-request promise resolution warnings
-- Compatible with Cloudflare Vite plugin 1.15.0 and older versions
+After tracing through the Cloudflare plugin code, discovered that `getCurrentWorkerNameToExportTypesMap()` requests `virtual:cloudflare/export-types` during `configureServer`. This virtual module request triggers Vite's dependency optimizer to process it and its dependencies.
 
+The deadlock sequence:
+1. Cloudflare plugin's `configureServer` calls `getCurrentWorkerNameToExportTypesMap()`
+2. This makes a request for `virtual:cloudflare/export-types`
+3. Vite's dependency optimizer starts to process this virtual module
+4. Optimizer hits our esbuild plugin → **BLOCKS** on `await scanPromise`
+5. Cloudflare plugin is stuck waiting for the request to complete
+6. Our scan (running in background) can't finish because optimizer is frozen
+7. **DEADLOCK**
+
+**The Fix - Skip Blocking for Cloudflare Virtual Modules:**
+
+If `virtual:cloudflare/export-types` (or any Cloudflare virtual module) is being resolved through our esbuild plugin during optimization, we should skip the blocking `await scanPromise` for those specific modules. This allows Cloudflare's export type detection to proceed without waiting for our scan.
+
+**Changes Made:**
+- Added check in `build.onResolve` to detect Cloudflare virtual modules (`virtual:cloudflare/` or `\0virtual:cloudflare/`)
+- Skip `await scanPromise` for these modules
+- Added logging to verify this path is being hit during the hang
+
+**Next Step:** Test if skipping the block for Cloudflare virtual modules resolves the hang. The logging will confirm whether this is the actual deadlock path.
+
+**Second attempt:** The logs show the theory was incorrect. Our `onResolve` is being hit for the real worker entry (`src/worker.tsx`) before Cloudflare even makes its request. The block is happening earlier than anticipated.
+
+The core facts remain:
+1. We are blocking the Vite dependency optimizer when it first sees the worker entry.
+2. The Cloudflare plugin is waiting for a `dispatchFetch` request to complete, which depends on the optimizer.
+
+The unknown is why our directive scan, which is running in the background, never finishes to release the `scanPromise` lock. The next step is to add logging inside the scanner's own `esbuild` process to see what module resolution it's getting stuck on.
+
+**Third attempt: `enforce: 'pre'`**
+
+To test if the order of `configureServer` hooks matters, we're adding `enforce: 'pre'` to `directiveModulesDevPlugin`. This forces our `configureServer` to run before the Cloudflare plugin's hook.
+
+**Hypothesis:** This will likely not fix the hang, as the fundamental deadlock (optimizer blocked by scan, which needs the optimizer) remains. However, it will prove that our hook is running first and allow us to see if that changes the behavior at all.
+
+**Changes Made:**
+- Added `enforce: 'pre'` to the `directiveModulesDevPlugin` definition.
+
+**Next Step:** Run the dev server and observe the log output to confirm our `configureServer` runs before Cloudflare's and to see if the hang persists.
+
+## Final Deadlock Analysis: The `configResolved` Trap
+
+After extensive debugging, the true nature of the deadlock was identified. Our previous theories were close but missed a critical detail about Vite's plugin lifecycle. The key finding was that our `configureServer` hook in `directiveModulesDevPlugin` was **never being called** during the hang.
+
+This revealed the real sequence of events:
+
+1.  **`configResolved` Hook Runs Early:** Vite invokes the `configResolved` hook for all plugins. Our `directiveModulesDevPlugin` uses this hook to inject an `esbuild` plugin into the dependency optimizer. This `esbuild` plugin contains the blocking `await scanPromise;` logic. The trap is now set.
+
+2.  **Optimizer is Triggered Before `configureServer`:** Before the `configureServer` hooks are ever called, something (likely the Cloudflare plugin's preparation for its `dispatchFetch` call) triggers Vite's dependency optimizer to start scanning for dependencies, beginning with the worker entry file (`src/worker.tsx`).
+
+3.  **Optimizer Hits the Block:** The optimizer immediately encounters our `esbuild` plugin's `onResolve` hook and freezes, waiting for `scanPromise` to be resolved.
+
+4.  **`configureServer` is Never Reached:** Because the dependency optimizer is a synchronous, blocking part of Vite's startup sequence, its freeze prevents Vite from ever proceeding to the `configureServer` stage.
+
+5.  **Permanent Deadlock:** The `scanPromise` can only be resolved by the `runDirectivesScan` function, which is kicked off in our `configureServer` hook. Since `configureServer` is never called, the promise is never resolved, and the optimizer remains permanently blocked.
+
+### The `enforce: 'pre'` Solution
+
+The `enforce: 'pre'` fix works because it forces our `directiveModulesDevPlugin`'s `configureServer` hook to run before other plugins. This allows us to initiate the `runDirectivesScan` *before* the Cloudflare plugin has a chance to trigger the dependency optimizer. By the time the optimizer runs and hits our blocking `esbuild` plugin, the scan is already in progress and will eventually resolve the promise, breaking the deadlock.
