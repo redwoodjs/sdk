@@ -38,3 +38,22 @@ This plugin:
 5. Removes the original export statement from the bundle using a robust regex (`/export\s*\{[\s\S]*?\}\s*;?/`) that handles varied formatting.
 
 This effectively "hoists" the imports outside the IIFE without needing to parse and move them manually. The imports remain at the top level, while the body of the module is wrapped to ensure scope isolation.
+
+---
+
+# PR Description: fix(build): Support external modules in SSR bundle
+
+## Problem
+
+Production builds failed when the SSR bridge module contained external imports (e.g., `cloudflare:workers`). This happened for two reasons:
+1.  **External Resolution:** The `ssr` environment did not correctly externalize platform-specific modules during the build, attempting to bundle them instead.
+2.  **IIFE Wrapping:** The SSR bundle is wrapped in an IIFE to prevent symbol collisions when merged into the worker bundle. The previous wrapping mechanism (simple banner/footer) blindly wrapped the entire file, placing top-level external imports inside the function scope, which is a syntax error.
+
+## Solution
+
+1.  **Explicit Externalization:** Updated `ssrBridgePlugin` to explicitly resolve platform-specific modules as external when running in the `ssr` environment.
+2.  **Smart IIFE Wrapping:** Introduced a new `ssrBridgeWrapPlugin` to handle the IIFE injection. Instead of wrapping the whole file, it intelligently locates the last import statement and injects the IIFE start block *after* it. This ensures that external imports remain at the top level while the module body is correctly isolated. The plugin also robustly removes the original export statement to avoid syntax errors.
+
+## Testing
+
+Validated by successfully building a project that imports `cloudflare:workers` in an SSR-rendered component.
