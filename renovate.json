@@ -54,7 +54,6 @@
         "vite"
       ],
       "groupName": "starter-peer-deps",
-      "schedule": ["every weekend"],
       "prPriority": 1
     },
     {
@@ -63,7 +62,6 @@
       "matchPackageNames": ["vite"],
       "matchDepTypes": ["devDependencies"],
       "groupName": "starter-peer-deps",
-      "schedule": ["every weekend"],
       "prPriority": 1
     },
     {
@@ -94,7 +92,6 @@
       ],
       "followTag": "next",
       "groupName": "starter-peer-deps",
-      "schedule": ["every weekend"],
       "prPriority": 1
     },
     {

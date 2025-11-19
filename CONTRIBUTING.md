@@ -424,7 +424,7 @@ This section outlines the strategy for managing dependencies to maintain stabili
 
 -   **What**: The most critical dependencies (`wrangler`, `react`, `vite`, etc.) that are defined as `peerDependencies` in the SDK and tested in the `starters/*`, `playground/*`, and `addons/*` projects.
 -   **When**: As Soon As Possible (ASAP). Renovate creates a PR immediately when a new version is available.
--   **Why**: To provide an immediate early-warning signal if a new peer dependency version introduces a regression that could affect users. The playground E2E tests provide an additional validation layer beyond the starter smoke tests.
+-   **Why**: To provide an immediate early-warning signal if a new peer dependency version introduces a regression that could affect users. Since users may upgrade to new versions that are within the allowed peer dependency ranges, we need CI to fail immediately if such an update causes breakage. The playground E2E tests provide an additional validation layer beyond the starter smoke tests.
 
 ##### A Note on React Canary Versions
 The starters intentionally use `canary` versions of React. This is the official channel recommended by the React team for frameworks that implement React Server Components. Using canaries gives us access to the latest features and ensures our implementation remains compatible with the direction of React.
@@ -462,7 +462,7 @@ This dashboard is the central place to manage the greenkeeping process. It provi
 
 Our configuration schedules most updates to run weekly to reduce noise. However, you can trigger any scheduled update immediately from the dashboard.
 
-To do this, find the update group you wish to run in the "Awaiting Schedule" section of the dashboard and click the checkbox next to it. Renovate will detect this change and create the corresponding Pull Request within a few minutes. This is particularly useful for forcing a one-time update of all dependencies to establish a new baseline or to test a specific update, such as the `starter-peer-deps` group.
+To do this, find the update group you wish to run in the "Awaiting Schedule" section of the dashboard and click the checkbox next to it. Renovate will detect this change and create the corresponding Pull Request within a few minutes. This is particularly useful for forcing a one-time update of all dependencies to establish a new baseline or to test a specific update, such as the `starter-deps` group.
 
 ### Failure Protocol for Peer Dependencies
 
