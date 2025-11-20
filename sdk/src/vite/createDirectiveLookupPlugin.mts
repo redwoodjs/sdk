@@ -83,6 +83,10 @@ export const createDirectiveLookupPlugin = async ({
       log("Development mode: %s", isDev);
     },
     configureServer(server) {
+      // context(justinvdm, 19 Nov 2025): This hook simply saves a reference
+      // to the dev server instance for use in other hooks. Unlike plugins that
+      // must run before the Cloudflare plugin to prevent startup deadlocks,
+      // its execution order is not critical, so `enforce: 'pre'` is not needed.
       devServer = server;
     },
     configEnvironment(env, viteConfig) {

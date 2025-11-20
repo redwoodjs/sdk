@@ -24,6 +24,10 @@ export const ssrBridgePlugin = ({
     name: "rwsdk:ssr-bridge",
     enforce: "pre",
     configureServer(server) {
+      // context(justinvdm, 19 Nov 2025): This plugin patches the dev server's
+      // HMR and optimizer behavior to coordinate the `ssr` and `worker`
+      // environments. It runs with `enforce: 'pre'` to ensure these patches
+      // are in place before other plugins start interacting with the server.
       devServer = server;
 
       const ssrHot = server.environments.ssr.hot;

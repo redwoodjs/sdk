@@ -167,11 +167,28 @@ export const knownDepsResolverPlugin = ({
       return null;
     }
 
+    // Create reverse mapping from slugified names to original imports
+    // Vite converts "react-dom/server.edge" -> "react-dom_server__edge"
+    // Pattern: / becomes _, . becomes __
+    const slugifiedToOriginal = new Map<string, string>();
+    for (const [original, resolved] of mappings) {
+      const slugified = original.replace(/\//g, "_").replace(/\./g, "__");
+      slugifiedToOriginal.set(slugified, original);
+    }
+
     return {
       name: `rwsdk:known-dependencies-resolver-esbuild-${envName}`,
       setup(build: any) {
         build.onResolve({ filter: /.*/ }, (args: any) => {
           let resolved: string | undefined = mappings.get(args.path);
+
+          // If not found, check if it's a slugified version
+          if (!resolved) {
+            const originalImport = slugifiedToOriginal.get(args.path);
+            if (originalImport) {
+              resolved = mappings.get(originalImport);
+            }
+          }
 
           if (!resolved) {
             resolved = resolveKnownImport(
@@ -181,7 +198,9 @@ export const knownDepsResolverPlugin = ({
             );
           }
 
-          if (resolved && args.importer !== "") {
+          // Resolve for both entry points (importer === '') and regular imports
+          // Entry points come from optimizeDeps.include and are critical to intercept
+          if (resolved) {
             if (args.path === "react-server-dom-webpack/client.edge") {
               return;
             }
@@ -197,11 +216,24 @@ export const knownDepsResolverPlugin = ({
   return [
     {
       name: "rwsdk:known-dependencies-resolver:config",
-      enforce: "post",
+      enforce: "pre",
 
       config(config, { command }) {
         isBuild = command === "build";
         log("Configuring plugin for command=%s", command);
+      },
+
+      async configureServer(server) {
+        // context(justinvdm, 19 Nov 2025): This hook must run before the
+        // Cloudflare plugin's `configureServer` hook, so we use `enforce: 'pre'`.
+        // The Cloudflare plugin's hook executes the worker entry file to discover
+        // its exports. This can trigger the evaluation of SSR code. We must initialize
+        // the SSR dependency optimizer *before* that happens to ensure that any
+        // dependencies in `optimizeDeps.include` (like `react-dom/server.edge`)
+        // are correctly registered before they are discovered lazily.
+        if (server.environments.ssr?.depsOptimizer) {
+          await server.environments.ssr.depsOptimizer.init();
+        }
       },
 
       configResolved(config) {

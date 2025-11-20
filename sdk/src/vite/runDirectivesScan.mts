@@ -313,6 +313,24 @@ export const runDirectivesScan = async ({
           const resolvedPath = resolved?.id;
 
           if (resolvedPath && path.isAbsolute(resolvedPath)) {
+            try {
+              const stats = await fsp.stat(resolvedPath);
+              if (stats.isDirectory()) {
+                log(
+                  "Resolved path is a directory, marking as external to avoid scan error:",
+                  resolvedPath,
+                );
+                return { external: true };
+              }
+            } catch (e) {
+              // This can happen for virtual modules or special paths that don't
+              // exist on the filesystem. We can safely externalize them.
+              log(
+                "Could not stat resolved path, marking as external:",
+                resolvedPath,
+              );
+              return { external: true };
+            }
             // Normalize the path for esbuild compatibility
             const normalizedPath = normalizeModulePath(
               resolvedPath,

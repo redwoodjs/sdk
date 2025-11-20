@@ -66,6 +66,11 @@ export const miniflareHMRPlugin = (givenOptions: {
   {
     name: "rwsdk:miniflare-hmr",
     configureServer(server) {
+      // context(justinvdm, 19 Nov 2025): This hook sets up an error handler
+      // middleware. It runs in a returned function, which intentionally
+      // places it late in the middleware stack. Unlike plugins that must
+      // run before the Cloudflare plugin to prevent startup deadlocks, its
+      // timing is not critical, so `enforce: 'pre'` is not needed.
       return () => {
         server.middlewares.use(function rwsdkDevServerErrorHandler(
           err: unknown,

@@ -49,6 +49,10 @@ export const directivesPlugin = ({
       isBuild = config.command === "build";
     },
     configureServer(server) {
+      // context(justinvdm, 19 Nov 2025): This hook adds a middleware to track
+      // when the first server response has finished. Unlike plugins that must
+      // run before the Cloudflare plugin to prevent startup deadlocks, its
+      // execution order is not critical, so `enforce: 'pre'` is not needed.
       devServer = server;
       devServer.middlewares.use((_req, res, next) => {
         // context(justinvdm, 15 Jun 2025): We want to watch for new client and server modules
