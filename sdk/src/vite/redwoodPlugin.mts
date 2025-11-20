@@ -14,6 +14,7 @@ import { pathExists } from "fs-extra";
 import { $ } from "../lib/$.mjs";
 import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
 import { hasPkgScript } from "../lib/hasPkgScript.mjs";
+import { cloudflarePreInitPlugin } from "./cloudflarePreInitPlugin.mjs";
 import { configPlugin } from "./configPlugin.mjs";
 import { devServerTimingPlugin } from "./devServerTimingPlugin.mjs";
 import { directiveModulesDevPlugin } from "./directiveModulesDevPlugin.mjs";
@@ -155,6 +156,7 @@ export const redwoodPlugin = async (
       projectRootDir,
     }),
     knownDepsResolverPlugin({ projectRootDir }),
+    cloudflarePreInitPlugin(),
     tsconfigPaths({ root: projectRootDir }),
     shouldIncludeCloudflarePlugin
       ? (cloudflare({
