@@ -516,3 +516,21 @@ This is a timing conflict caused by our new `enforce: 'pre'` setting.
 We have exacerbated an existing race condition. Previously, our scanner ran later, likely giving content collections enough time to generate files "by accident." Now that we strictly enforce an early run to avoid the Cloudflare deadlock, we guarantee that we scan before generation is complete.
 
 We need a synchronization mechanism to ensure that the content collections generation is finished (or at least that the files exist) before our directive scanner attempts to resolve them. Since `builder.watch()` is fire-and-forget, we can't simply await the plugin's hook. We may need to watch for file existence or find another signal.
+
+### A New Approach: Externalize Problematic Imports
+
+Upon further reflection, attempting to synchronize with async, "fire-and-forget" code generation plugins within Vite's hook lifecycle introduces significant complexity and brittleness. The dependency graph becomes impossible to solve reliably (e.g., Plugin A must run before B, but B must run before A).
+
+The directive scanning process is intended to analyze the statically available application source code. It is not designed to be a fully-featured build process that waits for generated files.
+
+**Decision:** We will not support directive scanning for code that is generated asynchronously by other Vite plugins during server startup. Code that needs to be scanned for directives must exist on the filesystem *before* the Vite dev server starts.
+
+This simplifies our model and provides a clear contract for users: if you generate code with directives, do it as a pre-build step.
+
+**Solving the Error:**
+
+The immediate error is . This happens because our -based scanner follows an import to that path, but the code generation plugin has not created the necessary files yet, only the parent directory.
+
+The generic solution is to instruct our scanner to not follow such imports. By marking the path as , we tell  to treat it as a black box, effectively ignoring it. This prevents the crash and aligns with our decision to not scan asynchronously generated code. The regular Vite dev server will handle the import later in the request pipeline, after the code generation plugin has had a chance to run.
+
+This fix will be implemented in  by adding an  plugin to  that marks any import to  as external.
