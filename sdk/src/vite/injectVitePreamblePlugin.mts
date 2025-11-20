@@ -12,10 +12,6 @@ export const injectVitePreamble = ({
   name: "rwsdk:inject-vite-preamble",
   apply: "serve",
   transform(code: string, id: string) {
-    // Skip during directive scanning to avoid performance issues
-    if (process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE) {
-      return;
-    }
 
     if (this.environment.name !== "client") {
       return;

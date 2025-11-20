@@ -297,9 +297,13 @@ export const knownDepsResolverPlugin = ({
       async resolveId(
         id: string,
         importer: string | undefined,
+        options?: { custom?: any },
       ): Promise<string | undefined> {
-        // Skip during directive scanning to avoid performance issues
-        if (process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE) {
+        // Skip during our directive scanning to avoid performance issues
+        // context(justinvdm, 20 Jan 2025): We check options.custom?.rwsdk?.directiveScan to distinguish
+        // between our directive scan (which should skip) and external calls like Cloudflare's early
+        // dispatch (which should be handled normally).
+        if (options?.custom?.rwsdk?.directiveScan === true) {
           return;
         }
 
