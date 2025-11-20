@@ -480,3 +480,39 @@ The solution is a multi-part fix that addresses the new timing challenges and re
 4.  **Cleanup:**
     -   Removed unused code that was causing a "cross-request promise resolution" warning in Cloudflare Workers.
     -   Added extensive comments to our Vite plugins to document the rationale for their execution order, improving future maintainability.
+
+## Regression: Content Collections Race Condition
+
+A new regression has surfaced with the `@content-collections/vite` plugin. The dev server now fails with:
+
+```
+Error: RWSDK directive scan failed:
+Error: Build failed with 1 error:
+src/app/pages/Home.tsx:1:25: ERROR: Cannot read file ".content-collections/generated": is a directory
+```
+
+### Analysis
+
+This is a timing conflict caused by our new `enforce: 'pre'` setting.
+
+1.  **Our Scanner Runs First:** Because we moved `directiveModulesDevPlugin` to `enforce: 'pre'`, our directive scan (using `esbuild`) runs extremely early in the `configureServer` phase.
+2.  **Content Collections Runs Later:** The `@content-collections/vite` plugin likely uses the default enforcement, meaning it runs after our scanner.
+3.  **Fire-and-Forget Generation:** Even when the content collections plugin runs, its `configureServer` hook calls `builder.watch()` without awaiting it:
+    ```javascript
+    // node_modules/@content-collections/vite/dist/index.js
+    async configureServer() {
+      if (!builder) {
+        return;
+      }
+      console.log("Start watching");
+      builder.watch(); // Not awaited!
+      return;
+    }
+    ```
+4.  **The Race:** Our scanner's `esbuild` process attempts to resolve imports from `.content-collections/generated`. Since the content collections builder hasn't finished (or possibly even started) generating these files, `esbuild` fails to find the files or encounters a directory where it expects a file, leading to the error.
+
+### Conclusion
+
+We have exacerbated an existing race condition. Previously, our scanner ran later, likely giving content collections enough time to generate files "by accident." Now that we strictly enforce an early run to avoid the Cloudflare deadlock, we guarantee that we scan before generation is complete.
+
+We need a synchronization mechanism to ensure that the content collections generation is finished (or at least that the files exist) before our directive scanner attempts to resolve them. Since `builder.watch()` is fire-and-forget, we can't simply await the plugin's hook. We may need to watch for file existence or find another signal.
