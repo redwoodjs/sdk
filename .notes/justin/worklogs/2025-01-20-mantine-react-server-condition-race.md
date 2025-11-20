@@ -265,3 +265,30 @@ After implementing the custom option approach, the race condition no longer appe
 
 The fix appears to be working. The race condition no longer reproduces in testing. We should continue monitoring CI and user reports to ensure the fix holds up under various conditions and project sizes.
 
+
+## Pull Request
+
+### Title
+
+fix: race condition in SSR bridge resolution during dev server startup
+
+### Description
+
+**Problem**
+
+We encountered an intermittent `Error: rwsdk: 'react-server' is not supported in this environment` failure in CI, particularly with larger libraries like Mantine.
+
+Investigation revealed a race condition triggered by `@cloudflare/vite-plugin` v1.15.0. The plugin now dispatches a request to the worker entry during `configureServer` to detect exports. This dispatch occurs while our internal directive scanner is still running (which runs with `enforce: 'pre'`).
+
+Previously, our plugins were configured to skip `resolveId`, `load`, and `transform` hooks when the `RWSDK_DIRECTIVE_SCAN_ACTIVE` environment variable was set, to improve scanning performance. However, because Cloudflare's early dispatch happens *during* this scan, our plugins were skipping resolution for critical modules like `rwsdk/__ssr_bridge`. This caused Vite to fall back to standard node resolution, which matched the `react-server` condition in `package.json`, loading a file designed to throw an error in the worker environment.
+
+**Solution**
+
+We have refactored how plugins distinguish between our internal directive scan and external requests:
+
+1.  **Custom Option for `resolveId`**: Instead of a global environment variable, `createViteAwareResolver` (used by our scanner) now passes a custom option: `options.custom.rwsdk.directiveScan`.
+2.  **Updated Plugins**: `resolveId` hooks in our plugins (`ssrBridgePlugin`, `knownDepsResolverPlugin`, etc.) now check this custom option. If present, they skip logic for performance. If absent (e.g., during Cloudflare's early dispatch), they proceed normally, ensuring `rwsdk/__ssr_bridge` is correctly resolved to its virtual ID.
+3.  **Removed Skip for `load`/`transform`**: We removed the skip logic entirely for `load` and `transform` hooks. Since our directive scanner uses `esbuild` directly (bypassing Vite's plugin container for these steps), these hooks are only ever called by Vite's normal processing. Skipping them risked caching incorrect "undefined" results if triggered during the scan window.
+4.  **Improved Error Messaging**: We separated the error file for `rwsdk/__ssr_bridge` to provide a specific error message indicating a resolution bug, distinguishing it from generic `react-server` condition mismatches.
+
+This ensures that `rwsdk/__ssr_bridge` is always intercepted correctly, regardless of when the request occurs, while maintaining performance for our internal scans.
