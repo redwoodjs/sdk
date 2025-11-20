@@ -421,7 +421,7 @@ After extensive debugging, the true nature of the deadlock was identified. Our p
 
 This revealed the real sequence of events:
 
-1.  **`configResolved` Hook Runs Early:** Vite invokes the `configResolved` hook for all plugins. Our `directiveModulesDevPlugin` uses this hook to inject an `esbuild` plugin into the dependency optimizer. This `esbuild` plugin contains the blocking `await scanPromise;` logic. The trap is now set.
+1.  **`configResolved` Hook Runs Early:** Vite invokes the `configResolved` hook for all plugins. Our `directiveModulesDevPlugin` uses this hook to inject an `esbuild` plugin into Vite's dependency optimizer. This plugin is configured to block (`await scanPromise`) until our directive scan is complete. The trap is now set.
 
 2.  **Optimizer is Triggered Before `configureServer`:** Before the `configureServer` hooks are ever called, something (likely the Cloudflare plugin's preparation for its `dispatchFetch` call) triggers Vite's dependency optimizer to start scanning for dependencies, beginning with the worker entry file (`src/worker.tsx`).
 
@@ -480,6 +480,11 @@ The solution is a multi-part fix that addresses the new timing challenges and re
 4.  **Cleanup:**
     -   Removed unused code that was causing a "cross-request promise resolution" warning in Cloudflare Workers.
     -   Added extensive comments to our Vite plugins to document the rationale for their execution order, improving future maintainability.
+    -   Made the directive scanner more robust. It now detects cases where an import resolves to a directory (a situation common with async code-generation plugins that create directories before files) and externalizes the import to prevent the scan from failing.
+
+#### Testing Status
+
+All changes have been validated in the `hello-world` playground, and the dev server now starts successfully and reliably.
 
 ## Regression: Content Collections Race Condition
 
