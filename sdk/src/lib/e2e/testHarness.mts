@@ -677,7 +677,13 @@ function createSDKTestRunner(): SDKRunner & {
                 "This might happen if you are running a single test file. " +
                 "Launching a new browser instance instead.",
             );
-            browser = await launchBrowser();
+            // Check for RWSDK_HEADLESS environment variable (default to true if not set)
+            // Set RWSDK_HEADLESS=0 or RWSDK_HEADLESS=false to run in headed mode
+            const headless =
+              process.env.RWSDK_HEADLESS === undefined ||
+              process.env.RWSDK_HEADLESS === "1" ||
+              process.env.RWSDK_HEADLESS === "true";
+            browser = await launchBrowser(undefined, headless);
           }
         }, SETUP_WAIT_TIMEOUT);
 

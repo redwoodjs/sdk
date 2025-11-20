@@ -10,7 +10,13 @@ let browser: Browser | null = null;
 
 export async function setup() {
   await fs.ensureDir(tempDir);
-  browser = await launchBrowser();
+  // Check for RWSDK_HEADLESS environment variable (default to true if not set)
+  // Set RWSDK_HEADLESS=0 or RWSDK_HEADLESS=false to run in headed mode
+  const headless =
+    process.env.RWSDK_HEADLESS === undefined ||
+    process.env.RWSDK_HEADLESS === "1" ||
+    process.env.RWSDK_HEADLESS === "true";
+  browser = await launchBrowser(undefined, headless);
   await fs.writeFile(wsEndpointFile, browser.wsEndpoint());
 }
 

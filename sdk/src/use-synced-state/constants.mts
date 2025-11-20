@@ -1,2 +1,1 @@
-export const DEFAULT_SYNC_STATE_PATH = "/__sync-state";
-
+export const DEFAULT_SYNCED_STATE_PATH = "/__synced-state";

@@ -1,60 +1,60 @@
-import { RpcStub, RpcTarget } from "capnweb";
+import { RpcStub, RpcTarget, newWorkersRpcResponse } from "capnweb";
 import { DurableObject } from "cloudflare:workers";
 
-export type SyncStateValue = unknown;
+export type SyncedStateValue = unknown;
 
-type OnSetHandler = (key: string, value: SyncStateValue) => void;
-type OnGetHandler = (key: string, value: SyncStateValue | undefined) => void;
+type OnSetHandler = (key: string, value: SyncedStateValue) => void;
+type OnGetHandler = (key: string, value: SyncedStateValue | undefined) => void;
 
 /**
  * Durable Object that keeps shared state for multiple clients and notifies subscribers.
  */
-export class SyncStateServer extends DurableObject {
+export class SyncedStateServer extends DurableObject {
   static #keyHandler: ((key: string) => Promise<string>) | null = null;
   static #setStateHandler: OnSetHandler | null = null;
   static #getStateHandler: OnGetHandler | null = null;
 
   static registerKeyHandler(handler: (key: string) => Promise<string>): void {
-    SyncStateServer.#keyHandler = handler;
+    SyncedStateServer.#keyHandler = handler;
   }
 
   static getKeyHandler(): ((key: string) => Promise<string>) | null {
-    return SyncStateServer.#keyHandler;
+    return SyncedStateServer.#keyHandler;
   }
 
   static registerSetStateHandler(handler: OnSetHandler | null): void {
-    SyncStateServer.#setStateHandler = handler;
+    SyncedStateServer.#setStateHandler = handler;
   }
 
   static registerGetStateHandler(handler: OnGetHandler | null): void {
-    SyncStateServer.#getStateHandler = handler;
+    SyncedStateServer.#getStateHandler = handler;
   }
 
-  #stateStore = new Map<string, SyncStateValue>();
+  #stateStore = new Map<string, SyncedStateValue>();
   #subscriptions = new Map<
     string,
-    Set<RpcStub<(value: SyncStateValue) => void>>
+    Set<RpcStub<(value: SyncedStateValue) => void>>
   >();
   #subscriptionRefs = new Map<
     string,
     Map<
-      RpcStub<(value: SyncStateValue) => void>,
-      RpcStub<(value: SyncStateValue) => void>
+      RpcStub<(value: SyncedStateValue) => void>,
+      RpcStub<(value: SyncedStateValue) => void>
     >
   >();
 
-  getState(key: string): SyncStateValue {
+  getState(key: string): SyncedStateValue {
     const value = this.#stateStore.get(key);
-    if (SyncStateServer.#getStateHandler) {
-      SyncStateServer.#getStateHandler(key, value);
+    if (SyncedStateServer.#getStateHandler) {
+      SyncedStateServer.#getStateHandler(key, value);
     }
     return value;
   }
 
-  setState(value: SyncStateValue, key: string): void {
+  setState(value: SyncedStateValue, key: string): void {
     this.#stateStore.set(key, value);
-    if (SyncStateServer.#setStateHandler) {
-      SyncStateServer.#setStateHandler(key, value);
+    if (SyncedStateServer.#setStateHandler) {
+      SyncedStateServer.#setStateHandler(key, value);
     }
     const subscribers = this.#subscriptions.get(key);
     if (!subscribers) {
@@ -84,7 +84,7 @@ export class SyncStateServer extends DurableObject {
 
   subscribe(
     key: string,
-    client: RpcStub<(value: SyncStateValue) => void>,
+    client: RpcStub<(value: SyncedStateValue) => void>,
   ): void {
     if (!this.#subscriptions.has(key)) {
       this.#subscriptions.set(key, new Set());
@@ -99,7 +99,7 @@ export class SyncStateServer extends DurableObject {
 
   unsubscribe(
     key: string,
-    client: RpcStub<(value: SyncStateValue) => void>,
+    client: RpcStub<(value: SyncedStateValue) => void>,
   ): void {
     const duplicates = this.#subscriptionRefs.get(key);
     const duplicate = duplicates?.get(client);
@@ -115,36 +115,40 @@ export class SyncStateServer extends DurableObject {
       }
     }
   }
+
+  async fetch(request: Request): Promise<Response> {
+    const api = new CoordinatorApi(this);
+    return newWorkersRpcResponse(request, api);
+  }
 }
 
 class CoordinatorApi extends RpcTarget {
-  #coordinator: SyncStateServer;
+  #coordinator: SyncedStateServer;
 
-  constructor(coordinator: SyncStateServer) {
+  constructor(coordinator: SyncedStateServer) {
     super();
     this.#coordinator = coordinator;
   }
 
-  getState(key: string): SyncStateValue {
+  getState(key: string): SyncedStateValue {
     return this.#coordinator.getState(key);
   }
 
-  setState(value: SyncStateValue, key: string): void {
+  setState(value: SyncedStateValue, key: string): void {
     this.#coordinator.setState(value, key);
   }
 
   subscribe(
     key: string,
-    client: RpcStub<(value: SyncStateValue) => void>,
+    client: RpcStub<(value: SyncedStateValue) => void>,
   ): void {
     this.#coordinator.subscribe(key, client);
   }
 
   unsubscribe(
     key: string,
-    client: RpcStub<(value: SyncStateValue) => void>,
+    client: RpcStub<(value: SyncedStateValue) => void>,
   ): void {
     this.#coordinator.unsubscribe(key, client);
   }
 }
-

@@ -40,7 +40,7 @@ When `setState` fails, the system retries up to 3 times with exponential backoff
 A pluggable queue interface allows users to choose persistence strategy:
 
 ```typescript
-interface SyncStateQueue {
+interface SyncedStateQueue {
   enqueue(key: string, value: unknown): Promise<string>;
   dequeue(): Promise<PendingOperation | null>;
   dequeueAll(): Promise<PendingOperation[]>;
@@ -103,10 +103,10 @@ if (error) {
 ### With Persistent Queue
 
 ```typescript
-import { initSyncStateClient } from "rwsdk/use-sync-state";
+import { initSyncedStateClient } from "rwsdk/use-sync-state";
 import { IndexedDBQueue } from "rwsdk/use-sync-state/queues";
 
-initSyncStateClient({
+initSyncedStateClient({
   queue: new IndexedDBQueue(),
 });
 
@@ -132,12 +132,12 @@ return (
 ### Custom Queue Implementation
 
 ```typescript
-class CustomQueue implements SyncStateQueue {
+class CustomQueue implements SyncedStateQueue {
   // Implement interface methods
   // Could use Redis, custom backend, etc.
 }
 
-initSyncStateClient({
+initSyncedStateClient({
   queue: new CustomQueue(),
 });
 ```
