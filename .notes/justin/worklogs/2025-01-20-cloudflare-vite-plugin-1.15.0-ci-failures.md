@@ -367,31 +367,18 @@ Since `buildStart` is idempotent (it checks `_started` and returns early if alre
 
 ### Fix CSS module processing error during Cloudflare plugin export detection
 
-**Problem:**
+Cloudflare Vite plugin v1.15.0 dispatches a request to the worker during `configureServer` to detect exports. This request triggers a chain of module imports: the worker entry imports components, which import client modules (modules with `"use client"` directives), which in turn import CSS modules. This import chain is unavoidable because client modules are sometimes used on the server side—for example, Chakra UI and other libraries export objects or constants from client modules that are imported and used at the top level in worker code.
 
-Cloudflare Vite plugin v1.15.0 executes the worker entry file during `configureServer` to detect exports. This triggers SSR code evaluation before Vite's [`initServer`](https://github.com/vitejs/vite/blob/5909efd8fbfd1bf1eab65427aea0613124b2797a/packages/vite/src/node/server/index.ts#L994) runs, which causes CSS modules to be processed before Vite's CSS plugin's `moduleCache` is initialized. This results in:
+When CSS modules are processed during this import chain, Vite's CSS plugin attempts to cache the module information in its `moduleCache`. However, this `moduleCache` is only initialized in the client environment's [`buildStart` hook](https://github.com/vitejs/vite/blob/b1fd6161886caeb31ac646d6544116d37efe46d0/packages/vite/src/node/plugins/css.ts#L320), which normally runs during [`initServer`](https://github.com/vitejs/vite/blob/5909efd8fbfd1bf1eab65427aea0613124b2797a/packages/vite/src/node/server/index.ts#L994). Since `configureServer` runs before `initServer`, the CSS plugin's `moduleCache` is still `undefined` when CSS modules are processed, resulting in:
 
 ```
 TypeError: Cannot read properties of undefined (reading 'set')
     at vite:css transform hook
 ```
 
-**Root Cause:**
-
-Vite's CSS plugin uses a shared `moduleCache` (in the plugin's closure) that is initialized in the client environment's [`buildStart` hook](https://github.com/vitejs/vite/blob/b1fd6161886caeb31ac646d6544116d37efe46d0/packages/vite/src/node/plugins/css.ts#L320). The normal execution order is:
-
-1. `configureServer` hooks run
-2. [`initServer`](https://github.com/vitejs/vite/blob/5909efd8fbfd1bf1eab65427aea0613124b2797a/packages/vite/src/node/server/index.ts#L994) runs → client `buildStart` initializes `moduleCache`
-3. CSS modules processed during normal requests
-
-With Cloudflare plugin v1.15.0:
-1. `configureServer` runs → Cloudflare plugin triggers CSS module processing in the SSR environment during `configureServer`
-2. `initServer` hasn't run yet → `moduleCache` is still `undefined`
-3. Error when CSS plugin tries to use `moduleCache`
-
 **Solution:**
 
-Call `server.environments.client.pluginContainer.buildStart()` in a `configureServer` hook that runs before the Cloudflare plugin. The Cloudflare plugin's export detection can trigger CSS module processing in the SSR environment during `configureServer`, which happens before `initServer` runs. Vite's CSS plugin uses a shared `moduleCache` that is initialized in the client environment's `buildStart` hook. By calling `buildStart` here (which is idempotent - it checks `_started` and returns early if already called, or waits for an in-progress call), we ensure the CSS plugin's cache is initialized before CSS modules are processed, preventing "Cannot read properties of undefined (reading 'set')" errors.
+Call `server.environments.client.pluginContainer.buildStart()` in a `configureServer` hook that runs before the Cloudflare plugin. Since `buildStart` is idempotent (it checks `_started` and returns early if already called, or waits for an in-progress call), this safely initializes the CSS plugin's shared `moduleCache` before the import chain reaches CSS modules.
 
 **Testing:**
 
