@@ -216,24 +216,10 @@ export const knownDepsResolverPlugin = ({
   return [
     {
       name: "rwsdk:known-dependencies-resolver:config",
-      enforce: "pre",
 
       config(config, { command }) {
         isBuild = command === "build";
         log("Configuring plugin for command=%s", command);
-      },
-
-      async configureServer(server) {
-        // context(justinvdm, 19 Nov 2025): This hook must run before the
-        // Cloudflare plugin's `configureServer` hook, so we use `enforce: 'pre'`.
-        // The Cloudflare plugin's hook executes the worker entry file to discover
-        // its exports. This can trigger the evaluation of SSR code. We must initialize
-        // the SSR dependency optimizer *before* that happens to ensure that any
-        // dependencies in `optimizeDeps.include` (like `react-dom/server.edge`)
-        // are correctly registered before they are discovered lazily.
-        if (server.environments.ssr?.depsOptimizer) {
-          await server.environments.ssr.depsOptimizer.init();
-        }
       },
 
       configResolved(config) {
