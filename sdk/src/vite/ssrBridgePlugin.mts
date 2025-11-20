@@ -87,6 +87,9 @@ export const ssrBridgePlugin = ({
         config.optimizeDeps.esbuildOptions.plugins.push({
           name: "rwsdk-ssr-external",
           setup(build) {
+            console.log(
+              "[TIMING] rwsdk-ssr-external.setup: START - Plugin setup function called",
+            );
             log(
               "Setting up esbuild plugin to mark rwsdk/__ssr paths as external for worker",
             );
@@ -102,6 +105,9 @@ export const ssrBridgePlugin = ({
                 args.path === "rwsdk/__ssr_bridge" ||
                 args.path.startsWith(VIRTUAL_SSR_PREFIX)
               ) {
+                console.log(
+                  `[TIMING] rwsdk-ssr-external.onResolve: Intercepted ${args.path}`,
+                );
                 log("Marking as external: %s", args.path);
                 return {
                   path: args.path,
@@ -109,15 +115,22 @@ export const ssrBridgePlugin = ({
                 };
               }
             });
+            console.log(
+              "[TIMING] rwsdk-ssr-external.setup: COMPLETE - onResolve hook registered",
+            );
           },
         });
 
         log("Worker environment esbuild configuration complete");
       }
     },
-    async resolveId(id, importer) {
-      // Skip during directive scanning to avoid performance issues
-      if (process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE) {
+    async resolveId(id, importer, options?: { custom?: any }) {
+      // Skip during our directive scanning to avoid performance issues
+      // context(justinvdm, 20 Jan 2025): We check options.custom?.rwsdk?.directiveScan to distinguish
+      // between our directive scan (which should skip) and external calls like Cloudflare's early
+      // dispatch (which should be handled normally). This prevents race conditions where external
+      // calls happen during directive scanning.
+      if (options?.custom?.rwsdk?.directiveScan === true) {
         return;
       }
 
@@ -194,11 +207,6 @@ export const ssrBridgePlugin = ({
       }
     },
     async load(id) {
-      // Skip during directive scanning to avoid performance issues
-      if (process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE) {
-        return;
-      }
-
       if (
         id.startsWith(VIRTUAL_SSR_PREFIX) &&
         this.environment.name === "worker"

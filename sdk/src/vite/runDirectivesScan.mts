@@ -153,9 +153,6 @@ export const runDirectivesScan = async ({
     "\n… (rwsdk) Scanning for 'use client' and 'use server' directives...",
   );
 
-  // Set environment variable to indicate scanning is in progress
-  process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE = "true";
-
   try {
     const fileContentCache = new Map<string, string>();
     const directiveCheckCache = new Map<string, boolean>();
@@ -438,8 +435,6 @@ export const runDirectivesScan = async ({
   } catch (e: any) {
     throw new Error(`RWSDK directive scan failed:\n${e.stack}`);
   } finally {
-    // Always clear the scanning flag when done
-    delete process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE;
     deferredLog(
       "✔ (rwsdk) Done scanning for 'use client' and 'use server' directives.",
     );

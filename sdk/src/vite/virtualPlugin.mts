@@ -5,9 +5,12 @@ export const virtualPlugin = (name: string, load: Plugin["load"]): Plugin => {
   name = "virtual:" + name;
   return {
     name: `rwsdk:virtual-${name}`,
-    resolveId(source, _importer, _options) {
-      // Skip during directive scanning to avoid performance issues
-      if (process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE) {
+    resolveId(source, _importer, options?: { custom?: any }) {
+      // Skip during our directive scanning to avoid performance issues
+      // context(justinvdm, 20 Jan 2025): We check options.custom?.rwsdk?.directiveScan to distinguish
+      // between our directive scan (which should skip) and external calls like Cloudflare's early
+      // dispatch (which should be handled normally).
+      if (options?.custom?.rwsdk?.directiveScan === true) {
         return;
       }
 
@@ -17,10 +20,6 @@ export const virtualPlugin = (name: string, load: Plugin["load"]): Plugin => {
       return;
     },
     load(id, options) {
-      // Skip during directive scanning to avoid performance issues
-      if (process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE) {
-        return;
-      }
 
       if (id === `\0${name}` || id.startsWith(`\0${name}?`)) {
         return (load as any).apply(this, [id, options]);

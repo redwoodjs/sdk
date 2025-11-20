@@ -169,9 +169,12 @@ export const createDirectiveLookupPlugin = async ({
         log("Skipping optimizeDeps and aliasing for environment: %s", env);
       }
     },
-    resolveId(source) {
-      // Skip during directive scanning to avoid performance issues
-      if (process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE) {
+    resolveId(source, _importer, options?: { custom?: any }) {
+      // Skip during our directive scanning to avoid performance issues
+      // context(justinvdm, 20 Jan 2025): We check options.custom?.rwsdk?.directiveScan to distinguish
+      // between our directive scan (which should skip) and external calls like Cloudflare's early
+      // dispatch (which should be handled normally).
+      if (options?.custom?.rwsdk?.directiveScan === true) {
         return;
       }
 
@@ -220,11 +223,6 @@ export const createDirectiveLookupPlugin = async ({
       return source;
     },
     async load(id) {
-      // Skip during directive scanning to avoid performance issues
-      if (process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE) {
-        return;
-      }
-
       if (id === config.virtualModuleName + ".js") {
         log(
           "Loading %s module with %d files",

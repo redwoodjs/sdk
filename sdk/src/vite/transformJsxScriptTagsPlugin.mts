@@ -515,10 +515,6 @@ export const transformJsxScriptTagsPlugin = ({
       isBuild = config.command === "build";
     },
     async transform(code, id) {
-      // Skip during directive scanning to avoid performance issues
-      if (process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE) {
-        return;
-      }
 
       if (
         isBuild &&
