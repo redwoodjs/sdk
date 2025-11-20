@@ -482,60 +482,11 @@ The solution is a multi-part fix that addresses the new timing challenges and re
     -   Added extensive comments to our Vite plugins to document the rationale for their execution order, improving future maintainability.
     -   Made the directive scanner more robust. It now detects cases where an import resolves to a directory (a situation common with async code-generation plugins that create directories before files) and externalizes the import to prevent the scan from failing.
 
+5.  **Mitigation for Plugin Race Conditions:**
+    -   The `enforce: 'pre'` change, while necessary, consistently surfaced a latent race condition that exists with plugins that generate code asynchronously (e.g., `@content-collections/vite`). Previously, the timing was such that this race condition only occurred intermittently. The new, earlier execution time for our directive scan guarantees that it runs before these plugins have a chance to generate their code, causing the scanner to fail when it encounters an import for a path that is still just a directory.
+    -   After analysis, I decided that supporting directive scanning for async-generated code is out of scope; code to be scanned must exist before the dev server starts.
+    -   To prevent crashes in these scenarios, I implemented a generic fix. The directive scanner now checks if a resolved import path points to a directory. If it does, it externalizes the import for the purposes of the scan, preventing the error and allowing startup to continue. This makes our scanner more robust to this entire class of race conditions.
+
 #### Testing Status
 
 All changes have been validated in the `hello-world` playground, and the dev server now starts successfully and reliably.
-
-## Regression: Content Collections Race Condition
-
-A new regression has surfaced with the `@content-collections/vite` plugin. The dev server now fails with:
-
-```
-Error: RWSDK directive scan failed:
-Error: Build failed with 1 error:
-src/app/pages/Home.tsx:1:25: ERROR: Cannot read file ".content-collections/generated": is a directory
-```
-
-### Analysis
-
-This is a timing conflict caused by our new `enforce: 'pre'` setting.
-
-1.  **Our Scanner Runs First:** Because we moved `directiveModulesDevPlugin` to `enforce: 'pre'`, our directive scan (using `esbuild`) runs extremely early in the `configureServer` phase.
-2.  **Content Collections Runs Later:** The `@content-collections/vite` plugin likely uses the default enforcement, meaning it runs after our scanner.
-3.  **Fire-and-Forget Generation:** Even when the content collections plugin runs, its `configureServer` hook calls `builder.watch()` without awaiting it:
-    ```javascript
-    // node_modules/@content-collections/vite/dist/index.js
-    async configureServer() {
-      if (!builder) {
-        return;
-      }
-      console.log("Start watching");
-      builder.watch(); // Not awaited!
-      return;
-    }
-    ```
-4.  **The Race:** Our scanner's `esbuild` process attempts to resolve imports from `.content-collections/generated`. Since the content collections builder hasn't finished (or possibly even started) generating these files, `esbuild` fails to find the files or encounters a directory where it expects a file, leading to the error.
-
-### Conclusion
-
-We have exacerbated an existing race condition. Previously, our scanner ran later, likely giving content collections enough time to generate files "by accident." Now that we strictly enforce an early run to avoid the Cloudflare deadlock, we guarantee that we scan before generation is complete.
-
-We need a synchronization mechanism to ensure that the content collections generation is finished (or at least that the files exist) before our directive scanner attempts to resolve them. Since `builder.watch()` is fire-and-forget, we can't simply await the plugin's hook. We may need to watch for file existence or find another signal.
-
-### A New Approach: Externalize Problematic Imports
-
-Upon further reflection, attempting to synchronize with async, "fire-and-forget" code generation plugins within Vite's hook lifecycle introduces significant complexity and brittleness. The dependency graph becomes impossible to solve reliably (e.g., Plugin A must run before B, but B must run before A).
-
-The directive scanning process is intended to analyze the statically available application source code. It is not designed to be a fully-featured build process that waits for generated files.
-
-**Decision:** We will not support directive scanning for code that is generated asynchronously by other Vite plugins during server startup. Code that needs to be scanned for directives must exist on the filesystem *before* the Vite dev server starts.
-
-This simplifies our model and provides a clear contract for users: if you generate code with directives, do it as a pre-build step.
-
-**Solving the Error:**
-
-The immediate error is . This happens because our -based scanner follows an import to that path, but the code generation plugin has not created the necessary files yet, only the parent directory.
-
-The generic solution is to instruct our scanner to not follow such imports. By marking the path as , we tell  to treat it as a black box, effectively ignoring it. This prevents the crash and aligns with our decision to not scan asynchronously generated code. The regular Vite dev server will handle the import later in the request pipeline, after the code generation plugin has had a chance to run.
-
-This fix will be implemented in  by adding an  plugin to  that marks any import to  as external.
