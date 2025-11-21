@@ -31,15 +31,15 @@
     "@content-collections/vite": "^0.2.7"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.14.2",
-    "@cloudflare/workers-types": "4.20251117.0",
+    "@cloudflare/vite-plugin": "1.15.2",
+    "@cloudflare/workers-types": "4.20251121.0",
     "@types/node": "22.18.8",
     "@types/react": "19.1.2",
     "@types/react-dom": "19.1.2",
     "typescript": "5.9.3",
-    "vite": "7.2.2",
+    "vite": "7.2.4",
     "vitest": "^3.1.1",
-    "wrangler": "4.47.0"
+    "wrangler": "4.50.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
