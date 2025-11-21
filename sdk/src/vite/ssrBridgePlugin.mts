@@ -87,9 +87,6 @@ export const ssrBridgePlugin = ({
         config.optimizeDeps.esbuildOptions.plugins.push({
           name: "rwsdk-ssr-external",
           setup(build) {
-            console.log(
-              "[TIMING] rwsdk-ssr-external.setup: START - Plugin setup function called",
-            );
             log(
               "Setting up esbuild plugin to mark rwsdk/__ssr paths as external for worker",
             );
@@ -105,9 +102,6 @@ export const ssrBridgePlugin = ({
                 args.path === "rwsdk/__ssr_bridge" ||
                 args.path.startsWith(VIRTUAL_SSR_PREFIX)
               ) {
-                console.log(
-                  `[TIMING] rwsdk-ssr-external.onResolve: Intercepted ${args.path}`,
-                );
                 log("Marking as external: %s", args.path);
                 return {
                   path: args.path,
@@ -115,9 +109,6 @@ export const ssrBridgePlugin = ({
                 };
               }
             });
-            console.log(
-              "[TIMING] rwsdk-ssr-external.setup: COMPLETE - onResolve hook registered",
-            );
           },
         });
 
