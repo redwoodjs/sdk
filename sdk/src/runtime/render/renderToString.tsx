@@ -1,13 +1,7 @@
-import { FC, ReactElement } from "react";
-import { DocumentProps } from "../lib/types.js";
-import { type PartialRequestInfo } from "../requestInfo/types";
-import { renderToStream } from "./renderToStream";
+import { ReactElement } from "react";
+import { type RenderToStreamOptions, renderToStream } from "./renderToStream";
 
-export interface RenderToStringOptions {
-  Document?: FC<DocumentProps>;
-  injectRSCPayload?: boolean;
-  requestInfo?: PartialRequestInfo;
-}
+export type RenderToStringOptions = Omit<RenderToStreamOptions, "onError">;
 
 export const renderToString = async (
   element: ReactElement,
