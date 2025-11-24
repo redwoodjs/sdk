@@ -1,0 +1,15 @@
+@import "@fontsource/figtree/400.css";
+@import "@fontsource/figtree/500.css";
+@import "@fontsource/figtree/600.css";
+
+body {
+  min-height: 100vh;
+  padding: 0;
+  font-family: "Figtree", sans-serif;
+}
+
+#root,
+#hydrate-root {
+  width: 100vw;
+  height: 100vh;
+}
