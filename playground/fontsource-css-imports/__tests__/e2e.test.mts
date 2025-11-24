@@ -1,12 +1,15 @@
-import { poll, setupPlaygroundEnvironment, testDevAndDeploy } from "rwsdk/e2e";
+import {
+  poll,
+  setupPlaygroundEnvironment,
+  testDevAndDeploy,
+  waitForHydration,
+} from "rwsdk/e2e";
 import { expect } from "vitest";
 
 setupPlaygroundEnvironment(import.meta.url);
 
 testDevAndDeploy("renders page with font imports", async ({ page, url }) => {
   await page.goto(url);
-
-  await page.waitForFunction("document.readyState === 'complete'");
 
   const getPageContent = () => page.content();
 
@@ -21,8 +24,6 @@ testDevAndDeploy(
   "verifies font files are accessible",
   async ({ page, url }) => {
     await page.goto(url);
-
-    await page.waitForFunction("document.readyState === 'complete'");
 
     const fontFailures: string[] = [];
 
@@ -39,17 +40,28 @@ testDevAndDeploy(
       }
     });
 
-    await page.waitForTimeout(2000);
+    await waitForHydration(page);
+
+    const getH1 = () => page.waitForSelector("h1");
+    const getComputedFontFamily = async () => {
+      const h1 = await getH1();
+      return h1
+        ? await page.evaluate(
+            (el) => window.getComputedStyle(el).fontFamily,
+            h1,
+          )
+        : null;
+    };
+
+    await poll(async () => {
+      const fontFamily = await getComputedFontFamily();
+      expect(fontFamily).toContain("Figtree");
+      return true;
+    });
 
     if (fontFailures.length > 0) {
       console.error("Font loading failures:", fontFailures);
+      throw new Error(`Font loading failed: ${fontFailures.join(", ")}`);
     }
-
-    const computedStyle = await page.evaluate(() => {
-      const h1 = document.querySelector("h1");
-      return h1 ? window.getComputedStyle(h1).fontFamily : null;
-    });
-
-    expect(computedStyle).toContain("Figtree");
   },
 );
