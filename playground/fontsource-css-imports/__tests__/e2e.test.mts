@@ -23,23 +23,23 @@ testDevAndDeploy("renders page with font imports", async ({ page, url }) => {
 testDevAndDeploy(
   "verifies font files are accessible",
   async ({ page, url }) => {
-    await page.goto(url);
-
-    const fontFailures: string[] = [];
+    const fontResponses: Array<{ url: string; status: number }> = [];
 
     page.on("response", (response) => {
-      const url = response.url();
+      const responseUrl = response.url();
       if (
-        url.includes(".woff") ||
-        url.includes(".woff2") ||
-        url.includes("figtree")
+        responseUrl.includes(".woff") ||
+        responseUrl.includes(".woff2") ||
+        responseUrl.includes("figtree")
       ) {
-        if (response.status() >= 400) {
-          fontFailures.push(`${url}: ${response.status()}`);
-        }
+        fontResponses.push({
+          url: responseUrl,
+          status: response.status(),
+        });
       }
     });
 
+    await page.goto(url);
     await waitForHydration(page);
 
     const getH1 = () => page.waitForSelector("h1");
@@ -59,9 +59,16 @@ testDevAndDeploy(
       return true;
     });
 
-    if (fontFailures.length > 0) {
-      console.error("Font loading failures:", fontFailures);
-      throw new Error(`Font loading failed: ${fontFailures.join(", ")}`);
-    }
+    await poll(async () => {
+      const fontFailures = fontResponses.filter((r) => r.status >= 400);
+      const fontSuccesses = fontResponses.filter((r) => r.status < 400);
+
+      if (fontFailures.length > 0) {
+        throw new Error(`Font loading failed: ${fontFailures.join(", ")}`);
+      }
+
+      expect(fontSuccesses.length).toBeGreaterThan(0);
+      return true;
+    });
   },
 );
