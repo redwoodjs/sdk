@@ -1,7 +1,6 @@
+import fs from "fs-extra";
 import path from "node:path";
 import { Plugin } from "vite";
-import fs from "fs-extra";
-import { glob } from "glob";
 
 export const moveStaticAssetsPlugin = ({
   rootDir,
@@ -19,11 +18,19 @@ export const moveStaticAssetsPlugin = ({
     ) {
       const sourceDir = path.join(rootDir, "dist", "worker", "assets");
       const destDir = path.join(rootDir, "dist", "client", "assets");
-      const cssFiles = await glob("*.css", { cwd: sourceDir });
 
-      if (cssFiles.length > 0) {
+      if (!(await fs.pathExists(sourceDir))) {
+        return;
+      }
+
+      const allFiles = await fs.readdir(sourceDir);
+      const filesToMove = allFiles.filter(
+        (file) => !file.endsWith(".js") && !file.endsWith(".map"),
+      );
+
+      if (filesToMove.length > 0) {
         await fs.ensureDir(destDir);
-        for (const file of cssFiles) {
+        for (const file of filesToMove) {
           const sourceFile = path.join(sourceDir, file);
           const destFile = path.join(destDir, file);
           await fs.move(sourceFile, destFile, { overwrite: true });
