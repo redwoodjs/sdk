@@ -38,3 +38,27 @@ Updated `moveStaticAssetsPlugin` to also move font files (`.woff`, `.woff2`, `.t
 3. Move all matching files to `dist/client/assets/`
 
 This ensures font files referenced in CSS are accessible to the browser in production builds.
+
+---
+
+Fix font loading 404s in production by moving all static assets
+
+## Problem
+
+CSS `@import` for fonts (like `@fontsource/figtree`) works great in dev but falls over in production. The build puts the font files into `dist/worker/assets` instead of `dist/client/assets`, so the browser gets a 404 when trying to load them.
+
+We had a similar issue with CSS files before, which is why we have the `moveStaticAssetsPlugin` to shuffle `.css` files over to the client build. But it was too picky and only looked for CSS files.
+
+## Solution
+
+I've updated `moveStaticAssetsPlugin` to be less picky. It now moves **all** static assets (except for `.js` and `.map` files) from the worker build to the client build.
+
+This means any asset referenced by CSS—fonts, images, whatever—that ends up in the worker bundle will now get moved to the client distribution where it belongs.
+
+## Context & Future Investigation
+
+The `moveStaticAssetsPlugin` was originally a bit of a patch to handle CSS file generation during the worker build. While this change gets fonts working, it points to a bigger architectural question about how we handle assets across the split `worker`+`client` environments.
+
+In a perfect world, we wouldn't need to manually shuffle assets around like this. It's worth investigating if we can get the deploy step to look at both `dist/worker` and `dist/client` for assets.
+
+I do remember trying to get all the assets to output to a single directory, but that route proved to be tricky in practice. I think it was partly the challenge of one env clearing the other env's assets (among other challenges) thought I could be misremembering.
