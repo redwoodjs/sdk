@@ -28,3 +28,13 @@ From the build output, font files like `figtree-latin-400-normal-g7Dtegnw.woff2`
 The plugin needs to also move font files (`.woff`, `.woff2`, and potentially other font formats like `.ttf`, `.otf`, `.eot`) to `dist/client/assets/` so they're accessible to the browser.
 
 The plugin runs during the linker pass (`process.env.RWSDK_BUILD_PASS === "linker"`) and is registered in `redwoodPlugin.mts` at line 197.
+
+## Fix
+
+Updated `moveStaticAssetsPlugin` to also move font files (`.woff`, `.woff2`, `.ttf`, `.otf`, `.eot`) from `dist/worker/assets/` to `dist/client/assets/` during the linker pass. The plugin now:
+
+1. Glob for CSS files: `*.css`
+2. Glob for font files: `*.{woff,woff2,ttf,otf,eot}`
+3. Move all matching files to `dist/client/assets/`
+
+This ensures font files referenced in CSS are accessible to the browser in production builds.
