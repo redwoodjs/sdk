@@ -1,10 +1,16 @@
 import { Kysely } from "kysely";
 import { DOWorkerDialect } from "./DOWorkerDialect.js";
 import { type SqliteDurableObject } from "./SqliteDurableObject.js";
+import { TypeConverters } from "./typeConverters.js";
+
+export type CreateDbOptions = {
+  typeConverters?: TypeConverters;
+};
 
 export function createDb<DatabaseType>(
   durableObjectBinding: DurableObjectNamespace<any>,
   name = "main",
+  options: CreateDbOptions = {},
 ): Kysely<DatabaseType> {
   return new Kysely({
     dialect: new DOWorkerDialect({
@@ -22,6 +28,7 @@ export function createDb<DatabaseType>(
         stub.initialize();
         return stub.kyselyExecuteQuery(...args);
       },
+      typeConverters: options.typeConverters,
     }),
   });
 }
