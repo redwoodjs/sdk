@@ -24,13 +24,13 @@
   },
   "dependencies": {
     "rwsdk": "workspace:*",
-    "react": "19.3.0-canary-fb2177c1-20251114",
-    "react-dom": "19.3.0-canary-fb2177c1-20251114",
-    "react-server-dom-webpack": "19.3.0-canary-fb2177c1-20251114"
+    "react": "19.3.0-canary-fd524fe0-20251121",
+    "react-dom": "19.3.0-canary-fd524fe0-20251121",
+    "react-server-dom-webpack": "19.3.0-canary-fd524fe0-20251121"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.15.2",
-    "@cloudflare/workers-types": "4.20251121.0",
+    "@cloudflare/workers-types": "4.20251125.0",
     "@types/node": "22.18.8",
     "@types/react": "19.1.2",
     "@types/react-dom": "19.1.2",
