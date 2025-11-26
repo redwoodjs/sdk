@@ -144,16 +144,15 @@ class DOWorkerConnection implements DatabaseConnection {
       const newRow = { ...row };
       for (const key in newRow) {
         const value = newRow[key];
-        // 1. Check for exact column name match
-        if (this.typeConverters![key]?.parse) {
-          newRow[key] = this.typeConverters![key].parse!(value, key);
-          continue;
-        }
 
-        // 2. Check for matchers
         for (const converterKey in this.typeConverters!) {
           const converter = this.typeConverters![converterKey];
-          if (converter.match && converter.match(key) && converter.parse) {
+
+          const matches = converter.match
+            ? converter.match(key)
+            : key === converterKey;
+
+          if (matches && converter.parse) {
             newRow[key] = converter.parse(value, key);
             // We stop at the first match to avoid conflicts
             break;
