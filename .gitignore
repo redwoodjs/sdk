@@ -201,3 +201,6 @@ starters/standard/.pnpm-store
 
 **/*.tsbuildinfo
 **/worker-configuration.d.ts
+
+# Webstorm
+.idea/
