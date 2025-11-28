@@ -406,7 +406,7 @@ importers:
         specifier: 4.50.0
         version: 4.50.0(@cloudflare/workers-types@4.20251125.0)
 
-  playground/entry-from-node_modules:
+  playground/entrypoint-from-node_modules:
     dependencies:
       entrypoint:
         specifier: workspace:*
@@ -452,7 +452,7 @@ importers:
         specifier: 4.50.0
         version: 4.50.0(@cloudflare/workers-types@4.20251125.0)
 
-  playground/entry-from-node_modules/packages/entrypoint:
+  playground/entrypoint-from-node_modules/packages/entrypoint:
     dependencies:
       react:
         specifier: 19.3.0-canary-fd524fe0-20251121
