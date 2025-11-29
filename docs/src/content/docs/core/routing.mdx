@@ -359,3 +359,33 @@ export const link = linkFor<App>();
 ```
 
 `linkFor` exposes the full set of routes discovered inside `defineApp`. TypeScript verifies that the path you pass exists and that you provide the required parameters. The `typeof import("../../worker").default` pattern keeps the reference type-only, so bundlers do not include the worker code in client bundles.
+
+### When using Cron, Queues, etc.
+
+When using `ExportedHandler` to support Cron, Queues, etc. you need to export the `app` object using the `defineApp` function.
+
+```tsx title="src/worker.tsx"
+export const app = defineApp([
+  // <-- Note: `export const app = ...`>
+  setCommonHeaders(),
+  ({ ctx }) => {
+    // setup ctx here
+    ctx;
+  },
+  render(Document, [route("/", Home)]),
+]);
+
+export default {
+  fetch: app.fetch,
+} satisfies ExportedHandler<Env>;
+```
+
+Then you can use the `link` function to generate links to your routes, but instead of `default` you need to pass the eported `app` object.
+
+```tsx title="src/app/shared/links.ts"
+import { linkFor } from "rwsdk/router";
+
+type App = typeof import("../../worker").app; // <-- Note: `.app`>
+
+export const link = linkFor<App>();
+```
