@@ -463,9 +463,6 @@ importers:
       react-server-dom-webpack:
         specifier: 19.3.0-canary-fd524fe0-20251121
         version: 19.3.0-canary-fd524fe0-20251121(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)(webpack@5.97.1)
-      rwsdk:
-        specifier: workspace:*
-        version: link:../../../../sdk
     devDependencies:
       '@types/node':
         specifier: 22.18.8
