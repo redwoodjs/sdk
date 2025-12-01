@@ -1,1 +1,1 @@
-export { defineLinks } from "../lib/links.js";
+export { defineLinks, linkFor } from "../lib/links.js";
