@@ -527,7 +527,6 @@ export const transformJsxScriptTagsPlugin = ({
       if (
         this.environment?.name === "worker" &&
         id.endsWith(".tsx") &&
-        !id.includes("node_modules") &&
         hasJsxFunctions(code)
       ) {
         log("Transforming JSX script tags in %s", id);
