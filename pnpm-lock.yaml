@@ -409,7 +409,7 @@ importers:
   playground/entrypoint-from-node_modules:
     dependencies:
       entrypoint:
-        specifier: workspace:*
+        specifier: file:./packages/entrypoint
         version: link:packages/entrypoint
       react:
         specifier: 19.3.0-canary-fd524fe0-20251121
