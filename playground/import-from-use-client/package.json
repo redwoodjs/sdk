@@ -22,9 +22,9 @@
     "types": "tsc"
   },
   "dependencies": {
-    "react": "19.3.0-canary-fd524fe0-20251121",
-    "react-dom": "19.3.0-canary-fd524fe0-20251121",
-    "react-server-dom-webpack": "19.3.0-canary-fd524fe0-20251121",
+    "react": "19.2.1",
+    "react-dom": "19.2.1",
+    "react-server-dom-webpack": "19.2.1",
     "rwsdk": "workspace:*",
     "ui-lib": "file:./packages/ui-lib"
   },

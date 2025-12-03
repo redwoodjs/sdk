@@ -25,9 +25,9 @@
   "dependencies": {
     "@chakra-ui/react": "^3.27.0",
     "@emotion/react": "^11.14.0",
-    "react": "19.3.0-canary-fd524fe0-20251121",
-    "react-dom": "19.3.0-canary-fd524fe0-20251121",
-    "react-server-dom-webpack": "19.3.0-canary-fd524fe0-20251121",
+    "react": "19.2.1",
+    "react-dom": "19.2.1",
+    "react-server-dom-webpack": "19.2.1",
     "rwsdk": "workspace:*"
   },
   "devDependencies": {
@@ -42,12 +42,12 @@
     "wrangler": "4.51.0"
   },
   "overrides": {
-    "react": "19.3.0-canary-fd524fe0-20251121",
-    "react-dom": "19.3.0-canary-fd524fe0-20251121"
+    "react": "19.2.1",
+    "react-dom": "19.2.1"
   },
   "resolutions": {
-    "react": "19.3.0-canary-fd524fe0-20251121",
-    "react-dom": "19.3.0-canary-fd524fe0-20251121"
+    "react": "19.2.1",
+    "react-dom": "19.2.1"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
