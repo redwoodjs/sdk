@@ -1,0 +1,64 @@
+# Fontsource CSS Import Issue Reproduction
+
+## Problem
+
+User reported that importing fonts via CSS `@import` statements in `styles.css` works in development but fails in production (Cloudflare Workers). The font files are being bundled to `dist/worker/assets` instead of `dist/client/assets`, causing 404 errors when the browser tries to load them.
+
+The issue:
+- Fonts imported via `@import "@fontsource/figtree/400.css"` in CSS work locally
+- In production, font files end up in `dist/worker/assets` instead of `dist/client/assets`
+- CSS references fonts with `/assets/` URLs that point to files not available to the client
+- Browser console shows 404 errors for font files
+
+Workaround discovered by user:
+- Import fonts in a "use client" component using `import "@fontsource/figtree/400.css?url"`
+- This causes fonts to be bundled in both `dist/client/assets` and `dist/worker/assets`
+- Fonts then load correctly in production
+
+## Finding: moveStaticAssetsPlugin
+
+During build, font files (`.woff`, `.woff2`) are placed in `dist/worker/assets/` alongside CSS files. There's a `moveStaticAssetsPlugin` (`sdk/src/vite/moveStaticAssetsPlugin.mts`) that runs during the linker pass to move CSS files from `dist/worker/assets/` to `dist/client/assets/`, but it only moves CSS files:
+
+```22:22:sdk/src/vite/moveStaticAssetsPlugin.mts
+const cssFiles = await glob("*.css", { cwd: sourceDir });
+```
+
+From the build output, font files like `figtree-latin-400-normal-g7Dtegnw.woff2` and `figtree-latin-400-normal-BD4aNku5.woff` are being placed in `dist/worker/assets/` but not moved to `dist/client/assets/`.
+
+The plugin needs to also move font files (`.woff`, `.woff2`, and potentially other font formats like `.ttf`, `.otf`, `.eot`) to `dist/client/assets/` so they're accessible to the browser.
+
+The plugin runs during the linker pass (`process.env.RWSDK_BUILD_PASS === "linker"`) and is registered in `redwoodPlugin.mts` at line 197.
+
+## Fix
+
+Updated `moveStaticAssetsPlugin` to also move font files (`.woff`, `.woff2`, `.ttf`, `.otf`, `.eot`) from `dist/worker/assets/` to `dist/client/assets/` during the linker pass. The plugin now:
+
+1. Glob for CSS files: `*.css`
+2. Glob for font files: `*.{woff,woff2,ttf,otf,eot}`
+3. Move all matching files to `dist/client/assets/`
+
+This ensures font files referenced in CSS are accessible to the browser in production builds.
+
+---
+
+Fix font loading 404s in production by moving all static assets
+
+## Problem
+
+CSS `@import` for fonts (like `@fontsource/figtree`) works great in dev but falls over in production. The build puts the font files into `dist/worker/assets` instead of `dist/client/assets`, so the browser gets a 404 when trying to load them.
+
+We had a similar issue with CSS files before, which is why we have the `moveStaticAssetsPlugin` to shuffle `.css` files over to the client build. But it was too picky and only looked for CSS files.
+
+## Solution
+
+I've updated `moveStaticAssetsPlugin` to be less picky. It now moves **all** static assets (except for `.js` and `.map` files) from the worker build to the client build.
+
+This means any asset referenced by CSS—fonts, images, whatever—that ends up in the worker bundle will now get moved to the client distribution where it belongs.
+
+## Context & Future Investigation
+
+The `moveStaticAssetsPlugin` was originally a bit of a patch to handle CSS file generation during the worker build. While this change gets fonts working, it points to a bigger architectural question about how we handle assets across the split `worker`+`client` environments.
+
+In a perfect world, we wouldn't need to manually shuffle assets around like this. It's worth investigating if we can get the deploy step to look at both `dist/worker` and `dist/client` for assets.
+
+I do remember trying to get all the assets to output to a single directory, but that route proved to be tricky in practice. I think it was partly the challenge of one env clearing the other env's assets (among other challenges) thought I could be misremembering.

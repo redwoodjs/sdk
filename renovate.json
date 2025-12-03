@@ -33,9 +33,7 @@
         "vite",
         "react",
         "react-dom",
-        "react-server-dom-webpack",
-        "@types/react",
-        "@types/react-dom"
+        "react-server-dom-webpack"
       ],
       "groupName": "starter-deps",
       "schedule": ["at 00:00 on sunday"]
@@ -53,6 +51,7 @@
         "wrangler",
         "vite"
       ],
+      "updateTypes": ["major", "minor", "patch"],
       "groupName": "starter-peer-deps",
       "prPriority": 1
     },
@@ -83,14 +82,10 @@
         "playground/**/package.json",
         "addons/**/package.json"
       ],
-      "matchPackageNames": [
-        "react",
-        "react-dom",
-        "react-server-dom-webpack",
-        "@types/react",
-        "@types/react-dom"
-      ],
+      "matchPackageNames": ["react", "react-dom", "react-server-dom-webpack"],
       "followTag": "next",
+      "ignoreUnstable": false,
+      "extractVersion": "^19\\.3\\.0-canary-.*-(?<date>\\d{8})$",
       "groupName": "starter-peer-deps",
       "prPriority": 1
     },
@@ -120,9 +115,7 @@
         "vite",
         "react",
         "react-dom",
-        "react-server-dom-webpack",
-        "@types/react",
-        "@types/react-dom"
+        "react-server-dom-webpack"
       ],
       "groupName": "docs-and-infra-deps",
       "schedule": ["at 00:00 on sunday"]

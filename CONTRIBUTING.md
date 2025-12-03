@@ -17,6 +17,95 @@ For context on how the system works, check out the [architecture documents](./do
 pnpm install
 ```
 
+## Development Workflow
+
+When developing the SDK, you'll typically work with either the `starter/` project or `playground/` examples to test your changes. Understanding how the SDK is linked to these projects will help you work efficiently.
+
+### Workspace Links (Monorepo Development)
+
+Within the monorepo, the SDK is automatically linked to `starter/` and `playground/` projects using pnpm workspace links. This means:
+
+- Changes to the SDK source code are immediately available to these projects
+- No manual syncing is required when working within the monorepo
+- Simply rebuild the SDK (`pnpm --filter rwsdk build`) and restart the dev server in your test project
+
+The workspace link is configured in each project's `package.json` with `"rwsdk": "workspace:*"`, which pnpm resolves automatically.
+
+### Using `rwsync` for Development
+
+`rwsync` is a development tool that syncs your local SDK changes to external projects (projects outside the monorepo). However, it can also be useful when working with `starter/` or `playground/` projects because it provides **watch mode**, which automatically rebuilds and syncs changes as you develop.
+
+The `rwsync` command provides a bridge between a local checkout of the `rwsdk` and a project that uses it, enabling a fast and efficient development workflow.
+
+#### Setting Up `rwsync`
+
+First, set the `RWSDK_REPO` environment variable in your shell's configuration file (e.g., `~/.bashrc`, `~/.zshrc`) to point to the absolute path of the monorepo root (the directory containing the `sdk/` subdirectory):
+
+```sh
+# e.g. in ~/.zshrc
+export RWSDK_REPO=/path/to/monorepo/root
+```
+
+#### One-time Sync
+
+To perform a one-time synchronization of your local SDK changes to your project, run the following command from your project's root directory:
+
+```sh
+npx rwsync
+```
+
+This will build the SDK, copy the relevant files into your project's `node_modules`, and then you can start your development server.
+
+```sh
+npx rwsync && npm run dev
+```
+
+#### Watch Mode
+
+For continuous development, you can use the watch mode. This will automatically sync changes from the SDK to your project whenever you save a file. You can also provide a command that will be automatically restarted after each sync.
+
+```sh
+# This will watch for changes, and cancel + re-run `pnpm dev` after each sync
+npx rwsync --watch "npm run dev"
+```
+
+**Note**: When `rwsync` detects a playground example within the monorepo, it will skip the file sync and rely on workspace linking instead. However, watch mode will still rebuild the SDK when changes are detected, which can speed up your development workflow.
+
+### Creating Playground Examples
+
+When creating a new playground example, it's helpful to start by copying the `hello-world` example:
+
+```sh
+cp -r playground/hello-world playground/my-new-example
+cd playground/my-new-example
+# Update package.json name and other project-specific details
+```
+
+Each playground example should include an `__tests__` directory with end-to-end tests. See the [End-to-End Tests (Playground)](#end-to-end-tests-playground) section for more details.
+
+## Debugging the Vite Plugin
+
+The RedwoodSDK Vite plugin is composed of several smaller, internal plugins. To debug them, you can use the [debug](https://www.npmjs.com/package/debug) package by setting the `DEBUG` environment variable.
+
+Each internal plugin has a unique namespace, like `rwsdk:vite:hmr-plugin`. To enable logging for a specific plugin, set the `DEBUG` variable to its namespace.
+
+For example, to see debug output from just the HMR plugin:
+```sh
+DEBUG='rwsdk:vite:hmr-plugin'
+```
+
+You can also use a wildcard to enable logging for all internal Vite plugins:
+```sh
+DEBUG='rwsdk:vite:*'
+```
+
+For more detailed "verbose" output, set the `VERBOSE` environment variable to `1`.
+
+Here is a full example command that enables verbose logging for the HMR plugin, starts `rwsync` in watch mode to sync your local SDK changes with a test project, and redirects all output to a log file for analysis:
+```sh
+VERBOSE=1 DEBUG='rwsdk:vite:hmr-plugin' npx rwsync --watch "npm run dev" 2>&1 | tee /tmp/out.log
+```
+
 ## Project Structure
 
 This repository is a monorepo containing several key parts:

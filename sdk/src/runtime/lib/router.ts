@@ -457,7 +457,7 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
  * Supports three types of path patterns:
  * - Static: /about, /contact
  * - Parameters: /users/:id, /posts/:postId/edit
- * - Wildcards: /files/*, /api/*\/download
+ * - Wildcards: /files/\*, /api/\*\/download
  *
  * @example
  * // Static route
