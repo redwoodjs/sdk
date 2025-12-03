@@ -2,6 +2,24 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
   "separateMajorMinor": false,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^starter/package\\.json$",
+        "^playground/.*/package\\.json$",
+        "^addons/.*/package\\.json$"
+      ],
+      "matchStrings": [
+        "\"(?<depName>react|react-dom|react-server-dom-webpack)\":\\s*\"(?<currentValue>\\d+\\.\\d+\\.\\d+-canary-[a-f0-9]+-\\d{8})\""
+      ],
+      "extractVersion": "^(?<version>\\d+\\.\\d+\\.\\d+-canary)-[a-f0-9]+-(?<date>\\d{8})$",
+      "extractVersionTemplate": "{{version}}-{{date}}",
+      "datasourceTemplate": "npm",
+      "versioningTemplate": "npm",
+      "depTypeTemplate": "dependencies"
+    }
+  ],
   "packageRules": [
     {
       "description": "Group infrastructure dependencies (Actions, Docker, Node.js, pnpm).",
