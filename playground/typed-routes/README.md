@@ -20,8 +20,6 @@ Point your browser to the URL displayed in the terminal (e.g. `http://localhost:
 
 ## Testing
 
-Run the end-to-end tests from the monorepo root:
-
 ```shell
-pnpm test:e2e -- playground/typed-routes/__tests__/e2e.test.mts
+pnpm tsc --noEmit
 ```
