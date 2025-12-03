@@ -1,5 +1,4 @@
 import { linkFor } from "rwsdk/router";
-
-type App = typeof import("../../worker").default;
+import type { App } from "rwsdk/worker";
 
 export const link = linkFor<App>();
