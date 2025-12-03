@@ -39,7 +39,7 @@
       ]
     },
     {
-      "description": "Update non-React SDK peer dependencies in starter, playground, and addon projects as soon as they are available.",
+      "description": "Update SDK peer dependencies in starter, playground, and addon projects as soon as they are available.",
       "matchFileNames": [
         "starter/package.json",
         "playground/**/package.json",
@@ -49,7 +49,10 @@
         "@cloudflare/vite-plugin",
         "@cloudflare/workers-types",
         "wrangler",
-        "vite"
+        "vite",
+        "react",
+        "react-dom",
+        "react-server-dom-webpack"
       ],
       "groupName": "starter-peer-deps",
       "prPriority": 1
@@ -73,18 +76,6 @@
       ],
       "matchDepTypes": ["peerDependencies"],
       "enabled": false
-    },
-    {
-      "description": "Update React dependencies in starter, playground, and addon projects, tracking the 'next' tag.",
-      "matchFileNames": [
-        "starter/package.json",
-        "playground/**/package.json",
-        "addons/**/package.json"
-      ],
-      "matchPackageNames": ["react", "react-dom", "react-server-dom-webpack"],
-      "followTag": "next",
-      "groupName": "starter-peer-deps",
-      "prPriority": 1
     },
     {
       "description": "Group dependencies for the docs site.",
