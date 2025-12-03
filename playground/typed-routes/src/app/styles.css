@@ -1,0 +1,60 @@
+body {
+  min-height: 100vh;
+  padding: 0;
+  margin: 0;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+#root,
+#hydrate-root {
+  width: 100vw;
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+nav {
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #ccc;
+}
+
+nav a {
+  margin-right: 1rem;
+  color: #0066cc;
+  text-decoration: none;
+}
+
+nav a:hover {
+  text-decoration: underline;
+}
+
+.page {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.page h1 {
+  margin-top: 0;
+}
+
+.page p {
+  line-height: 1.6;
+}
+
+.code {
+  background: #f5f5f5;
+  padding: 1rem;
+  border-radius: 4px;
+  font-family: monospace;
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+
+
+
+
+
+

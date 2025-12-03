@@ -1,8 +1,4 @@
-import type {
-  Route,
-  RouteDefinition,
-  RouteMiddleware,
-} from "./router";
+import type { RouteDefinition, RouteMiddleware } from "./router";
 
 type PathParams<Path extends string> =
   Path extends `${string}:${infer Param}/${infer Rest}`
@@ -15,18 +11,11 @@ type PathParams<Path extends string> =
           ? { $0: string }
           : {};
 
-type ParamsForPath<Path extends string> = PathParams<Path> extends Record<
-  string,
-  never
->
-  ? undefined
-  : PathParams<Path>;
+type ParamsForPath<Path extends string> =
+  PathParams<Path> extends Record<string, never> ? undefined : PathParams<Path>;
 
 export type LinkFunction<Paths extends string> = {
-  <Path extends Paths>(
-    path: Path,
-    params?: ParamsForPath<Path>,
-  ): string;
+  <Path extends Paths>(path: Path, params?: ParamsForPath<Path>): string;
 };
 
 type RoutePaths<Value> =
@@ -38,15 +27,14 @@ type RoutePaths<Value> =
         ? never
         : never;
 
-type RouteArrayPaths<Routes extends readonly any[]> = number extends Routes["length"]
-  ? RoutePaths<Routes[number]>
-  : Routes extends readonly [infer Head, ...infer Tail]
-    ? RoutePaths<Head> | RouteArrayPaths<Tail>
-    : never;
+type RouteArrayPaths<Routes extends readonly any[]> =
+  number extends Routes["length"]
+    ? RoutePaths<Routes[number]>
+    : Routes extends readonly [infer Head, ...infer Tail]
+      ? RoutePaths<Head> | RouteArrayPaths<Tail>
+      : never;
 
-type AppRoutes<App> = App extends { __rwRoutes: infer Routes }
-  ? Routes
-  : never;
+type AppRoutes<App> = App extends { __rwRoutes: infer Routes } ? Routes : never;
 
 export type AppRoutePaths<App> = RoutePaths<AppRoutes<App>>;
 
@@ -60,22 +48,39 @@ export function createLinks<App>(_app?: App): AppLink<App> {
   return linkFor<App>();
 }
 
+// Overload for automatic route inference from app type
+export function defineLinks<App extends { __rwRoutes: any }>(): AppLink<App>;
+// Overload for manual route array
 export function defineLinks<const T extends readonly string[]>(
   routes: T,
-): LinkFunction<T[number]> {
+): LinkFunction<T[number]>;
+// Implementation
+export function defineLinks(routes?: readonly string[]): LinkFunction<any> {
+  // If no routes provided, this is the app type overload
+  // At runtime, we can't distinguish, but the type system ensures
+  // this only happens when called as defineLinks<App>()
+  // We delegate to linkFor which handles app types correctly
+  if (routes === undefined) {
+    // This branch is only reachable when called as defineLinks<App>()
+    // The return type is AppLink<App> due to the overload
+    // We use linkFor internally which doesn't need runtime route validation
+    return linkFor<any>() as any;
+  }
+
+  // Original implementation for route arrays
   routes.forEach((route) => {
     if (typeof route !== "string") {
       throw new Error(`Invalid route: ${route}. Routes must be strings.`);
     }
   });
 
-  const link = createLinkFunction<T[number]>();
-  return ((path: T[number], params?: Record<string, string>) => {
+  const link = createLinkFunction<(typeof routes)[number]>();
+  return ((path: (typeof routes)[number], params?: Record<string, string>) => {
     if (!routes.includes(path)) {
       throw new Error(`Invalid route: ${path}`);
     }
     return link(path, params as any);
-  }) as LinkFunction<T[number]>;
+  }) as LinkFunction<(typeof routes)[number]>;
 }
 
 const TOKEN_REGEX = /:([a-zA-Z0-9_]+)|\*/g;
@@ -102,10 +107,7 @@ function hasRouteParameters(path: string): boolean {
   return result;
 }
 
-function interpolate(
-  template: string,
-  params: Record<string, string>,
-): string {
+function interpolate(template: string, params: Record<string, string>): string {
   let result = "";
   let lastIndex = 0;
   let wildcardIndex = 0;
@@ -121,9 +123,7 @@ function interpolate(
       const name = match[1];
       const value = params[name];
       if (value === undefined) {
-        throw new Error(
-          `Missing parameter "${name}" for route ${template}`,
-        );
+        throw new Error(`Missing parameter "${name}" for route ${template}`);
       }
       result += encodeURIComponent(value);
       consumed.add(name);
@@ -131,9 +131,7 @@ function interpolate(
       const key = `$${wildcardIndex}`;
       const value = params[key];
       if (value === undefined) {
-        throw new Error(
-          `Missing parameter "${key}" for route ${template}`,
-        );
+        throw new Error(`Missing parameter "${key}" for route ${template}`);
       }
       result += encodeWildcardValue(value);
       consumed.add(key);

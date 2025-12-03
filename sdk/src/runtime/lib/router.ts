@@ -3,19 +3,23 @@ import { isValidElementType } from "react-is";
 import { RequestInfo } from "../requestInfo/types";
 import type { DocumentProps, LayoutProps } from "./types.js";
 
-export type RouteMiddleware<T extends RequestInfo = RequestInfo> = (
-  requestInfo: T,
-) => MaybePromise<React.JSX.Element | Response | void>;
-
-type RouteFunction<T extends RequestInfo = RequestInfo> = (
-  requestInfo: T,
-) => MaybePromise<Response>;
-
 type MaybePromise<T> = T | Promise<T>;
 
-type RouteComponent<T extends RequestInfo = RequestInfo> = (
-  requestInfo: T,
-) => MaybePromise<React.JSX.Element | Response | void>;
+type BivariantRouteHandler<T extends RequestInfo, R> = {
+  bivarianceHack(requestInfo: T): R;
+}["bivarianceHack"];
+
+export type RouteMiddleware<T extends RequestInfo = RequestInfo> =
+  BivariantRouteHandler<T, MaybePromise<React.JSX.Element | Response | void>>;
+
+type RouteFunction<T extends RequestInfo = RequestInfo> =
+  BivariantRouteHandler<T, MaybePromise<Response>>;
+
+type RouteComponent<T extends RequestInfo = RequestInfo> =
+  BivariantRouteHandler<
+    T,
+    MaybePromise<React.JSX.Element | Response | void>
+  >;
 
 type RouteHandler<T extends RequestInfo = RequestInfo> =
   | RouteFunction<T>
