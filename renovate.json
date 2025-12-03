@@ -49,13 +49,22 @@
         "@cloudflare/vite-plugin",
         "@cloudflare/workers-types",
         "wrangler",
-        "vite",
-        "react",
-        "react-dom",
-        "react-server-dom-webpack"
+        "vite"
       ],
       "groupName": "starter-peer-deps",
       "prPriority": 1
+    },
+    {
+      "description": "Update React dependencies to stable versions only, preferring stable over canary.",
+      "matchFileNames": [
+        "starter/package.json",
+        "playground/**/package.json",
+        "addons/**/package.json"
+      ],
+      "matchPackageNames": ["react", "react-dom", "react-server-dom-webpack"],
+      "groupName": "starter-peer-deps",
+      "prPriority": 1,
+      "ignoreUnstable": true
     },
     {
       "description": "Group the SDK's vite dev dependency with starter peer deps to keep them in sync.",
