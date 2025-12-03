@@ -83,6 +83,7 @@
       ],
       "matchPackageNames": ["react", "react-dom", "react-server-dom-webpack"],
       "followTag": "next",
+      "extractVersion": "^\\d+\\.\\d+\\.\\d+-canary-.*-(?<date>\\d{8})$",
       "groupName": "starter-peer-deps",
       "prPriority": 1
     },
