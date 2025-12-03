@@ -19,27 +19,27 @@
     {
       "description": "Group all SDK internal dependencies into a single weekly PR.",
       "matchFileNames": ["sdk/package.json"],
-      "excludePackageNames": ["vite"],
       "groupName": "sdk-internal-deps",
-      "schedule": ["at 00:00 on sunday"]
+      "schedule": ["at 00:00 on sunday"],
+      "matchPackageNames": ["!vite"]
     },
     {
       "description": "Group all starter application dependencies into a single weekly PR.",
       "matchFileNames": ["starter/package.json"],
-      "excludePackageNames": [
-        "@cloudflare/vite-plugin",
-        "@cloudflare/workers-types",
-        "wrangler",
-        "vite",
-        "react",
-        "react-dom",
-        "react-server-dom-webpack"
-      ],
       "groupName": "starter-deps",
-      "schedule": ["at 00:00 on sunday"]
+      "schedule": ["at 00:00 on sunday"],
+      "matchPackageNames": [
+        "!@cloudflare/vite-plugin",
+        "!@cloudflare/workers-types",
+        "!wrangler",
+        "!vite",
+        "!react",
+        "!react-dom",
+        "!react-server-dom-webpack"
+      ]
     },
     {
-      "description": "Update non-React SDK peer dependencies in starter, playground, and addon projects as soon as they are available.",
+      "description": "Update SDK peer dependencies in starter, playground, and addon projects as soon as they are available.",
       "matchFileNames": [
         "starter/package.json",
         "playground/**/package.json",
@@ -51,9 +51,20 @@
         "wrangler",
         "vite"
       ],
-      "updateTypes": ["major", "minor", "patch"],
       "groupName": "starter-peer-deps",
       "prPriority": 1
+    },
+    {
+      "description": "Update React dependencies to stable versions only, preferring stable over canary.",
+      "matchFileNames": [
+        "starter/package.json",
+        "playground/**/package.json",
+        "addons/**/package.json"
+      ],
+      "matchPackageNames": ["react", "react-dom", "react-server-dom-webpack"],
+      "groupName": "starter-peer-deps",
+      "prPriority": 1,
+      "ignoreUnstable": true
     },
     {
       "description": "Group the SDK's vite dev dependency with starter peer deps to keep them in sync.",
@@ -76,20 +87,6 @@
       "enabled": false
     },
     {
-      "description": "Update React dependencies in starter, playground, and addon projects, tracking the 'next' tag.",
-      "matchFileNames": [
-        "starter/package.json",
-        "playground/**/package.json",
-        "addons/**/package.json"
-      ],
-      "matchPackageNames": ["react", "react-dom", "react-server-dom-webpack"],
-      "followTag": "next",
-      "ignoreUnstable": false,
-      "extractVersion": "^19\\.3\\.0-canary-.*-(?<date>\\d{8})$",
-      "groupName": "starter-peer-deps",
-      "prPriority": 1
-    },
-    {
       "description": "Group dependencies for the docs site.",
       "matchFileNames": ["docs/package.json"],
       "groupName": "docs-and-infra-deps",
@@ -98,9 +95,9 @@
     {
       "description": "Group dependencies from the root package.json.",
       "matchFileNames": ["package.json"],
-      "excludePackageNames": ["pnpm"],
       "groupName": "docs-and-infra-deps",
-      "schedule": ["at 00:00 on sunday"]
+      "schedule": ["at 00:00 on sunday"],
+      "matchPackageNames": ["!pnpm"]
     },
     {
       "description": "Group playground and addon non-peer dependencies with other infrastructure dependencies.",
@@ -108,23 +105,29 @@
         "playground/**/package.json",
         "addons/**/package.json"
       ],
-      "excludePackageNames": [
-        "@cloudflare/vite-plugin",
-        "@cloudflare/workers-types",
-        "wrangler",
-        "vite",
-        "react",
-        "react-dom",
-        "react-server-dom-webpack"
-      ],
       "groupName": "docs-and-infra-deps",
-      "schedule": ["at 00:00 on sunday"]
+      "schedule": ["at 00:00 on sunday"],
+      "matchPackageNames": [
+        "!@cloudflare/vite-plugin",
+        "!@cloudflare/workers-types",
+        "!wrangler",
+        "!vite",
+        "!react",
+        "!react-dom",
+        "!react-server-dom-webpack"
+      ]
     }
   ],
   "prHeader": " chore(deps): {{{prTitle}}}",
   "prBodyNotes": "This PR updates the following dependencies:\n\n{{{table}}}",
   "automerge": false,
-  "major": { "automerge": false },
-  "minor": { "automerge": false },
-  "patch": { "automerge": false }
+  "major": {
+    "automerge": false
+  },
+  "minor": {
+    "automerge": false
+  },
+  "patch": {
+    "automerge": false
+  }
 }
