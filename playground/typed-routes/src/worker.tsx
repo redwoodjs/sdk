@@ -21,7 +21,10 @@ export default defineApp([
   render(Document, [
     route("/old", ({ request }): Response => {
       const url = new URL(request.url);
-      const redirectUrl: URL = new URL(link("/"), url.origin);
+      const redirectUrl: URL = new URL(
+        link("/users/:id", { id: "123" }),
+        url.origin,
+      );
       return Response.redirect(redirectUrl.toString(), 301);
     }),
     route("/", Home),
