@@ -1,6 +1,6 @@
 # Typed Routes Playground
 
-This playground demonstrates and tests the typed routes functionality with `defineLinks` that automatically infers routes from the app definition.
+This playground demonstrates and tests the typed routes functionality with `linkFor` that automatically infers routes from the app definition.
 
 ## Features Tested
 
@@ -25,5 +25,3 @@ Run the end-to-end tests from the monorepo root:
 ```shell
 pnpm test:e2e -- playground/typed-routes/__tests__/e2e.test.mts
 ```
-
-

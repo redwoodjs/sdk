@@ -21,7 +21,7 @@ export function Home({ ctx }: RequestInfo) {
       <h1>Typed Routes Playground</h1>
       <p>
         This playground tests typed routes with automatic route inference using{" "}
-        <code>defineLinks</code>.
+        <code>linkFor</code>.
       </p>
 
       <nav>
