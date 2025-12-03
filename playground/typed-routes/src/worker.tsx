@@ -11,7 +11,8 @@ import { link } from "@/app/shared/links";
 
 export type AppContext = {};
 
-export default defineApp([
+// NOTE(peterp, 2025-12-03): Ensuring this resolves the [issue #900](https://github.com/redwoodjs/sdk/pull/900)
+export const app = defineApp([
   setCommonHeaders(),
   ({ ctx }) => {
     // setup ctx here
@@ -33,3 +34,7 @@ export default defineApp([
     route("/blog/:year/:slug", BlogPost),
   ]),
 ]);
+
+export default {
+  fetch: app.fetch,
+};
