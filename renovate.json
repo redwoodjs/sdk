@@ -85,7 +85,8 @@
       "matchPackageNames": ["react", "react-dom", "react-server-dom-webpack"],
       "followTag": "next",
       "ignoreUnstable": false,
-      "extractVersion": "^19\\.3\\.0-canary-.*-(?<date>\\d{8})$",
+      "extractVersion": "^(?<version>\\d+\\.\\d+\\.\\d+-canary)-[a-f0-9]+-(?<date>\\d{8})$",
+      "extractVersionTemplate": "{{version}}-{{date}}",
       "groupName": "starter-peer-deps",
       "prPriority": 1
     },
