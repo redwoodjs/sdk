@@ -55,7 +55,7 @@
       ],
       "groupName": "starter-peer-deps",
       "prPriority": 1,
-      "schedule": ["every 15 minutes"]
+      "schedule": ["every 5 minutes"]
     },
     {
       "description": "Group the SDK's vite dev dependency with starter peer deps to keep them in sync.",
@@ -64,7 +64,7 @@
       "matchDepTypes": ["devDependencies"],
       "groupName": "starter-peer-deps",
       "prPriority": 1,
-      "schedule": ["every 15 minutes"]
+      "schedule": ["every 5 minutes"]
     },
     {
       "description": "Ignore non-React peerDependencies in the SDK to maintain a wide compatibility range.",
@@ -95,7 +95,7 @@
       "followTag": "next",
       "groupName": "starter-peer-deps",
       "prPriority": 1,
-      "schedule": ["every 15 minutes"]
+      "schedule": ["every 5 minutes"]
     },
     {
       "description": "Group dependencies for the docs site.",
