@@ -1305,14 +1305,14 @@ importers:
   playground/typed-routes:
     dependencies:
       react:
-        specifier: 19.3.0-canary-fb2177c1-20251114
-        version: 19.3.0-canary-fb2177c1-20251114
+        specifier: 19.2.1
+        version: 19.2.1
       react-dom:
-        specifier: 19.3.0-canary-fb2177c1-20251114
-        version: 19.3.0-canary-fb2177c1-20251114(react@19.3.0-canary-fb2177c1-20251114)
+        specifier: 19.2.1
+        version: 19.2.1(react@19.2.1)
       react-server-dom-webpack:
-        specifier: 19.3.0-canary-fb2177c1-20251114
-        version: 19.3.0-canary-fb2177c1-20251114(react-dom@19.3.0-canary-fb2177c1-20251114(react@19.3.0-canary-fb2177c1-20251114))(react@19.3.0-canary-fb2177c1-20251114)(webpack@5.97.1)
+        specifier: 19.2.1
+        version: 19.2.1(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(webpack@5.97.1)
       rwsdk:
         specifier: workspace:*
         version: link:../../sdk
@@ -8957,11 +8957,6 @@ packages:
     peerDependencies:
       react: 19.3.0-canary-4fdf7cf2-20251003
 
-  react-dom@19.3.0-canary-fb2177c1-20251114:
-    resolution: {integrity: sha512-dN0859tXfHNX1luA/vJ+0u8tIYzpvV/wc5Ak4j0VRPOUHR/IekO2dhBhJ2p+i/vPrJ0tCHW6MXH6eVgBqEnfwg==}
-    peerDependencies:
-      react: 19.3.0-canary-fb2177c1-20251114
-
   react-hook-form@7.64.0:
     resolution: {integrity: sha512-fnN+vvTiMLnRqKNTVhDysdrUay0kUUAymQnFIznmgDvapjveUWOOPqMNzPg+A+0yf9DuE2h6xzBjN1s+Qx8wcg==}
     engines: {node: '>=18.0.0'}
@@ -9044,14 +9039,6 @@ packages:
       react-dom: 19.3.0-canary-4fdf7cf2-20251003
       webpack: ^5.59.0
 
-  react-server-dom-webpack@19.3.0-canary-fb2177c1-20251114:
-    resolution: {integrity: sha512-JCwkSmM0cKYu/8nPGoK1JOvNhQ8zEvhOaF2CpzmkkU5cAN7k2kHeLE7QcISZHOOneGzWEMJNYyv5ZHUWeFW6Uw==}
-    engines: {node: '>=0.10.0'}
-    peerDependencies:
-      react: 19.3.0-canary-fb2177c1-20251114
-      react-dom: 19.3.0-canary-fb2177c1-20251114
-      webpack: ^5.59.0
-
   react-style-singleton@2.2.3:
     resolution: {integrity: sha512-b6jSvxvVnyptAiLjbkWLE/lOnR4lfTtDAl+eUC7RZy+QQWc6wRzIV2CE6xBuMmDxc2qIihtDCZD5NPOFl7fRBQ==}
     engines: {node: '>=10'}
@@ -9074,10 +9061,6 @@ packages:
 
   react@19.3.0-canary-4fdf7cf2-20251003:
     resolution: {integrity: sha512-nqpqaCNw7ngpux+uWJ8UsrKevE++WN/R5r8DWKNip+2Vn9w0afKd7pxz+1R2+X350cBHkVkITzsxk5pFOxdWQw==}
-    engines: {node: '>=0.10.0'}
-
-  react@19.3.0-canary-fb2177c1-20251114:
-    resolution: {integrity: sha512-f78+dzAbULGnu2JWb6WuRxCxF70LAfNP/oHaF/jG9TQJ4k85W67pS9ItKBcnnPQ4G+euzJ64F9xUIQhkasOKUA==}
     engines: {node: '>=0.10.0'}
 
   readable-stream@2.3.8:
@@ -9317,9 +9300,6 @@ packages:
 
   scheduler@0.28.0-canary-4fdf7cf2-20251003:
     resolution: {integrity: sha512-1QhlHp6pLVs2txWGGz5L+ZF3swBXVhGoJgMiFCq747VLg6JcJRoHQFpQ5ot5AwQI4aGtmJDDuB3HFsHh9M4/PQ==}
-
-  scheduler@0.28.0-canary-fb2177c1-20251114:
-    resolution: {integrity: sha512-ya7AZh/U0/NBxlPr8+PJAI2W3vb057qQ/Cah6YIbWDUkAPf4Ip/659SrazjuaStjyARPm7TAKW6m84GoagsF1A==}
 
   schema-utils@3.3.0:
     resolution: {integrity: sha512-pN/yOAvcC+5rQ5nERGuwrjLlYvLTbCibnZ1I7B1LaiAz9BRBlE9GMgE/eqV30P7aJQUf7Ddimy/RsbYO/GrVGg==}
@@ -19293,11 +19273,6 @@ snapshots:
       react: 19.3.0-canary-4fdf7cf2-20251003
       scheduler: 0.28.0-canary-4fdf7cf2-20251003
 
-  react-dom@19.3.0-canary-fb2177c1-20251114(react@19.3.0-canary-fb2177c1-20251114):
-    dependencies:
-      react: 19.3.0-canary-fb2177c1-20251114
-      scheduler: 0.28.0-canary-fb2177c1-20251114
-
   react-hook-form@7.64.0(react@19.2.1):
     dependencies:
       react: 19.2.1
@@ -19379,15 +19354,6 @@ snapshots:
       webpack: 5.97.1
       webpack-sources: 3.3.3
 
-  react-server-dom-webpack@19.3.0-canary-fb2177c1-20251114(react-dom@19.3.0-canary-fb2177c1-20251114(react@19.3.0-canary-fb2177c1-20251114))(react@19.3.0-canary-fb2177c1-20251114)(webpack@5.97.1):
-    dependencies:
-      acorn-loose: 8.4.0
-      neo-async: 2.6.2
-      react: 19.3.0-canary-fb2177c1-20251114
-      react-dom: 19.3.0-canary-fb2177c1-20251114(react@19.3.0-canary-fb2177c1-20251114)
-      webpack: 5.97.1
-      webpack-sources: 3.3.3
-
   react-style-singleton@2.2.3(@types/react@19.1.2)(react@19.2.1):
     dependencies:
       get-nonce: 1.0.1
@@ -19408,8 +19374,6 @@ snapshots:
   react@19.2.1: {}
 
   react@19.3.0-canary-4fdf7cf2-20251003: {}
-
-  react@19.3.0-canary-fb2177c1-20251114: {}
 
   readable-stream@2.3.8:
     dependencies:
@@ -19794,8 +19758,6 @@ snapshots:
   scheduler@0.27.0: {}
 
   scheduler@0.28.0-canary-4fdf7cf2-20251003: {}
-
-  scheduler@0.28.0-canary-fb2177c1-20251114: {}
 
   schema-utils@3.3.0:
     dependencies:
