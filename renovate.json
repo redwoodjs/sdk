@@ -93,6 +93,8 @@
         "@types/react-dom"
       ],
       "followTag": "next",
+      "ignoreUnstable": false,
+      "versioning": "loose",
       "groupName": "starter-peer-deps",
       "prPriority": 1,
       "schedule": ["every 5 minutes"]
