@@ -54,8 +54,7 @@
         "vite"
       ],
       "groupName": "starter-peer-deps",
-      "prPriority": 1,
-      "schedule": ["every 5 minutes"]
+      "prPriority": 1
     },
     {
       "description": "Group the SDK's vite dev dependency with starter peer deps to keep them in sync.",
@@ -63,8 +62,7 @@
       "matchPackageNames": ["vite"],
       "matchDepTypes": ["devDependencies"],
       "groupName": "starter-peer-deps",
-      "prPriority": 1,
-      "schedule": ["every 5 minutes"]
+      "prPriority": 1
     },
     {
       "description": "Ignore non-React peerDependencies in the SDK to maintain a wide compatibility range.",
@@ -90,8 +88,7 @@
       "ignoreUnstable": false,
       "versioning": "loose",
       "groupName": "starter-peer-deps",
-      "prPriority": 1,
-      "schedule": ["every 5 minutes"]
+      "prPriority": 1
     },
     {
       "description": "Update React type definitions in starter, playground, and addon projects.",
@@ -102,8 +99,7 @@
       ],
       "matchPackageNames": ["@types/react", "@types/react-dom"],
       "groupName": "starter-peer-deps",
-      "prPriority": 1,
-      "schedule": ["every 5 minutes"]
+      "prPriority": 1
     },
     {
       "description": "Group dependencies for the docs site.",
