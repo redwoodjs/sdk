@@ -85,16 +85,22 @@
         "playground/**/package.json",
         "addons/**/package.json"
       ],
-      "matchPackageNames": [
-        "react",
-        "react-dom",
-        "react-server-dom-webpack",
-        "@types/react",
-        "@types/react-dom"
-      ],
+      "matchPackageNames": ["react", "react-dom", "react-server-dom-webpack"],
       "followTag": "next",
       "ignoreUnstable": false,
       "versioning": "loose",
+      "groupName": "starter-peer-deps",
+      "prPriority": 1,
+      "schedule": ["every 5 minutes"]
+    },
+    {
+      "description": "Update React type definitions in starter, playground, and addon projects.",
+      "matchFileNames": [
+        "starter/package.json",
+        "playground/**/package.json",
+        "addons/**/package.json"
+      ],
+      "matchPackageNames": ["@types/react", "@types/react-dom"],
       "groupName": "starter-peer-deps",
       "prPriority": 1,
       "schedule": ["every 5 minutes"]
