@@ -33,9 +33,7 @@
         "vite",
         "react",
         "react-dom",
-        "react-server-dom-webpack",
-        "@types/react",
-        "@types/react-dom"
+        "react-server-dom-webpack"
       ],
       "groupName": "starter-deps",
       "schedule": ["at 00:00 on sunday"]
@@ -53,6 +51,7 @@
         "wrangler",
         "vite"
       ],
+      "updateTypes": ["major", "minor", "patch"],
       "groupName": "starter-peer-deps",
       "prPriority": 1
     },
@@ -86,18 +85,7 @@
       "matchPackageNames": ["react", "react-dom", "react-server-dom-webpack"],
       "followTag": "next",
       "ignoreUnstable": false,
-      "versioning": "loose",
-      "groupName": "starter-peer-deps",
-      "prPriority": 1
-    },
-    {
-      "description": "Update React type definitions in starter, playground, and addon projects.",
-      "matchFileNames": [
-        "starter/package.json",
-        "playground/**/package.json",
-        "addons/**/package.json"
-      ],
-      "matchPackageNames": ["@types/react", "@types/react-dom"],
+      "extractVersion": "^19\\.3\\.0-canary-.*-(?<date>\\d{8})$",
       "groupName": "starter-peer-deps",
       "prPriority": 1
     },
@@ -127,9 +115,7 @@
         "vite",
         "react",
         "react-dom",
-        "react-server-dom-webpack",
-        "@types/react",
-        "@types/react-dom"
+        "react-server-dom-webpack"
       ],
       "groupName": "docs-and-infra-deps",
       "schedule": ["at 00:00 on sunday"]
