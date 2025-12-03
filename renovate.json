@@ -2,24 +2,6 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
   "separateMajorMinor": false,
-  "customManagers": [
-    {
-      "customType": "regex",
-      "fileMatch": [
-        "^starter/package\\.json$",
-        "^playground/.*/package\\.json$",
-        "^addons/.*/package\\.json$"
-      ],
-      "matchStrings": [
-        "\"(?<depName>react|react-dom|react-server-dom-webpack)\":\\s*\"(?<currentValue>\\d+\\.\\d+\\.\\d+-canary-[a-f0-9]+-\\d{8})\""
-      ],
-      "extractVersion": "^(?<version>\\d+\\.\\d+\\.\\d+-canary)-[a-f0-9]+-(?<date>\\d{8})$",
-      "extractVersionTemplate": "{{version}}-{{date}}",
-      "datasourceTemplate": "npm",
-      "versioningTemplate": "npm",
-      "depTypeTemplate": "dependencies"
-    }
-  ],
   "packageRules": [
     {
       "description": "Group infrastructure dependencies (Actions, Docker, Node.js, pnpm).",
@@ -51,7 +33,9 @@
         "vite",
         "react",
         "react-dom",
-        "react-server-dom-webpack"
+        "react-server-dom-webpack",
+        "@types/react",
+        "@types/react-dom"
       ],
       "groupName": "starter-deps",
       "schedule": ["at 00:00 on sunday"]
@@ -69,7 +53,6 @@
         "wrangler",
         "vite"
       ],
-      "updateTypes": ["major", "minor", "patch"],
       "groupName": "starter-peer-deps",
       "prPriority": 1
     },
@@ -103,7 +86,18 @@
       "matchPackageNames": ["react", "react-dom", "react-server-dom-webpack"],
       "followTag": "next",
       "ignoreUnstable": false,
-      "extractVersion": "^(?<version>\\d+\\.\\d+\\.\\d+-canary)-[a-f0-9]+-(?<date>\\d{8})$",
+      "versioning": "loose",
+      "groupName": "starter-peer-deps",
+      "prPriority": 1
+    },
+    {
+      "description": "Update React type definitions in starter, playground, and addon projects.",
+      "matchFileNames": [
+        "starter/package.json",
+        "playground/**/package.json",
+        "addons/**/package.json"
+      ],
+      "matchPackageNames": ["@types/react", "@types/react-dom"],
       "groupName": "starter-peer-deps",
       "prPriority": 1
     },
@@ -133,7 +127,9 @@
         "vite",
         "react",
         "react-dom",
-        "react-server-dom-webpack"
+        "react-server-dom-webpack",
+        "@types/react",
+        "@types/react-dom"
       ],
       "groupName": "docs-and-infra-deps",
       "schedule": ["at 00:00 on sunday"]
