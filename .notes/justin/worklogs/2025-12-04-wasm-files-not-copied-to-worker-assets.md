@@ -46,67 +46,26 @@ Added test in `playground/wasm-repro/__tests__/e2e.test.mts`:
 
 The first test should fail with the current behavior since `moveStaticAssetsPlugin` moves all `.wasm` files from `dist/worker/assets/` to `dist/client/assets/`.
 
-## Deeper Analysis: Refining Asset Placement Logic
+### Investigation Results
 
-After reproducing the issue, it's clear the asset placement logic can be refined. The `moveStaticAssetsPlugin` was introduced to handle a specific case (moving CSS files), but its general rule needs adjustment for cases like WASM modules.
+The initial diagnostic plugin proved to be overly complex. A much simpler and more direct approach was discovered by enabling Vite's built-in SSR manifest.
 
-The build process needs to handle two types of assets that originate from the worker build pass:
+By setting `build.ssrManifest: true` in the worker's Vite configuration, a `dist/worker/.vite/ssr-manifest.json` file is generated. This manifest provides a complete and accurate map from every module in the graph to all of its transitive asset dependencies, including fonts imported via CSS `@import` statements.
 
-1.  **Worker-scoped assets:** Modules intended for use by the worker runtime itself (e.g., a WASM module for server-side computation).
-2.  **Client-scoped assets:** Assets referenced by server-side code that need to be served to the browser (e.g., CSS, fonts, images).
+For example, the manifest entry for `"src/app/styles.css?url"` contains a direct list of all font files (`.woff`, `.woff2`) and the final CSS file that it depends on.
 
-The current plugin uses a file-extension-based rule for placement. This generalization works for many cases but doesn't account for worker-scoped assets like WASM, which leads to them being moved incorrectly.
+### Final Approach: Using the SSR Manifest
 
-### Transitive and Contextual Dependencies
+This discovery dramatically simplifies the solution and removes the need for manual graph traversal or CSS parsing. The definitive plan is now:
 
-Asset placement is also influenced by how files are imported:
+1.  **Enable `ssrManifest: true`** in the worker's build configuration within `configPlugin.mts`.
+2.  **Refactor `moveStaticAssetsPlugin.mts`** to implement the following logic:
+    *   Read the `dist/worker/.vite/ssr-manifest.json` file.
+    *   Initialize an empty `Set` to store the filenames of public assets.
+    *   Iterate through all the entries in the manifest.
+    *   For any entry whose key includes the `?url` suffix, add all the asset file paths from its corresponding array to the `Set` of public assets.
+    *   Filter the files in `dist/worker/assets` against this `Set`.
+    *   Move only the files that are present in the `Set` to `dist/client/assets`.
 
--   **Transitive Dependencies:** A server-side module might import a CSS file with a `?url` suffix. That CSS file might then `@import` a font. The font is a transitive dependency that also needs to be placed in the client's public asset directory.
--   **Import Context:** The import statement itself signals the intended use. `import './module.wasm'` is a standard import for runtime logic. In contrast, `import './styles.css?url'` is a Vite-specific pattern to request a public URL, indicating the asset is for the client.
-
-### A More Precise Approach: Analyzing the Import Graph
-
-A more precise method for placing assets is to analyze the import graph. This allows the build process to follow the chain of dependencies and understand the context of each asset.
-
-The revised plan is:
-
-1.  **Identify Public Asset Imports:** Use the `?url` suffix on an import as a clear indicator that an asset (and its dependencies) is client-scoped.
-
-2.  **Trace the Graph:** Within a Vite plugin, use the `generateBundle` hook to access the module graph. For each emitted asset, traverse its importers.
-
-3.  **Identify Public Assets:** If an asset's import chain originates from a module imported with `?url`, that asset is considered public.
-
-4.  **Refine the `moveStaticAssetsPlugin`:** The plugin's role would change. It would no longer use a file-extension rule. Instead, it would move only the assets identified as public from the previous step.
-
-**Outcome:**
-
--   A WASM module imported for worker logic would not be identified as public and would remain in `dist/worker/assets`.
--   A CSS file imported with `?url` would be identified as public. It, and any fonts it imports, would be moved to `dist/client/assets`.
-
-This method aligns the build output with the intent expressed in the code, leading to more predictable and correct asset placement.
-
-## Investigation: `fontsource-css-imports` Build Analysis
-
-To validate the import graph analysis approach, we're investigating the `fontsource-css-imports` playground example. This provides a concrete case of transitive asset dependencies: `Document.tsx` imports `styles.css?url`, and `styles.css` contains `@import` statements for font files.
-
-### Created Diagnostic Plugin
-
-Created `sdk/src/vite/diagnosticAssetGraphPlugin.mts` to inspect the module graph during the linker build pass. The plugin:
-
-1. Iterates through all assets in the bundle during `generateBundle`
-2. For each asset, attempts to find related module IDs
-3. Checks if modules are imported with `?url` suffix or imported by `Document.tsx`
-4. Logs the import chain information
-
-This will help us understand:
-- Whether we can access the module graph for assets
-- If we can trace an asset back to its `?url` import origin
-- How transitive dependencies (like fonts imported via CSS) appear in the graph
-
-### Next Steps
-
-1. Temporarily add `diagnosticAssetGraphPlugin` to the plugin list in `redwoodPlugin.mts` (before `moveStaticAssetsPlugin`)
-2. Run a production build on `fontsource-css-imports` playground
-3. Analyze the diagnostic output to see what information is available
-4. Determine if the module graph provides enough information to implement the import chain traversal logic
+This approach is robust, simple, and leverages Vite's internal dependency mapping, ensuring a correct and maintainable solution. All worker-scoped assets (like WASM) that are not part of a `?url` import chain will be correctly left in the `dist/worker/assets` directory.
 
