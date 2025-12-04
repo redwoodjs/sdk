@@ -77,6 +77,7 @@ export const configPlugin = ({
         emitAssets: true,
         emptyOutDir: false,
         ssr: true,
+        manifest: true,
       },
     };
 
