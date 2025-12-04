@@ -3,7 +3,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
 
   // Name of your worker
-  "name": "wasm-repro",
+  "name": "workers-og",
 
   // Entry point for your worker
   "main": "src/worker.tsx",

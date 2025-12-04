@@ -33,14 +33,14 @@ The `moveStaticAssetsPlugin` is moving WASM files from `dist/worker/assets/` to 
 
 ### Created Playground Example
 
-Created `playground/wasm-repro` based on `hello-world`:
+Created `playground/workers-og` based on `hello-world`:
 - Added `workers-og` dependency (v0.0.27)
 - Created `/og` route that uses `ImageResponse` from `workers-og` to generate an image
 - This should trigger WASM imports when the route is accessed
 
 ### Created E2E Test
 
-Added test in `playground/wasm-repro/__tests__/e2e.test.mts`:
+Added test in `playground/workers-og/__tests__/e2e.test.mts`:
 - First test checks that WASM files exist in `dist/worker/assets/` after build
 - Second test verifies the `/og` endpoint works (which requires WASM files to be accessible)
 
@@ -56,16 +56,38 @@ For example, the manifest entry for `"src/app/styles.css?url"` contains a direct
 
 ### Final Approach: Using the SSR Manifest
 
-This discovery dramatically simplifies the solution and removes the need for manual graph traversal or CSS parsing. The definitive plan is now:
+The `ssrManifest` provides a complete and accurate map from every module in the graph to all of its transitive asset dependencies. This discovery dramatically simplifies the solution. The definitive plan is:
 
 1.  **Enable `ssrManifest: true`** in the worker's build configuration within `configPlugin.mts`.
-2.  **Refactor `moveStaticAssetsPlugin.mts`** to implement the following logic:
-    *   Read the `dist/worker/.vite/ssr-manifest.json` file.
-    *   Initialize an empty `Set` to store the filenames of public assets.
-    *   Iterate through all the entries in the manifest.
-    *   For any entry whose key includes the `?url` suffix, add all the asset file paths from its corresponding array to the `Set` of public assets.
-    *   Filter the files in `dist/worker/assets` against this `Set`.
-    *   Move only the files that are present in the `Set` to `dist/client/assets`.
+2.  **Refactor `moveStaticAssetsPlugin.mts`** to:
+    *   Read the `dist/worker/.vite/ssr-manifest.json` file during the `linker` pass.
+    *   Identify all assets associated with `?url` imports by iterating through the manifest keys.
+    *   Move only those identified assets from `dist/worker/assets` to `dist/client/assets`.
+    *   Delete the `ssr-manifest.json` file after it has been used to avoid shipping it in the final bundle.
+3.  **Disable Worker Manifest:** Set `build.manifest: false` for the worker build, as it's no longer needed for this process, further reducing unnecessary output.
 
-This approach is robust, simple, and leverages Vite's internal dependency mapping, ensuring a correct and maintainable solution. All worker-scoped assets (like WASM) that are not part of a `?url` import chain will be correctly left in the `dist/worker/assets` directory.
+This approach is robust, simple, and leverages Vite's internal dependency mapping. All worker-scoped assets (like WASM) that are not part of a `?url` import chain will be correctly left in the `dist/worker/assets` directory.
+
+---
+
+## Problem
+
+Production builds fail for projects that use WebAssembly (WASM) because `.wasm` files, imported by worker-side code, are incorrectly moved out of the worker's asset directory.
+
+This issue stems from the `moveStaticAssetsPlugin`, which was originally designed to move client-side assets like CSS and fonts from the worker build output to the client build output. Its rule—to move any non-JS asset—was too broad and failed to distinguish between public assets needed by the client and private assets needed by the worker. This caused a regression where `.wasm` files required by the worker were moved, making them unavailable at runtime and causing deployment validation to fail.
+
+## Solution
+
+The asset moving logic was refined to be more precise by leveraging Vite's SSR manifest, which provides an accurate map of all transitive asset dependencies for each module.
+
+1.  **Enable SSR Manifest:** The worker build configuration was updated to generate an `ssr-manifest.json` file by setting `build.ssrManifest: true`. This manifest correctly tracks all assets, including transitive ones like fonts imported from CSS.
+
+2.  **Update Asset Moving Plugin:** The `moveStaticAssetsPlugin` was refactored to use this manifest. Instead of moving all non-JS assets, it now:
+    *   Reads the `ssr-manifest.json`.
+    *   Identifies assets that are dependencies of any module imported with a `?url` suffix (the explicit marker for a public, client-facing asset).
+    *   Moves *only* these identified public assets to the client's asset directory.
+
+3.  **Cleanup:** After the assets are moved, the now-unnecessary `ssr-manifest.json` file is deleted to keep the final bundle clean. The standard worker `manifest.json` was also disabled as it was no longer needed for this process.
+
+This change ensures that worker-internal assets like `.wasm` files remain in the worker's directory, while public assets like CSS and fonts are correctly moved to the client directory, resolving the build failure.
 

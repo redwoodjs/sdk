@@ -1,7 +1,7 @@
 {
-  "name": "wasm-repro",
+  "name": "workers-og",
   "version": "1.0.0",
-  "description": "WASM import reproduction example",
+  "description": "workers-og WASM import example",
   "main": "index.js",
   "type": "module",
   "keywords": [],
