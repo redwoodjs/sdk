@@ -85,14 +85,28 @@ The revised plan is:
 
 This method aligns the build output with the intent expressed in the code, leading to more predictable and correct asset placement.
 
-## Next Step: Investigate `fontsource-css-imports` Build
+## Investigation: `fontsource-css-imports` Build Analysis
 
-To validate this approach, the next step is to perform a detailed analysis of the `fontsource-css-imports` playground example. This will provide concrete data on how Vite and Rollup handle transitive asset dependencies.
+To validate the import graph analysis approach, we're investigating the `fontsource-css-imports` playground example. This provides a concrete case of transitive asset dependencies: `Document.tsx` imports `styles.css?url`, and `styles.css` contains `@import` statements for font files.
 
-The plan is to:
-1. Run a production build (`pnpm build`) on the `fontsource-css-imports` playground.
-2. Inspect the generated `dist/worker/assets` and `dist/client/assets` directories.
-3. Analyze the Rollup bundle information available in a custom plugin's `generateBundle` hook. This is to confirm that the module graph contains the necessary information to trace an imported font file back to the `styles.css?url` import in `Document.tsx`.
+### Created Diagnostic Plugin
 
-This investigation will confirm if the proposed import graph analysis is feasible with the information Vite provides.
+Created `sdk/src/vite/diagnosticAssetGraphPlugin.mts` to inspect the module graph during the linker build pass. The plugin:
+
+1. Iterates through all assets in the bundle during `generateBundle`
+2. For each asset, attempts to find related module IDs
+3. Checks if modules are imported with `?url` suffix or imported by `Document.tsx`
+4. Logs the import chain information
+
+This will help us understand:
+- Whether we can access the module graph for assets
+- If we can trace an asset back to its `?url` import origin
+- How transitive dependencies (like fonts imported via CSS) appear in the graph
+
+### Next Steps
+
+1. Temporarily add `diagnosticAssetGraphPlugin` to the plugin list in `redwoodPlugin.mts` (before `moveStaticAssetsPlugin`)
+2. Run a production build on `fontsource-css-imports` playground
+3. Analyze the diagnostic output to see what information is available
+4. Determine if the module graph provides enough information to implement the import chain traversal logic
 
