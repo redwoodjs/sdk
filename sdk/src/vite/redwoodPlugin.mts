@@ -22,7 +22,6 @@ import { directivesFilteringPlugin } from "./directivesFilteringPlugin.mjs";
 import { directivesPlugin } from "./directivesPlugin.mjs";
 import { injectVitePreamble } from "./injectVitePreamblePlugin.mjs";
 import { knownDepsResolverPlugin } from "./knownDepsResolverPlugin.mjs";
-import { diagnosticAssetGraphPlugin } from "./diagnosticAssetGraphPlugin.mjs";
 import { linkerPlugin } from "./linkerPlugin.mjs";
 import { miniflareHMRPlugin } from "./miniflareHMRPlugin.mjs";
 import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
@@ -195,7 +194,6 @@ export const redwoodPlugin = async (
       clientEntryPoints,
       projectRootDir,
     }),
-    diagnosticAssetGraphPlugin({ rootDir: projectRootDir }),
     moveStaticAssetsPlugin({ rootDir: projectRootDir }),
     prismaPlugin({ projectRootDir }),
     linkerPlugin({ projectRootDir }),

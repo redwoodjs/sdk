@@ -1,6 +1,6 @@
 import fs from "fs-extra";
 import path from "node:path";
-import type { Manifest, Plugin } from "vite";
+import { Plugin } from "vite";
 
 export const moveStaticAssetsPlugin = ({
   rootDir,
@@ -23,56 +23,29 @@ export const moveStaticAssetsPlugin = ({
         return;
       }
 
-      const manifestPath = path.join(
+      const ssrManifestPath = path.join(
         rootDir,
         "dist",
         "worker",
         ".vite",
-        "manifest.json",
+        "ssr-manifest.json",
       );
 
-      if (!(await fs.pathExists(manifestPath))) {
+      if (!(await fs.pathExists(ssrManifestPath))) {
         return;
       }
 
-      const manifestContent = await fs.readFile(manifestPath, "utf-8");
-      const manifest: Manifest = JSON.parse(manifestContent);
+      const manifestContent = await fs.readFile(ssrManifestPath, "utf-8");
+      const ssrManifest: Record<string, string[]> = JSON.parse(manifestContent);
 
       const publicAssets = new Set<string>();
-      const processedModules = new Set<string>();
 
-      const collectAssets = (moduleId: string) => {
-        if (processedModules.has(moduleId)) {
-          return;
-        }
-        processedModules.add(moduleId);
-
-        const chunk = manifest[moduleId];
-        if (!chunk) {
-          return;
-        }
-
-        if (chunk.css) {
-          for (const cssFile of chunk.css) {
-            publicAssets.add(path.basename(cssFile));
-          }
-        }
-        if (chunk.assets) {
-          for (const assetFile of chunk.assets) {
-            publicAssets.add(path.basename(assetFile));
-          }
-        }
-
-        if (chunk.imports) {
-          for (const importedId of chunk.imports) {
-            collectAssets(importedId);
-          }
-        }
-      };
-
-      for (const [moduleId] of Object.entries(manifest)) {
+      for (const [moduleId, assetPaths] of Object.entries(ssrManifest)) {
         if (moduleId.includes("?url")) {
-          collectAssets(moduleId);
+          for (const assetPath of assetPaths) {
+            const assetFileName = path.basename(assetPath);
+            publicAssets.add(assetFileName);
+          }
         }
       }
 
@@ -92,6 +65,8 @@ export const moveStaticAssetsPlugin = ({
           await fs.move(sourceFile, destFile, { overwrite: true });
         }
       }
+
+      await fs.remove(ssrManifestPath);
     }
   },
 });

@@ -78,7 +78,6 @@ export const configPlugin = ({
         ssrManifest: true,
         emptyOutDir: false,
         ssr: true,
-        manifest: true,
       },
     };
 
