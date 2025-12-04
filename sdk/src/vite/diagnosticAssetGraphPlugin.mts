@@ -9,65 +9,58 @@ export const diagnosticAssetGraphPlugin = ({
 
   apply: "build",
 
-  async generateBundle(options, bundle) {
+  async buildEnd() {
     if (
       this.environment.name === "worker" &&
-      process.env.RWSDK_BUILD_PASS === "linker"
+      process.env.RWSDK_BUILD_PASS === "worker"
     ) {
       console.log("\n=== Asset Graph Diagnostic ===");
-      console.log(`Total bundle entries: ${Object.keys(bundle).length}`);
 
-      for (const [fileName, chunkOrAsset] of Object.entries(bundle)) {
-        if (chunkOrAsset.type === "asset") {
-          const asset = chunkOrAsset;
-          console.log(`\nAsset: ${fileName}`);
-          console.log(`  Type: ${asset.type}`);
-          console.log(`  File name: ${asset.fileName}`);
-          const sourcePreview =
-            typeof asset.source === "string"
-              ? asset.source.substring(0, 100)
-              : `[Uint8Array: ${asset.source.length} bytes]`;
-          console.log(`  Source: ${sourcePreview}...`);
+      const moduleIds = Array.from(this.getModuleIds());
+      console.log(`Total modules: ${moduleIds.length}`);
 
-          const moduleIds = Array.from(this.getModuleIds());
-          const assetModules = moduleIds.filter(
-            (id: string) =>
-              id.includes(fileName) || id.includes(asset.fileName),
-          );
+      const urlImportedModules = new Set<string>();
+      const publicAssets = new Set<string>();
 
-          if (assetModules.length > 0) {
-            console.log(
-              `  Related module IDs: ${assetModules.slice(0, 5).join(", ")}`,
-            );
+      for (const moduleId of moduleIds) {
+        const moduleInfo = this.getModuleInfo(moduleId);
+        if (moduleInfo) {
+          const isImportedByUrl =
+            moduleInfo.importers.some((importer) =>
+              importer.includes("?url"),
+            ) || moduleId.includes("?url");
+
+          if (isImportedByUrl) {
+            urlImportedModules.add(moduleId);
+            console.log(`\nModule imported with ?url: ${moduleId}`);
+            console.log(`  Importers: ${moduleInfo.importers.join(", ")}`);
+
+            if (moduleInfo.importedIds) {
+              console.log(`  Imports: ${moduleInfo.importedIds.join(", ")}`);
+              for (const importedId of moduleInfo.importedIds) {
+                publicAssets.add(importedId);
+              }
+            }
           }
 
-          for (const moduleId of moduleIds) {
-            const moduleInfo = this.getModuleInfo(moduleId);
-            if (moduleInfo) {
-              const isImportedByUrl =
-                moduleInfo.importers.some((importer) =>
-                  importer.includes("?url"),
-                ) || moduleId.includes("?url");
-
-              if (
-                isImportedByUrl ||
-                moduleInfo.importers.some((importer) =>
-                  importer.includes("Document.tsx"),
-                )
-              ) {
-                console.log(`\n  Module: ${moduleId}`);
-                console.log(
-                  `    Importers: ${moduleInfo.importers.join(", ")}`,
-                );
-                console.log(`    Is imported with ?url: ${isImportedByUrl}`);
-                console.log(
-                  `    Is imported by Document.tsx: ${moduleInfo.importers.some((i) => i.includes("Document.tsx"))}`,
-                );
-              }
+          if (
+            moduleInfo.importers.some((importer) =>
+              importer.includes("Document.tsx"),
+            )
+          ) {
+            console.log(`\nModule imported by Document.tsx: ${moduleId}`);
+            console.log(`  Importers: ${moduleInfo.importers.join(", ")}`);
+            if (moduleInfo.importedIds) {
+              console.log(`  Imports: ${moduleInfo.importedIds.join(", ")}`);
             }
           }
         }
       }
+
+      console.log(
+        `\nTotal modules imported with ?url: ${urlImportedModules.size}`,
+      );
+      console.log(`Total transitive dependencies: ${publicAssets.size}`);
 
       console.log("\n=== End Asset Graph Diagnostic ===\n");
     }
