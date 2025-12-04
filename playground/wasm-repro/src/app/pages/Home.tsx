@@ -1,11 +1,10 @@
-import { RequestInfo } from 'rwsdk/worker';
-import { YogaLoader } from '../components/YogaLoader.js';
+import { RequestInfo } from "rwsdk/worker";
 
 export function Home({ ctx }: RequestInfo) {
   return (
     <div>
-      <h1>Hello World</h1>
-      <YogaLoader />
+      <h1>WASM Test</h1>
+      <p>Visit <a href="/og">/og</a> to test WASM image generation</p>
     </div>
   );
 }
