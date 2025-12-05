@@ -62,6 +62,14 @@ export const defineApp = <
         import.meta.env.VITE_IS_DEV_SERVER &&
         new URL(request.url).pathname === "/__worker-run"
       ) {
+        const expectedToken = (import.meta.env as any)
+          .VITE_RWSDK_WORKER_RUN_TOKEN;
+        const requestToken = request.headers.get("x-rwsdk-worker-run-token");
+
+        if (!expectedToken || expectedToken !== requestToken) {
+          return new Response("Forbidden", { status: 403 });
+        }
+
         const url = new URL(request.url);
         const scriptPath = url.searchParams.get("script");
 

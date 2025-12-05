@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import dbg from "debug";
 import getPort from "get-port";
 import path from "path";
@@ -9,6 +10,9 @@ const debug = dbg("rwsdk:worker-run");
 
 const main = async () => {
   process.env.RWSDK_WORKER_RUN = "1";
+
+  const token = crypto.randomBytes(32).toString("hex");
+  process.env.VITE_RWSDK_WORKER_RUN_TOKEN = token;
 
   const relativeScriptPath = process.argv[2];
 
@@ -60,7 +64,11 @@ const main = async () => {
     )}`;
     debug("Fetching %s", url);
 
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: {
+        "x-rwsdk-worker-run-token": token,
+      },
+    });
     debug("Response from worker: %s", response);
 
     if (!response.ok) {
