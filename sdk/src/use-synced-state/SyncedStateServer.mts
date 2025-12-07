@@ -92,7 +92,10 @@ export class SyncedStateServer extends DurableObject {
     if (!this.#subscriptionRefs.has(key)) {
       this.#subscriptionRefs.set(key, new Map());
     }
-    const duplicate = client.dup();
+    const duplicate =
+      typeof (client as any).dup === "function"
+        ? (client as any).dup()
+        : client;
     this.#subscriptions.get(key)!.add(duplicate);
     this.#subscriptionRefs.get(key)!.set(client, duplicate);
   }

@@ -41,7 +41,11 @@ class SyncedStateProxy extends RpcTarget {
 
   async subscribe(key: string, client: any): Promise<void> {
     const transformedKey = this.#keyHandler ? await this.#keyHandler(key) : key;
-    return this.#stub.subscribe(transformedKey, client);
+    // dup the client if it is a function; otherwise, pass it as is;
+    // this is because the client is a WebSocketRpcSession, and we need to pass a new instance of the client to the DO;
+    const clientToPass =
+      typeof client.dup === "function" ? client.dup() : client;
+    return this.#stub.subscribe(transformedKey, clientToPass);
   }
 
   async unsubscribe(key: string, client: any): Promise<void> {
