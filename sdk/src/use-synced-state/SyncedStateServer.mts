@@ -5,6 +5,8 @@ export type SyncedStateValue = unknown;
 
 type OnSetHandler = (key: string, value: SyncedStateValue) => void;
 type OnGetHandler = (key: string, value: SyncedStateValue | undefined) => void;
+type OnSubscribeHandler = (key: string) => void;
+type OnUnsubscribeHandler = (key: string) => void;
 
 /**
  * Durable Object that keeps shared state for multiple clients and notifies subscribers.
@@ -13,6 +15,8 @@ export class SyncedStateServer extends DurableObject {
   static #keyHandler: ((key: string) => Promise<string>) | null = null;
   static #setStateHandler: OnSetHandler | null = null;
   static #getStateHandler: OnGetHandler | null = null;
+  static #subscribeHandler: OnSubscribeHandler | null = null;
+  static #unsubscribeHandler: OnUnsubscribeHandler | null = null;
 
   static registerKeyHandler(handler: (key: string) => Promise<string>): void {
     SyncedStateServer.#keyHandler = handler;
@@ -28,6 +32,24 @@ export class SyncedStateServer extends DurableObject {
 
   static registerGetStateHandler(handler: OnGetHandler | null): void {
     SyncedStateServer.#getStateHandler = handler;
+  }
+
+  static registerSubscribeHandler(handler: OnSubscribeHandler | null): void {
+    SyncedStateServer.#subscribeHandler = handler;
+  }
+
+  static registerUnsubscribeHandler(
+    handler: OnUnsubscribeHandler | null,
+  ): void {
+    SyncedStateServer.#unsubscribeHandler = handler;
+  }
+
+  static getSubscribeHandler(): OnSubscribeHandler | null {
+    return SyncedStateServer.#subscribeHandler;
+  }
+
+  static getUnsubscribeHandler(): OnUnsubscribeHandler | null {
+    return SyncedStateServer.#unsubscribeHandler;
   }
 
   #stateStore = new Map<string, SyncedStateValue>();
