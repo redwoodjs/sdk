@@ -58,19 +58,6 @@ export function Home({ ctx }: { ctx: AppContext }) {
           )}
         </div>
 
-        {/* Allow the user to set a unique ID, this will refresh the entire page and add the userId to the context */}
-        <details style={{ marginBottom: "1rem" }}>
-          <summary>Set User ID (for testing)</summary>
-          <ol>
-            <li>
-              <a href="/?userId=123">123</a>
-            </li>
-            <li>
-              <a href="/?userId=456">456</a>
-            </li>
-          </ol>
-        </details>
-
         {isLoggedIn ? (
           <>
             <h2>User Counter</h2>

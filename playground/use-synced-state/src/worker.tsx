@@ -9,127 +9,18 @@ import { defineApp } from "rwsdk/worker";
 import { Document } from "@/app/Document";
 import { setCommonHeaders } from "@/app/headers";
 import { Home } from "@/app/pages/Home";
-import { requestInfo } from "rwsdk/runtime/requestInfo/worker";
+import {
+  registerSyncedStateHandlers,
+  updatePresenceList,
+} from "./syncedStateHandlers";
+
+registerSyncedStateHandlers(() => env.SYNCED_STATE_SERVER);
 
 export { SyncedStateServer };
 
 export type AppContext = {
   userId: string | null;
 };
-
-SyncedStateServer.registerKeyHandler(async (key) => {
-  // if the key starts with "user:", modify it to include the userId.
-  if (key.startsWith("user:")) {
-    key = `user:${(requestInfo.ctx as any).userId}:${key.slice(5)}`;
-  }
-  // "user:counter" -> "user:123:counter"
-
-  return key;
-});
-
-// Helper function to update presence list
-async function updatePresenceList(
-  namespace: DurableObjectNamespace<SyncedStateServer>,
-  addUserId: string | null,
-  removeUserId: string | null,
-) {
-  if (!addUserId && !removeUserId) return;
-
-  // Get current presence list from Durable Object (source of truth)
-  const id = namespace.idFromName("syncedState");
-  const durableObjectStub = namespace.get(id);
-  const currentPresence = (await durableObjectStub.getState("presence")) as
-    | string[]
-    | undefined;
-  const presenceSet = new Set<string>(currentPresence || []);
-
-  // Update the set
-  if (addUserId) {
-    presenceSet.add(addUserId);
-  }
-  if (removeUserId) {
-    presenceSet.delete(removeUserId);
-  }
-
-  // Update the Durable Object state with the updated list
-  const presenceList = Array.from(presenceSet);
-  await durableObjectStub.setState(presenceList, "presence");
-}
-
-// Store namespace reference for handlers
-let presenceNamespace: DurableObjectNamespace<SyncedStateServer> | null = null;
-
-// Ephemeral state mirror for validation
-let globalState: Record<string, unknown> = {};
-
-SyncedStateServer.registerSubscribeHandler((key: string) => {
-  if (key === "presence" && presenceNamespace) {
-    const userId = (requestInfo.ctx as AppContext).userId;
-    if (userId) {
-      void updatePresenceList(presenceNamespace, userId, null);
-    }
-  }
-});
-
-SyncedStateServer.registerUnsubscribeHandler((key: string) => {
-  if (key === "presence" && presenceNamespace) {
-    // Try to get userId from context first
-    let userId = (requestInfo.ctx as AppContext).userId;
-
-    // If userId is null, try to get it from cookie as fallback
-    // This handles the case where the user logged out but the WebSocket
-    // connection is still active and the component unmounts
-    if (!userId && requestInfo.request) {
-      try {
-        const cookie = requestInfo.request.headers.get("Cookie");
-        const match = cookie?.match(/userId=([^;]+)/);
-        userId = match ? match[1] : null;
-      } catch {
-        // Ignore errors accessing request
-      }
-    }
-
-    if (userId) {
-      void updatePresenceList(presenceNamespace, null, userId);
-    }
-  }
-});
-
-// Helper function to sync globalState to the Durable Object
-async function syncGlobalState() {
-  // Get namespace from env if not already set
-  const namespace = presenceNamespace || env.SYNCED_STATE_SERVER;
-  if (!namespace) {
-    return;
-  }
-  const id = namespace.idFromName("syncedState");
-  const durableObjectStub = namespace.get(id);
-  await durableObjectStub.setState(globalState, "STATE");
-}
-
-// Register setStateHandler to mirror all state updates to globalState
-SyncedStateServer.registerSetStateHandler((key: string, value: unknown) => {
-  // Ignore updates to "STATE" itself to prevent infinite loops
-  if (key === "STATE") {
-    return;
-  }
-  // Update the local globalState object
-  globalState[key] = value;
-  // Sync to the Durable Object for client access
-  void syncGlobalState();
-});
-
-// Register getStateHandler to mirror all state reads to globalState
-SyncedStateServer.registerGetStateHandler((key: string, value: unknown) => {
-  // Ignore reads of "STATE" itself to prevent infinite loops
-  if (key === "STATE") {
-    return;
-  }
-  // Update the local globalState object with the retrieved value
-  globalState[key] = value;
-  // Sync to the Durable Object for client access
-  void syncGlobalState();
-});
 
 function generateUserId(): string {
   // Generate a simple random number between 100 and 9999
@@ -142,10 +33,6 @@ function generateUserId(): string {
 export default defineApp([
   setCommonHeaders(),
   ({ ctx, request, response }) => {
-    // Initialize presence namespace reference
-    if (!presenceNamespace) {
-      presenceNamespace = env.SYNCED_STATE_SERVER;
-    }
     // grab userID from search params in request.
     const url = new URL(request.url);
     const userId = url.searchParams.get("userId");
@@ -160,7 +47,6 @@ export default defineApp([
       const cookie = request.headers.get("Cookie");
       const match = cookie?.match(/userId=([^;]+)/);
       ctx.userId = match ? match[1] : null;
-      // Don't auto-generate userId - user must log in explicitly
     }
   },
   route("/login", ({ response }) => {
@@ -182,11 +68,7 @@ export default defineApp([
     const match = cookie?.match(/userId=([^;]+)/);
     const userIdToRemove = match ? match[1] : ctx.userId;
 
-    // Remove user from presence list if they were logged in
-    // Await to ensure the update completes before redirecting
-    if (userIdToRemove && presenceNamespace) {
-      await updatePresenceList(presenceNamespace, null, userIdToRemove);
-    }
+    await updatePresenceList(null, userIdToRemove);
 
     // Clear the userId cookie and redirect to home
     response.headers.set(
