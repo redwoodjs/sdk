@@ -2,7 +2,10 @@
 
 import { useSyncedState } from "rwsdk/use-synced-state/client";
 
-export function UserPresence() {
+export function UserPresence({ isLoggedIn }: { isLoggedIn: boolean }) {
+  // Always subscribe to "presence" to see the list
+  // The component will remount when isLoggedIn changes (via key prop),
+  // which will trigger unsubscribe/resubscribe and update the presence list
   const [presence] = useSyncedState<string[]>([], "presence");
 
   return (

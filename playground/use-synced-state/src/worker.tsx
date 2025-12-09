@@ -34,9 +34,6 @@ SyncedStateServer.registerKeyHandler(async (key) => {
   return key;
 });
 
-// In-memory store for presence list
-const presenceSet = new Set<string>();
-
 // Helper function to update presence list
 async function updatePresenceList(
   namespace: DurableObjectNamespace<SyncedStateServer>,
@@ -45,7 +42,15 @@ async function updatePresenceList(
 ) {
   if (!addUserId && !removeUserId) return;
 
-  // Update in-memory set
+  // Get current presence list from Durable Object (source of truth)
+  const id = namespace.idFromName("syncedState");
+  const durableObjectStub = namespace.get(id);
+  const currentPresence = (await durableObjectStub.getState("presence")) as
+    | string[]
+    | undefined;
+  const presenceSet = new Set<string>(currentPresence || []);
+
+  // Update the set
   if (addUserId) {
     presenceSet.add(addUserId);
   }
@@ -53,10 +58,8 @@ async function updatePresenceList(
     presenceSet.delete(removeUserId);
   }
 
-  // Update the Durable Object state with the current list
+  // Update the Durable Object state with the updated list
   const presenceList = Array.from(presenceSet);
-  const id = namespace.idFromName("syncedState");
-  const durableObjectStub = namespace.get(id);
   await durableObjectStub.setState(presenceList, "presence");
 }
 
@@ -74,7 +77,22 @@ let presenceNamespace: DurableObjectNamespace<SyncedStateServer> | null = null;
 
 (SyncedStateServer as any).registerUnsubscribeHandler((key: string) => {
   if (key === "presence" && presenceNamespace) {
-    const userId = (requestInfo.ctx as AppContext).userId;
+    // Try to get userId from context first
+    let userId = (requestInfo.ctx as AppContext).userId;
+
+    // If userId is null, try to get it from cookie as fallback
+    // This handles the case where the user logged out but the WebSocket
+    // connection is still active and the component unmounts
+    if (!userId && requestInfo.request) {
+      try {
+        const cookie = requestInfo.request.headers.get("Cookie");
+        const match = cookie?.match(/userId=([^;]+)/);
+        userId = match ? match[1] : null;
+      } catch {
+        // Ignore errors accessing request
+      }
+    }
+
     if (userId) {
       void updatePresenceList(presenceNamespace, null, userId);
     }
@@ -106,25 +124,38 @@ export default defineApp([
         `userId=${userId}; Path=/; Max-Age=31536000; SameSite=Lax`,
       );
     } else {
+      // Check for userId in cookie
       const cookie = request.headers.get("Cookie");
-      if (cookie) {
-        const match = cookie.match(/userId=([^;]+)/);
-        if (match) {
-          ctx.userId = match[1];
-        }
-      }
-      // If no userId found in query params or cookies, generate a new one
-      if (!ctx.userId) {
-        ctx.userId = generateUserId();
-      }
-      // Always set the cookie with the userId
-      response.headers.set(
-        "Set-Cookie",
-        `userId=${ctx.userId}; Path=/; Max-Age=31536000; SameSite=Lax`,
-      );
+      const match = cookie?.match(/userId=([^;]+)/);
+      ctx.userId = match ? match[1] : null;
+      // Don't auto-generate userId - user must log in explicitly
     }
   },
-  route("/logout", ({ response }) => {
+  route("/login", ({ response }) => {
+    // Generate a new userId and set the cookie
+    const userId = generateUserId();
+    response.headers.set(
+      "Set-Cookie",
+      `userId=${userId}; Path=/; Max-Age=31536000; SameSite=Lax`,
+    );
+    response.headers.set("Location", "/");
+    return new Response(null, {
+      status: 302,
+      headers: response.headers,
+    });
+  }),
+  route("/logout", async ({ request, response, ctx }) => {
+    // Read userId from cookie before clearing it, so we can remove them from presence
+    const cookie = request.headers.get("Cookie");
+    const match = cookie?.match(/userId=([^;]+)/);
+    const userIdToRemove = match ? match[1] : ctx.userId;
+
+    // Remove user from presence list if they were logged in
+    // Await to ensure the update completes before redirecting
+    if (userIdToRemove && presenceNamespace) {
+      await updatePresenceList(presenceNamespace, null, userIdToRemove);
+    }
+
     // Clear the userId cookie and redirect to home
     response.headers.set(
       "Set-Cookie",
