@@ -7,6 +7,7 @@ import { useSyncedState } from "rwsdk/use-synced-state/client";
 export function Home({ ctx }: { ctx: AppContext }) {
   const [userCount, setUserCount] = useSyncedState(0, "user:counter");
   const [count, setCount] = useSyncedState(0, "counter");
+  const [globalState] = useSyncedState<Record<string, unknown>>({}, "STATE");
 
   const isLoggedIn = ctx.userId !== null;
 
@@ -75,8 +76,12 @@ export function Home({ ctx }: { ctx: AppContext }) {
             <h2>User Counter</h2>
             <div className="counter-display">Count: {userCount}</div>
             <div className="button-group">
-              <button onClick={() => setUserCount((c) => c + 1)}>Increment</button>
-              <button onClick={() => setUserCount((c) => c - 1)}>Decrement</button>
+              <button onClick={() => setUserCount((c) => c + 1)}>
+                Increment
+              </button>
+              <button onClick={() => setUserCount((c) => c - 1)}>
+                Decrement
+              </button>
               <button onClick={() => setUserCount(0)}>Reset</button>
             </div>
           </>
@@ -103,7 +108,54 @@ export function Home({ ctx }: { ctx: AppContext }) {
         </div>
 
         {/* Use key prop to force remount on login state change, ensuring unsubscribe/resubscribe */}
-        <UserPresence key={isLoggedIn ? "logged-in" : "logged-out"} isLoggedIn={isLoggedIn} currentUserId={ctx.userId} />
+        <UserPresence
+          key={isLoggedIn ? "logged-in" : "logged-out"}
+          isLoggedIn={isLoggedIn}
+          currentUserId={ctx.userId}
+        />
+
+        {/* Validation section showing the global STATE object */}
+        <details style={{ marginTop: "2rem" }}>
+          <summary style={{ cursor: "pointer", fontWeight: "bold" }}>
+            Handler Validation: Global STATE Object
+          </summary>
+          <div
+            style={{
+              marginTop: "1rem",
+              padding: "1rem",
+              backgroundColor: "#f9f9f9",
+              borderRadius: "4px",
+              border: "1px solid #ddd",
+            }}
+          >
+            <h3 style={{ margin: "0 0 0.5rem 0" }}>
+              All State Keys (from setStateHandler/getStateHandler)
+            </h3>
+            <pre
+              style={{
+                margin: 0,
+                padding: "0.5rem",
+                backgroundColor: "#fff",
+                borderRadius: "4px",
+                overflow: "auto",
+                fontSize: "0.875rem",
+                maxHeight: "400px",
+              }}
+            >
+              {JSON.stringify(globalState, null, 2)}
+            </pre>
+            <p
+              style={{
+                margin: "0.5rem 0 0 0",
+                fontSize: "0.875rem",
+                color: "#666",
+              }}
+            >
+              This object is updated by setStateHandler and getStateHandler to
+              validate that the handlers are working correctly.
+            </p>
+          </div>
+        </details>
       </div>
     </div>
   );

@@ -66,6 +66,9 @@ async function updatePresenceList(
 // Store namespace reference for handlers
 let presenceNamespace: DurableObjectNamespace<SyncedStateServer> | null = null;
 
+// Ephemeral state mirror for validation
+let globalState: Record<string, unknown> = {};
+
 (SyncedStateServer as any).registerSubscribeHandler((key: string) => {
   if (key === "presence" && presenceNamespace) {
     const userId = (requestInfo.ctx as AppContext).userId;
@@ -97,6 +100,42 @@ let presenceNamespace: DurableObjectNamespace<SyncedStateServer> | null = null;
       void updatePresenceList(presenceNamespace, null, userId);
     }
   }
+});
+
+// Helper function to sync globalState to the Durable Object
+async function syncGlobalState() {
+  // Get namespace from env if not already set
+  const namespace = presenceNamespace || env.SYNCED_STATE_SERVER;
+  if (!namespace) {
+    return;
+  }
+  const id = namespace.idFromName("syncedState");
+  const durableObjectStub = namespace.get(id);
+  await durableObjectStub.setState(globalState, "STATE");
+}
+
+// Register setStateHandler to mirror all state updates to globalState
+SyncedStateServer.registerSetStateHandler((key: string, value: unknown) => {
+  // Ignore updates to "STATE" itself to prevent infinite loops
+  if (key === "STATE") {
+    return;
+  }
+  // Update the local globalState object
+  globalState[key] = value;
+  // Sync to the Durable Object for client access
+  void syncGlobalState();
+});
+
+// Register getStateHandler to mirror all state reads to globalState
+SyncedStateServer.registerGetStateHandler((key: string, value: unknown) => {
+  // Ignore reads of "STATE" itself to prevent infinite loops
+  if (key === "STATE") {
+    return;
+  }
+  // Update the local globalState object with the retrieved value
+  globalState[key] = value;
+  // Sync to the Durable Object for client access
+  void syncGlobalState();
 });
 
 function generateUserId(): string {
