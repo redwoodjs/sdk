@@ -18,18 +18,11 @@ export type AppContext = {
 };
 
 SyncedStateServer.registerKeyHandler(async (key) => {
-  console.log("requestInfo");
-  console.log(requestInfo.ctx);
-  console.log("--------------------------------");
-  // grab userId from search params from the requestInfo.
-
   // if the key starts with "user:", modify it to include the userId.
   if (key.startsWith("user:")) {
-    // console.log("x");
-    const k = `user:${(requestInfo.ctx as any).userId}:${key.slice(5)}`;
-    // console.log("k", k);
-    return k;
+    key = `user:${(requestInfo.ctx as any).userId}:${key.slice(5)}`;
   }
+  // "user:counter" -> "user:123:counter"
 
   return key;
 });
@@ -69,7 +62,7 @@ let presenceNamespace: DurableObjectNamespace<SyncedStateServer> | null = null;
 // Ephemeral state mirror for validation
 let globalState: Record<string, unknown> = {};
 
-(SyncedStateServer as any).registerSubscribeHandler((key: string) => {
+SyncedStateServer.registerSubscribeHandler((key: string) => {
   if (key === "presence" && presenceNamespace) {
     const userId = (requestInfo.ctx as AppContext).userId;
     if (userId) {
@@ -78,7 +71,7 @@ let globalState: Record<string, unknown> = {};
   }
 });
 
-(SyncedStateServer as any).registerUnsubscribeHandler((key: string) => {
+SyncedStateServer.registerUnsubscribeHandler((key: string) => {
   if (key === "presence" && presenceNamespace) {
     // Try to get userId from context first
     let userId = (requestInfo.ctx as AppContext).userId;
