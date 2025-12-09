@@ -103,7 +103,7 @@ export function Home({ ctx }: { ctx: AppContext }) {
         </div>
 
         {/* Use key prop to force remount on login state change, ensuring unsubscribe/resubscribe */}
-        <UserPresence key={isLoggedIn ? "logged-in" : "logged-out"} isLoggedIn={isLoggedIn} />
+        <UserPresence key={isLoggedIn ? "logged-in" : "logged-out"} isLoggedIn={isLoggedIn} currentUserId={ctx.userId} />
       </div>
     </div>
   );
