@@ -82,12 +82,11 @@ let presenceNamespace: DurableObjectNamespace<SyncedStateServer> | null = null;
 });
 
 function generateUserId(): string {
-  // Generate a random alphanumeric string (32 characters)
-  const chars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  return Array.from(array, (byte) => chars[byte % chars.length]).join("");
+  // Generate a simple random number between 100 and 9999
+  const min = 100;
+  const max = 9999;
+  const randomNum = Math.floor(Math.random() * (max - min + 1)) + min;
+  return randomNum.toString();
 }
 
 export default defineApp([
