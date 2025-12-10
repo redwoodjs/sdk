@@ -9,10 +9,7 @@ import { defineApp } from "rwsdk/worker";
 import { Document } from "@/app/Document";
 import { setCommonHeaders } from "@/app/headers";
 import { Home } from "@/app/pages/Home";
-import {
-  registerSyncedStateHandlers,
-  updatePresenceList,
-} from "./syncedStateHandlers";
+import { registerSyncedStateHandlers } from "./syncedStateHandlers";
 
 registerSyncedStateHandlers(() => env.SYNCED_STATE_SERVER);
 

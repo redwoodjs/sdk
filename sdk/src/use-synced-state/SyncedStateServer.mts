@@ -1,29 +1,52 @@
 import { RpcStub, RpcTarget, newWorkersRpcResponse } from "capnweb";
-import { DurableObject } from "cloudflare:workers";
+import { DurableObject, DurableObjectStub } from "cloudflare:workers";
 
 export type SyncedStateValue = unknown;
 
-type OnSetHandler = (key: string, value: SyncedStateValue) => void;
-type OnGetHandler = (key: string, value: SyncedStateValue | undefined) => void;
-type OnSubscribeHandler = (key: string) => void;
-type OnUnsubscribeHandler = (key: string) => void;
+type OnSetHandler = (key: string, value: SyncedStateValue, stub: DurableObjectStub<SyncedStateServer>) => void;
+type OnGetHandler = (key: string, value: SyncedStateValue | undefined, stub: DurableObjectStub<SyncedStateServer>) => void;
+type OnKeyHandler = (key: string, stub: DurableObjectStub<SyncedStateServer>) => Promise<string>;
+type OnSubscribeHandler = (key: string, stub: DurableObjectStub<SyncedStateServer>) => void;
+type OnUnsubscribeHandler = (key: string, stub: DurableObjectStub<SyncedStateServer>) => void;
 
 /**
  * Durable Object that keeps shared state for multiple clients and notifies subscribers.
  */
 export class SyncedStateServer extends DurableObject {
-  static #keyHandler: ((key: string) => Promise<string>) | null = null;
+  static #keyHandler: OnKeyHandler | null = null;
   static #setStateHandler: OnSetHandler | null = null;
   static #getStateHandler: OnGetHandler | null = null;
   static #subscribeHandler: OnSubscribeHandler | null = null;
   static #unsubscribeHandler: OnUnsubscribeHandler | null = null;
+  static #namespace: DurableObjectNamespace<SyncedStateServer> | null = null;
+  static #durableObjectName: string = "syncedState";
+  #stub: DurableObjectStub<SyncedStateServer> | null = null;
 
-  static registerKeyHandler(handler: (key: string) => Promise<string>): void {
+  static registerKeyHandler(handler: OnKeyHandler | null): void {
     SyncedStateServer.#keyHandler = handler;
   }
 
-  static getKeyHandler(): ((key: string) => Promise<string>) | null {
+  static getKeyHandler(): OnKeyHandler | null {
     return SyncedStateServer.#keyHandler;
+  }
+
+  static registerNamespace(namespace: DurableObjectNamespace<SyncedStateServer>, durableObjectName?: string): void {
+    SyncedStateServer.#namespace = namespace;
+    if (durableObjectName) {
+      SyncedStateServer.#durableObjectName = durableObjectName;
+    }
+  }
+
+  static getNamespace(): DurableObjectNamespace<SyncedStateServer> | null {
+    return SyncedStateServer.#namespace;
+  }
+
+  static getDurableObjectName(): string {
+    return SyncedStateServer.#durableObjectName;
+  }
+
+  setStub(stub: DurableObjectStub<SyncedStateServer>): void {
+    this.#stub = stub;
   }
 
   static registerSetStateHandler(handler: OnSetHandler | null): void {
@@ -65,10 +88,27 @@ export class SyncedStateServer extends DurableObject {
     >
   >();
 
+  #getStubForHandlers(): DurableObjectStub<SyncedStateServer> | null {
+    // If we have a stub already, use it
+    if (this.#stub) {
+      return this.#stub;
+    }
+    // Otherwise, try to get a stub from the registered namespace
+    const namespace = SyncedStateServer.#namespace;
+    if (namespace) {
+      const id = namespace.idFromName(SyncedStateServer.#durableObjectName);
+      return namespace.get(id);
+    }
+    return null;
+  }
+
   getState(key: string): SyncedStateValue {
     const value = this.#stateStore.get(key);
     if (SyncedStateServer.#getStateHandler) {
-      SyncedStateServer.#getStateHandler(key, value);
+      const stub = this.#getStubForHandlers();
+      if (stub) {
+        SyncedStateServer.#getStateHandler(key, value, stub);
+      }
     }
     return value;
   }
@@ -76,7 +116,10 @@ export class SyncedStateServer extends DurableObject {
   setState(value: SyncedStateValue, key: string): void {
     this.#stateStore.set(key, value);
     if (SyncedStateServer.#setStateHandler) {
-      SyncedStateServer.#setStateHandler(key, value);
+      const stub = this.#getStubForHandlers();
+      if (stub) {
+        SyncedStateServer.#setStateHandler(key, value, stub);
+      }
     }
     const subscribers = this.#subscriptions.get(key);
     if (!subscribers) {
@@ -142,17 +185,27 @@ export class SyncedStateServer extends DurableObject {
   }
 
   async fetch(request: Request): Promise<Response> {
-    const api = new CoordinatorApi(this);
+    // Create a placeholder stub - it will be set by the worker via _setStub
+    const api = new CoordinatorApi(this, this.#stub || ({} as DurableObjectStub<SyncedStateServer>));
     return newWorkersRpcResponse(request, api);
   }
 }
 
 class CoordinatorApi extends RpcTarget {
   #coordinator: SyncedStateServer;
+  #stub: DurableObjectStub<SyncedStateServer>;
 
-  constructor(coordinator: SyncedStateServer) {
+  constructor(coordinator: SyncedStateServer, stub: DurableObjectStub<SyncedStateServer>) {
     super();
     this.#coordinator = coordinator;
+    this.#stub = stub;
+    coordinator.setStub(stub);
+  }
+
+  // Internal method to set the stub - called from worker
+  _setStub(stub: DurableObjectStub<SyncedStateServer>): void {
+    this.#stub = stub;
+    this.#coordinator.setStub(stub);
   }
 
   getState(key: string): SyncedStateValue {

@@ -32,6 +32,10 @@ class SyncedStateProxy extends RpcTarget {
     this.#stub = stub;
     this.#keyHandler = keyHandler;
     this.#requestInfo = requestInfo;
+    // Set stub in DO instance so handlers can access it
+    if (stub && typeof (stub as any)._setStub === 'function') {
+      void (stub as any)._setStub(stub);
+    }
   }
 
   /**
@@ -45,23 +49,35 @@ class SyncedStateProxy extends RpcTarget {
       // Preserve async context when calling keyHandler so requestInfo.ctx is available
       return await runWithRequestInfo(
         this.#requestInfo,
-        async () => await this.#keyHandler!(key),
+        async () => await this.#keyHandler!(key, this.#stub),
       );
     }
-    return await this.#keyHandler(key);
+    return await this.#keyHandler(key, this.#stub);
   }
 
   /**
    * Calls a handler function, preserving async context so requestInfo.ctx is available.
    */
-  #callHandler(handler: (key: string) => void, key: string): void {
+  #callHandler(
+    handler: (key: string) => void | ((key: string, stub: any) => void),
+    key: string,
+    stub?: any,
+  ): void {
     if (this.#requestInfo) {
       // Preserve async context when calling handler so requestInfo.ctx is available
       runWithRequestInfo(this.#requestInfo, () => {
-        handler(key);
+        if (stub !== undefined) {
+          (handler as (key: string, stub: any) => void)(key, stub);
+        } else {
+          (handler as (key: string) => void)(key);
+        }
       });
     } else {
-      handler(key);
+      if (stub !== undefined) {
+        (handler as (key: string, stub: any) => void)(key, stub);
+      } else {
+        (handler as (key: string) => void)(key);
+      }
     }
   }
 
@@ -80,7 +96,7 @@ class SyncedStateProxy extends RpcTarget {
 
     const subscribeHandler = SyncedStateServer.getSubscribeHandler();
     if (subscribeHandler) {
-      this.#callHandler(subscribeHandler, transformedKey);
+      this.#callHandler(subscribeHandler, transformedKey, this.#stub);
     }
 
     // dup the client if it is a function; otherwise, pass it as is;
@@ -98,7 +114,7 @@ class SyncedStateProxy extends RpcTarget {
     // or if the RPC call fails
     const unsubscribeHandler = SyncedStateServer.getUnsubscribeHandler();
     if (unsubscribeHandler) {
-      this.#callHandler(unsubscribeHandler, transformedKey);
+      this.#callHandler(unsubscribeHandler, transformedKey, this.#stub);
     }
 
     try {
@@ -130,15 +146,17 @@ export const syncedStateRoutes = (
     request: Request,
     requestInfo: RequestInfo,
   ) => {
+    const namespace = getNamespace(env);
+    // Register the namespace and DO name so handlers can access it
+    SyncedStateServer.registerNamespace(namespace, durableObjectName);
+    
     const keyHandler = SyncedStateServer.getKeyHandler();
 
     if (!keyHandler) {
-      const namespace = getNamespace(env);
       const id = namespace.idFromName(durableObjectName);
       return namespace.get(id).fetch(request);
     }
 
-    const namespace = getNamespace(env);
     const id = namespace.idFromName(durableObjectName);
     const coordinator = namespace.get(id);
     const proxy = new SyncedStateProxy(coordinator, keyHandler, requestInfo);
