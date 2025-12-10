@@ -353,12 +353,24 @@ Use `linkFor` to derive a strongly typed helper from your `defineApp` export. Th
 ```ts title="src/app/shared/links.ts"
 import { linkFor } from "rwsdk/router";
 
-type App = typeof import("../../worker").default;
+// Recommended: type-only import to avoid bundling worker code
+import type * as Worker from "../../worker";
+type App = typeof Worker.default;
 
 export const link = linkFor<App>();
 ```
 
-`linkFor` exposes the full set of routes discovered inside `defineApp`. TypeScript verifies that the path you pass exists and that you provide the required parameters. The `typeof import("../../worker").default` pattern keeps the reference type-only, so bundlers do not include the worker code in client bundles.
+`linkFor` exposes the full set of routes discovered inside `defineApp`. TypeScript verifies that the path you pass exists and that you provide the required parameters. Using a type-only import ensures bundlers do not include the worker code in client bundles while preserving full types.
+
+<Aside type="note" title="Alternative import pattern">
+  If your tooling supports it, you can also use:
+
+```ts
+type App = typeof import("../../worker").default;
+```
+
+  Some environments do not allow `import()` in types; in that case, prefer the type-only import shown above.
+</Aside>
 
 ### When using Cron, Queues, etc.
 
@@ -380,12 +392,59 @@ export default {
 } satisfies ExportedHandler<Env>;
 ```
 
-Then you can use the `link` function to generate links to your routes, but instead of `default` you need to pass the eported `app` object.
+Then you can use the `link` function to generate links to your routes, but instead of `default` you need to pass the exported `app` object.
 
 ```tsx title="src/app/shared/links.ts"
 import { linkFor } from "rwsdk/router";
 
-type App = typeof import("../../worker").app; // <-- Note: `.app`>
+// Recommended: type-only import to avoid bundling worker code
+import type * as Worker from "../../worker";
+type App = typeof Worker.app; // <-- Note: `.app`>
 
 export const link = linkFor<App>();
+```
+
+### Examples
+
+```tsx title="Anywhere in your app (client or server)"
+import { link } from "@/shared/links";
+
+// Static route
+const accountsHref = link("/accounts");
+// <a href={accountsHref}>View Accounts</a>
+
+// Dynamic route with params (fully typed)
+const callDetailsHref = link("/calls/details/:id", { id: call.id });
+// <a href={callDetailsHref}>View Call</a>
+
+// Building currentPath for list pages or search components
+const currentPath = link("/settings/users");
+```
+
+- Typing `link("` in your editor will autocomplete all valid route patterns from your app.
+- Passing a path that does not exist in your route tree, or omitting required params, produces a compile-time type error.
+
+### Migration tips (from route constants)
+
+If you previously used route constant helpers (e.g. `ROUTES` or `ADMIN_ROUTES`), you can migrate incrementally:
+
+```ts
+// Before
+// ROUTES.CALLS.INDEX
+// ROUTES.CALLS.DETAILS(id)
+// ADMIN_ROUTES.COMPANIES.USERS(id)
+
+// After
+link("/calls");
+link("/calls/details/:id", { id });
+link("/admin/companies/:id/users", { id });
+```
+
+Notes:
+- The accepted patterns are exactly those declared in your route tree in `@/worker`.
+- For routes with optional query strings, build them as needed:
+
+```ts
+const base = link("/admin/companies/calls/details/:id", { id: callId });
+const href = companyId ? `${base}?companyId=${companyId}` : base;
 ```
