@@ -19,13 +19,13 @@ export type SyncedStateRouteOptions = {
 const DEFAULT_SYNC_STATE_NAME = "syncedState";
 
 class SyncedStateProxy extends RpcTarget {
-  #stub: any;
-  #keyHandler: ((key: string) => Promise<string>) | null;
+  #stub: DurableObjectStub<SyncedStateServer>;
+  #keyHandler: ((key: string, stub: DurableObjectStub<SyncedStateServer>) => Promise<string>) | null;
   #requestInfo: RequestInfo | null;
 
   constructor(
-    stub: any,
-    keyHandler: ((key: string) => Promise<string>) | null,
+    stub: DurableObjectStub<SyncedStateServer>,
+    keyHandler: ((key: string, stub: DurableObjectStub<SyncedStateServer>) => Promise<string>) | null,
     requestInfo: RequestInfo | null,
   ) {
     super();
@@ -59,25 +59,17 @@ class SyncedStateProxy extends RpcTarget {
    * Calls a handler function, preserving async context so requestInfo.ctx is available.
    */
   #callHandler(
-    handler: (key: string) => void | ((key: string, stub: any) => void),
+    handler: (key: string, stub: DurableObjectStub<SyncedStateServer>) => void,
     key: string,
-    stub?: any,
+    stub: DurableObjectStub<SyncedStateServer>,
   ): void {
     if (this.#requestInfo) {
       // Preserve async context when calling handler so requestInfo.ctx is available
       runWithRequestInfo(this.#requestInfo, () => {
-        if (stub !== undefined) {
-          (handler as (key: string, stub: any) => void)(key, stub);
-        } else {
-          (handler as (key: string) => void)(key);
-        }
+        handler(key, stub);
       });
     } else {
-      if (stub !== undefined) {
-        (handler as (key: string, stub: any) => void)(key, stub);
-      } else {
-        (handler as (key: string) => void)(key);
-      }
+      handler(key, stub);
     }
   }
 

@@ -1,5 +1,5 @@
 import { RpcStub, RpcTarget, newWorkersRpcResponse } from "capnweb";
-import { DurableObject, DurableObjectStub } from "cloudflare:workers";
+import { DurableObject } from "cloudflare:workers";
 
 export type SyncedStateValue = unknown;
 
