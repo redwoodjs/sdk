@@ -1,6 +1,8 @@
 import { requestInfo } from "rwsdk/runtime/requestInfo/worker";
 import { SyncedStateServer } from "rwsdk/use-synced-state/worker";
 
+import type { AppContext } from "./worker";
+
 // Ephemeral state mirror for validation
 export const globalState: Record<string, unknown> = {};
 
@@ -9,6 +11,7 @@ let presenceNamespace: DurableObjectNamespace<SyncedStateServer> | null = null;
 
 // Helper function to update presence list
 export async function updatePresenceList(
+  namespace: DurableObjectNamespace<SyncedStateServer>,
   addUserId: string | null,
   removeUserId: string | null,
 ) {
@@ -36,6 +39,12 @@ export async function updatePresenceList(
 export function registerSyncedStateHandlers(
   getNamespace: () => DurableObjectNamespace<SyncedStateServer> | undefined,
 ) {
+  // Store namespace reference for presence handlers
+  const namespace = getNamespace();
+  if (namespace) {
+    presenceNamespace = namespace;
+  }
+
   // Helper function to sync globalState to the Durable Object
   async function syncGlobalState() {
     // Get namespace from provider
@@ -83,35 +92,57 @@ export function registerSyncedStateHandlers(
   });
 
   SyncedStateServer.registerSubscribeHandler((key: string) => {
-    if (key === "presence" && presenceNamespace) {
-      const userId = (requestInfo.ctx as AppContext).userId;
+
+
+    //
+    // if (key === "presence" && presenceNamespace) {
+      // Try to get userId from context first
+      let userId = (requestInfo.ctx as AppContext).userId;
+      console.log('registerSubscribeHandler', userId, key)
+
+      // If userId is null, try to get it from cookie as fallback
+      // This handles the case where the user logged in but the WebSocket
+      // connection was established before login or context isn't available
+      // if (!userId && requestInfo.request) {
+      //   try {
+      //     const cookie = requestInfo.request.headers.get("Cookie");
+      //     const match = cookie?.match(/userId=([^;]+)/);
+      //     userId = match ? match[1] : null;
+      //   } catch {
+      //     // Ignore errors accessing request
+      //   }
+      // }
+
       if (userId) {
         void updatePresenceList(presenceNamespace, userId, null);
       }
-    }
+    // }
   });
 
   SyncedStateServer.registerUnsubscribeHandler((key: string) => {
-    if (key === "presence" && presenceNamespace) {
+
+
+    // if (key === "presence" && presenceNamespace) {
       // Try to get userId from context first
       let userId = (requestInfo.ctx as AppContext).userId;
+      console.log('registerUnsubscribeHandler', userId, key)
 
       // If userId is null, try to get it from cookie as fallback
       // This handles the case where the user logged out but the WebSocket
       // connection is still active and the component unmounts
-      if (!userId && requestInfo.request) {
-        try {
-          const cookie = requestInfo.request.headers.get("Cookie");
-          const match = cookie?.match(/userId=([^;]+)/);
-          userId = match ? match[1] : null;
-        } catch {
-          // Ignore errors accessing request
-        }
-      }
+      // if (!userId && requestInfo.request) {
+      //   try {
+      //     const cookie = requestInfo.request.headers.get("Cookie");
+      //     const match = cookie?.match(/userId=([^;]+)/);
+      //     userId = match ? match[1] : null;
+      //   } catch {
+      //     // Ignore errors accessing request
+      //   }
+      // }
 
       if (userId) {
         void updatePresenceList(presenceNamespace, null, userId);
       }
-    }
+    // }
   });
 }

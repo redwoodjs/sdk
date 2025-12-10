@@ -1,6 +1,7 @@
 "use client";
 
 import { UserPresence } from "@/app/components/UserPresence";
+import { MountUnmountTest } from "@/app/components/MountUnmountTest";
 import { AppContext } from "@/worker";
 import { useSyncedState } from "rwsdk/use-synced-state/client";
 
@@ -100,6 +101,9 @@ export function Home({ ctx }: { ctx: AppContext }) {
           isLoggedIn={isLoggedIn}
           currentUserId={ctx.userId}
         />
+
+        {/* Mount/Unmount test component */}
+        <MountUnmountTest />
 
         {/* Validation section showing the global STATE object */}
         <details style={{ marginTop: "2rem" }}>

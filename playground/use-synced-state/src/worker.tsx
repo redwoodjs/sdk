@@ -62,14 +62,7 @@ export default defineApp([
       headers: response.headers,
     });
   }),
-  route("/logout", async ({ request, response, ctx }) => {
-    // Read userId from cookie before clearing it, so we can remove them from presence
-    const cookie = request.headers.get("Cookie");
-    const match = cookie?.match(/userId=([^;]+)/);
-    const userIdToRemove = match ? match[1] : ctx.userId;
-
-    await updatePresenceList(null, userIdToRemove);
-
+  route("/logout", ({ response }) => {
     // Clear the userId cookie and redirect to home
     response.headers.set(
       "Set-Cookie",

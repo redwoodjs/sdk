@@ -81,7 +81,12 @@ export const createSyncedStateHook = (
 
       return () => {
         isActive = false;
-        void client.unsubscribe(key, handleUpdate);
+        // Call unsubscribe when component unmounts
+        // Page reloads are handled by the beforeunload event listener in client-core.ts
+        void client.unsubscribe(key, handleUpdate).catch((error) => {
+          // Log but don't throw - cleanup should not prevent unmounting
+          console.error("[useSyncedState] Error during unsubscribe:", error);
+        });
       };
     }, [client, key, setValue, valueRef]);
 

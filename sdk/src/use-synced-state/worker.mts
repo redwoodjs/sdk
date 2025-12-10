@@ -1,6 +1,8 @@
 import { RpcTarget, newWorkersRpcResponse } from "capnweb";
 import { env } from "cloudflare:workers";
 import { route } from "../runtime/entries/router";
+import { runWithRequestInfo } from "../runtime/requestInfo/worker";
+import type { RequestInfo } from "../runtime/requestInfo/types";
 import {
   SyncedStateServer,
   type SyncedStateValue,
@@ -19,32 +21,66 @@ const DEFAULT_SYNC_STATE_NAME = "syncedState";
 class SyncedStateProxy extends RpcTarget {
   #stub: any;
   #keyHandler: ((key: string) => Promise<string>) | null;
+  #requestInfo: RequestInfo | null;
 
   constructor(
     stub: any,
     keyHandler: ((key: string) => Promise<string>) | null,
+    requestInfo: RequestInfo | null,
   ) {
     super();
     this.#stub = stub;
     this.#keyHandler = keyHandler;
+    this.#requestInfo = requestInfo;
+  }
+
+  /**
+   * Transforms a key using the keyHandler, preserving async context so requestInfo.ctx is available.
+   */
+  async #transformKey(key: string): Promise<string> {
+    if (!this.#keyHandler) {
+      return key;
+    }
+    if (this.#requestInfo) {
+      // Preserve async context when calling keyHandler so requestInfo.ctx is available
+      return await runWithRequestInfo(
+        this.#requestInfo,
+        async () => await this.#keyHandler!(key),
+      );
+    }
+    return await this.#keyHandler(key);
+  }
+
+  /**
+   * Calls a handler function, preserving async context so requestInfo.ctx is available.
+   */
+  #callHandler(handler: (key: string) => void, key: string): void {
+    if (this.#requestInfo) {
+      // Preserve async context when calling handler so requestInfo.ctx is available
+      runWithRequestInfo(this.#requestInfo, () => {
+        handler(key);
+      });
+    } else {
+      handler(key);
+    }
   }
 
   async getState(key: string): Promise<SyncedStateValue> {
-    const transformedKey = this.#keyHandler ? await this.#keyHandler(key) : key;
+    const transformedKey = await this.#transformKey(key);
     return this.#stub.getState(transformedKey);
   }
 
   async setState(value: SyncedStateValue, key: string): Promise<void> {
-    const transformedKey = this.#keyHandler ? await this.#keyHandler(key) : key;
+    const transformedKey = await this.#transformKey(key);
     return this.#stub.setState(value, transformedKey);
   }
 
   async subscribe(key: string, client: any): Promise<void> {
-    const transformedKey = this.#keyHandler ? await this.#keyHandler(key) : key;
+    const transformedKey = await this.#transformKey(key);
 
     const subscribeHandler = SyncedStateServer.getSubscribeHandler();
     if (subscribeHandler) {
-      subscribeHandler(transformedKey);
+      this.#callHandler(subscribeHandler, transformedKey);
     }
 
     // dup the client if it is a function; otherwise, pass it as is;
@@ -55,14 +91,22 @@ class SyncedStateProxy extends RpcTarget {
   }
 
   async unsubscribe(key: string, client: any): Promise<void> {
-    const transformedKey = this.#keyHandler ? await this.#keyHandler(key) : key;
+    const transformedKey = await this.#transformKey(key);
 
+    // Call unsubscribe handler before unsubscribe, similar to subscribe handler
+    // This ensures the handler is called even if the unsubscribe doesn't find a match
+    // or if the RPC call fails
     const unsubscribeHandler = SyncedStateServer.getUnsubscribeHandler();
     if (unsubscribeHandler) {
-      unsubscribeHandler(transformedKey);
+      this.#callHandler(unsubscribeHandler, transformedKey);
     }
 
-    return this.#stub.unsubscribe(transformedKey, client);
+    try {
+      await this.#stub.unsubscribe(transformedKey, client);
+    } catch (error) {
+      // Ignore errors during unsubscribe - handler has already been called
+      // This prevents RPC stub disposal errors from propagating
+    }
   }
 }
 
@@ -82,7 +126,10 @@ export const syncedStateRoutes = (
   const durableObjectName =
     options.durableObjectName ?? DEFAULT_SYNC_STATE_NAME;
 
-  const forwardRequest = async (request: Request) => {
+  const forwardRequest = async (
+    request: Request,
+    requestInfo: RequestInfo,
+  ) => {
     const keyHandler = SyncedStateServer.getKeyHandler();
 
     if (!keyHandler) {
@@ -94,10 +141,10 @@ export const syncedStateRoutes = (
     const namespace = getNamespace(env);
     const id = namespace.idFromName(durableObjectName);
     const coordinator = namespace.get(id);
-    const proxy = new SyncedStateProxy(coordinator, keyHandler);
+    const proxy = new SyncedStateProxy(coordinator, keyHandler, requestInfo);
 
     return newWorkersRpcResponse(request, proxy);
   };
 
-  return [route(basePath, ({ request }) => forwardRequest(request))];
+  return [route(basePath, (requestInfo) => forwardRequest(requestInfo.request, requestInfo))];
 };
