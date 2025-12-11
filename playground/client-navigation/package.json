@@ -23,9 +23,9 @@
   },
   "dependencies": {
     "rwsdk": "workspace:*",
-    "react": "19.2.1",
-    "react-dom": "19.2.1",
-    "react-server-dom-webpack": "19.2.1"
+    "react": "19.2.2",
+    "react-dom": "19.2.2",
+    "react-server-dom-webpack": "19.2.2"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.16.1",
