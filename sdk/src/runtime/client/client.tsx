@@ -30,26 +30,13 @@ import type {
 } from "./types";
 
 export const fetchTransport: Transport = (transportContext) => {
-  // context: When navigating, we want the next RSC fetch to use the just-updated
-  // URL even if window.location isn't observed yet. We allow navigation code
-  // to set an explicit URL for the next fetch.
-  let nextFetchUrl: string | null = null;
-  const setNextFetchUrl = (href: string) => {
-    nextFetchUrl = href;
-  };
-
   const fetchCallServer = async <Result,>(
     id: null | string,
     args: null | unknown[],
   ): Promise<Result | undefined> => {
     const globalOverride = globalThis.__rw_nextFetchHref || null;
-    const effectiveOverride = nextFetchUrl ?? globalOverride;
-    const url = new URL(effectiveOverride ?? window.location.href);
-    // Clear the override for subsequent requests
-    nextFetchUrl = null;
-    if (globalOverride) {
-      globalThis.__rw_nextFetchHref = null;
-    }
+    const url = new URL(globalOverride ?? window.location.href);
+    if (globalOverride) globalThis.__rw_nextFetchHref = null;
     url.searchParams.set("__rsc", "");
 
     if (id != null) {
@@ -158,32 +145,6 @@ export const initClient = async ({
   globalThis.__rw = {
     callServer,
     upgradeToRealtime,
-    // Allow navigation layer to direct the URL used for the next RSC fetch.
-    setNextFetchUrl: (href: string) => {
-      // If the transport supports setting next URL, set it via closure capture.
-      // We rely on the default fetchTransport implementation above.
-      try {
-        // @ts-expect-error accessing internal setter when using default transport
-        const setter = (transportCallServer as any)?._setNextFetchUrl;
-        if (typeof setter === "function") {
-          setter(href);
-          return;
-        }
-      } catch {
-        // ignore, fallback to direct reference if available
-      }
-      // Fallback: put on a well-known global that fetchTransport reads.
-      globalThis.__rw_nextFetchHref = href;
-    },
-  };
-
-  // Expose internal setter on the callable to be accessible from navigation.
-  // @ts-expect-error internal field for coordination
-  (transportCallServer as any)._setNextFetchUrl = (href: string) => {
-    // Reach into the default transport closure by re-creating it with a bound setter
-    // Since we can't reach closure vars directly here, use global bridge:
-    // We define a symbol on global to hold the latest URL; fetchTransport will read it if available.
-    globalThis.__rw_nextFetchHref = href;
   };
 
   const rootEl = document.getElementById("hydrate-root");
