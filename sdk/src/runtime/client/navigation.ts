@@ -195,34 +195,6 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
         }
       }
 
-      // Handle manual redirects from server actions (fetch with redirect: "manual")
-      if (response.status >= 300 && response.status < 400) {
-        const locationHeader =
-          response.headers.get("Location") ||
-          response.headers.get("location") ||
-          response.headers.get("x-rwsdk-redirect-location");
-        if (locationHeader) {
-          try {
-            const targetUrl = new URL(locationHeader, window.location.href);
-            // If same-origin, use client navigation to avoid full reload
-            if (targetUrl.origin === window.location.origin) {
-              // Preserve history so back button returns to the form page
-              navigate(targetUrl.pathname + targetUrl.search + targetUrl.hash, {
-                history: "push",
-              });
-              return false;
-            }
-            // Cross-origin or absolute link: fallback to full navigation
-            window.location.href = targetUrl.toString();
-            return false;
-          } catch {
-            // Malformed Location; fallback to reload current page
-            window.location.href = window.location.href;
-            return false;
-          }
-        }
-      }
-
       if (!response.ok) {
         // Redirect to the current page (window.location) to show the error
         // This means the page that produced the error is called twice.
