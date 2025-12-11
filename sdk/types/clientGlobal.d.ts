@@ -9,6 +9,11 @@ declare global {
     callServer: CallServerCallback;
     upgradeToRealtime: (options?: { key?: string }) => Promise<void>;
   };
+  /**
+   * When set, the next RSC fetch will use this href instead of window.location.href.
+   * Cleared immediately after being consumed.
+   */
+  var __rw_nextFetchHref: string | null | undefined;
 }
 
 export {};

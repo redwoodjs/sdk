@@ -96,5 +96,11 @@ export async function rscActionHandler(req: Request): Promise<unknown> {
     throw new Error(`Action ${actionId} is not a function`);
   }
 
-  return action(...args);
+  const result = await action(...args);
+  // If the action returned a Response, surface it as the actual fetch() response
+  // by throwing here so the router/worker can return it directly.
+  if (result instanceof Response) {
+    throw result;
+  }
+  return result;
 }

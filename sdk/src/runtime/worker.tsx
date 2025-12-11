@@ -278,10 +278,25 @@ export const defineApp = <
         }
 
         if (e instanceof Response) {
+          const status = e.status;
+          const locationHeader =
+            e.headers.get("Location") || e.headers.get("location");
+          if (status >= 300 && status < 400 && locationHeader) {
+            try {
+              const absolute = new URL(locationHeader, request.url).toString();
+              const headers = new Headers(e.headers);
+              headers.set("x-rwsdk-redirect-location", absolute);
+              return new Response(e.body, {
+                status: e.status,
+                statusText: e.statusText,
+                headers,
+              });
+            } catch {
+              // fall through to return original response
+            }
+          }
           return e;
         }
-
-        console.error("rwsdk: Received an unhandled error:\n\n%s", e);
         throw e;
       }
     },
