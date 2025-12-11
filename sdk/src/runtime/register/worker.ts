@@ -96,5 +96,10 @@ export async function rscActionHandler(req: Request): Promise<unknown> {
     throw new Error(`Action ${actionId} is not a function`);
   }
 
-  return action(...args);
+  const result = await action(...args);
+  if (result instanceof Response) {
+    console.log("result is a Response", result);
+    throw result; // bubble to worker.tsx so it's returned as the HTTP response
+  }
+  return result;
 }
