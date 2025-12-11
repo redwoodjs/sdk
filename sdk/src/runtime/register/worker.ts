@@ -98,7 +98,6 @@ export async function rscActionHandler(req: Request): Promise<unknown> {
 
   const result = await action(...args);
   if (result instanceof Response) {
-    console.log("result is a Response", result);
     throw result; // bubble to worker.tsx so it's returned as the HTTP response
   }
   return result;
