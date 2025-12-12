@@ -278,6 +278,29 @@ export const defineApp = <
         }
 
         if (e instanceof Response) {
+          // If a route or server action returns a redirect (Location header),
+          // we can't rely on fetch+redirect:\"manual\" (browsers often make it
+          // an opaque redirect and hide headers). To ensure the client can
+          // always read the target, we convert the redirect into a 204 with an
+          // explicit instruction header the client can consume.
+          const locationHeader =
+            e.headers.get("Location") || e.headers.get("location");
+          if (locationHeader) {
+            try {
+              const absolute = new URL(locationHeader, request.url).toString();
+              const headers = new Headers(e.headers);
+              headers.delete("Location");
+              headers.delete("location");
+              headers.set("x-rwsdk-redirect-location", absolute);
+              headers.set("x-rwsdk-redirect-status", String(e.status || 303));
+              return new Response(null, {
+                status: 204,
+                headers,
+              });
+            } catch {
+              // fall through
+            }
+          }
           return e;
         }
 
