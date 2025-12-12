@@ -23,9 +23,9 @@
   },
   "dependencies": {
     "rwsdk": "workspace:*",
-    "react": "19.2.2",
-    "react-dom": "19.2.2",
-    "react-server-dom-webpack": "19.2.2",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-server-dom-webpack": "19.2.3",
     "@base-ui-components/react": "^1.0.0-beta.3"
   },
   "devDependencies": {
@@ -39,9 +39,9 @@
     "wrangler": "4.52.1"
   },
   "overrides": {
-    "react": "19.2.2",
-    "react-dom": "19.2.2",
-    "react-server-dom-webpack": "19.2.2"
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-server-dom-webpack": "19.2.3"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

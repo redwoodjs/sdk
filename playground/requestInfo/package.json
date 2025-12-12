@@ -25,9 +25,9 @@
     "is-even": "^1.0.0",
     "is-number": "^7.0.0",
     "is-odd": "^3.0.1",
-    "react": "19.2.2",
-    "react-dom": "19.2.2",
-    "react-server-dom-webpack": "19.2.2",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-server-dom-webpack": "19.2.3",
     "rwsdk": "workspace:*"
   },
   "devDependencies": {

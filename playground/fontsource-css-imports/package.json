@@ -24,9 +24,9 @@
   "dependencies": {
     "@fontsource/figtree": "^5.1.0",
     "rwsdk": "workspace:*",
-    "react": "19.2.2",
-    "react-dom": "19.2.2",
-    "react-server-dom-webpack": "19.2.2"
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-server-dom-webpack": "19.2.3"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.16.1",
