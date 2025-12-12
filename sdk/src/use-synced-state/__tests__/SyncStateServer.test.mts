@@ -65,9 +65,12 @@ describe("SyncedStateServer", () => {
 
   it("invokes registered onSet handler", () => {
     const coordinator = new SyncedStateServer({} as any, {} as any);
+    const mockStub = {} as any;
+    coordinator.setStub(mockStub);
     const calls: Array<{ key: string; value: unknown }> = [];
-    SyncedStateServer.registerSetStateHandler((key, value) => {
+    SyncedStateServer.registerSetStateHandler((key, value, stub) => {
       calls.push({ key, value });
+      expect(stub).toBe(mockStub);
     });
 
     coordinator.setState(2, "counter");
@@ -79,9 +82,12 @@ describe("SyncedStateServer", () => {
 
   it("invokes registered onGet handler", () => {
     const coordinator = new SyncedStateServer({} as any, {} as any);
+    const mockStub = {} as any;
+    coordinator.setStub(mockStub);
     const calls: Array<{ key: string; value: unknown }> = [];
-    SyncedStateServer.registerGetStateHandler((key, value) => {
+    SyncedStateServer.registerGetStateHandler((key, value, stub) => {
       calls.push({ key, value });
+      expect(stub).toBe(mockStub);
     });
 
     coordinator.setState(4, "counter");
@@ -92,12 +98,14 @@ describe("SyncedStateServer", () => {
   });
 
   describe("registerKeyHandler", () => {
+    const mockStub = {} as any;
+
     afterEach(() => {
-      SyncedStateServer.registerKeyHandler(async (key) => key);
+      SyncedStateServer.registerKeyHandler(async (key, stub) => key);
     });
 
     it("stores and retrieves the registered handler", async () => {
-      const handler = async (key: string) => `transformed:${key}`;
+      const handler = async (key: string, stub: any) => `transformed:${key}`;
       SyncedStateServer.registerKeyHandler(handler);
 
       const retrievedHandler = SyncedStateServer.getKeyHandler();
@@ -105,39 +113,39 @@ describe("SyncedStateServer", () => {
     });
 
     it("transforms keys using the registered handler", async () => {
-      const handler = async (key: string) => `user:123:${key}`;
+      const handler = async (key: string, stub: any) => `user:123:${key}`;
       SyncedStateServer.registerKeyHandler(handler);
 
-      const result = await handler("counter");
+      const result = await handler("counter", mockStub);
       expect(result).toBe("user:123:counter");
     });
 
     it("returns null when no handler is registered", () => {
-      SyncedStateServer.registerKeyHandler(async (key) => key);
+      SyncedStateServer.registerKeyHandler(async (key, stub) => key);
       const handler = SyncedStateServer.getKeyHandler();
       expect(handler).not.toBeNull();
     });
 
     it("allows handler to be async", async () => {
-      const handler = async (key: string) => {
+      const handler = async (key: string, stub: any) => {
         await new Promise((resolve) => setTimeout(resolve, 10));
         return `async:${key}`;
       };
       SyncedStateServer.registerKeyHandler(handler);
 
-      const result = await handler("test");
+      const result = await handler("test", mockStub);
       expect(result).toBe("async:test");
     });
 
     it("handler receives the correct key parameter", async () => {
       let receivedKey = "";
-      const handler = async (key: string) => {
+      const handler = async (key: string, stub: any) => {
         receivedKey = key;
         return key;
       };
       SyncedStateServer.registerKeyHandler(handler);
 
-      await handler("myKey");
+      await handler("myKey", mockStub);
       expect(receivedKey).toBe("myKey");
     });
   });

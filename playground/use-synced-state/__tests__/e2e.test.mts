@@ -15,12 +15,15 @@ testDevAndDeploy(
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
     await waitForHydration(page);
 
-    // Helper function to get the current count
+    // Helper function to get the current count from the Global Counter (second counter on page)
     const getCount = async () => {
-      // Wait for the counter display element
+      // Wait for all counter displays
       await page.waitForSelector(".counter-display");
-      // Get the text content and extract the count
-      const text = await page.$eval(".counter-display", (el) => el.textContent);
+      // Get the second counter display (Global Counter)
+      const text = await page.$$eval(
+        ".counter-display",
+        (els) => els[1]?.textContent,
+      );
       const match = text?.match(/Count:\s*(\d+)/);
       return parseInt(match?.[1] || "0", 10);
     };
@@ -32,9 +35,15 @@ testDevAndDeploy(
       return true;
     });
 
-    // Click increment button (first button in button-group is Increment)
+    // Click increment button on the Global Counter (second button-group)
     await page.waitForSelector(".button-group button");
-    await page.click(".button-group button:first-child");
+    // Get all button groups and click the first button of the second group (Global Counter)
+    await page.evaluate(() => {
+      const buttonGroups = document.querySelectorAll(".button-group");
+      const globalCounterButtonGroup = buttonGroups[1];
+      const incrementButton = globalCounterButtonGroup?.querySelector("button");
+      incrementButton?.click();
+    });
 
     // Verify counter updated to 1
     await poll(async () => {
@@ -46,6 +55,19 @@ testDevAndDeploy(
     // Reload the page
     await page.reload({ waitUntil: "domcontentloaded", timeout: 30000 });
     await waitForHydration(page);
+
+    // Wait for the WebSocket connection to establish and state to load
+    // by waiting for the counter to show the persisted value
+    await page.waitForFunction(
+      () => {
+        const displays = document.querySelectorAll(".counter-display");
+        if (displays.length < 2) return false;
+        const text = displays[1]?.textContent || "";
+        const match = text.match(/Count:\s*(\d+)/);
+        return match && parseInt(match[1], 10) === 1;
+      },
+      { timeout: 10000 },
+    );
 
     // Verify counter persisted - should still be 1
     await poll(async () => {
