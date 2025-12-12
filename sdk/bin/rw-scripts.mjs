@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
+import { $ as $base } from "execa";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { $ as $base } from "execa";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -23,7 +23,7 @@ const $ = $base({
 
 const main = async () => {
   const result =
-    await $`node ${path.resolve(ROOT_DIR, "dist", "scripts", SCRIPT_NAME)}.mjs ${ARGS.slice(1).join(" ")}`;
+    await $`node "${path.resolve(ROOT_DIR, "dist", "scripts", SCRIPT_NAME)}.mjs" ${ARGS.slice(1).join(" ")}`;
 
   process.exitCode = result.exitCode;
 };
