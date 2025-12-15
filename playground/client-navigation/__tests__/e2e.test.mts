@@ -60,3 +60,44 @@ testDevAndDeploy("navigates on link click", async ({ page, url }) => {
 
   expect(page.url()).toContain("/about");
 });
+
+testDevAndDeploy(
+  "supports repeated navigations and browser back/forward",
+  async ({ page, url }) => {
+    await page.goto(url);
+
+    await waitForHydration(page);
+
+    const getPageContent = () => page.content();
+
+    // Navigate to about via link click
+    await page.click("#about-link");
+
+    await poll(async () => {
+      const content = await getPageContent();
+      expect(content).toContain("About Page");
+      expect(content).not.toContain("Hello World");
+      return true;
+    });
+
+    // Navigate back
+    await page.goBack();
+
+    await poll(async () => {
+      const content = await getPageContent();
+      expect(content).toContain("Hello World");
+      expect(content).not.toContain("About Page");
+      return true;
+    });
+
+    // Navigate forward again
+    await page.goForward();
+
+    await poll(async () => {
+      const content = await getPageContent();
+      expect(content).toContain("About Page");
+      expect(content).not.toContain("Hello World");
+      return true;
+    });
+  },
+);

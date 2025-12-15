@@ -75,8 +75,7 @@ export async function navigate(
     window.history.replaceState({ path: href }, "", url);
   }
 
-  // @ts-expect-error
-  await globalThis.__rsc_callServer();
+  await globalThis.__rsc_callServer(null, null, "navigation");
 
   const scrollToTop = options.info?.scrollToTop ?? true;
   const scrollBehavior = options.info?.scrollBehavior ?? "instant";
@@ -167,8 +166,7 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
   );
 
   window.addEventListener("popstate", async function handlePopState() {
-    // @ts-expect-error
-    await globalThis.__rsc_callServer();
+    await globalThis.__rsc_callServer(null, null, "navigation");
   });
 
   // Return a handleResponse function for use with initClient

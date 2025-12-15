@@ -17,4 +17,8 @@ export type Transport = (context: TransportContext) => CallServerCallback;
 
 export type CreateCallServer = (
   context: TransportContext,
-) => <Result>(id: null | string, args: null | unknown[]) => Promise<Result>;
+) => <Result>(
+  id: null | string,
+  args: null | unknown[],
+  source?: "action" | "navigation",
+) => Promise<Result>;

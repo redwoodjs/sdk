@@ -27,15 +27,15 @@ RedwoodSDK's client-side navigation intercepts clicks on internal links and fetc
 
 3.  **URL Update**: If the click is a candidate for client-side navigation, the default browser navigation is prevented. The new URL is then pushed to the browser's history using `window.history.pushState()`. This updates the URL in the address bar without triggering a page load.
 
-4.  **Content Fetching**: After the URL is updated, a request is made to the server to fetch the React Server Component (RSC) payload for the new page.
+4.  **Content Fetching**: After the URL is updated, a request is made to the server to fetch the React Server Component (RSC) payload for the new page. For client-side navigation, this request is a **GET** to the current URL with a `?__rsc` query parameter, which makes it straightforward for CDNs and browsers to cache responses.
 
 5.  **DOM Update**: When the RSC payload is received, the client-side runtime hydrates the new content into the existing page, effectively replacing the old view with the new one.
 
 6.  **Scroll Management**: By default, after the new content is rendered, the page is scrolled to the top, mimicking the behavior of a traditional page load. This behavior can be configured to use smooth scrolling or can be disabled entirely.
 
-7.  **Back/Forward Navigation**: An event listener for the `popstate` event is also set up to handle browser back and forward button clicks. When a `popstate` event occurs, it triggers a fetch for the corresponding page's RSC payload.
+7.  **Back/Forward Navigation**: An event listener for the `popstate` event is also set up to handle browser back and forward button clicks. When a `popstate` event occurs, it triggers a GET request for the corresponding page's RSC payload using the same `?__rsc` convention.
 
-This approach provides a faster, smoother navigation experience, characteristic of a SPA, while leveraging server-side rendering with RSCs for content. It avoids the need for a complex client-side router, allowing developers to use standard `<a>` tags for navigation.
+This approach provides a faster, smoother navigation experience, characteristic of a SPA, while leveraging server-side rendering with RSCs for content. It avoids the need for a complex client-side router, allowing developers to use standard `<a>` tags for navigation, and keeps navigation responses cache-friendly by using GET.
 
 ## Programmatic Navigation
 
@@ -57,26 +57,26 @@ The `navigate` function allows for programmatic client-side navigation.
 #### Example Usage
 
 ```javascript
-import { navigate } from '@redwoodjs/sdk/client';
+import { navigate } from "@redwoodjs/sdk/client";
 
 // Navigate to a new page
-document.getElementById('my-button').addEventListener('click', () => {
-  navigate('/dashboard');
+document.getElementById("my-button").addEventListener("click", () => {
+  navigate("/dashboard");
 });
 
 // Redirect after a login, replacing the current history entry
 function handleLogin() {
   // ... login logic ...
-  navigate('/account', { history: 'replace' });
+  navigate("/account", { history: "replace" });
 }
 
 // Navigate with custom scroll behavior
 function handleSpecialNavigation() {
-  navigate('/long-page', {
+  navigate("/long-page", {
     info: {
       scrollToTop: true,
-      scrollBehavior: 'smooth'
-    }
+      scrollBehavior: "smooth",
+    },
   });
 }
 ```

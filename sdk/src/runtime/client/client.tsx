@@ -33,19 +33,31 @@ export const fetchTransport: Transport = (transportContext) => {
   const fetchCallServer = async <Result,>(
     id: null | string,
     args: null | unknown[],
+    source: "action" | "navigation" = "action",
   ): Promise<Result | undefined> => {
     const url = new URL(window.location.href);
     url.searchParams.set("__rsc", "");
 
-    if (id != null) {
+    const isAction = id != null;
+
+    if (isAction) {
       url.searchParams.set("__rsc_action_id", id);
     }
 
-    const fetchPromise = fetch(url, {
-      method: "POST",
-      redirect: "manual",
-      body: args != null ? await encodeReply(args) : null,
-    });
+    let fetchPromise: Promise<Response>;
+
+    if (!isAction && source === "navigation") {
+      fetchPromise = fetch(url, {
+        method: "GET",
+        redirect: "manual",
+      });
+    } else {
+      fetchPromise = fetch(url, {
+        method: "POST",
+        redirect: "manual",
+        body: args != null ? await encodeReply(args) : null,
+      });
+    }
 
     // If there's a response handler, check the response first
     if (transportContext.handleResponse) {
@@ -127,7 +139,29 @@ export const initClient = async ({
 
   let transportCallServer = transport(transportContext);
 
-  const callServer = (id: any, args: any) => transportCallServer(id, args);
+  const callServer = (id: any, args: any, source?: "action" | "navigation") => {
+    // #region agent log
+    void fetch(
+      "http://127.0.0.1:7244/ingest/3b6672b6-93b3-4f29-af6d-d27ca9afbc7b",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "debug-session",
+          runId: "navigation-debug-1",
+          hypothesisId: "H1",
+          location: "sdk/src/runtime/client/client.tsx:callServer",
+          message: "__rsc_callServer invoked",
+          data: { id, hasArgs: args != null, source },
+          timestamp: Date.now(),
+        }),
+      },
+    );
+    // #endregion
+    console.log("callServer invoked", id, args, source);
+
+    return transportCallServer(id, args, source);
+  };
 
   const upgradeToRealtime = async ({ key }: { key?: string } = {}) => {
     const { realtimeTransport } = await import("../lib/realtime/client");
