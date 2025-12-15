@@ -66,9 +66,6 @@ export const directiveModulesDevPlugin = ({
 }): Plugin => {
   const { promise: scanPromise, resolve: resolveScanPromise } =
     Promise.withResolvers<void>();
-  // Fix: Use separate promise for optimizeDeps to prevent deadlock.
-  // The esbuild plugin runs during dep optimization (before configureServer),
-  // but scanPromise only resolves in configureServer. This causes a deadlock.
   const { promise: optimizePromise, resolve: resolveOptimizePromise } =
     Promise.withResolvers<void>();
 
@@ -177,7 +174,6 @@ export const directiveModulesDevPlugin = ({
 
             build.onResolve({ filter: /.*/ }, async (args: any) => {
               // Block all resolutions until configResolved completes.
-              // Note: We use optimizePromise (not scanPromise) to avoid deadlock.
               await optimizePromise;
 
               // Handle app barrel files
