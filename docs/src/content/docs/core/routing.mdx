@@ -369,7 +369,8 @@ export const link = linkFor<App>();
 type App = typeof import("../../worker").default;
 ```
 
-  Some environments do not allow `import()` in types; in that case, prefer the type-only import shown above.
+Some environments do not allow `import()` in types; in that case, prefer the type-only import shown above.
+
 </Aside>
 
 ### When using Cron, Queues, etc.
@@ -424,6 +425,34 @@ const currentPath = link("/settings/users");
 - Typing `link("` in your editor will autocomplete all valid route patterns from your app.
 - Passing a path that does not exist in your route tree, or omitting required params, produces a compile-time type error.
 
+### Preloading navigations with `<link rel="preload">`
+
+When client-side navigation is enabled via `initClientNavigation`, you can hint
+future navigations using the browser's [Cache API](https://developer.mozilla.org/en-US/docs/Web/API/Cache):
+
+```tsx title="In a route or layout component (React 19)"
+import { link } from "@/shared/links";
+
+export function AboutPageLayout() {
+  const aboutHref = link("/about/");
+
+  return (
+    <>
+      {/* React 19 will hoist this <link> into <head> */}
+      <link rel="preload" href={aboutHref} />
+      {/* ...rest of your page... */}
+    </>
+  );
+}
+```
+
+After each client navigation, Redwood scans `link[rel="preload"][href]` elements
+and issues background `GET` requests for those route-like URLs with the `__rsc`
+query parameter set. Successful responses are stored in a versioned `Cache`
+using `cache.put`, following the semantics described in the MDN Cache
+documentation. This cache is **write-only** for now; normal navigation still
+uses the standard fetch path.
+
 ### Migration tips (from route constants)
 
 If you previously used route constant helpers (e.g. `ROUTES` or `ADMIN_ROUTES`), you can migrate incrementally:
@@ -441,6 +470,7 @@ link("/admin/companies/:id/users", { id });
 ```
 
 Notes:
+
 - The accepted patterns are exactly those declared in your route tree in `@/worker`.
 - For routes with optional query strings, build them as needed:
 

@@ -42,6 +42,17 @@ testDevAndDeploy(
   },
 );
 
+testDevAndDeploy(
+  "renders a navigation preload link for /about in the head",
+  async ({ page, url }) => {
+    await page.goto(url);
+
+    await waitForHydration(page);
+
+    await page.waitForSelector('link[rel="preload"][href="/about"]');
+  },
+);
+
 testDevAndDeploy("navigates on link click", async ({ page, url }) => {
   await page.goto(url);
 

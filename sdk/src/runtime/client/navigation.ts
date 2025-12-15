@@ -1,3 +1,5 @@
+import { preloadFromLinkTags } from "./navigationCache.js";
+
 export interface ClientNavigationOptions {
   onNavigate?: () => void;
   scrollToTop?: boolean;
@@ -160,13 +162,29 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
       const a = el.closest("a");
       const href = a?.getAttribute("href") as string;
 
-      navigate(href);
+      // Fire the navigation request, then warm the navigation cache in the
+      // background based on any <link rel="preload"> tags on the page.
+      // We intentionally run this in a detached async task so that the event
+      // handler does not await the navigation or preload work.
+      void (async () => {
+        try {
+          await navigate(href);
+        } finally {
+          void preloadFromLinkTags();
+        }
+      })();
     },
     true,
   );
 
   window.addEventListener("popstate", async function handlePopState() {
-    await globalThis.__rsc_callServer(null, null, "navigation");
+    try {
+      await globalThis.__rsc_callServer(null, null, "navigation");
+    } finally {
+      // After handling a history navigation, also warm the navigation cache
+      // from any <link rel="preload"> tags rendered for the new location.
+      void preloadFromLinkTags();
+    }
   });
 
   // Return a handleResponse function for use with initClient
