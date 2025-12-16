@@ -15,6 +15,7 @@
   ],
   "scripts": {
     "build": "tsc --build --clean && tsc",
+    "build:watch": "npm run build -- --watch",
     "release": "./scripts/release.sh",
     "test": "vitest --run",
     "debug:sync": "tsx ./src/scripts/debug-sync.mts",
