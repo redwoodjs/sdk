@@ -6,11 +6,11 @@ import type { RequestInfo } from "rwsdk/worker";
 export function Home({ ctx }: RequestInfo) {
   return (
     <div>
-      {/* Demonstrate navigation preloading: render a preload link for the
+      {/* Demonstrate navigation prefetching: render a prefetch link for the
           /about route. With React 19, this <link> will be hoisted into
           <head>, and our client navigation code will warm the RSC navigation
           response for /about using the Cache API. */}
-      <link rel="preload" href="/about" />
+      <link rel="prefetch" href="/about" />
 
       <h1>Hello World</h1>
       <button

@@ -11,6 +11,12 @@ export type ActionResponse<Result> = {
 export type TransportContext = {
   setRscPayload: <Result>(v: Promise<ActionResponse<Result>>) => void;
   handleResponse?: (response: Response) => boolean; // Returns false to stop normal processing
+  /**
+   * Optional callback invoked after a new RSC payload has been committed on the client.
+   * This is useful for features like client-side navigation that want to run logic
+   * after hydration/updates, e.g. warming navigation caches.
+   */
+  onHydrationUpdate?: () => void;
 };
 
 export type Transport = (context: TransportContext) => CallServerCallback;

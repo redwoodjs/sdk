@@ -1,4 +1,4 @@
-import { preloadFromLinkTags } from "./navigationCache.js";
+import { onNavigationCommit, preloadFromLinkTags } from "./navigationCache.js";
 
 export interface ClientNavigationOptions {
   onNavigate?: () => void;
@@ -118,8 +118,8 @@ function saveScrollPosition(x: number, y: number) {
  * // Basic usage
  * import { initClient, initClientNavigation } from "rwsdk/client";
  *
- * const { handleResponse } = initClientNavigation();
- * initClient({ handleResponse });
+ * const { handleResponse, onHydrationUpdate } = initClientNavigation();
+ * initClient({ handleResponse, onHydrationUpdate });
  *
  * @example
  * // With custom scroll behavior
@@ -162,41 +162,36 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
       const a = el.closest("a");
       const href = a?.getAttribute("href") as string;
 
-      // Fire the navigation request, then warm the navigation cache in the
-      // background based on any <link rel="preload"> tags on the page.
-      // We intentionally run this in a detached async task so that the event
-      // handler does not await the navigation or preload work.
-      void (async () => {
-        try {
-          await navigate(href);
-        } finally {
-          void preloadFromLinkTags();
-        }
-      })();
+      await navigate(href);
     },
     true,
   );
 
   window.addEventListener("popstate", async function handlePopState() {
-    try {
-      await globalThis.__rsc_callServer(null, null, "navigation");
-    } finally {
-      // After handling a history navigation, also warm the navigation cache
-      // from any <link rel="preload"> tags rendered for the new location.
-      void preloadFromLinkTags();
-    }
+    await globalThis.__rsc_callServer(null, null, "navigation");
   });
 
-  // Return a handleResponse function for use with initClient
+  function handleResponse(response: Response): boolean {
+    if (!response.ok) {
+      // Redirect to the current page (window.location) to show the error
+      // This means the page that produced the error is called twice.
+      window.location.href = window.location.href;
+      return false;
+    }
+    return true;
+  }
+
+  function onHydrationUpdate() {
+    // After each RSC hydration/update, increment generation and evict old caches,
+    // then warm the navigation cache based on any <link rel="prefetch"> tags
+    // rendered for the current location.
+    onNavigationCommit();
+    void preloadFromLinkTags();
+  }
+
+  // Return callbacks for use with initClient
   return {
-    handleResponse: function handleResponse(response: Response): boolean {
-      if (!response.ok) {
-        // Redirect to the current page (window.location) to show the error
-        // This means the page that produced the error is called twice.
-        window.location.href = window.location.href;
-        return false;
-      }
-      return true;
-    },
+    handleResponse,
+    onHydrationUpdate,
   };
 }

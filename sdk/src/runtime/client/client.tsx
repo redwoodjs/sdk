@@ -22,6 +22,8 @@ export type { Dispatch, MutableRefObject, SetStateAction } from "react";
 export { ClientOnly } from "./ClientOnly.js";
 export { initClientNavigation, navigate } from "./navigation.js";
 
+import { getCachedNavigationResponse } from "./navigationCache.js";
+
 import type {
   ActionResponse,
   HydrationOptions,
@@ -47,10 +49,17 @@ export const fetchTransport: Transport = (transportContext) => {
     let fetchPromise: Promise<Response>;
 
     if (!isAction && source === "navigation") {
-      fetchPromise = fetch(url, {
-        method: "GET",
-        redirect: "manual",
-      });
+      // Try to get cached response first
+      const cachedResponse = await getCachedNavigationResponse(url);
+      if (cachedResponse) {
+        fetchPromise = Promise.resolve(cachedResponse);
+      } else {
+        // Fall back to network fetch on cache miss
+        fetchPromise = fetch(url, {
+          method: "GET",
+          redirect: "manual",
+        });
+      }
     } else {
       fetchPromise = fetch(url, {
         method: "POST",
@@ -127,39 +136,22 @@ export const initClient = async ({
   transport = fetchTransport,
   hydrateRootOptions,
   handleResponse,
+  onHydrationUpdate,
 }: {
   transport?: Transport;
   hydrateRootOptions?: HydrationOptions;
   handleResponse?: (response: Response) => boolean;
+  onHydrationUpdate?: () => void;
 } = {}) => {
   const transportContext: TransportContext = {
     setRscPayload: () => {},
     handleResponse,
+    onHydrationUpdate,
   };
 
   let transportCallServer = transport(transportContext);
 
   const callServer = (id: any, args: any, source?: "action" | "navigation") => {
-    // #region agent log
-    void fetch(
-      "http://127.0.0.1:7244/ingest/3b6672b6-93b3-4f29-af6d-d27ca9afbc7b",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionId: "debug-session",
-          runId: "navigation-debug-1",
-          hypothesisId: "H1",
-          location: "sdk/src/runtime/client/client.tsx:callServer",
-          message: "__rsc_callServer invoked",
-          data: { id, hasArgs: args != null, source },
-          timestamp: Date.now(),
-        }),
-      },
-    );
-    // #endregion
-    console.log("callServer invoked", id, args, source);
-
     return transportCallServer(id, args, source);
   };
 
@@ -196,7 +188,14 @@ export const initClient = async ({
     const [streamData, setStreamData] = React.useState(rscPayload);
     const [_isPending, startTransition] = React.useTransition();
     transportContext.setRscPayload = (v) =>
-      startTransition(() => setStreamData(v));
+      startTransition(() => {
+        setStreamData(v);
+      });
+
+    React.useEffect(() => {
+      if (!streamData) return;
+      transportContext.onHydrationUpdate?.();
+    }, [streamData]);
     return (
       <>
         {streamData
