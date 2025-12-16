@@ -5,6 +5,23 @@ export interface NavigationCacheEnvironment {
   fetch: typeof fetch;
 }
 
+/**
+ * Interface for a single cache instance, mirroring the Cache API.
+ */
+export interface NavigationCache {
+  put(request: Request, response: Response): Promise<void>;
+  match(request: Request): Promise<Response | undefined>;
+}
+
+/**
+ * Interface for cache storage, mirroring the CacheStorage API.
+ */
+export interface NavigationCacheStorage {
+  open(cacheName: string): Promise<NavigationCache>;
+  delete(cacheName: string): Promise<boolean>;
+  keys(): Promise<string[]>;
+}
+
 // Type declaration for requestIdleCallback (may not be in all TypeScript environments)
 declare function requestIdleCallback(
   callback: () => void,
@@ -99,6 +116,46 @@ function getBrowserNavigationCacheEnvironment():
 }
 
 /**
+ * Creates a default NavigationCacheStorage implementation that wraps the browser's CacheStorage API.
+ * This maintains the current generation-based cache naming and eviction logic.
+ */
+export function createDefaultNavigationCacheStorage(
+  env?: NavigationCacheEnvironment,
+): NavigationCacheStorage | undefined {
+  const runtimeEnv = env ?? getBrowserNavigationCacheEnvironment();
+
+  if (!runtimeEnv) {
+    return undefined;
+  }
+
+  const { isSecureContext, caches } = runtimeEnv;
+
+  if (!isSecureContext || !caches) {
+    return undefined;
+  }
+
+  return {
+    async open(cacheName: string): Promise<NavigationCache> {
+      const cache = await caches.open(cacheName);
+      return {
+        async put(request: Request, response: Response): Promise<void> {
+          await cache.put(request, response);
+        },
+        async match(request: Request): Promise<Response | undefined> {
+          return (await cache.match(request)) ?? undefined;
+        },
+      };
+    },
+    async delete(cacheName: string): Promise<boolean> {
+      return await caches.delete(cacheName);
+    },
+    async keys(): Promise<string[]> {
+      return await caches.keys();
+    },
+  };
+}
+
+/**
  * Preloads the RSC navigation response for a given URL into the Cache API.
  *
  * This issues a GET request with the `__rsc` query parameter set, and, on a
@@ -110,6 +167,7 @@ function getBrowserNavigationCacheEnvironment():
 export async function preloadNavigationUrl(
   rawUrl: URL | string,
   env?: NavigationCacheEnvironment,
+  cacheStorage?: NavigationCacheStorage,
 ): Promise<void> {
   const runtimeEnv = env ?? getBrowserNavigationCacheEnvironment();
 
@@ -117,21 +175,25 @@ export async function preloadNavigationUrl(
     return;
   }
 
-  const { isSecureContext, origin, caches, fetch } = runtimeEnv;
+  const { isSecureContext, origin, fetch } = runtimeEnv;
 
   if (process.env.NODE_ENV === "development") {
     // eslint-disable-next-line no-console
     console.debug("[rwsdk:navigationCache] preloadNavigationUrl called", {
       rawUrl: rawUrl instanceof URL ? rawUrl.toString() : rawUrl,
       origin,
-      hasCaches: Boolean(caches),
+      hasCacheStorage: Boolean(cacheStorage),
       isSecureContext,
     });
   }
 
+  // Use provided cacheStorage or create default one
+  const storage =
+    cacheStorage ?? createDefaultNavigationCacheStorage(runtimeEnv);
+
   // CacheStorage is only available in secure contexts, and may be evicted by
   // the browser at any time. We treat it as a best-effort optimization.
-  if (!isSecureContext || !caches) {
+  if (!isSecureContext || !storage) {
     if (process.env.NODE_ENV === "development") {
       // eslint-disable-next-line no-console
       console.debug(
@@ -168,7 +230,7 @@ export async function preloadNavigationUrl(
     });
 
     const cacheName = getCurrentCacheName();
-    const cache = await caches.open(cacheName);
+    const cache = await storage.open(cacheName);
     const response = await fetch(request);
 
     // Avoid caching obvious error responses; browsers may still evict entries
@@ -214,6 +276,7 @@ export async function preloadNavigationUrl(
 export async function getCachedNavigationResponse(
   rawUrl: URL | string,
   env?: NavigationCacheEnvironment,
+  cacheStorage?: NavigationCacheStorage,
 ): Promise<Response | undefined> {
   const runtimeEnv = env ?? getBrowserNavigationCacheEnvironment();
 
@@ -221,9 +284,16 @@ export async function getCachedNavigationResponse(
     return undefined;
   }
 
-  const { isSecureContext, origin, caches } = runtimeEnv;
+  const { isSecureContext, origin } = runtimeEnv;
 
-  if (!isSecureContext || !caches) {
+  // Use provided cacheStorage, check global, or create default one
+  let storage = cacheStorage;
+  if (!storage && typeof globalThis !== "undefined") {
+    storage = (globalThis as any).__rsc_cacheStorage;
+  }
+  storage = storage ?? createDefaultNavigationCacheStorage(runtimeEnv);
+
+  if (!isSecureContext || !storage) {
     return undefined;
   }
 
@@ -247,7 +317,7 @@ export async function getCachedNavigationResponse(
     });
 
     const cacheName = getCurrentCacheName();
-    const cache = await caches.open(cacheName);
+    const cache = await storage.open(cacheName);
     const cachedResponse = await cache.match(request);
 
     if (process.env.NODE_ENV === "development" && cachedResponse) {
@@ -278,6 +348,7 @@ export async function getCachedNavigationResponse(
  */
 export async function evictOldGenerationCaches(
   env?: NavigationCacheEnvironment,
+  cacheStorage?: NavigationCacheStorage,
 ): Promise<void> {
   const runtimeEnv = env ?? getBrowserNavigationCacheEnvironment();
 
@@ -285,9 +356,13 @@ export async function evictOldGenerationCaches(
     return;
   }
 
-  const { isSecureContext, caches } = runtimeEnv;
+  const { isSecureContext } = runtimeEnv;
 
-  if (!isSecureContext || !caches) {
+  // Use provided cacheStorage or create default one
+  const storage =
+    cacheStorage ?? createDefaultNavigationCacheStorage(runtimeEnv);
+
+  if (!isSecureContext || !storage) {
     return;
   }
 
@@ -299,7 +374,7 @@ export async function evictOldGenerationCaches(
   const cleanup = async () => {
     try {
       // List all cache names
-      const cacheNames = await caches.keys();
+      const cacheNames = await storage.keys();
       const prefix = `rsc-prefetch:${buildId}:${tabId}:`;
 
       // Find all caches for this tab
@@ -318,7 +393,7 @@ export async function evictOldGenerationCaches(
                 cacheName,
               );
             }
-            return caches.delete(cacheName);
+            return storage.delete(cacheName);
           }
         }
         return Promise.resolve(false);
@@ -351,9 +426,12 @@ export async function evictOldGenerationCaches(
  * This should be called after navigation commits to mark the current generation
  * as complete and prepare for the next navigation cycle.
  */
-export function onNavigationCommit(env?: NavigationCacheEnvironment): void {
+export function onNavigationCommit(
+  env?: NavigationCacheEnvironment,
+  cacheStorage?: NavigationCacheStorage,
+): void {
   incrementGeneration();
-  void evictOldGenerationCaches(env);
+  void evictOldGenerationCaches(env, cacheStorage);
 }
 
 /**
@@ -368,6 +446,7 @@ export function onNavigationCommit(env?: NavigationCacheEnvironment): void {
 export async function preloadFromLinkTags(
   doc: Document = document,
   env?: NavigationCacheEnvironment,
+  cacheStorage?: NavigationCacheStorage,
 ): Promise<void> {
   if (typeof doc === "undefined") {
     return;
@@ -401,7 +480,7 @@ export async function preloadFromLinkTags(
 
       try {
         const url = new URL(href, env?.origin ?? window.location.origin);
-        return preloadNavigationUrl(url, env);
+        return preloadNavigationUrl(url, env, cacheStorage);
       } catch {
         return;
       }

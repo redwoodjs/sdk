@@ -1,9 +1,17 @@
-import { onNavigationCommit, preloadFromLinkTags } from "./navigationCache.js";
+import {
+  onNavigationCommit,
+  preloadFromLinkTags,
+  type NavigationCache,
+  type NavigationCacheStorage,
+} from "./navigationCache.js";
+
+export type { NavigationCache, NavigationCacheStorage };
 
 export interface ClientNavigationOptions {
   onNavigate?: () => void;
   scrollToTop?: boolean;
   scrollBehavior?: "auto" | "smooth" | "instant";
+  cacheStorage?: NavigationCacheStorage;
 }
 
 export function validateClickEvent(event: MouseEvent, target: HTMLElement) {
@@ -181,12 +189,17 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
     return true;
   }
 
+  // Store cacheStorage globally for use in client.tsx
+  if (opts.cacheStorage && typeof globalThis !== "undefined") {
+    (globalThis as any).__rsc_cacheStorage = opts.cacheStorage;
+  }
+
   function onHydrationUpdate() {
     // After each RSC hydration/update, increment generation and evict old caches,
     // then warm the navigation cache based on any <link rel="prefetch"> tags
     // rendered for the current location.
-    onNavigationCommit();
-    void preloadFromLinkTags();
+    onNavigationCommit(undefined, opts.cacheStorage);
+    void preloadFromLinkTags(undefined, undefined, opts.cacheStorage);
   }
 
   // Return callbacks for use with initClient
