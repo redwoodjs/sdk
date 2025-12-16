@@ -65,13 +65,13 @@ describe("navigationCache", () => {
     let idleCallback: (() => void) | null = null;
     mockRequestIdleCallback = vi.fn((callback: () => void) => {
       idleCallback = callback;
-      // Execute in next tick
-      setTimeout(() => {
+      // Execute after current I/O callbacks
+      setImmediate(() => {
         if (idleCallback) {
           idleCallback();
           idleCallback = null;
         }
-      }, 0);
+      });
       return 1;
     });
 
@@ -386,7 +386,7 @@ describe("navigationCache", () => {
       await evictOldGenerationCaches(env);
 
       // Wait for the cleanup to execute
-      await new Promise((resolve) => setImmediate(resolve));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       // Should delete generations 0 and 1, but not 2 (current) or other-tab
       expect(mockCacheStorage.delete).toHaveBeenCalledWith(
@@ -435,7 +435,7 @@ describe("navigationCache", () => {
       await evictOldGenerationCaches(undefined, customStorage);
 
       // Wait for the cleanup to execute
-      await new Promise((resolve) => setImmediate(resolve));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(customStorage.keys).toHaveBeenCalled();
       expect(customStorage.delete).toHaveBeenCalled();
