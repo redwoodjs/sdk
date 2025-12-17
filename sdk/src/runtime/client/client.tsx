@@ -22,6 +22,8 @@ export type { Dispatch, MutableRefObject, SetStateAction } from "react";
 export { ClientOnly } from "./ClientOnly.js";
 export { initClientNavigation, navigate } from "./navigation.js";
 
+import { getCachedNavigationResponse } from "./navigationCache.js";
+
 import type {
   ActionResponse,
   HydrationOptions,
@@ -33,19 +35,38 @@ export const fetchTransport: Transport = (transportContext) => {
   const fetchCallServer = async <Result,>(
     id: null | string,
     args: null | unknown[],
+    source: "action" | "navigation" = "action",
   ): Promise<Result | undefined> => {
     const url = new URL(window.location.href);
     url.searchParams.set("__rsc", "");
 
-    if (id != null) {
+    const isAction = id != null;
+
+    if (isAction) {
       url.searchParams.set("__rsc_action_id", id);
     }
 
-    const fetchPromise = fetch(url, {
-      method: "POST",
-      redirect: "manual",
-      body: args != null ? await encodeReply(args) : null,
-    });
+    let fetchPromise: Promise<Response>;
+
+    if (!isAction && source === "navigation") {
+      // Try to get cached response first
+      const cachedResponse = await getCachedNavigationResponse(url);
+      if (cachedResponse) {
+        fetchPromise = Promise.resolve(cachedResponse);
+      } else {
+        // Fall back to network fetch on cache miss
+        fetchPromise = fetch(url, {
+          method: "GET",
+          redirect: "manual",
+        });
+      }
+    } else {
+      fetchPromise = fetch(url, {
+        method: "POST",
+        redirect: "manual",
+        body: args != null ? await encodeReply(args) : null,
+      });
+    }
 
     // If there's a response handler, check the response first
     if (transportContext.handleResponse) {
@@ -115,19 +136,24 @@ export const initClient = async ({
   transport = fetchTransport,
   hydrateRootOptions,
   handleResponse,
+  onHydrationUpdate,
 }: {
   transport?: Transport;
   hydrateRootOptions?: HydrationOptions;
   handleResponse?: (response: Response) => boolean;
+  onHydrationUpdate?: () => void;
 } = {}) => {
   const transportContext: TransportContext = {
     setRscPayload: () => {},
     handleResponse,
+    onHydrationUpdate,
   };
 
   let transportCallServer = transport(transportContext);
 
-  const callServer = (id: any, args: any) => transportCallServer(id, args);
+  const callServer = (id: any, args: any, source?: "action" | "navigation") => {
+    return transportCallServer(id, args, source);
+  };
 
   const upgradeToRealtime = async ({ key }: { key?: string } = {}) => {
     const { realtimeTransport } = await import("../lib/realtime/client");
@@ -162,7 +188,14 @@ export const initClient = async ({
     const [streamData, setStreamData] = React.useState(rscPayload);
     const [_isPending, startTransition] = React.useTransition();
     transportContext.setRscPayload = (v) =>
-      startTransition(() => setStreamData(v));
+      startTransition(() => {
+        setStreamData(v);
+      });
+
+    React.useEffect(() => {
+      if (!streamData) return;
+      transportContext.onHydrationUpdate?.();
+    }, [streamData]);
     return (
       <>
         {streamData

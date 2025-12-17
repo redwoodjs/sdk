@@ -1,4 +1,5 @@
 import stylesUrl from "./styles.css?url";
+
 export const Document: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => (
