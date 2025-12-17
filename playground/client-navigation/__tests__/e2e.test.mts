@@ -49,7 +49,9 @@ testDevAndDeploy(
 
     await waitForHydration(page);
 
-    await page.waitForSelector('link[rel="preload"][href="/about"]');
+    // React will hoist this <link> into <head>, and the client navigation
+    // runtime will use it to warm the navigation cache for /about.
+    await page.waitForSelector('link[rel="prefetch"][href="/about"]');
   },
 );
 
@@ -77,6 +79,7 @@ testDevAndDeploy(
   async ({ page, url }) => {
     await page.goto(url);
 
+    await page.waitForFunction('document.readyState === "complete"');
     await waitForHydration(page);
 
     const getPageContent = () => page.content();
