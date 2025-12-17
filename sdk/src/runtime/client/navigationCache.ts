@@ -128,9 +128,9 @@ export function createDefaultNavigationCacheStorage(
     return undefined;
   }
 
-  const { isSecureContext, caches } = runtimeEnv;
+  const { caches } = runtimeEnv;
 
-  if (!isSecureContext || !caches) {
+  if (!caches) {
     return undefined;
   }
 
@@ -175,7 +175,7 @@ export async function preloadNavigationUrl(
     return;
   }
 
-  const { isSecureContext, origin, fetch } = runtimeEnv;
+  const { origin, fetch } = runtimeEnv;
 
   if (process.env.NODE_ENV === "development") {
     // eslint-disable-next-line no-console
@@ -183,7 +183,6 @@ export async function preloadNavigationUrl(
       rawUrl: rawUrl instanceof URL ? rawUrl.toString() : rawUrl,
       origin,
       hasCacheStorage: Boolean(cacheStorage),
-      isSecureContext,
     });
   }
 
@@ -191,13 +190,13 @@ export async function preloadNavigationUrl(
   const storage =
     cacheStorage ?? createDefaultNavigationCacheStorage(runtimeEnv);
 
-  // CacheStorage is only available in secure contexts, and may be evicted by
-  // the browser at any time. We treat it as a best-effort optimization.
-  if (!isSecureContext || !storage) {
+  // CacheStorage may be evicted by the browser at any time. We treat it as a
+  // best-effort optimization.
+  if (!storage) {
     if (process.env.NODE_ENV === "development") {
       // eslint-disable-next-line no-console
       console.debug(
-        "[rwsdk:navigationCache] skipping preloadNavigationUrl: insecure context or no CacheStorage",
+        "[rwsdk:navigationCache] skipping preloadNavigationUrl: no CacheStorage",
       );
     }
     return;
@@ -278,13 +277,22 @@ export async function getCachedNavigationResponse(
   env?: NavigationCacheEnvironment,
   cacheStorage?: NavigationCacheStorage,
 ): Promise<Response | undefined> {
+  // eslint-disable-next-line no-console
+  console.debug("[rwsdk:navigationCache] getCachedNavigationResponse called", {
+    rawUrl: rawUrl instanceof URL ? rawUrl.toString() : rawUrl,
+  });
+
   const runtimeEnv = env ?? getBrowserNavigationCacheEnvironment();
 
   if (!runtimeEnv) {
+    // eslint-disable-next-line no-console
+    console.debug(
+      "[rwsdk:navigationCache] skipping getCachedNavigationResponse: no runtime environment (likely non-browser)",
+    );
     return undefined;
   }
 
-  const { isSecureContext, origin } = runtimeEnv;
+  const { origin } = runtimeEnv;
 
   // Use provided cacheStorage, check global, or create default one
   let storage = cacheStorage;
@@ -293,7 +301,14 @@ export async function getCachedNavigationResponse(
   }
   storage = storage ?? createDefaultNavigationCacheStorage(runtimeEnv);
 
-  if (!isSecureContext || !storage) {
+  if (!storage) {
+    // eslint-disable-next-line no-console
+    console.debug(
+      "[rwsdk:navigationCache] skipping getCachedNavigationResponse: no CacheStorage",
+      {
+        hasCacheStorage: Boolean(storage),
+      },
+    );
     return undefined;
   }
 
@@ -356,13 +371,11 @@ export async function evictOldGenerationCaches(
     return;
   }
 
-  const { isSecureContext } = runtimeEnv;
-
   // Use provided cacheStorage or create default one
   const storage =
     cacheStorage ?? createDefaultNavigationCacheStorage(runtimeEnv);
 
-  if (!isSecureContext || !storage) {
+  if (!storage) {
     return;
   }
 
