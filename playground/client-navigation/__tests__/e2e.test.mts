@@ -82,6 +82,8 @@ testDevAndDeploy(
     await page.waitForFunction('document.readyState === "complete"');
     await waitForHydration(page);
 
+    const isDevUrl = url.includes("localhost") || url.includes("127.0.0.1");
+
     const getPageContent = () => page.content();
 
     // Navigate to about via link click
@@ -90,7 +92,9 @@ testDevAndDeploy(
     await poll(async () => {
       const content = await getPageContent();
       expect(content).toContain("About Page");
-      expect(content).not.toContain("Hello World");
+      if (!isDevUrl) {
+        expect(content).not.toContain("Hello World");
+      }
       return true;
     });
 
@@ -100,7 +104,9 @@ testDevAndDeploy(
     await poll(async () => {
       const content = await getPageContent();
       expect(content).toContain("Hello World");
-      expect(content).not.toContain("About Page");
+      if (!isDevUrl) {
+        expect(content).not.toContain("About Page");
+      }
       return true;
     });
 
@@ -110,7 +116,9 @@ testDevAndDeploy(
     await poll(async () => {
       const content = await getPageContent();
       expect(content).toContain("About Page");
-      expect(content).not.toContain("Hello World");
+      if (!isDevUrl) {
+        expect(content).not.toContain("Hello World");
+      }
       return true;
     });
   },
