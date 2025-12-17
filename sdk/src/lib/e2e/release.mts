@@ -8,6 +8,7 @@ import { setTimeout } from "node:timers/promises";
 import { basename, dirname, join, resolve } from "path";
 import { $ } from "../../lib/$.mjs";
 import { extractLastJson, parseJson } from "../../lib/jsonUtils.mjs";
+import { IS_DEBUG_MODE } from "./constants.mjs";
 
 const log = debug("rwsdk:e2e:release");
 
@@ -109,8 +110,10 @@ export async function $expect(
       stdout += chunk;
       buffer += chunk;
 
-      // Print to console
-      process.stdout.write(chunk);
+      // Print to console in debug mode
+      if (IS_DEBUG_MODE) {
+        process.stdout.write(chunk);
+      }
 
       // Only process expectations that haven't been fully matched yet
       // and in the order they were provided
@@ -192,8 +195,10 @@ export async function $expect(
       childProcess.stderr.on("data", (data: Buffer) => {
         const chunk = data.toString();
         stderr += chunk;
-        // Also write stderr to console
-        process.stderr.write(chunk);
+        // Also write stderr to console in debug mode
+        if (IS_DEBUG_MODE) {
+          process.stderr.write(chunk);
+        }
       });
     }
 
