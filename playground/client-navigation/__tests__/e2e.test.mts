@@ -98,8 +98,11 @@ testDevAndDeploy(
       return true;
     });
 
-    // Navigate back
+    // Navigate back - wait for URL to change, then poll for content
     await page.goBack();
+    await page.waitForFunction(() => window.location.pathname === "/", {
+      timeout: 10000,
+    });
 
     await poll(async () => {
       const content = await getPageContent();
@@ -110,8 +113,11 @@ testDevAndDeploy(
       return true;
     });
 
-    // Navigate forward again
+    // Navigate forward again - wait for URL to change, then poll for content
     await page.goForward();
+    await page.waitForFunction(() => window.location.pathname === "/about", {
+      timeout: 10000,
+    });
 
     await poll(async () => {
       const content = await getPageContent();
