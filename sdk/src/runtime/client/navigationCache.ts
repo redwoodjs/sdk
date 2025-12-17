@@ -177,15 +177,6 @@ export async function preloadNavigationUrl(
 
   const { origin, fetch } = runtimeEnv;
 
-  if (process.env.NODE_ENV === "development") {
-    // eslint-disable-next-line no-console
-    console.debug("[rwsdk:navigationCache] preloadNavigationUrl called", {
-      rawUrl: rawUrl instanceof URL ? rawUrl.toString() : rawUrl,
-      origin,
-      hasCacheStorage: Boolean(cacheStorage),
-    });
-  }
-
   // Use provided cacheStorage or create default one
   const storage =
     cacheStorage ?? createDefaultNavigationCacheStorage(runtimeEnv);
@@ -193,12 +184,6 @@ export async function preloadNavigationUrl(
   // CacheStorage may be evicted by the browser at any time. We treat it as a
   // best-effort optimization.
   if (!storage) {
-    if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console
-      console.debug(
-        "[rwsdk:navigationCache] skipping preloadNavigationUrl: no CacheStorage",
-      );
-    }
     return;
   }
 
@@ -210,13 +195,6 @@ export async function preloadNavigationUrl(
 
     if (url.origin !== origin) {
       // Only cache same-origin navigations.
-      if (process.env.NODE_ENV === "development") {
-        // eslint-disable-next-line no-console
-        console.debug(
-          "[rwsdk:navigationCache] skipping preloadNavigationUrl: cross-origin URL",
-          url.toString(),
-        );
-      }
       return;
     }
 
@@ -235,33 +213,12 @@ export async function preloadNavigationUrl(
     // Avoid caching obvious error responses; browsers may still evict entries
     // at any time, see MDN Cache docs for details.
     if (response.status >= 400) {
-      if (process.env.NODE_ENV === "development") {
-        // eslint-disable-next-line no-console
-        console.debug(
-          "[rwsdk:navigationCache] not caching navigation response due to error status",
-          response.status,
-        );
-      }
       return;
     }
 
     await cache.put(request, response.clone());
-    if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console
-      console.debug(
-        "[rwsdk:navigationCache] cached navigation response for",
-        request.url,
-      );
-    }
   } catch (error) {
     // Best-effort optimization; never let cache failures break navigation.
-    if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console
-      console.debug(
-        "[rwsdk:navigationCache] error during preloadNavigationUrl; ignoring",
-        error,
-      );
-    }
     return;
   }
 }
@@ -277,18 +234,9 @@ export async function getCachedNavigationResponse(
   env?: NavigationCacheEnvironment,
   cacheStorage?: NavigationCacheStorage,
 ): Promise<Response | undefined> {
-  // eslint-disable-next-line no-console
-  console.debug("[rwsdk:navigationCache] getCachedNavigationResponse called", {
-    rawUrl: rawUrl instanceof URL ? rawUrl.toString() : rawUrl,
-  });
-
   const runtimeEnv = env ?? getBrowserNavigationCacheEnvironment();
 
   if (!runtimeEnv) {
-    // eslint-disable-next-line no-console
-    console.debug(
-      "[rwsdk:navigationCache] skipping getCachedNavigationResponse: no runtime environment (likely non-browser)",
-    );
     return undefined;
   }
 
@@ -302,13 +250,6 @@ export async function getCachedNavigationResponse(
   storage = storage ?? createDefaultNavigationCacheStorage(runtimeEnv);
 
   if (!storage) {
-    // eslint-disable-next-line no-console
-    console.debug(
-      "[rwsdk:navigationCache] skipping getCachedNavigationResponse: no CacheStorage",
-      {
-        hasCacheStorage: Boolean(storage),
-      },
-    );
     return undefined;
   }
 
@@ -335,21 +276,9 @@ export async function getCachedNavigationResponse(
     const cache = await storage.open(cacheName);
     const cachedResponse = await cache.match(request);
 
-    if (process.env.NODE_ENV === "development" && cachedResponse) {
-      // eslint-disable-next-line no-console
-      console.debug("[rwsdk:navigationCache] cache hit for", request.url);
-    }
-
     return cachedResponse ?? undefined;
   } catch (error) {
     // Best-effort optimization; never let cache failures break navigation.
-    if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console
-      console.debug(
-        "[rwsdk:navigationCache] error during getCachedNavigationResponse; ignoring",
-        error,
-      );
-    }
     return undefined;
   }
 }
@@ -399,13 +328,6 @@ export async function evictOldGenerationCaches(
         if (match) {
           const generation = parseInt(match[1]!, 10);
           if (generation < currentGeneration) {
-            if (process.env.NODE_ENV === "development") {
-              // eslint-disable-next-line no-console
-              console.debug(
-                "[rwsdk:navigationCache] deleting old generation cache",
-                cacheName,
-              );
-            }
             return storage.delete(cacheName);
           }
         }
@@ -415,13 +337,6 @@ export async function evictOldGenerationCaches(
       await Promise.all(deletePromises);
     } catch (error) {
       // Best-effort cleanup; never let failures break navigation.
-      if (process.env.NODE_ENV === "development") {
-        // eslint-disable-next-line no-console
-        console.debug(
-          "[rwsdk:navigationCache] error during evictOldGenerationCaches; ignoring",
-          error,
-        );
-      }
     }
   };
 
@@ -468,14 +383,6 @@ export async function preloadFromLinkTags(
   const links = Array.from(
     doc.querySelectorAll<HTMLLinkElement>('link[rel="prefetch"][href]'),
   );
-
-  if (process.env.NODE_ENV === "development") {
-    // eslint-disable-next-line no-console
-    console.debug(
-      "[rwsdk:navigationCache] found prefetch links",
-      links.map((link) => link.getAttribute("href")),
-    );
-  }
 
   await Promise.all(
     links.map((link) => {
