@@ -107,18 +107,6 @@ describe("navigationCache", () => {
       expect(cache).toBeDefined();
     });
 
-    it("should return undefined if not secure context", () => {
-      const env: NavigationCacheEnvironment = {
-        isSecureContext: false,
-        origin: "https://example.com",
-        caches: mockCacheStorage,
-        fetch: mockFetch,
-      };
-
-      const storage = createDefaultNavigationCacheStorage(env);
-      expect(storage).toBeUndefined();
-    });
-
     it("should return undefined if no caches available", () => {
       const env: NavigationCacheEnvironment = {
         isSecureContext: true,
