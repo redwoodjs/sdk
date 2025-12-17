@@ -26,13 +26,41 @@ try {
     return arg;
   });
 
+  let hasErrors = false;
+
+  // Pass 1: Dev tests (sequential to avoid resource contention)
   console.log(
-    `Running vitest in playground with args: ${vitestArgs.join(" ") || "(none)"}`,
+    `Running dev server tests (sequential) with args: ${vitestArgs.join(" ") || "(none)"}`,
   );
-  execSync(`vitest run ${vitestArgs.join(" ")}`, {
-    cwd: path.join(rootDir, "playground"),
-    stdio: "inherit",
-  });
+  try {
+    execSync(`vitest run ${vitestArgs.join(" ")}`, {
+      cwd: path.join(rootDir, "playground"),
+      stdio: "inherit",
+      env: { ...process.env, RWSDK_SKIP_DEPLOY: "1", RWSDK_SEQUENTIAL: "1" },
+    });
+  } catch (error) {
+    console.error("Dev server tests failed.");
+    hasErrors = true;
+  }
+
+  // Pass 2: Deploy tests (parallel, network-bound)
+  console.log(
+    `Running deployment tests (parallel) with args: ${vitestArgs.join(" ") || "(none)"}`,
+  );
+  try {
+    execSync(`vitest run ${vitestArgs.join(" ")}`, {
+      cwd: path.join(rootDir, "playground"),
+      stdio: "inherit",
+      env: { ...process.env, RWSDK_SKIP_DEV: "1" },
+    });
+  } catch (error) {
+    console.error("Deployment tests failed.");
+    hasErrors = true;
+  }
+
+  if (hasErrors) {
+    process.exit(1);
+  }
 } catch (error) {
   console.error("E2E test script failed.");
   process.exit(1);
