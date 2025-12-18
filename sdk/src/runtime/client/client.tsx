@@ -21,11 +21,11 @@ export { default as React } from "react";
 export type { Dispatch, MutableRefObject, SetStateAction } from "react";
 export { ClientOnly } from "./ClientOnly.js";
 export { initClientNavigation, navigate } from "./navigation.js";
-export type { ActionResponseMeta } from "./types";
+export type { ActionResponseData } from "./types";
 
 import { getCachedNavigationResponse } from "./navigationCache.js";
 import type {
-  ActionResponseMeta,
+  ActionResponseData,
   HydrationOptions,
   RscActionResponse,
   Transport,
@@ -191,7 +191,7 @@ export const initClient = async ({
   hydrateRootOptions?: HydrationOptions;
   handleResponse?: (response: Response) => boolean;
   onHydrationUpdate?: () => void;
-  onActionResponse?: (actionResponse: ActionResponseMeta) => boolean | void;
+  onActionResponse?: (actionResponse: ActionResponseData) => boolean | void;
 } = {}) => {
   const transportContext: TransportContext = {
     setRscPayload: () => {},

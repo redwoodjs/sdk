@@ -8,13 +8,15 @@ export type RscActionResponse<Result> = {
   actionResult: Result;
 };
 
-export type ActionResponseMeta = {
-  __rw_action_response: {
-    status: number;
-    headers: {
-      location: string | null;
-    };
+export type ActionResponseData = {
+  status: number;
+  headers: {
+    location: string | null;
   };
+};
+
+export type ActionResponseMeta = {
+  __rw_action_response: ActionResponseData;
 };
 
 export function isActionResponse(value: unknown): value is ActionResponseMeta {
@@ -41,7 +43,7 @@ export type TransportContext = {
    * Return true to signal that the response has been handled and
    * default behaviour (e.g. redirects) should be skipped.
    */
-  onActionResponse?: (actionResponse: ActionResponseMeta) => boolean | void;
+  onActionResponse?: (actionResponse: ActionResponseData) => boolean | void;
 };
 
 export type Transport = (context: TransportContext) => CallServerCallback;
