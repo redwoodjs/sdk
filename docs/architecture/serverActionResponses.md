@@ -14,18 +14,6 @@ RedwoodSDK solves this by normalizing any `Response` object returned from a serv
 
 When a server action completes, the framework checks if the result is an instance of `Response`. If it is, it converts it into a special object wrapper.
 
-> **Note on `Response.redirect()`**: In development environments (running on Node.js), `Response.redirect()` requires an absolute URL. When using redirects in server actions, it is recommended to resolve relative paths against the current request URL:
->
-> ```typescript
-> import { requestInfo } from "rwsdk/worker";
->
-> export async function myAction() {
->   const { request } = requestInfo;
->   const url = new URL("/success", request.url);
->   return Response.redirect(url.href, 302);
-> }
-> ```
-
 The framework then converts the response:
 
 ```typescript
@@ -50,7 +38,7 @@ This `__rw_action_response` object is then safely embedded in the RSC payload an
 
 On the client, the transport layer receives the RSC payload and materializes the action result. Before returning the result to the caller, the framework checks if the result contains the `__rw_action_response` abstraction using the `isActionResponse` helper.
 
-If a response abstraction is found with a redirect status code (301, 302, 303, 307, or 308) and a `location` header, the framework automatically performs the redirect using `window.location.href`.
+If a response abstraction is found with a [3xx redirect status code](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Redirections) and a `location` header, the framework automatically performs the redirect using `window.location.href`.
 
 ### 3. Interception (`onActionResponse`)
 
