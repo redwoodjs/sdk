@@ -108,7 +108,7 @@ After updating `wrangler.jsonc`, run `pnpm generate` to update the generated typ
 In your `src/worker.tsx`, use `defineDurableSession` to create a `sessionStore`, then export the Durable Object class.
 
 ```typescript title="src/worker.tsx"
-import { defineDurableSession } from "rwsdk/runtime/lib/auth/session.mjs";
+import { defineDurableSession } from "rwsdk/auth";
 import { UserSession } from "./sessions/UserSession.js";
 
 // ... other imports
