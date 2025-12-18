@@ -72,8 +72,8 @@ interface DeploymentInstance {
 }
 
 // Environment variable flags for skipping tests
-const SKIP_DEV_SERVER_TESTS = process.env.RWSDK_SKIP_DEV === "1";
-const SKIP_DEPLOYMENT_TESTS = process.env.RWSDK_SKIP_DEPLOY === "1";
+export const SKIP_DEV_SERVER_TESTS = process.env.RWSDK_SKIP_DEV === "1";
+export const SKIP_DEPLOYMENT_TESTS = process.env.RWSDK_SKIP_DEPLOY === "1";
 
 // Global test environment state
 let globalDevPlaygroundEnv: PlaygroundEnvironment | null = null;

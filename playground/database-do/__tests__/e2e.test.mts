@@ -11,26 +11,29 @@ import { expect } from "vitest";
 
 setupPlaygroundEnvironment(import.meta.url);
 
-testSDK("seeds the database and displays initial todos", async ({ page }) => {
-  const devServerControl = createDevServer();
+(SKIP_DEV_SERVER_TESTS ? testSDK.skip : testSDK)(
+  "seeds the database and displays initial todos",
+  async ({ page }) => {
+    const devServerControl = createDevServer();
 
-  await $({ cwd: devServerControl.projectDir })`pnpm seed`;
+    await $({ cwd: devServerControl.projectDir })`pnpm seed`;
 
-  const devServer = await devServerControl.start();
+    const devServer = await devServerControl.start();
 
-  await page.goto(devServer.url);
-  await waitForHydration(page);
+    await page.goto(devServer.url);
+    await waitForHydration(page);
 
-  const getPageContent = () => page.content();
+    const getPageContent = () => page.content();
 
-  // Check for seeded data
-  await poll(async () => {
-    const content = await getPageContent();
-    expect(content).toContain("Create a new playground example");
-    expect(content).toContain("Write end-to-end tests");
-    return true;
-  });
-});
+    // Check for seeded data
+    await poll(async () => {
+      const content = await getPageContent();
+      expect(content).toContain("Create a new playground example");
+      expect(content).toContain("Write end-to-end tests");
+      return true;
+    });
+  },
+);
 testDevAndDeploy(
   "allows adding and completing todos",
   async ({ page, url }) => {
