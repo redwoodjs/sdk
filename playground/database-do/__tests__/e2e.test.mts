@@ -3,7 +3,6 @@ import {
   createDevServer,
   poll,
   setupPlaygroundEnvironment,
-  SKIP_DEV_SERVER_TESTS,
   testDevAndDeploy,
   testSDK,
   waitForHydration,
@@ -12,7 +11,7 @@ import { expect } from "vitest";
 
 setupPlaygroundEnvironment(import.meta.url);
 
-(SKIP_DEV_SERVER_TESTS ? testSDK.skip : testSDK)(
+testSDK.dev(
   "seeds the database and displays initial todos",
   async ({ page }) => {
     const devServerControl = createDevServer();
