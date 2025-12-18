@@ -50,31 +50,24 @@ This `__rw_action_response` object is then safely embedded in the RSC payload an
 
 On the client, the transport layer receives the RSC payload and materializes the action result. Before returning the result to the caller, the framework checks if the result contains the `__rw_action_response` abstraction using the `isActionResponse` helper.
 
-If a response abstraction is found, the framework "interprets" it to see if it represents a redirect (e.g., status codes 301, 302, etc., with a `Location` header).
+If a response abstraction is found with a redirect status code (301, 302, 303, 307, or 308) and a `location` header, the framework automatically performs the redirect using `window.location.href`.
 
-### 3. Interception and Custom Handling (`onActionResponse`)
+### 3. Interception (`onActionResponse`)
 
-To provide developers with flexibility, `initClient` accepts an optional `onActionResponse` callback. This hook is fired whenever a response abstraction is found in an action result, allowing for custom logging, telemetry, or overriding the default redirect behavior.
+To provide developers with flexibility, `initClient` accepts an optional `onActionResponse` callback. This hook is fired whenever a response abstraction is found in an action result. Return `true` to signal that the response has been handled and default behavior (e.g. redirects) should be skipped.
 
 ```typescript
 initClient({
-  onActionResponse: (ctx) => {
-    if (ctx.redirect.kind === "redirect") {
-      console.log("Action redirected to:", ctx.redirect.url);
-      // Return true to prevent the default window.location.href redirect
-      // return true;
-    }
+  onActionResponse: (actionResponse) => {
+    console.log("Action returned response with status:", actionResponse.status);
+    // Return true to prevent the default redirect behavior
+    // return true;
   },
 });
 ```
 
-### 4. Default Behavior: Automatic Redirects
-
-If no hook is provided, or if the hook returns `false`/`void`, the framework performs the redirect automatically using `window.location.href`. This ensures that `Response.redirect()` "just works" from server actions while still being efficient and interceptable.
-
 ## Key Benefits
 
 - **Consistency:** Server actions can use the same standard `Response` API used elsewhere in the worker.
-- **Efficiency:** The transport layer only performs extra work (interpretation) when a response abstraction is explicitly detected.
-- **Control:** Developers can intercept and customize how action-level redirects and responses are handled without modifying core SDK logic.
-- **Custom Navigation:** By handling redirects on the client via JavaScript, the application has the opportunity to perform custom transitions or maintain state instead of defaulting to a standard browser-level navigation.
+- **Simplicity:** Redirects "just work" from server actions without any additional configuration.
+- **Control:** Developers can intercept action responses to customize behavior when needed.

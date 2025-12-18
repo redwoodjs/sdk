@@ -8,12 +8,14 @@ export type RscActionResponse<Result> = {
   actionResult: Result;
 };
 
+export type ActionResponseMeta = {
+  status: number;
+  statusText: string;
+  headers: Record<string, string>;
+};
+
 export type ActionResponse = {
-  __rw_action_response: {
-    status: number;
-    statusText: string;
-    headers: Record<string, string>;
-  };
+  __rw_action_response: ActionResponseMeta;
 };
 
 export function isActionResponse(value: unknown): value is ActionResponse {
@@ -26,16 +28,6 @@ export function isActionResponse(value: unknown): value is ActionResponse {
   );
 }
 
-export type RedirectDecision =
-  | { kind: "none" }
-  | { kind: "redirect"; url: string; status: number };
-
-export type ActionResponseContext = {
-  result: unknown;
-  response?: ActionResponse;
-  redirect: RedirectDecision;
-};
-
 export type TransportContext = {
   setRscPayload: <Result>(v: Promise<RscActionResponse<Result>>) => void;
   handleResponse?: (response: Response) => boolean; // Returns false to stop normal processing
@@ -46,11 +38,11 @@ export type TransportContext = {
    */
   onHydrationUpdate?: () => void;
   /**
-   * Optional callback invoked after an action result has been interpreted.
-   * Return true to signal that the action response (including redirects)
-   * has been handled and default behaviour should be skipped.
+   * Optional callback invoked when an action returns a Response.
+   * Return true to signal that the response has been handled and
+   * default behaviour (e.g. redirects) should be skipped.
    */
-  onActionResponse?: (ctx: ActionResponseContext) => boolean | void;
+  onActionResponse?: (actionResponse: ActionResponseMeta) => boolean | void;
 };
 
 export type Transport = (context: TransportContext) => CallServerCallback;

@@ -21,11 +21,11 @@ export { default as React } from "react";
 export type { Dispatch, MutableRefObject, SetStateAction } from "react";
 export { ClientOnly } from "./ClientOnly.js";
 export { initClientNavigation, navigate } from "./navigation.js";
+export type { ActionResponseMeta } from "./types";
 
-import { interpretActionResult } from "./interpretActionResult.js";
 import { getCachedNavigationResponse } from "./navigationCache.js";
 import type {
-  ActionResponseContext,
+  ActionResponseMeta,
   HydrationOptions,
   RscActionResponse,
   Transport,
@@ -88,17 +88,27 @@ export const fetchTransport: Transport = (transportContext) => {
       const rawActionResult = (result as { actionResult: Result }).actionResult;
 
       if (isActionResponse(rawActionResult)) {
-        const interpreted = interpretActionResult(rawActionResult);
-
+        const actionResponse = rawActionResult.__rw_action_response;
         const handledByHook =
-          transportContext.onActionResponse?.(interpreted) === true;
+          transportContext.onActionResponse?.(actionResponse) === true;
 
-        if (!handledByHook && interpreted.redirect.kind === "redirect") {
-          window.location.href = interpreted.redirect.url;
-          return undefined;
+        if (!handledByHook) {
+          const location = actionResponse.headers["location"];
+
+          if (
+            location &&
+            (actionResponse.status === 301 ||
+              actionResponse.status === 302 ||
+              actionResponse.status === 303 ||
+              actionResponse.status === 307 ||
+              actionResponse.status === 308)
+          ) {
+            window.location.href = location;
+            return undefined;
+          }
         }
 
-        return interpreted.result as Result;
+        return rawActionResult as Result;
       }
 
       return rawActionResult as Result;
@@ -114,17 +124,27 @@ export const fetchTransport: Transport = (transportContext) => {
     const rawActionResult = (result as { actionResult: Result }).actionResult;
 
     if (isActionResponse(rawActionResult)) {
-      const interpreted = interpretActionResult(rawActionResult);
-
+      const actionResponse = rawActionResult.__rw_action_response;
       const handledByHook =
-        transportContext.onActionResponse?.(interpreted) === true;
+        transportContext.onActionResponse?.(actionResponse) === true;
 
-      if (!handledByHook && interpreted.redirect.kind === "redirect") {
-        window.location.href = interpreted.redirect.url;
-        return undefined;
+      if (!handledByHook) {
+        const location = actionResponse.headers["location"];
+
+        if (
+          location &&
+          (actionResponse.status === 301 ||
+            actionResponse.status === 302 ||
+            actionResponse.status === 303 ||
+            actionResponse.status === 307 ||
+            actionResponse.status === 308)
+        ) {
+          window.location.href = location;
+          return undefined;
+        }
       }
 
-      return interpreted.result as Result;
+      return rawActionResult as Result;
     }
 
     return rawActionResult as Result;
@@ -143,10 +163,9 @@ export const fetchTransport: Transport = (transportContext) => {
  * @param hydrateRootOptions - Options passed to React's hydrateRoot
  * @param handleResponse - Custom response handler for navigation errors (navigation GETs)
  * @param onHydrationUpdate - Callback invoked after a new RSC payload has been committed on the client
- * @param onActionResponse - Optional hook invoked after a server action result has been interpreted;
- *                           return true to signal that the action response (including redirects) has
- *                           been handled and default behaviour (e.g. window.location for redirects)
- *                           should be skipped
+ * @param onActionResponse - Optional hook invoked when an action returns a Response;
+ *                           return true to signal that the response has been handled and
+ *                           default behaviour (e.g. redirects) should be skipped
  *
  * @example
  * // Basic usage
@@ -182,7 +201,7 @@ export const initClient = async ({
   hydrateRootOptions?: HydrationOptions;
   handleResponse?: (response: Response) => boolean;
   onHydrationUpdate?: () => void;
-  onActionResponse?: (ctx: ActionResponseContext) => boolean | void;
+  onActionResponse?: (actionResponse: ActionResponseMeta) => boolean | void;
 } = {}) => {
   const transportContext: TransportContext = {
     setRscPayload: () => {},

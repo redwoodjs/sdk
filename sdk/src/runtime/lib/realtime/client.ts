@@ -9,8 +9,6 @@ type Transport,
 isActionResponse,
 } from "../../client/types";
 // prettier-ignore
-import { interpretActionResult } from "../../client/interpretActionResult.js";
-// prettier-ignore
 import { createFromReadableStream } from "react-server-dom-webpack/client.browser";
 // prettier-ignore
 import { MESSAGE_TYPE } from "./shared";
@@ -163,17 +161,27 @@ export const realtimeTransport =
         const rawActionResult = (await rscPayload).actionResult;
 
         if (isActionResponse(rawActionResult)) {
-          const interpreted = interpretActionResult(rawActionResult);
-
+          const actionResponse = rawActionResult.__rw_action_response;
           const handledByHook =
-            transportContext.onActionResponse?.(interpreted) === true;
+            transportContext.onActionResponse?.(actionResponse) === true;
 
-          if (!handledByHook && interpreted.redirect.kind === "redirect") {
-            window.location.href = interpreted.redirect.url;
-            return null;
+          if (!handledByHook) {
+            const location = actionResponse.headers["location"];
+
+            if (
+              location &&
+              (actionResponse.status === 301 ||
+                actionResponse.status === 302 ||
+                actionResponse.status === 303 ||
+                actionResponse.status === 307 ||
+                actionResponse.status === 308)
+            ) {
+              window.location.href = location;
+              return null;
+            }
           }
 
-          return interpreted.result as T | null;
+          return rawActionResult as T | null;
         }
 
         return rawActionResult as T | null;
