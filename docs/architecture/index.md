@@ -8,6 +8,9 @@ This collection of documents provides a high-level overview of the core architec
 - [**Unified Request Handling**](./requestHandling.md)
   Describes the ordered, short-circuiting loop for processing all incoming requests, ensuring that global middleware, RSC actions, and page routes are handled in the correct sequence.
 
+- [**Server Action Responses and Redirects**](./serverActionResponses.md)
+  Explains how standard `Response` objects (like redirects) returned from server actions are normalized into a serializable format and handled on the client.
+
 - [**The SSR Bridge**](./ssrBridge.md)
   Details the architecture that allows the framework to support two different rendering environments (RSC and traditional SSR) within a single Cloudflare Worker. It explains how the "SSR Bridge" uses Vite's Environments API to manage conflicting dependency requirements between the two runtimes.
 
