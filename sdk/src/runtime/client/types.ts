@@ -8,51 +8,33 @@ export type ActionResponse<Result> = {
   actionResult: Result;
 };
 
-/**
- * Intermediate format for Response objects returned from server actions.
- * This allows Response objects (especially redirects) to be serialized
- * and handled on the client side.
- */
-export type RwsdkResponse =
-  | {
-      __rwsdk_response: {
-        type: "redirect";
-        url: string;
-        status: number;
-      };
-    }
-  | {
-      __rwsdk_response: {
-        type: "other";
-        status: number;
-        statusText: string;
-      };
-    };
+export type RwsdkResponse = {
+  __rwsdk_response: {
+    status: number;
+    statusText: string;
+    headers: Record<string, string>;
+  };
+};
 
-/**
- * Type guard to check if a value is an RwsdkResponse.
- */
 export function isRwsdkResponse(value: unknown): value is RwsdkResponse {
   return (
     typeof value === "object" &&
     value !== null &&
-    "__rwsdk_response" in value &&
+    "__rwsdk_response" in (value as any) &&
     typeof (value as any).__rwsdk_response === "object" &&
-    (value as any).__rwsdk_response !== null &&
-    "type" in (value as any).__rwsdk_response
+    (value as any).__rwsdk_response !== null
   );
 }
 
-/**
- * Type guard to check if a value is a redirect response.
- */
-export function isRedirectResponse(
-  value: unknown,
-): value is Extract<RwsdkResponse, { __rwsdk_response: { type: "redirect" } }> {
-  return (
-    isRwsdkResponse(value) && value.__rwsdk_response.type === "redirect"
-  );
-}
+export type RedirectDecision =
+  | { kind: "none" }
+  | { kind: "redirect"; url: string; status: number };
+
+export type ActionResponseContext = {
+  result: unknown;
+  response?: RwsdkResponse;
+  redirect: RedirectDecision;
+};
 
 export type TransportContext = {
   setRscPayload: <Result>(v: Promise<ActionResponse<Result>>) => void;
@@ -63,6 +45,12 @@ export type TransportContext = {
    * after hydration/updates, e.g. warming navigation caches.
    */
   onHydrationUpdate?: () => void;
+  /**
+   * Optional callback invoked after an action result has been interpreted.
+   * Return true to signal that the action response (including redirects)
+   * has been handled and default behaviour should be skipped.
+   */
+  onActionResponse?: (ctx: ActionResponseContext) => boolean | void;
 };
 
 export type Transport = (context: TransportContext) => CallServerCallback;

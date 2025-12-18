@@ -24,13 +24,14 @@ export { initClientNavigation, navigate } from "./navigation.js";
 
 import { getCachedNavigationResponse } from "./navigationCache.js";
 
+import { interpretActionResult } from "./interpretActionResult.js";
 import type {
   ActionResponse,
+  ActionResponseContext,
   HydrationOptions,
   Transport,
   TransportContext,
 } from "./types";
-import { isRedirectResponse } from "./types";
 
 export const fetchTransport: Transport = (transportContext) => {
   const fetchCallServer = async <Result,>(
@@ -84,15 +85,19 @@ export const fetchTransport: Transport = (transportContext) => {
 
       transportContext.setRscPayload(streamData);
       const result = await streamData;
-      const actionResult = (result as { actionResult: Result }).actionResult;
+      const interpreted = interpretActionResult(
+        (result as { actionResult: Result }).actionResult,
+      );
 
-      // Check if the action result is a redirect response
-      if (isRedirectResponse(actionResult)) {
-        window.location.href = actionResult.__rwsdk_response.url;
+      const handledByHook =
+        transportContext.onActionResponse?.(interpreted) === true;
+
+      if (!handledByHook && interpreted.redirect.kind === "redirect") {
+        window.location.href = interpreted.redirect.url;
         return undefined;
       }
 
-      return actionResult;
+      return interpreted.result as Result;
     }
 
     // Original behavior when no handler is present
@@ -102,15 +107,19 @@ export const fetchTransport: Transport = (transportContext) => {
 
     transportContext.setRscPayload(streamData);
     const result = await streamData;
-    const actionResult = (result as { actionResult: Result }).actionResult;
+    const interpreted = interpretActionResult(
+      (result as { actionResult: Result }).actionResult,
+    );
 
-    // Check if the action result is a redirect response
-    if (isRedirectResponse(actionResult)) {
-      window.location.href = actionResult.__rwsdk_response.url;
+    const handledByHook =
+      transportContext.onActionResponse?.(interpreted) === true;
+
+    if (!handledByHook && interpreted.redirect.kind === "redirect") {
+      window.location.href = interpreted.redirect.url;
       return undefined;
     }
 
-    return actionResult;
+    return interpreted.result as Result;
   };
 
   return fetchCallServer;
@@ -124,7 +133,12 @@ export const fetchTransport: Transport = (transportContext) => {
  *
  * @param transport - Custom transport for server communication (defaults to fetchTransport)
  * @param hydrateRootOptions - Options passed to React's hydrateRoot
- * @param handleResponse - Custom response handler for navigation errors
+ * @param handleResponse - Custom response handler for navigation errors (navigation GETs)
+ * @param onHydrationUpdate - Callback invoked after a new RSC payload has been committed on the client
+ * @param onActionResponse - Optional hook invoked after a server action result has been interpreted;
+ *                           return true to signal that the action response (including redirects) has
+ *                           been handled and default behaviour (e.g. window.location for redirects)
+ *                           should be skipped
  *
  * @example
  * // Basic usage
@@ -154,16 +168,19 @@ export const initClient = async ({
   hydrateRootOptions,
   handleResponse,
   onHydrationUpdate,
+  onActionResponse,
 }: {
   transport?: Transport;
   hydrateRootOptions?: HydrationOptions;
   handleResponse?: (response: Response) => boolean;
   onHydrationUpdate?: () => void;
+  onActionResponse?: (ctx: ActionResponseContext) => boolean | void;
 } = {}) => {
   const transportContext: TransportContext = {
     setRscPayload: () => {},
     handleResponse,
     onHydrationUpdate,
+    onActionResponse,
   };
 
   let transportCallServer = transport(transportContext);

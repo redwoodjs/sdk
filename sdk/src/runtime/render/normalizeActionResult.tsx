@@ -40,35 +40,19 @@ function rechunkStream(
   });
 }
 
-/**
- * Checks if a status code indicates a redirect response.
- */
-function isRedirectStatus(status: number): boolean {
-  return status === 301 || status === 302 || status === 303 || status === 307 || status === 308;
-}
-
 export const normalizeActionResult = (actionResult: any) => {
   if (actionResult instanceof Response) {
-    const status = actionResult.status;
-    const location = actionResult.headers.get("Location");
+    const headers: Record<string, string> = {};
 
-    // Convert redirect responses to a serializable format
-    if (isRedirectStatus(status) && location) {
-      return {
-        __rwsdk_response: {
-          type: "redirect" as const,
-          url: location,
-          status,
-        },
-      };
-    }
+    actionResult.headers.forEach((value, key) => {
+      headers[key.toLowerCase()] = value;
+    });
 
-    // For other Response types, return a generic format
     return {
       __rwsdk_response: {
-        type: "other" as const,
-        status,
+        status: actionResult.status,
         statusText: actionResult.statusText,
+        headers,
       },
     };
   }
