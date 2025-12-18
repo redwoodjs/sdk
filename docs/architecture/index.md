@@ -1,4 +1,4 @@
-# RedwoodSDK architecture documentation 
+# RedwoodSDK architecture documentation
 
 This collection of documents provides a high-level overview of the core architectural concepts and mechanisms within the RedwoodSDK. They are intended to explain the "why" behind key design decisions, focusing on the problems encountered and the solutions implemented.
 

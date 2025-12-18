@@ -12,7 +12,21 @@ RedwoodSDK solves this by normalizing any `Response` object returned from a serv
 
 ### 1. Server-Side Normalization
 
-When a server action completes, the framework checks if the result is an instance of `Response`. If it is, it converts it into a special object wrapper:
+When a server action completes, the framework checks if the result is an instance of `Response`. If it is, it converts it into a special object wrapper.
+
+> **Note on `Response.redirect()`**: In development environments (running on Node.js), `Response.redirect()` requires an absolute URL. When using redirects in server actions, it is recommended to resolve relative paths against the current request URL:
+>
+> ```typescript
+> import { requestInfo } from "rwsdk/worker";
+>
+> export async function myAction() {
+>   const { request } = requestInfo;
+>   const url = new URL("/success", request.url);
+>   return Response.redirect(url.href, 302);
+> }
+> ```
+
+The framework then converts the response:
 
 ```typescript
 // Simplified normalization logic in the worker
