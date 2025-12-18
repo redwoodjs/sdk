@@ -21,15 +21,17 @@ export { default as React } from "react";
 export type { Dispatch, MutableRefObject, SetStateAction } from "react";
 export { ClientOnly } from "./ClientOnly.js";
 export { initClientNavigation, navigate } from "./navigation.js";
+export type { ActionResponseData } from "./types";
 
 import { getCachedNavigationResponse } from "./navigationCache.js";
-
 import type {
-  ActionResponse,
+  ActionResponseData,
   HydrationOptions,
+  RscActionResponse,
   Transport,
   TransportContext,
 } from "./types";
+import { isActionResponse } from "./types";
 
 export const fetchTransport: Transport = (transportContext) => {
   const fetchCallServer = async <Result,>(
@@ -79,21 +81,63 @@ export const fetchTransport: Transport = (transportContext) => {
       // Continue with the response if handler returned true
       const streamData = createFromFetch(Promise.resolve(response), {
         callServer: fetchCallServer,
-      }) as Promise<ActionResponse<Result>>;
+      }) as Promise<RscActionResponse<Result>>;
 
       transportContext.setRscPayload(streamData);
       const result = await streamData;
-      return (result as { actionResult: Result }).actionResult;
+      const rawActionResult = (result as { actionResult: Result }).actionResult;
+
+      if (isActionResponse(rawActionResult)) {
+        const actionResponse = rawActionResult.__rw_action_response;
+        const handledByHook =
+          transportContext.onActionResponse?.(actionResponse) === true;
+
+        if (!handledByHook) {
+          const location = actionResponse.headers["location"];
+          const isRedirect =
+            actionResponse.status >= 300 && actionResponse.status < 400;
+
+          if (location && isRedirect) {
+            window.location.href = location;
+            return undefined;
+          }
+        }
+
+        return rawActionResult as Result;
+      }
+
+      return rawActionResult as Result;
     }
 
     // Original behavior when no handler is present
     const streamData = createFromFetch(fetchPromise, {
       callServer: fetchCallServer,
-    }) as Promise<ActionResponse<Result>>;
+    }) as Promise<RscActionResponse<Result>>;
 
     transportContext.setRscPayload(streamData);
     const result = await streamData;
-    return (result as { actionResult: Result }).actionResult;
+    const rawActionResult = (result as { actionResult: Result }).actionResult;
+
+    if (isActionResponse(rawActionResult)) {
+      const actionResponse = rawActionResult.__rw_action_response;
+      const handledByHook =
+        transportContext.onActionResponse?.(actionResponse) === true;
+
+      if (!handledByHook) {
+        const location = actionResponse.headers["location"];
+        const isRedirect =
+          actionResponse.status >= 300 && actionResponse.status < 400;
+
+        if (location && isRedirect) {
+          window.location.href = location;
+          return undefined;
+        }
+      }
+
+      return rawActionResult as Result;
+    }
+
+    return rawActionResult as Result;
   };
 
   return fetchCallServer;
@@ -107,7 +151,11 @@ export const fetchTransport: Transport = (transportContext) => {
  *
  * @param transport - Custom transport for server communication (defaults to fetchTransport)
  * @param hydrateRootOptions - Options passed to React's hydrateRoot
- * @param handleResponse - Custom response handler for navigation errors
+ * @param handleResponse - Custom response handler for navigation errors (navigation GETs)
+ * @param onHydrationUpdate - Callback invoked after a new RSC payload has been committed on the client
+ * @param onActionResponse - Optional hook invoked when an action returns a Response;
+ *                           return true to signal that the response has been handled and
+ *                           default behaviour (e.g. redirects) should be skipped
  *
  * @example
  * // Basic usage
@@ -137,16 +185,19 @@ export const initClient = async ({
   hydrateRootOptions,
   handleResponse,
   onHydrationUpdate,
+  onActionResponse,
 }: {
   transport?: Transport;
   hydrateRootOptions?: HydrationOptions;
   handleResponse?: (response: Response) => boolean;
   onHydrationUpdate?: () => void;
+  onActionResponse?: (actionResponse: ActionResponseData) => boolean | void;
 } = {}) => {
   const transportContext: TransportContext = {
     setRscPayload: () => {},
     handleResponse,
     onHydrationUpdate,
+    onActionResponse,
   };
 
   let transportCallServer = transport(transportContext);

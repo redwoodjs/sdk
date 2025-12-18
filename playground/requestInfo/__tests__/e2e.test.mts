@@ -30,7 +30,7 @@ async function modifyFile(
   await writeFile(absolutePath, content);
 }
 
-testSDK(
+testSDK.dev(
   "requestInfo state is preserved across HMR and works in server actions",
   async ({ page, projectDir }) => {
     // 1. Comment out all the dynamic parts of the app
