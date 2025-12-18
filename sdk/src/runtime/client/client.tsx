@@ -30,6 +30,7 @@ import type {
   Transport,
   TransportContext,
 } from "./types";
+import { isRedirectResponse } from "./types";
 
 export const fetchTransport: Transport = (transportContext) => {
   const fetchCallServer = async <Result,>(
@@ -83,7 +84,15 @@ export const fetchTransport: Transport = (transportContext) => {
 
       transportContext.setRscPayload(streamData);
       const result = await streamData;
-      return (result as { actionResult: Result }).actionResult;
+      const actionResult = (result as { actionResult: Result }).actionResult;
+
+      // Check if the action result is a redirect response
+      if (isRedirectResponse(actionResult)) {
+        window.location.href = actionResult.__rwsdk_response.url;
+        return undefined;
+      }
+
+      return actionResult;
     }
 
     // Original behavior when no handler is present
@@ -93,7 +102,15 @@ export const fetchTransport: Transport = (transportContext) => {
 
     transportContext.setRscPayload(streamData);
     const result = await streamData;
-    return (result as { actionResult: Result }).actionResult;
+    const actionResult = (result as { actionResult: Result }).actionResult;
+
+    // Check if the action result is a redirect response
+    if (isRedirectResponse(actionResult)) {
+      window.location.href = actionResult.__rwsdk_response.url;
+      return undefined;
+    }
+
+    return actionResult;
   };
 
   return fetchCallServer;

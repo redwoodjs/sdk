@@ -3,7 +3,7 @@
 // prettier-ignore
 import { initClient } from "../../client/client";
 // prettier-ignore
-import { type ActionResponse,type Transport } from "../../client/types";
+import { type ActionResponse,type Transport, isRedirectResponse } from "../../client/types";
 // prettier-ignore
 import { createFromReadableStream } from "react-server-dom-webpack/client.browser";
 // prettier-ignore
@@ -154,7 +154,15 @@ export const realtimeTransport =
         }) as Promise<ActionResponse<unknown>>;
 
         transportContext.setRscPayload(rscPayload);
-        return (await rscPayload).actionResult as T | null;
+        const actionResult = (await rscPayload).actionResult as T | null;
+
+        // Check if the action result is a redirect response
+        if (actionResult && isRedirectResponse(actionResult)) {
+          window.location.href = actionResult.__rwsdk_response.url;
+          return null;
+        }
+
+        return actionResult;
       } catch (err) {
         throw err;
       }
