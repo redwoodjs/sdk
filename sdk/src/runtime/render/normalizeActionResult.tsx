@@ -42,17 +42,12 @@ function rechunkStream(
 
 export const normalizeActionResult = (actionResult: any) => {
   if (actionResult instanceof Response) {
-    const headers: Record<string, string> = {};
-
-    actionResult.headers.forEach((value, key) => {
-      headers[key.toLowerCase()] = value;
-    });
-
     return {
       __rw_action_response: {
         status: actionResult.status,
-        statusText: actionResult.statusText,
-        headers,
+        headers: {
+          location: actionResult.headers.get("location"),
+        },
       },
     };
   }

@@ -9,20 +9,19 @@ export type RscActionResponse<Result> = {
 };
 
 export type ActionResponseMeta = {
-  status: number;
-  statusText: string;
-  headers: Record<string, string>;
+  __rw_action_response: {
+    status: number;
+    headers: {
+      location: string | null;
+    };
+  };
 };
 
-export type ActionResponse = {
-  __rw_action_response: ActionResponseMeta;
-};
-
-export function isActionResponse(value: unknown): value is ActionResponse {
+export function isActionResponse(value: unknown): value is ActionResponseMeta {
   return (
     typeof value === "object" &&
     value !== null &&
-    "__rw_action_response" in (value as any) &&
+    "__rw_action_response" in value &&
     typeof (value as any).__rw_action_response === "object" &&
     (value as any).__rw_action_response !== null
   );
