@@ -49,7 +49,7 @@ export const normalizeActionResult = (actionResult: any) => {
     });
 
     return {
-      __rwsdk_response: {
+      __rw_action_response: {
         status: actionResult.status,
         statusText: actionResult.statusText,
         headers,

@@ -3,7 +3,11 @@
 // prettier-ignore
 import { initClient } from "../../client/client";
 // prettier-ignore
-import { type ActionResponse,type Transport } from "../../client/types";
+import {
+type RscActionResponse,
+type Transport,
+isActionResponse,
+} from "../../client/types";
 // prettier-ignore
 import { interpretActionResult } from "../../client/interpretActionResult.js";
 // prettier-ignore
@@ -153,22 +157,26 @@ export const realtimeTransport =
 
         const rscPayload = createFromReadableStream(streamForRsc!, {
           callServer: realtimeCallServer as any,
-        }) as Promise<ActionResponse<unknown>>;
+        }) as Promise<RscActionResponse<unknown>>;
 
         transportContext.setRscPayload(rscPayload);
-        const interpreted = interpretActionResult(
-          (await rscPayload).actionResult,
-        );
+        const rawActionResult = (await rscPayload).actionResult;
 
-        const handledByHook =
-          transportContext.onActionResponse?.(interpreted) === true;
+        if (isActionResponse(rawActionResult)) {
+          const interpreted = interpretActionResult(rawActionResult);
 
-        if (!handledByHook && interpreted.redirect.kind === "redirect") {
-          window.location.href = interpreted.redirect.url;
-          return null;
+          const handledByHook =
+            transportContext.onActionResponse?.(interpreted) === true;
+
+          if (!handledByHook && interpreted.redirect.kind === "redirect") {
+            window.location.href = interpreted.redirect.url;
+            return null;
+          }
+
+          return interpreted.result as T | null;
         }
 
-        return interpreted.result as T | null;
+        return rawActionResult as T | null;
       } catch (err) {
         throw err;
       }

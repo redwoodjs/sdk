@@ -22,16 +22,16 @@ export type { Dispatch, MutableRefObject, SetStateAction } from "react";
 export { ClientOnly } from "./ClientOnly.js";
 export { initClientNavigation, navigate } from "./navigation.js";
 
-import { getCachedNavigationResponse } from "./navigationCache.js";
-
 import { interpretActionResult } from "./interpretActionResult.js";
+import { getCachedNavigationResponse } from "./navigationCache.js";
 import type {
-  ActionResponse,
   ActionResponseContext,
   HydrationOptions,
+  RscActionResponse,
   Transport,
   TransportContext,
 } from "./types";
+import { isActionResponse } from "./types";
 
 export const fetchTransport: Transport = (transportContext) => {
   const fetchCallServer = async <Result,>(
@@ -81,13 +81,40 @@ export const fetchTransport: Transport = (transportContext) => {
       // Continue with the response if handler returned true
       const streamData = createFromFetch(Promise.resolve(response), {
         callServer: fetchCallServer,
-      }) as Promise<ActionResponse<Result>>;
+      }) as Promise<RscActionResponse<Result>>;
 
       transportContext.setRscPayload(streamData);
       const result = await streamData;
-      const interpreted = interpretActionResult(
-        (result as { actionResult: Result }).actionResult,
-      );
+      const rawActionResult = (result as { actionResult: Result }).actionResult;
+
+      if (isActionResponse(rawActionResult)) {
+        const interpreted = interpretActionResult(rawActionResult);
+
+        const handledByHook =
+          transportContext.onActionResponse?.(interpreted) === true;
+
+        if (!handledByHook && interpreted.redirect.kind === "redirect") {
+          window.location.href = interpreted.redirect.url;
+          return undefined;
+        }
+
+        return interpreted.result as Result;
+      }
+
+      return rawActionResult as Result;
+    }
+
+    // Original behavior when no handler is present
+    const streamData = createFromFetch(fetchPromise, {
+      callServer: fetchCallServer,
+    }) as Promise<RscActionResponse<Result>>;
+
+    transportContext.setRscPayload(streamData);
+    const result = await streamData;
+    const rawActionResult = (result as { actionResult: Result }).actionResult;
+
+    if (isActionResponse(rawActionResult)) {
+      const interpreted = interpretActionResult(rawActionResult);
 
       const handledByHook =
         transportContext.onActionResponse?.(interpreted) === true;
@@ -100,26 +127,7 @@ export const fetchTransport: Transport = (transportContext) => {
       return interpreted.result as Result;
     }
 
-    // Original behavior when no handler is present
-    const streamData = createFromFetch(fetchPromise, {
-      callServer: fetchCallServer,
-    }) as Promise<ActionResponse<Result>>;
-
-    transportContext.setRscPayload(streamData);
-    const result = await streamData;
-    const interpreted = interpretActionResult(
-      (result as { actionResult: Result }).actionResult,
-    );
-
-    const handledByHook =
-      transportContext.onActionResponse?.(interpreted) === true;
-
-    if (!handledByHook && interpreted.redirect.kind === "redirect") {
-      window.location.href = interpreted.redirect.url;
-      return undefined;
-    }
-
-    return interpreted.result as Result;
+    return rawActionResult as Result;
   };
 
   return fetchCallServer;

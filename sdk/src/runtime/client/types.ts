@@ -3,26 +3,26 @@ import type { CallServerCallback } from "react-server-dom-webpack/client.browser
 export type { HydrationOptions } from "react-dom/client";
 export type { CallServerCallback } from "react-server-dom-webpack/client.browser";
 
-export type ActionResponse<Result> = {
+export type RscActionResponse<Result> = {
   node: React.ReactNode;
   actionResult: Result;
 };
 
-export type RwsdkResponse = {
-  __rwsdk_response: {
+export type ActionResponse = {
+  __rw_action_response: {
     status: number;
     statusText: string;
     headers: Record<string, string>;
   };
 };
 
-export function isRwsdkResponse(value: unknown): value is RwsdkResponse {
+export function isActionResponse(value: unknown): value is ActionResponse {
   return (
     typeof value === "object" &&
     value !== null &&
-    "__rwsdk_response" in (value as any) &&
-    typeof (value as any).__rwsdk_response === "object" &&
-    (value as any).__rwsdk_response !== null
+    "__rw_action_response" in (value as any) &&
+    typeof (value as any).__rw_action_response === "object" &&
+    (value as any).__rw_action_response !== null
   );
 }
 
@@ -32,12 +32,12 @@ export type RedirectDecision =
 
 export type ActionResponseContext = {
   result: unknown;
-  response?: RwsdkResponse;
+  response?: ActionResponse;
   redirect: RedirectDecision;
 };
 
 export type TransportContext = {
-  setRscPayload: <Result>(v: Promise<ActionResponse<Result>>) => void;
+  setRscPayload: <Result>(v: Promise<RscActionResponse<Result>>) => void;
   handleResponse?: (response: Response) => boolean; // Returns false to stop normal processing
   /**
    * Optional callback invoked after a new RSC payload has been committed on the client.

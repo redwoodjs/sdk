@@ -1,23 +1,15 @@
-import {
-  isRwsdkResponse,
-  type RedirectDecision,
-  type RwsdkResponse,
-} from "./types";
+import type { ActionResponse, RedirectDecision } from "./types";
 
 export type InterpretedActionResult = {
-  result: unknown;
-  response?: RwsdkResponse;
+  result: ActionResponse;
+  response: ActionResponse;
   redirect: RedirectDecision;
 };
 
 export function interpretActionResult(
-  result: unknown,
+  result: ActionResponse,
 ): InterpretedActionResult {
-  if (!isRwsdkResponse(result)) {
-    return { result, redirect: { kind: "none" } };
-  }
-
-  const { status, headers } = result.__rwsdk_response;
+  const { status, headers } = result.__rw_action_response;
   const location = headers["location"];
 
   if (
