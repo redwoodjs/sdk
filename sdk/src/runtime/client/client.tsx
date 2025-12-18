@@ -94,15 +94,10 @@ export const fetchTransport: Transport = (transportContext) => {
 
         if (!handledByHook) {
           const location = actionResponse.headers["location"];
+          const isRedirect =
+            actionResponse.status >= 300 && actionResponse.status < 400;
 
-          if (
-            location &&
-            (actionResponse.status === 301 ||
-              actionResponse.status === 302 ||
-              actionResponse.status === 303 ||
-              actionResponse.status === 307 ||
-              actionResponse.status === 308)
-          ) {
+          if (location && isRedirect) {
             window.location.href = location;
             return undefined;
           }
@@ -130,15 +125,10 @@ export const fetchTransport: Transport = (transportContext) => {
 
       if (!handledByHook) {
         const location = actionResponse.headers["location"];
+        const isRedirect =
+          actionResponse.status >= 300 && actionResponse.status < 400;
 
-        if (
-          location &&
-          (actionResponse.status === 301 ||
-            actionResponse.status === 302 ||
-            actionResponse.status === 303 ||
-            actionResponse.status === 307 ||
-            actionResponse.status === 308)
-        ) {
+        if (location && isRedirect) {
           window.location.href = location;
           return undefined;
         }
