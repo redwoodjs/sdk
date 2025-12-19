@@ -8,14 +8,14 @@ export type SyncedStateClient = {
   unsubscribe(key: string, handler: (value: unknown) => void): Promise<void>;
 };
 
-let cachedClient: SyncedStateClient | null = null;
+// Map of endpoint URLs to their respective clients
+const clientCache = new Map<string, SyncedStateClient>();
 
-let cachedEndpoint = DEFAULT_SYNCED_STATE_PATH;
-
-// Track active subscriptions for cleanup on page reload
+// Track active subscriptions per client for cleanup on page reload
 type Subscription = {
   key: string;
   handler: (value: unknown) => void;
+  client: SyncedStateClient;
 };
 
 const activeSubscriptions = new Set<Subscription>();
@@ -23,7 +23,7 @@ const activeSubscriptions = new Set<Subscription>();
 // Set up beforeunload handler to unsubscribe all active subscriptions
 if (typeof window !== "undefined") {
   const handleBeforeUnload = () => {
-    if (activeSubscriptions.size === 0 || !cachedClient) {
+    if (activeSubscriptions.size === 0) {
       return;
     }
 
@@ -33,8 +33,8 @@ if (typeof window !== "undefined") {
     activeSubscriptions.clear();
 
     // Fire-and-forget unsubscribe calls - we can't await during beforeunload
-    for (const { key, handler } of subscriptions) {
-      void cachedClient.unsubscribe(key, handler).catch(() => {
+    for (const { key, handler, client } of subscriptions) {
+      void client.unsubscribe(key, handler).catch(() => {
         // Ignore errors during page unload - the connection will be closed anyway
       });
     }
@@ -50,24 +50,29 @@ if (typeof window !== "undefined") {
  * @returns RPC client instance.
  */
 export const getSyncedStateClient = (
-  endpoint: string = cachedEndpoint,
+  endpoint: string = DEFAULT_SYNCED_STATE_PATH,
 ): SyncedStateClient => {
-  if (cachedClient && endpoint === cachedEndpoint) {
-    return cachedClient;
+  // Return existing client if already cached for this endpoint
+  const existingClient = clientCache.get(endpoint);
+  if (existingClient) {
+    return existingClient;
   }
-  cachedEndpoint = endpoint;
 
   const baseClient = newWebSocketRpcSession(
-    cachedEndpoint,
+    endpoint,
   ) as unknown as SyncedStateClient;
 
   // Wrap the client using a Proxy to track subscriptions
   // The RPC client uses dynamic property access, so we can't use .bind()
-  cachedClient = new Proxy(baseClient, {
+  const wrappedClient = new Proxy(baseClient, {
     get(target, prop) {
       if (prop === "subscribe") {
         return async (key: string, handler: (value: unknown) => void) => {
-          const subscription: Subscription = { key, handler };
+          const subscription: Subscription = {
+            key,
+            handler,
+            client: wrappedClient,
+          };
           activeSubscriptions.add(subscription);
           return (target as any)[prop](key, handler);
         };
@@ -76,7 +81,11 @@ export const getSyncedStateClient = (
         return async (key: string, handler: (value: unknown) => void) => {
           // Find and remove the subscription
           for (const sub of activeSubscriptions) {
-            if (sub.key === key && sub.handler === handler) {
+            if (
+              sub.key === key &&
+              sub.handler === handler &&
+              sub.client === wrappedClient
+            ) {
               activeSubscriptions.delete(sub);
               break;
             }
@@ -89,7 +98,10 @@ export const getSyncedStateClient = (
     },
   }) as SyncedStateClient;
 
-  return cachedClient;
+  // Cache the client for this endpoint
+  clientCache.set(endpoint, wrappedClient);
+
+  return wrappedClient;
 };
 
 /**
@@ -99,43 +111,12 @@ export const getSyncedStateClient = (
  * @returns Cached client instance or `null` when running without `window`.
  */
 export const initSyncedStateClient = (options: { endpoint?: string } = {}) => {
-  cachedEndpoint = options.endpoint ?? DEFAULT_SYNCED_STATE_PATH;
+  const endpoint = options.endpoint ?? DEFAULT_SYNCED_STATE_PATH;
   if (typeof window === "undefined") {
     return null;
   }
-  const baseClient = newWebSocketRpcSession(
-    cachedEndpoint,
-  ) as unknown as SyncedStateClient;
-
-  // Wrap the client using a Proxy to track subscriptions
-  // The RPC client uses dynamic property access, so we can't use .bind()
-  cachedClient = new Proxy(baseClient, {
-    get(target, prop) {
-      if (prop === "subscribe") {
-        return async (key: string, handler: (value: unknown) => void) => {
-          const subscription: Subscription = { key, handler };
-          activeSubscriptions.add(subscription);
-          return (target as any)[prop](key, handler);
-        };
-      }
-      if (prop === "unsubscribe") {
-        return async (key: string, handler: (value: unknown) => void) => {
-          // Find and remove the subscription
-          for (const sub of activeSubscriptions) {
-            if (sub.key === key && sub.handler === handler) {
-              activeSubscriptions.delete(sub);
-              break;
-            }
-          }
-          return (target as any)[prop](key, handler);
-        };
-      }
-      // Pass through all other properties/methods
-      return (target as any)[prop];
-    },
-  }) as SyncedStateClient;
-
-  return cachedClient;
+  // Use getSyncedStateClient which now handles caching via Map
+  return getSyncedStateClient(endpoint);
 };
 
 /**
@@ -148,8 +129,10 @@ export const setSyncedStateClientForTesting = (
   client: SyncedStateClient | null,
   endpoint: string = DEFAULT_SYNCED_STATE_PATH,
 ) => {
-  cachedClient = client;
-  cachedEndpoint = endpoint;
+  if (client) {
+    clientCache.set(endpoint, client);
+  } else {
+    clientCache.delete(endpoint);
+  }
   activeSubscriptions.clear();
 };
-

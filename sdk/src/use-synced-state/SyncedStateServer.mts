@@ -1,19 +1,42 @@
 import { RpcStub, RpcTarget, newWorkersRpcResponse } from "capnweb";
 import { DurableObject } from "cloudflare:workers";
+import type { RequestInfo } from "../runtime/requestInfo/types";
 
 export type SyncedStateValue = unknown;
 
-type OnSetHandler = (key: string, value: SyncedStateValue, stub: DurableObjectStub<SyncedStateServer>) => void;
-type OnGetHandler = (key: string, value: SyncedStateValue | undefined, stub: DurableObjectStub<SyncedStateServer>) => void;
-type OnKeyHandler = (key: string, stub: DurableObjectStub<SyncedStateServer>) => Promise<string>;
-type OnSubscribeHandler = (key: string, stub: DurableObjectStub<SyncedStateServer>) => void;
-type OnUnsubscribeHandler = (key: string, stub: DurableObjectStub<SyncedStateServer>) => void;
+type OnSetHandler = (
+  key: string,
+  value: SyncedStateValue,
+  stub: DurableObjectStub<SyncedStateServer>,
+) => void;
+type OnGetHandler = (
+  key: string,
+  value: SyncedStateValue | undefined,
+  stub: DurableObjectStub<SyncedStateServer>,
+) => void;
+type OnKeyHandler = (
+  key: string,
+  stub: DurableObjectStub<SyncedStateServer>,
+) => Promise<string>;
+type OnRoomHandler = (
+  roomId: string | undefined,
+  requestInfo: RequestInfo | null,
+) => Promise<string>;
+type OnSubscribeHandler = (
+  key: string,
+  stub: DurableObjectStub<SyncedStateServer>,
+) => void;
+type OnUnsubscribeHandler = (
+  key: string,
+  stub: DurableObjectStub<SyncedStateServer>,
+) => void;
 
 /**
  * Durable Object that keeps shared state for multiple clients and notifies subscribers.
  */
 export class SyncedStateServer extends DurableObject {
   static #keyHandler: OnKeyHandler | null = null;
+  static #roomHandler: OnRoomHandler | null = null;
   static #setStateHandler: OnSetHandler | null = null;
   static #getStateHandler: OnGetHandler | null = null;
   static #subscribeHandler: OnSubscribeHandler | null = null;
@@ -30,7 +53,18 @@ export class SyncedStateServer extends DurableObject {
     return SyncedStateServer.#keyHandler;
   }
 
-  static registerNamespace(namespace: DurableObjectNamespace<SyncedStateServer>, durableObjectName?: string): void {
+  static registerRoomHandler(handler: OnRoomHandler | null): void {
+    SyncedStateServer.#roomHandler = handler;
+  }
+
+  static getRoomHandler(): OnRoomHandler | null {
+    return SyncedStateServer.#roomHandler;
+  }
+
+  static registerNamespace(
+    namespace: DurableObjectNamespace<SyncedStateServer>,
+    durableObjectName?: string,
+  ): void {
     SyncedStateServer.#namespace = namespace;
     if (durableObjectName) {
       SyncedStateServer.#durableObjectName = durableObjectName;
@@ -93,11 +127,10 @@ export class SyncedStateServer extends DurableObject {
     if (this.#stub) {
       return this.#stub;
     }
-    // Otherwise, try to get a stub from the registered namespace
+    // Otherwise, try to get a stub from the registered namespace using our own ID
     const namespace = SyncedStateServer.#namespace;
     if (namespace) {
-      const id = namespace.idFromName(SyncedStateServer.#durableObjectName);
-      return namespace.get(id);
+      return namespace.get(this.ctx.id);
     }
     return null;
   }
@@ -186,7 +219,10 @@ export class SyncedStateServer extends DurableObject {
 
   async fetch(request: Request): Promise<Response> {
     // Create a placeholder stub - it will be set by the worker via _setStub
-    const api = new CoordinatorApi(this, this.#stub || ({} as DurableObjectStub<SyncedStateServer>));
+    const api = new CoordinatorApi(
+      this,
+      this.#stub || ({} as DurableObjectStub<SyncedStateServer>),
+    );
     return newWorkersRpcResponse(request, api);
   }
 }
@@ -195,7 +231,10 @@ class CoordinatorApi extends RpcTarget {
   #coordinator: SyncedStateServer;
   #stub: DurableObjectStub<SyncedStateServer>;
 
-  constructor(coordinator: SyncedStateServer, stub: DurableObjectStub<SyncedStateServer>) {
+  constructor(
+    coordinator: SyncedStateServer,
+    stub: DurableObjectStub<SyncedStateServer>,
+  ) {
     super();
     this.#coordinator = coordinator;
     this.#stub = stub;

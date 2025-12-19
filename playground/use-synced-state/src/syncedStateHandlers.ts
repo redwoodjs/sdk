@@ -1,8 +1,16 @@
 import { SyncedStateServer } from "rwsdk/use-synced-state/worker";
 import { requestInfo } from "rwsdk/worker";
 
-// Ephemeral state mirror for validation
-export const globalState: Record<string, unknown> = {};
+// Ephemeral state mirror for validation, keyed by Durable Object ID
+export const globalStateMap: Map<string, Record<string, unknown>> = new Map();
+
+function getGlobalState(stub: DurableObjectStub<any>): Record<string, unknown> {
+  const id = stub.id.toString();
+  if (!globalStateMap.has(id)) {
+    globalStateMap.set(id, {});
+  }
+  return globalStateMap.get(id)!;
+}
 
 // Helper function to update presence list
 export async function updatePresenceList(
@@ -61,6 +69,7 @@ export function registerSyncedStateHandlers(
       }
       console.log("[setStateHandler]", { key, value });
       // Update the local globalState object
+      const globalState = getGlobalState(stub);
       globalState[key] = value;
       console.log(
         "[setStateHandler] updated globalState, allKeys:",
@@ -84,6 +93,7 @@ export function registerSyncedStateHandlers(
       }
       console.log("[getStateHandler]", { key, value });
       // Update the local globalState object with the retrieved value
+      const globalState = getGlobalState(stub);
       globalState[key] = value;
       console.log(
         "[getStateHandler] updated globalState, allKeys:",
@@ -91,6 +101,35 @@ export function registerSyncedStateHandlers(
       );
       // Sync to the Durable Object for client access
       void syncGlobalState(stub, globalState);
+    },
+  );
+
+  // Register roomHandler to demonstrate server-side room transformation
+  // This allows the server to map client-requested room IDs to actual Durable Object names
+  SyncedStateServer.registerRoomHandler(
+    async (roomId: string | undefined, reqInfo: any) => {
+      // Access userId from the request context
+      // The reqInfo parameter is the RequestInfo from the runtime, which has ctx
+      const userId = reqInfo?.ctx?.userId;
+
+      // If no roomId is provided, use the default
+      if (!roomId) {
+        return "syncedState";
+      }
+
+      // Transform "private" room requests to user-specific rooms
+      if (roomId === "private" && userId) {
+        return `user:${userId}`;
+      }
+
+      // Transform "shared" room requests to a common room
+      if (roomId === "shared") {
+        return "shared-room";
+      }
+
+      // For all other room IDs, pass them through as-is
+      // This allows explicit room names like "my-room" to work
+      return roomId;
     },
   );
 

@@ -20,6 +20,7 @@ type Setter<T> = (value: T | ((previous: T) => T)) => void;
 
 export type CreateSyncedStateHookOptions = {
   url?: string;
+  roomId?: string;
   hooks?: HookDeps;
 };
 
@@ -31,18 +32,20 @@ export type CreateSyncedStateHookOptions = {
 export const createSyncedStateHook = (
   options: CreateSyncedStateHookOptions = {},
 ) => {
-  const resolvedUrl = options.url ?? DEFAULT_SYNCED_STATE_PATH;
+  const basePath = options.url ?? DEFAULT_SYNCED_STATE_PATH;
   const deps = options.hooks ?? defaultDeps;
   const { useState, useEffect, useRef, useCallback } = deps;
 
   return function useSyncedState<T>(
     initialValue: T,
     key: string,
+    roomId: string | undefined = options.roomId,
   ): [T, Setter<T>] {
     if (typeof window === "undefined" && !options.hooks) {
       return [initialValue, () => {}];
     }
 
+    const resolvedUrl = roomId ? `${basePath}/${roomId}` : basePath;
     const client = getSyncedStateClient(resolvedUrl);
     const [value, setValue] = useState(initialValue);
     const valueRef = useRef(value);

@@ -1,8 +1,8 @@
 import { RpcTarget, newWorkersRpcResponse } from "capnweb";
 import { env } from "cloudflare:workers";
 import { route } from "../runtime/entries/router";
-import { runWithRequestInfo } from "../runtime/requestInfo/worker";
 import type { RequestInfo } from "../runtime/requestInfo/types";
+import { runWithRequestInfo } from "../runtime/requestInfo/worker";
 import {
   SyncedStateServer,
   type SyncedStateValue,
@@ -20,12 +20,22 @@ const DEFAULT_SYNC_STATE_NAME = "syncedState";
 
 class SyncedStateProxy extends RpcTarget {
   #stub: DurableObjectStub<SyncedStateServer>;
-  #keyHandler: ((key: string, stub: DurableObjectStub<SyncedStateServer>) => Promise<string>) | null;
+  #keyHandler:
+    | ((
+        key: string,
+        stub: DurableObjectStub<SyncedStateServer>,
+      ) => Promise<string>)
+    | null;
   #requestInfo: RequestInfo | null;
 
   constructor(
     stub: DurableObjectStub<SyncedStateServer>,
-    keyHandler: ((key: string, stub: DurableObjectStub<SyncedStateServer>) => Promise<string>) | null,
+    keyHandler:
+      | ((
+          key: string,
+          stub: DurableObjectStub<SyncedStateServer>,
+        ) => Promise<string>)
+      | null,
     requestInfo: RequestInfo | null,
   ) {
     super();
@@ -33,7 +43,7 @@ class SyncedStateProxy extends RpcTarget {
     this.#keyHandler = keyHandler;
     this.#requestInfo = requestInfo;
     // Set stub in DO instance so handlers can access it
-    if (stub && typeof (stub as any)._setStub === 'function') {
+    if (stub && typeof (stub as any)._setStub === "function") {
       void (stub as any)._setStub(stub);
     }
   }
@@ -134,27 +144,46 @@ export const syncedStateRoutes = (
   const durableObjectName =
     options.durableObjectName ?? DEFAULT_SYNC_STATE_NAME;
 
-  const forwardRequest = async (
-    request: Request,
-    requestInfo: RequestInfo,
-  ) => {
+  const forwardRequest = async (request: Request, requestInfo: RequestInfo) => {
     const namespace = getNamespace(env);
     // Register the namespace and DO name so handlers can access it
     SyncedStateServer.registerNamespace(namespace, durableObjectName);
-    
+
     const keyHandler = SyncedStateServer.getKeyHandler();
+    const roomHandler = SyncedStateServer.getRoomHandler();
+
+    // Get the room ID from the URL parameter, or undefined if not present
+    const idParam = requestInfo.params?.id;
+
+    // Resolve the room name using the roomHandler if present, otherwise use the param or default
+    let resolvedRoomName: string;
+    if (roomHandler) {
+      resolvedRoomName = await runWithRequestInfo(
+        requestInfo,
+        async () => await roomHandler(idParam, requestInfo),
+      );
+    } else {
+      resolvedRoomName = idParam ?? durableObjectName;
+    }
 
     if (!keyHandler) {
-      const id = namespace.idFromName(durableObjectName);
+      const id = namespace.idFromName(resolvedRoomName);
       return namespace.get(id).fetch(request);
     }
 
-    const id = namespace.idFromName(durableObjectName);
+    const id = namespace.idFromName(resolvedRoomName);
     const coordinator = namespace.get(id);
     const proxy = new SyncedStateProxy(coordinator, keyHandler, requestInfo);
 
     return newWorkersRpcResponse(request, proxy);
   };
 
-  return [route(basePath, (requestInfo) => forwardRequest(requestInfo.request, requestInfo))];
+  return [
+    route(basePath, (requestInfo) =>
+      forwardRequest(requestInfo.request, requestInfo),
+    ),
+    route(basePath + "/:id", (requestInfo) =>
+      forwardRequest(requestInfo.request, requestInfo),
+    ),
+  ];
 };
