@@ -20,6 +20,7 @@ type Setter<T> = (value: T | ((previous: T) => T)) => void;
 
 export type CreateSyncedStateHookOptions = {
   url?: string;
+  roomId?: string;
   hooks?: HookDeps;
 };
 
@@ -31,18 +32,20 @@ export type CreateSyncedStateHookOptions = {
 export const createSyncedStateHook = (
   options: CreateSyncedStateHookOptions = {},
 ) => {
-  const resolvedUrl = options.url ?? DEFAULT_SYNCED_STATE_PATH;
+  const basePath = options.url ?? DEFAULT_SYNCED_STATE_PATH;
   const deps = options.hooks ?? defaultDeps;
   const { useState, useEffect, useRef, useCallback } = deps;
 
   return function useSyncedState<T>(
     initialValue: T,
     key: string,
+    roomId: string | undefined = options.roomId,
   ): [T, Setter<T>] {
     if (typeof window === "undefined" && !options.hooks) {
       return [initialValue, () => {}];
     }
 
+    const resolvedUrl = roomId ? `${basePath}/${roomId}` : basePath;
     const client = getSyncedStateClient(resolvedUrl);
     const [value, setValue] = useState(initialValue);
     const valueRef = useRef(value);
@@ -81,7 +84,12 @@ export const createSyncedStateHook = (
 
       return () => {
         isActive = false;
-        void client.unsubscribe(key, handleUpdate);
+        // Call unsubscribe when component unmounts
+        // Page reloads are handled by the beforeunload event listener in client-core.ts
+        void client.unsubscribe(key, handleUpdate).catch((error) => {
+          // Log but don't throw - cleanup should not prevent unmounting
+          console.error("[useSyncedState] Error during unsubscribe:", error);
+        });
       };
     }, [client, key, setValue, valueRef]);
 
