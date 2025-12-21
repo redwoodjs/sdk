@@ -82,7 +82,7 @@ You need to tell Cloudflare about the Durable Object. Add the following to your 
 
 ### 3. Use the Hook
 
-Now you can use `useSyncedState` in your components. It works just like `useState`, but takes a second argument: a unique key.
+Now you can use `useSyncedState` in your components. It works just like `useState`, but takes a second argument: a unique key, and an optional third argument: a room ID.
 
 ```tsx title="src/components/SharedCounter.tsx"
 "use client";
@@ -91,6 +91,7 @@ import { useSyncedState } from "rwsdk/use-synced-state/client";
 
 export const SharedCounter = () => {
   // "counter" is the unique key for this piece of state
+  // Without a room ID, this state is global across all clients
   const [count, setCount] = useSyncedState(0, "counter");
 
   return (
@@ -104,21 +105,128 @@ export const SharedCounter = () => {
 
 Open this component in two different browser windows. When you click increment in one, it updates in the other instantly!
 
+### Rooms: Scoping State to Different Groups
+
+By default, state is global. But you can scope state to different "rooms" by passing a room ID as the third argument. This is useful for features like chat rooms, game sessions, or collaborative documents.
+
+```tsx title="src/components/RoomCounter.tsx"
+"use client";
+
+import { useSyncedState } from "rwsdk/use-synced-state/client";
+
+export const RoomCounter = ({ roomId }: { roomId: string }) => {
+  // State is scoped to this specific room
+  // Users in different rooms won't see each other's updates
+  const [count, setCount] = useSyncedState(0, "counter", roomId);
+
+  return (
+    <div>
+      <p>Room: {roomId}</p>
+      <p>Count: {count}</p>
+      <button onClick={() => setCount((c) => c + 1)}>Increment</button>
+    </div>
+  );
+};
+```
+
+When you use a room ID, state is isolated to that room. Users in `"room-1"` won't see updates from users in `"room-2"`.
+
 ---
 
 ## Advanced: Scoping and Persistence
 
-### Scoping State (e.g., per user or per room)
+### Scoping State with Room IDs vs Key Handlers
 
-By default, the key (e.g., "counter") is global. To scope it (e.g., so each user has their own counter), you can register a key handler in your worker.
+There are two ways to scope state:
+
+1. **Room IDs** (client-side): Pass a room ID as the third argument to `useSyncedState`. This is the simplest way to isolate state between different groups.
+
+2. **Key Handlers** (server-side): Transform keys on the server to add prefixes or scoping logic. This is useful when you need server-enforced scoping based on authentication or other server-side data.
+
+#### Using Room IDs (Client-Side)
+
+```tsx title="src/components/ChatRoom.tsx"
+"use client";
+
+import { useSyncedState } from "rwsdk/use-synced-state/client";
+
+export const ChatRoom = ({ roomId }: { roomId: string }) => {
+  // Each room has its own isolated state
+  const [messages, setMessages] = useSyncedState<string[]>([], "messages", roomId);
+  
+  // ... chat UI
+};
+```
+
+#### Using Key Handlers (Server-Side)
+
+Key handlers allow you to transform keys on the server, which is useful for server-enforced scoping:
 
 ```tsx title="src/worker.tsx"
-SyncedStateServer.registerKeyHandler(async (key) => {
-  // Example: scope by user ID from session
-  // const session = await getSession();
-  // return `user:${session.userId}:${key}`;
+import { requestInfo } from "rwsdk/worker";
+
+SyncedStateServer.registerKeyHandler(async (key, stub) => {
+  // Access user ID from request context
+  const userId = requestInfo.ctx.userId;
+  
+  // Scope keys that start with "user:" to the current user
+  if (key.startsWith("user:")) {
+    return `${key}:${userId}`;
+  }
+  
   return key;
 });
+```
+
+Then in your component:
+
+```tsx title="src/components/UserSettings.tsx"
+"use client";
+
+import { useSyncedState } from "rwsdk/use-synced-state/client";
+
+export const UserSettings = () => {
+  // The key handler will transform this to "user:settings:123" (where 123 is the userId)
+  // Each user gets their own isolated settings
+  const [settings, setSettings] = useSyncedState({}, "user:settings");
+  
+  // ... settings UI
+};
+```
+
+#### Server-Side Room Transformation
+
+You can also transform room IDs on the server using a room handler. This is useful for features like "private" rooms that should be scoped per user:
+
+```tsx title="src/worker.tsx"
+import { requestInfo } from "rwsdk/worker";
+
+SyncedStateServer.registerRoomHandler(async (roomId, reqInfo) => {
+  const userId = reqInfo?.ctx?.userId;
+  
+  // Transform "private" room requests to user-specific rooms
+  if (roomId === "private" && userId) {
+    return `user:${userId}`;
+  }
+  
+  // Pass through other room IDs as-is
+  return roomId ?? "syncedState";
+});
+```
+
+Then clients can request a "private" room, and the server will automatically scope it to the current user:
+
+```tsx title="src/components/PrivateNotes.tsx"
+"use client";
+
+import { useSyncedState } from "rwsdk/use-synced-state/client";
+
+export const PrivateNotes = () => {
+  // Server transforms "private" to "user:${userId}" automatically
+  const [notes, setNotes] = useSyncedState("", "notes", "private");
+  
+  // ... notes UI
+};
 ```
 
 ### Persisting State
