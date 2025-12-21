@@ -20,8 +20,6 @@ import { generateNonce } from "./lib/utils";
 
 export * from "./requestInfo/types";
 
-
-
 declare global {
   type Env = {
     ASSETS: Fetcher;
@@ -50,8 +48,6 @@ export const defineApp = <
     __rwRoutes: routes,
     fetch: async (request: Request, env: Env, cf: ExecutionContext) => {
       globalThis.__webpack_require__ = ssrWebpackRequire;
-
-      console.log('test')
 
       const router = defineRoutes<T>(routes);
 
