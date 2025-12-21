@@ -39,10 +39,8 @@ testDevAndDeploy(
       return true;
     });
 
-    const getButton = () =>
-      page.waitForSelector('[data-testid="button-solid"]');
-
     // Test button is clickable
-    (await getButton())?.click();
+    const button = await page.waitForSelector('[data-testid="button-solid"]');
+    await button?.click();
   },
 );

@@ -72,8 +72,8 @@ interface DeploymentInstance {
 }
 
 // Environment variable flags for skipping tests
-const SKIP_DEV_SERVER_TESTS = process.env.RWSDK_SKIP_DEV === "1";
-const SKIP_DEPLOYMENT_TESTS = process.env.RWSDK_SKIP_DEPLOY === "1";
+export const SKIP_DEV_SERVER_TESTS = process.env.RWSDK_SKIP_DEV === "1";
+export const SKIP_DEPLOYMENT_TESTS = process.env.RWSDK_SKIP_DEPLOY === "1";
 
 // Global test environment state
 let globalDevPlaygroundEnv: PlaygroundEnvironment | null = null;
@@ -531,6 +531,13 @@ type SDKRunner = (
   }) => Promise<void>,
 ) => void;
 
+type SDKRunnerWithHelpers = SDKRunner & {
+  only: SDKRunner;
+  skip: typeof test.skip;
+  dev: SDKRunner;
+  deploy: SDKRunner;
+};
+
 function createTestRunner(
   testFn: (typeof test | typeof test.only)["concurrent"],
   envType: "dev" | "deploy",
@@ -645,10 +652,7 @@ function createTestRunner(
  * Creates a low-level test runner that provides utilities for creating
  * tests that need to perform setup actions before the server starts.
  */
-function createSDKTestRunner(): SDKRunner & {
-  only: SDKRunner;
-  skip: typeof test.skip;
-} {
+function createSDKTestRunner(): SDKRunnerWithHelpers {
   const internalRunner = (testFn: typeof test | typeof test.only) => {
     return (
       name: string,
@@ -738,13 +742,31 @@ function createSDKTestRunner(): SDKRunner & {
   };
 
   const main = internalRunner(test);
+
+  // Helper method for dev-specific tests that respects SKIP_DEV_SERVER_TESTS
+  const dev: SDKRunner = (name: string, testLogic) => {
+    if (SKIP_DEV_SERVER_TESTS) {
+      test.skip(`${name} (dev)`, () => {});
+      return;
+    }
+    return main(`${name} (dev)`, testLogic);
+  };
+
+  // Helper method for deploy-specific tests that respects SKIP_DEPLOYMENT_TESTS
+  const deploy: SDKRunner = (name: string, testLogic) => {
+    if (SKIP_DEPLOYMENT_TESTS) {
+      test.skip(`${name} (deployment)`, () => {});
+      return;
+    }
+    return main(`${name} (deployment)`, testLogic);
+  };
+
   return Object.assign(main, {
     only: internalRunner(test.only),
     skip: test.skip,
-  }) as unknown as SDKRunner & {
-    only: SDKRunner;
-    skip: typeof test.skip;
-  };
+    dev,
+    deploy,
+  }) as SDKRunnerWithHelpers;
 }
 
 export const testSDK = createSDKTestRunner();
