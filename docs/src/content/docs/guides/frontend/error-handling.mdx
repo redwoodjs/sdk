@@ -20,23 +20,28 @@ These APIs are available through the `hydrateRootOptions` parameter in `initClie
 
 ### `onUncaughtError`
 
-Use `onUncaughtError` for errors that are not caught by error boundaries:
+Use `onUncaughtError` for errors that occur during the React lifecycle but are not caught by error boundaries:
 
-- Async errors in components (e.g., in `useEffect`, promises, timers)
-- Event handler errors
-- Errors in callbacks outside the React tree
-- Any error that escapes error boundaries
+- Errors during initial hydration or rendering.
+- Errors inside `useEffect` or other lifecycle hooks.
+- Errors during React transitions.
 
-```tsx title="Example: Uncaught error in event handler"
+:::caution
+Errors in imperative event handlers (e.g., `onClick`) or asynchronous timers (e.g., `setTimeout`) often bubble directly to the browser and may not be caught by `onUncaughtError`. For these, you should use global browser handlers (see [Universal Error Handling](#universal-error-handling) below).
+:::
+
+```tsx title="Example: Uncaught error in lifecycle"
 "use client";
 
-export function Button() {
-  const handleClick = () => {
-    // This error will trigger onUncaughtError
-    throw new Error("Button click error");
-  };
+import { useEffect } from "react";
 
-  return <button onClick={handleClick}>Click me</button>;
+export function Component() {
+  useEffect(() => {
+    // This error will trigger onUncaughtError
+    throw new Error("Lifecycle error");
+  }, []);
+
+  return <div>Component</div>;
 }
 ```
 
@@ -88,6 +93,48 @@ initClient({
 ```
 
 3. The error handlers will now catch and log all React errors in your application.
+
+## Universal Error Handling
+
+To ensure that *all* client-side errors (including event handlers, timeouts, and promise rejections) are caught and handled uniformly, you should combine React's error handlers with global browser listeners.
+
+This pattern is particularly useful for redirecting users to a dedicated error page on any fatal error:
+
+```tsx title="src/client.tsx"
+import { initClient } from "rwsdk/client";
+
+const redirectToError = () => {
+  // Use replace to avoid keeping the broken page in history
+  window.location.replace("/error");
+};
+
+// 1. Catch imperative errors (event handlers, timeouts, etc.)
+window.addEventListener("error", (event) => {
+  console.error("Global error caught:", event.message);
+  redirectToError();
+});
+
+// 2. Catch unhandled promise rejections
+window.addEventListener("unhandledrejection", (event) => {
+  console.error("Unhandled promise rejection:", event.reason);
+  redirectToError();
+});
+
+initClient({
+  hydrateRootOptions: {
+    // 3. Catch React-specific uncaught errors (rendering, hydration)
+    onUncaughtError: (error, errorInfo) => {
+      console.error("React uncaught error:", error, errorInfo);
+      redirectToError();
+    },
+    // 4. Catch errors caught by error boundaries
+    onCaughtError: (error, errorInfo) => {
+      console.error("React caught error:", error, errorInfo);
+      redirectToError();
+    },
+  },
+});
+```
 
 ## Integration with Monitoring Services
 
@@ -296,17 +343,18 @@ For server-side rendering errors, use the router's error handling (see [router e
 
 ### What These APIs Handle
 
-- Component rendering errors (post-hydration)
-- Event handler errors
-- Async operation errors in components
-- Errors that escape error boundaries
+- Component rendering errors (post-hydration).
+- Errors inside `useEffect` or other lifecycle methods.
+- Errors during React transitions.
+- Errors that escape error boundaries.
 
-### What They Don't Handle
+### What They Don't Handle Reliably
 
-- Server-side RSC rendering errors (use [router error handling](/reference/sdk-router/#error-handling) or wrap `defineApp`'s `fetch` method)
-- Router-level errors (use [router error handling](/reference/sdk-router/#error-handling) or wrap `defineApp`'s `fetch` method)
-- SSR errors (handled server-side)
-- Network request errors (unless in React components)
+- **Imperative event handlers**: Errors in `onClick`, `onBlur`, etc., often bubble directly to the browser.
+- **Asynchronous code**: `setTimeout`, `setInterval`, or third-party callbacks outside of React's control.
+- **Unhandled rejections**: Promise failures that are not part of a React transition.
+- **Server-side RSC rendering errors**: Use [router error handling](/reference/sdk-router/#error-handling) or wrap `defineApp`'s `fetch` method.
+- **SSR errors**: Handled server-side.
 
 <Aside type="tip">
   For server-side error handling, see the [router documentation on error
