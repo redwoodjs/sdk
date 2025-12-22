@@ -38,6 +38,17 @@ export function Home({ ctx }: RequestInfo) {
       <a href="/about" id="about-link">
         Go to About Page with Link
       </a>
+
+      <nav style={{ marginTop: "2rem" }}>
+        <h2>Suspense Pages</h2>
+        <a href="/suspense-one" id="suspense-one-link">
+          Go to Suspense Page One
+        </a>
+        <br />
+        <a href="/suspense-two" id="suspense-two-link">
+          Go to Suspense Page Two
+        </a>
+      </nav>
     </div>
   );
 }
