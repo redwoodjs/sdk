@@ -43,6 +43,16 @@ export default {
       if (error instanceof ErrorResponse) {
         return new Response(error.message, { status: error.code });
       }
+
+      // Send to monitoring service asynchronously
+      // Use waitUntil to prevent the worker from being killed
+      // before the async operation completes
+      ctx.waitUntil(
+        sendToMonitoring(error).catch((monitoringError) => {
+          console.error("Failed to send error to monitoring:", monitoringError);
+        }),
+      );
+
       // Log and return generic error response
       console.error("Unhandled error:", error);
       return new Response("Internal Server Error", { status: 500 });
@@ -50,6 +60,8 @@ export default {
   },
 };
 ```
+
+**Note**: When sending errors to monitoring services, use `ctx.waitUntil()` to ensure the worker doesn't terminate before async operations complete.
 
 For more details on error handling, see the [router error handling documentation](/reference/sdk-router/#error-handling).
 

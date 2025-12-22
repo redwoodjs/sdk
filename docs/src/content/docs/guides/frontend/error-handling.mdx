@@ -305,8 +305,8 @@ For server-side rendering errors, use the router's error handling (see [router e
 
 ### What They Don't Handle
 
-- Server-side RSC rendering errors (use router's `onError` callback)
-- Router-level errors (use router's `onError` callback)
+- Server-side RSC rendering errors (use [router error handling](/reference/sdk-router/#error-handling) or wrap `defineApp`'s `fetch` method)
+- Router-level errors (use [router error handling](/reference/sdk-router/#error-handling) or wrap `defineApp`'s `fetch` method)
 - SSR errors (handled server-side)
 - Network request errors (unless in React components)
 

@@ -232,7 +232,15 @@ export default {
 
       // Log error to monitoring service
       console.error("Unhandled error:", error);
-      // sendToMonitoring(error);
+
+      // Send to monitoring service asynchronously
+      // Use waitUntil to prevent the worker from being killed
+      // before the async operation completes
+      ctx.waitUntil(
+        sendToMonitoring(error).catch((monitoringError) => {
+          console.error("Failed to send error to monitoring:", monitoringError);
+        }),
+      );
 
       // Return a generic error response
       return new Response("Internal Server Error", { status: 500 });
@@ -241,10 +249,12 @@ export default {
 };
 ```
 
+**Important**: When sending errors to monitoring services (Sentry, DataDog, etc.), these calls are often async. Use `ctx.waitUntil()` from Cloudflare's `ExecutionContext` to ensure the worker doesn't terminate before the async operation completes. Without `waitUntil`, the worker may be killed before the monitoring service receives the error.
+
 This pattern allows you to:
 
 - Catch all errors that escape route handlers and middleware
-- Send errors to monitoring services (Sentry, DataDog, etc.)
+- Send errors to monitoring services (Sentry, DataDog, etc.) without blocking the response
 - Return consistent error responses
 - Prevent unhandled exceptions from reaching Cloudflare Workers
 
