@@ -277,30 +277,22 @@ onUncaughtError: (error, errorInfo) => {
 
 ## Relationship to Error Boundaries
 
-Error boundaries and root-level error handlers serve different purposes:
+Error boundaries are React components that catch errors in their child component tree. However, they have important limitations in a React Server Components (RSC) world:
 
-- **Error Boundaries**: Catch errors in component trees and render fallback UI
-- **Root Error Handlers**: Catch all errors (including those that escape boundaries) for monitoring and logging
+- **Client-only**: Error boundaries only work in client components (`"use client"`), not in server components
+- **Forces client components**: Using error boundaries requires nesting components inside them, which forces all child components to be client components, defeating the purpose of RSC
+- **Limited placement**: In RSC architectures, there's often no good place to wrap server components with error boundaries since they render on the server
+- **Post-hydration only**: Error boundaries only catch errors after client-side hydration, not during initial server rendering
 
-You should use both:
+Root-level error handlers (`onUncaughtError` and `onCaughtError`) are more suitable for RSC applications because they:
 
-```tsx title="Example: Using both error boundaries and root handlers"
-"use client";
+- Work for both server-rendered and client-rendered errors (post-hydration)
+- Don't require wrapping components or converting them to client components
+- Catch errors that escape error boundaries
+- Provide a single place to handle all React errors for monitoring and logging
+- Preserve the benefits of RSC by not forcing components to be client components
 
-export function ErrorBoundary({ children }: { children: React.ReactNode }) {
-  return (
-    <React.ErrorBoundary
-      fallback={<div>Something went wrong</div>}
-      onError={(error, errorInfo) => {
-        // This will trigger onCaughtError in initClient
-        console.log("Error boundary caught:", error);
-      }}
-    >
-      {children}
-    </React.ErrorBoundary>
-  );
-}
-```
+For server-side rendering errors, use the router's error handling (see [router error handling documentation](/reference/sdk-router/#error-handling)).
 
 ## Scope and Limitations
 
@@ -348,34 +340,7 @@ initClient({
 });
 ```
 
-### Pattern 2: Error Rate Limiting
-
-```tsx title="src/client.tsx"
-import { initClient } from "rwsdk/client";
-
-let errorCount = 0;
-const MAX_ERRORS = 10;
-const RESET_INTERVAL = 60000; // 1 minute
-
-setInterval(() => {
-  errorCount = 0;
-}, RESET_INTERVAL);
-
-initClient({
-  hydrateRootOptions: {
-    onUncaughtError: (error, errorInfo) => {
-      errorCount++;
-      if (errorCount <= MAX_ERRORS) {
-        sendToMonitoring(error, errorInfo);
-      } else if (errorCount === MAX_ERRORS + 1) {
-        console.warn("Error rate limit exceeded. Suppressing further errors.");
-      }
-    },
-  },
-});
-```
-
-### Pattern 3: User Feedback
+### Pattern 2: User Feedback
 
 ```tsx title="src/client.tsx"
 import { initClient } from "rwsdk/client";
@@ -407,4 +372,4 @@ React 19's error handling APIs provide powerful tools for monitoring and handlin
 - Implement custom recovery strategies
 - Improve debugging with component stacks
 
-Remember to use these APIs alongside error boundaries for comprehensive error handling in your RedwoodSDK application.
+These root-level error handlers are particularly well-suited for React Server Components applications, where traditional error boundaries have limited utility.

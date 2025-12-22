@@ -73,6 +73,17 @@ route("/api/search", {
 - Unsupported methods return `405 Method Not Allowed` with `Allow` header
 - Use `config.disableOptions` or `config.disable405` to opt out
 
+## Important Notes
+
+**HEAD Requests**: Unlike Express.js, RedwoodSDK does not automatically map HEAD requests to GET handlers. You must explicitly define a HEAD handler if you want to support HEAD requests.
+
+```ts
+route("/api/users", {
+  get: getHandler,
+  head: getHandler, // Explicitly provide HEAD handler
+});
+```
+
 ## `prefix`
 
 The `prefix` function is used to modify the matched string of a group of routes, by adding a prefix to the matched string. This essentially allows you to group related functionality into a seperate file, import those routes and place it into your `defineApp` function.
@@ -188,26 +199,66 @@ route("/api/users", async ({ request }) => {
 
 Errors that occur during React Server Component rendering are automatically caught and handled. These errors are logged and the request is rejected, which will be caught by the outer error handler in `defineApp`.
 
+### Global Error Handling
+
+You can wrap the `fetch` method exposed by `defineApp` to handle all errors globally:
+
+```ts title="src/worker.tsx"
+import { defineApp, ErrorResponse } from "rwsdk/worker";
+import { route } from "rwsdk/router";
+
+const app = defineApp([
+  route("/", () => <HomePage />),
+  route("/api/users", async () => {
+    // This might throw an error
+    const users = await fetchUsers();
+    return Response.json(users);
+  }),
+]);
+
+export default {
+  fetch: async (request: Request, env: Env, ctx: ExecutionContext) => {
+    try {
+      return await app.fetch(request, env, ctx);
+    } catch (error) {
+      // Handle all unhandled errors globally
+      if (error instanceof ErrorResponse) {
+        return new Response(error.message, { status: error.code });
+      }
+
+      if (error instanceof Response) {
+        return error;
+      }
+
+      // Log error to monitoring service
+      console.error("Unhandled error:", error);
+      // sendToMonitoring(error);
+
+      // Return a generic error response
+      return new Response("Internal Server Error", { status: 500 });
+    }
+  },
+};
+```
+
+This pattern allows you to:
+
+- Catch all errors that escape route handlers and middleware
+- Send errors to monitoring services (Sentry, DataDog, etc.)
+- Return consistent error responses
+- Prevent unhandled exceptions from reaching Cloudflare Workers
+
 ### Unhandled Errors
 
-If an error is thrown that is not an `ErrorResponse` or `Response` instance, RedwoodSDK will:
+If an error is thrown that is not an `ErrorResponse` or `Response` instance, and you haven't wrapped the `fetch` method, RedwoodSDK will:
 
 1. Log the error to the console
 2. Re-throw the error (which will surface as an unhandled exception in Cloudflare Workers)
 
-To prevent unhandled exceptions, always wrap potentially failing code in try-catch blocks and either:
+To prevent unhandled exceptions, you can either:
 
-- Return an `ErrorResponse` for structured errors
-- Return a `Response` for custom error responses
-- Handle the error gracefully within your route handler
-
-## Important Notes
-
-**HEAD Requests**: Unlike Express.js, RedwoodSDK does not automatically map HEAD requests to GET handlers. You must explicitly define a HEAD handler if you want to support HEAD requests.
-
-```ts
-route("/api/users", {
-  get: getHandler,
-  head: getHandler, // Explicitly provide HEAD handler
-});
-```
+- Wrap the `fetch` method from `defineApp` (recommended for global error handling)
+- Wrap potentially failing code in try-catch blocks within route handlers and either:
+  - Return an `ErrorResponse` for structured errors
+  - Return a `Response` for custom error responses
+  - Handle the error gracefully within your route handler

@@ -21,11 +21,37 @@ This is the shape of a RedwoodSDK Worker:
 ```ts
 import { defineApp } from "rwsdk/worker";
 
-const app = defineApp();
+const app = defineApp([/* routes */]);
 export default {
   fetch: app.fetch,
 };
 ```
+
+You can also wrap the `fetch` method to add global error handling:
+
+```ts
+import { defineApp, ErrorResponse } from "rwsdk/worker";
+
+const app = defineApp([/* routes */]);
+
+export default {
+  fetch: async (request: Request, env: Env, ctx: ExecutionContext) => {
+    try {
+      return await app.fetch(request, env, ctx);
+    } catch (error) {
+      // Handle all unhandled errors globally
+      if (error instanceof ErrorResponse) {
+        return new Response(error.message, { status: error.code });
+      }
+      // Log and return generic error response
+      console.error("Unhandled error:", error);
+      return new Response("Internal Server Error", { status: 500 });
+    }
+  },
+};
+```
+
+For more details on error handling, see the [router error handling documentation](/reference/sdk-router/#error-handling).
 
 ## `defineApp`
 
