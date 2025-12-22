@@ -150,8 +150,9 @@ export const fetchTransport: Transport = (transportContext) => {
  * making the page interactive. Call this from your client entry point.
  *
  * @param transport - Custom transport for server communication (defaults to fetchTransport)
- * @param hydrateRootOptions - Options passed directly to React's `hydrateRoot`. Supports all React hydration options including:
- *                             - `onUncaughtError`: Handler for uncaught errors (async errors, event handler errors)
+ * @param hydrateRootOptions - Options passed to React's `hydrateRoot`. Supports all React hydration options including:
+ *                             - `onUncaughtError`: Handler for uncaught errors (async errors, event handler errors).
+ *                               If not provided, defaults to logging errors to console.
  *                             - `onCaughtError`: Handler for errors caught by error boundaries
  *                             - `onRecoverableError`: Handler for recoverable errors
  * @param handleResponse - Custom response handler for navigation errors (navigation GETs)
@@ -276,7 +277,16 @@ export const initClient = async ({
     );
   }
 
-  hydrateRoot(rootEl, <Content />, hydrateRootOptions ?? {});
+  hydrateRoot(rootEl, <Content />, {
+    onUncaughtError: (error, { componentStack }) => {
+      console.error(
+        "Uncaught error: %O\n\nComponent stack:%s",
+        error,
+        componentStack,
+      );
+    },
+    ...hydrateRootOptions,
+  });
 
   if (import.meta.hot) {
     import.meta.hot.on("rsc:update", (e: { file: string }) => {
