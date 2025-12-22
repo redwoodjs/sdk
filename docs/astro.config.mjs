@@ -100,6 +100,7 @@ export default defineConfig({
                   label: "Client Side Navigation (SPA)",
                   slug: "guides/frontend/client-side-nav",
                 },
+                { label: "Dark / Light Mode", slug: "guides/frontend/dark-mode" },
               ],
             },
             {
