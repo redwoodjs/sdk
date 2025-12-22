@@ -63,7 +63,10 @@ testDevAndDeploy(
       const errorMessage = await Promise.race([
         consoleErrorPromise,
         new Promise<string>((_, reject) =>
-          setTimeout(() => reject(new Error("Timeout waiting for error")), 5000),
+          setTimeout(
+            () => reject(new Error("Timeout waiting for error")),
+            5000,
+          ),
         ),
       ]);
 
@@ -106,7 +109,10 @@ testDevAndDeploy(
       const errorMessage = await Promise.race([
         consoleErrorPromise,
         new Promise<string>((_, reject) =>
-          setTimeout(() => reject(new Error("Timeout waiting for error")), 5000),
+          setTimeout(
+            () => reject(new Error("Timeout waiting for error")),
+            5000,
+          ),
         ),
       ]);
 
