@@ -1157,12 +1157,19 @@ describe("defineRoutes - Request Handling Behavior", () => {
       };
 
       const errorHandler = except((error) => {
-        return new Response(`Caught: ${error instanceof Error ? error.message : String(error)}`, {
-          status: 500,
-        });
+        return new Response(
+          `Caught: ${error instanceof Error ? error.message : String(error)}`,
+          {
+            status: 500,
+          },
+        );
       });
 
-      const router = defineRoutes([middleware, errorHandler, route("/test/", () => React.createElement("div"))]);
+      const router = defineRoutes([
+        middleware,
+        errorHandler,
+        route("/test/", () => React.createElement("div")),
+      ]);
 
       const deps = createMockDependencies();
       deps.mockRequestInfo.request = new Request("http://localhost:3000/test/");
@@ -1188,9 +1195,12 @@ describe("defineRoutes - Request Handling Behavior", () => {
       };
 
       const errorHandler = except((error) => {
-        return new Response(`Caught: ${error instanceof Error ? error.message : String(error)}`, {
-          status: 500,
-        });
+        return new Response(
+          `Caught: ${error instanceof Error ? error.message : String(error)}`,
+          {
+            status: 500,
+          },
+        );
       });
 
       const router = defineRoutes([
@@ -1222,9 +1232,12 @@ describe("defineRoutes - Request Handling Behavior", () => {
       };
 
       const errorHandler = except((error) => {
-        return new Response(`Caught: ${error instanceof Error ? error.message : String(error)}`, {
-          status: 500,
-        });
+        return new Response(
+          `Caught: ${error instanceof Error ? error.message : String(error)}`,
+          {
+            status: 500,
+          },
+        );
       });
 
       const router = defineRoutes([
@@ -1252,9 +1265,12 @@ describe("defineRoutes - Request Handling Behavior", () => {
     it("should catch errors from RSC actions", async () => {
       const errorMessage = "RSC action error";
       const errorHandler = except((error) => {
-        return new Response(`Caught: ${error instanceof Error ? error.message : String(error)}`, {
-          status: 500,
-        });
+        return new Response(
+          `Caught: ${error instanceof Error ? error.message : String(error)}`,
+          {
+            status: 500,
+          },
+        );
       });
 
       const router = defineRoutes([
@@ -1331,9 +1347,12 @@ describe("defineRoutes - Request Handling Behavior", () => {
       });
 
       const secondHandler = except((error) => {
-        return new Response(`Caught by second: ${error instanceof Error ? error.message : String(error)}`, {
-          status: 500,
-        });
+        return new Response(
+          `Caught by second: ${error instanceof Error ? error.message : String(error)}`,
+          {
+            status: 500,
+          },
+        );
       });
 
       const PageComponent = () => {
@@ -1361,7 +1380,9 @@ describe("defineRoutes - Request Handling Behavior", () => {
 
       // Should catch the error from the first handler with the second handler
       expect(response.status).toBe(500);
-      expect(await response.text()).toBe("Caught by second: First handler error");
+      expect(await response.text()).toBe(
+        "Caught by second: First handler error",
+      );
     });
 
     it("should return JSX element from except handler", async () => {
@@ -1402,28 +1423,31 @@ describe("defineRoutes - Request Handling Behavior", () => {
     it("should work with prefix and layout", async () => {
       const errorMessage = "Route error";
       const errorHandler = except((error) => {
-        return new Response(`Caught: ${error instanceof Error ? error.message : String(error)}`, {
-          status: 500,
-        });
+        return new Response(
+          `Caught: ${error instanceof Error ? error.message : String(error)}`,
+          {
+            status: 500,
+          },
+        );
       });
 
       const PageComponent = () => {
         throw new Error(errorMessage);
       };
 
-      const Layout = ({ children }: { children: React.ReactNode }) => {
+      const Layout = ({ children }: { children?: React.ReactNode }) => {
         return React.createElement("div", {}, children);
       };
 
       const router = defineRoutes([
         errorHandler,
-        layout(Layout, [
-          prefix("/api", [route("/test/", PageComponent)]),
-        ]),
+        layout(Layout, [prefix("/api", [route("/test/", PageComponent)])]),
       ]);
 
       const deps = createMockDependencies();
-      deps.mockRequestInfo.request = new Request("http://localhost:3000/api/test/");
+      deps.mockRequestInfo.request = new Request(
+        "http://localhost:3000/api/test/",
+      );
 
       const request = new Request("http://localhost:3000/api/test/");
       const response = await router.handle({

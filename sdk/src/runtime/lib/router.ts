@@ -788,7 +788,7 @@ export const wrapHandlerToThrowResponses = <
  *
  * @example
  * // Define a layout component
- * function BlogLayout({ children }: { children: React.ReactNode }) {
+ * function BlogLayout({ children }: { children?: React.ReactNode }) {
  *   return (
  *     <div>
  *       <nav>Blog Navigation</nav>
