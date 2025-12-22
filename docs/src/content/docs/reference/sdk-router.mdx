@@ -138,6 +138,69 @@ export default defineApp([
 
 ---
 
+## Error Handling
+
+Errors in route handlers and middleware are handled automatically by RedwoodSDK. The framework provides several ways to handle errors:
+
+### Using `ErrorResponse`
+
+The `ErrorResponse` class allows you to return structured errors with status codes:
+
+```ts
+import { route } from "rwsdk/router";
+import { ErrorResponse } from "rwsdk/worker";
+
+route("/api/users/:id", async ({ params }) => {
+  const user = await getUserById(params.id);
+  if (!user) {
+    throw new ErrorResponse(404, "User not found");
+  }
+  return Response.json(user);
+});
+```
+
+When an `ErrorResponse` is thrown, RedwoodSDK automatically converts it to an HTTP response with the specified status code and message.
+
+### Try-Catch in Route Handlers
+
+You can use try-catch blocks to handle errors in your route handlers:
+
+```ts
+import { route } from "rwsdk/router";
+import { ErrorResponse } from "rwsdk/worker";
+
+route("/api/users", async ({ request }) => {
+  try {
+    const data = await request.json();
+    const user = await createUser(data);
+    return Response.json(user, { status: 201 });
+  } catch (error) {
+    if (error instanceof ErrorResponse) {
+      throw error; // Re-throw ErrorResponse to preserve status code
+    }
+    // Handle other errors
+    throw new ErrorResponse(500, "Internal server error");
+  }
+});
+```
+
+### Server-Side Rendering Errors
+
+Errors that occur during React Server Component rendering are automatically caught and handled. These errors are logged and the request is rejected, which will be caught by the outer error handler in `defineApp`.
+
+### Unhandled Errors
+
+If an error is thrown that is not an `ErrorResponse` or `Response` instance, RedwoodSDK will:
+
+1. Log the error to the console
+2. Re-throw the error (which will surface as an unhandled exception in Cloudflare Workers)
+
+To prevent unhandled exceptions, always wrap potentially failing code in try-catch blocks and either:
+
+- Return an `ErrorResponse` for structured errors
+- Return a `Response` for custom error responses
+- Handle the error gracefully within your route handler
+
 ## Important Notes
 
 **HEAD Requests**: Unlike Express.js, RedwoodSDK does not automatically map HEAD requests to GET handlers. You must explicitly define a HEAD handler if you want to support HEAD requests.
