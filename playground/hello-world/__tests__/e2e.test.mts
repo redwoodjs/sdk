@@ -33,18 +33,21 @@ testDevAndDeploy("error handling demo is visible", async ({ page, url }) => {
 testDevAndDeploy(
   "error handling works for uncaught errors",
   async ({ page, url }) => {
+    // Set up console error listener BEFORE navigation
+    const consoleErrorPromise = new Promise<string>((resolve) => {
+      const handler = (msg: any) => {
+        if (msg.type() === "error" && msg.text().includes("Uncaught error")) {
+          page.off("console", handler);
+          resolve(msg.text());
+        }
+      };
+      page.on("console", handler);
+    });
+
     await page.goto(url);
 
     // Wait for page to be fully interactive
     await page.waitForFunction("document.readyState === 'complete'");
-
-    // Set up console error listener
-    const consoleErrors: string[] = [];
-    page.on("console", (msg) => {
-      if (msg.type() === "error") {
-        consoleErrors.push(msg.text());
-      }
-    });
 
     // Wait for the error demo buttons to be available
     await page.waitForSelector("button:has-text('Trigger Uncaught Error')");
@@ -56,17 +59,15 @@ testDevAndDeploy(
     if (button) {
       await button.click();
 
-      // Wait a bit for the error to be caught and logged
-      await page.waitForTimeout(500);
+      // Wait for the error message to appear in console
+      const errorMessage = await Promise.race([
+        consoleErrorPromise,
+        new Promise<string>((_, reject) =>
+          setTimeout(() => reject(new Error("Timeout waiting for error")), 5000),
+        ),
+      ]);
 
-      // Verify that the error was logged (our error handler logs to console)
-      await poll(async () => {
-        const hasError = consoleErrors.some((error) =>
-          error.includes("Uncaught error"),
-        );
-        expect(hasError).toBe(true);
-        return true;
-      });
+      expect(errorMessage).toContain("Uncaught error");
     }
   },
 );
@@ -74,18 +75,21 @@ testDevAndDeploy(
 testDevAndDeploy(
   "error handling works for async errors",
   async ({ page, url }) => {
+    // Set up console error listener BEFORE navigation
+    const consoleErrorPromise = new Promise<string>((resolve) => {
+      const handler = (msg: any) => {
+        if (msg.type() === "error" && msg.text().includes("Uncaught error")) {
+          page.off("console", handler);
+          resolve(msg.text());
+        }
+      };
+      page.on("console", handler);
+    });
+
     await page.goto(url);
 
     // Wait for page to be fully interactive
     await page.waitForFunction("document.readyState === 'complete'");
-
-    // Set up console error listener
-    const consoleErrors: string[] = [];
-    page.on("console", (msg) => {
-      if (msg.type() === "error") {
-        consoleErrors.push(msg.text());
-      }
-    });
 
     // Wait for the error demo buttons to be available
     await page.waitForSelector("button:has-text('Trigger Async Error')");
@@ -97,17 +101,16 @@ testDevAndDeploy(
     if (button) {
       await button.click();
 
-      // Wait for the async error to be caught and logged
-      await page.waitForTimeout(1000);
+      // Wait for the async error message to appear in console
+      // Async errors happen after a setTimeout, so we need to wait longer
+      const errorMessage = await Promise.race([
+        consoleErrorPromise,
+        new Promise<string>((_, reject) =>
+          setTimeout(() => reject(new Error("Timeout waiting for error")), 5000),
+        ),
+      ]);
 
-      // Verify that the error was logged (our error handler logs to console)
-      await poll(async () => {
-        const hasError = consoleErrors.some((error) =>
-          error.includes("Uncaught error"),
-        );
-        expect(hasError).toBe(true);
-        return true;
-      });
+      expect(errorMessage).toContain("Uncaught error");
     }
   },
 );
