@@ -97,6 +97,42 @@ export default function AddTodo() {
 Context is a way to share data globally between server components on a per-request basis. The context is populated by middleware, and is available to all React Server Components Pages and Server Functions via the `ctx` prop or `requestInfo.ctx`.
 
 
+### Returning Responses
+
+Server Functions can return standard `Response` objects, which is particularly useful for performing redirects or setting custom headers after an action completes.
+
+When a `Response` is returned, RedwoodSDK automatically handles it:
+- **Redirects:** If the response has a 3xx status code and a `Location` header, the client will automatically redirect.
+- **Custom Responses:** Other response types are also supported, and their metadata (status, headers) is made available on the client.
+
+```tsx title="src/pages/todos/functions.tsx" "Response.redirect"
+"use server";
+
+export async function addTodo(formData: FormData) {
+  // ... logic to add todo ...
+
+  // Redirect to the todos list page after success
+  return Response.redirect("/todos", 303);
+}
+```
+
+#### Intercepting Action Responses
+
+You can intercept action responses on the client by providing an `onActionResponse` callback to `initClient`. This is useful if you want to handle redirects manually or perform side effects based on the response.
+
+```tsx title="src/entry.client.tsx" "onActionResponse"
+import { initClient } from "rwsdk/client";
+
+initClient({
+  onActionResponse: (response) => {
+    console.log("Action returned status:", response.status);
+    // Return true to prevent the default redirect behavior
+    // return true;
+  },
+});
+```
+
+
 ## Advanced usage
 
 ### Manual rendering

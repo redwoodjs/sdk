@@ -1,207 +1,252 @@
 ---
 title: useSyncedState
-description: Keep state synchronized across tabs, devices, and users with realtime updates.
+description: A tutorial on how to use the useSyncedState hook for realtime shared state.
 experimental: true
 ---
 
-import { Aside, Code, LinkCard, Badge } from "@astrojs/starlight/components";
+import { Aside } from "@astrojs/starlight/components";
 
-`useSyncedState` keeps a value aligned across tabs, devices, or users by using the realtime transport and the `SyncedStateServer` Durable Object.
+`useSyncedState` looks exactly like `useState`, except it has bidirectional syncing with the server.
 
----
+## What is it?
 
-## Setup
+- It's a hook that synchronizes state across multiple clients (tabs, devices, users) in real-time.
+- The server is the source of truth.
+- It allows you to build collaborative features without needing an external realtime service.
 
-### 1. Default Hook
+## Why would you use it?
 
-```ts title="src/hooks/useSyncedState.ts"
-import { useSyncedState } from "rwsdk/use-sync-state";
-```
+- **Realtime**: Updates are instant for all users on the page.
+- **Native**: It's built into Redwood SDK.
+- **Cloudflare**: It leverages Cloudflare Durable Objects for coordination.
 
-### 2. Hook Factory (optional)
+## Where would you use it?
 
-```ts title="src/hooks/useSyncedState.ts"
-import { useCallback, useEffect, useRef, useState } from "react";
-import { createSyncedStateHook } from "rwsdk/use-sync-state";
+- Any component where you want data to update instantly for everyone.
+- Examples: Chat apps, collaborative forms, live dashboards, presence indicators.
 
-export const useSyncedState = createSyncedStateHook({
-  url: "/sync-state",
-  hooks: {
-    useState,
-    useEffect,
-    useRef,
-    useCallback,
-  },
-});
-```
+<Aside type="note">
+  This is a low-level primitive. Currently, all values are stored in **memory** within the Durable Object.
+  If the Durable Object is evicted or the worker restarts, the state is wiped.
+  However, you can add callbacks to persist data to a database if needed.
+</Aside>
 
-Set the URL to match the base path you expose from the worker routes. In this example the worker would forward requests from `/sync-state` instead of the default `/__sync-state`.
+## Tutorial: From 0 to 1
 
-### 3. Worker Routes
+Here is the easiest way to get started.
+
+### 1. Setup the Worker
+
+In your `src/worker.tsx`, you need to export the `SyncedStateServer` (the Durable Object) and register its routes.
 
 ```tsx title="src/worker.tsx"
+import { env } from "cloudflare:workers";
 import {
   SyncedStateServer,
-  SyncedStateRoutes,
-} from "rwsdk/use-sync-state/worker";
-import { env } from "cloudflare:workers";
+  syncedStateRoutes,
+} from "rwsdk/use-synced-state/worker";
+import { defineApp } from "rwsdk/worker";
 
-SyncedStateServer.registerGetStateHandler((key, value) => {
-  console.log("synced state requested", { key, value });
-});
-SyncedStateServer.registerSetStateHandler((key, value) => {
-  console.log("synced state updated", { key, value });
-});
+// 1. Export the Durable Object so Cloudflare can find it
+export { SyncedStateServer };
 
 export default defineApp([
-  ...SyncedStateRoutes(() => env.STATE_COORDINATOR),
-  // other routes...
+  // ... your other middleware
+  // 2. Register the synced state routes
+  ...syncedStateRoutes(() => env.SYNCED_STATE_SERVER),
 ]);
 ```
 
-### 4. State handlers
+### 2. Update Wrangler Config
 
-`SyncedStateServer.registerSetStateHandler(handler)` accepts a function that receives `(key, value)` each time the coordinator stores a new value. Use this to record updates or trigger downstream work whenever any client publishes new state.
+You need to tell Cloudflare about the Durable Object. Add the following to your `wrangler.jsonc`:
 
-`SyncedStateServer.registerGetStateHandler(handler)` accepts a function that receives `(key, value)` each time the coordinator returns a value to a subscriber. The handler runs after the lookup, so `value` is `undefined` when no entry exists for the key.
-
-### 5. Durable Object Export
-
-```tsx title="src/worker.tsx"
-export { SyncedStateServer } from "rwsdk/use-sync-state";
-```
-
-### 6. Add the Durable Object to `wrangler.jsonc`
-
-```
+```jsonc title="wrangler.jsonc"
 "durable_objects": {
   "bindings": [
-    // ...
     {
-      "name": "STATE_COORDINATOR",
-      "class_name": "SyncedStateServer",
-    },
-  ],
+      "name": "SYNCED_STATE_SERVER",
+      "class_name": "SyncedStateServer"
+    }
+  ]
 },
+"migrations": [
+  {
+    "tag": "v1",
+    "new_sqlite_classes": ["SyncedStateServer"]
+  }
+]
 ```
 
-After updating `wrangler.jsonc`, run `pnpm generate` to update the generated type definitions.
+> **Note**: After changing `wrangler.jsonc`, run `pnpm generate` to update your types.
 
----
+### 3. Use the Hook
 
-## Usage
+Now you can use `useSyncedState` in your components. It works just like `useState`, but takes a second argument: a unique key, and an optional third argument: a room ID.
 
-```tsx title="src/components/Counter.tsx"
-const Counter = () => {
-  const [count, setCount] = useSyncedState(0, "counter");
-  return <button onClick={() => setCount((n) => n + 1)}>{count}</button>;
-};
-```
-
-`setCount` applies the update locally and forwards it to the coordinator, which broadcasts the new value to every subscriber using the realtime transport.
-
----
-
-## Per-User State Scoping
-
-To scope synced state to individual users, register a key transformation handler in your worker. The handler runs on every state operation and can transform client-provided keys based on the authenticated session.
-
-```tsx title="src/worker.tsx"
-import { SyncedStateServer } from "rwsdk/use-sync-state/worker";
-import { sessionStore } from "./session";
-import { requestInfo } from "rwsdk/worker";
-
-SyncedStateServer.registerKeyHandler(async (key) => {
-  const session = await sessionStore.load(requestInfo.request);
-  const userId = session?.userId ?? "anonymous";
-  return `user:${userId}:${key}`;
-});
-```
-
-With this handler registered, client components use simple, unscoped keys:
-
-```tsx title="src/components/UserCounter.tsx"
+```tsx title="src/components/SharedCounter.tsx"
 "use client";
 
-import { useSyncedState } from "rwsdk/use-sync-state";
+import { useSyncedState } from "rwsdk/use-synced-state/client";
 
-export const UserCounter = () => {
+export const SharedCounter = () => {
+  // "counter" is the unique key for this piece of state
+  // Without a room ID, this state is global across all clients
   const [count, setCount] = useSyncedState(0, "counter");
-  return <button onClick={() => setCount((n) => n + 1)}>{count}</button>;
+
+  return (
+    <div>
+      <p>Count: {count}</p>
+      <button onClick={() => setCount((c) => c + 1)}>Increment</button>
+    </div>
+  );
 };
 ```
 
-The worker transforms `"counter"` to `"user:123:counter"` before storing or retrieving state. Each user sees their own counter value without needing to pass user IDs from the client.
+Open this component in two different browser windows. When you click increment in one, it updates in the other instantly!
 
-If the handler throws an error, that error propagates to the client where it can be caught using error boundaries or try-catch blocks in event handlers.
+### Rooms: Scoping State to Different Groups
+
+By default, state is global. But you can scope state to different "rooms" by passing a room ID as the third argument. This is useful for features like chat rooms, game sessions, or collaborative documents.
+
+```tsx title="src/components/RoomCounter.tsx"
+"use client";
+
+import { useSyncedState } from "rwsdk/use-synced-state/client";
+
+export const RoomCounter = ({ roomId }: { roomId: string }) => {
+  // State is scoped to this specific room
+  // Users in different rooms won't see each other's updates
+  const [count, setCount] = useSyncedState(0, "counter", roomId);
+
+  return (
+    <div>
+      <p>Room: {roomId}</p>
+      <p>Count: {count}</p>
+      <button onClick={() => setCount((c) => c + 1)}>Increment</button>
+    </div>
+  );
+};
+```
+
+When you use a room ID, state is isolated to that room. Users in `"room-1"` won't see updates from users in `"room-2"`.
 
 ---
 
-## Customizing `createSyncedStateHook`
+## Advanced: Scoping and Persistence
 
-`createSyncedStateHook({ url?, hooks? })` accepts an options object:
+### Scoping State with Room IDs vs Key Handlers
 
-- `url`: overrides the HTTP route used by the client. The default is `/__sync-state`.
-- `hooks`: overrides the React primitives. Pass this when integrating with a custom renderer or testing environment.
+There are two ways to scope state:
 
-```ts title="src/hooks/useCustomSyncedState.ts"
-const useCustomSyncedState = createSyncedStateHook({ url: "/api/sync" });
+1. **Room IDs** (client-side): Pass a room ID as the third argument to `useSyncedState`. This is the simplest way to isolate state between different groups.
+
+2. **Key Handlers** (server-side): Transform keys on the server to add prefixes or scoping logic. This is useful when you need server-enforced scoping based on authentication or other server-side data.
+
+#### Using Room IDs (Client-Side)
+
+```tsx title="src/components/ChatRoom.tsx"
+"use client";
+
+import { useSyncedState } from "rwsdk/use-synced-state/client";
+
+export const ChatRoom = ({ roomId }: { roomId: string }) => {
+  // Each room has its own isolated state
+  const [messages, setMessages] = useSyncedState<string[]>([], "messages", roomId);
+  
+  // ... chat UI
+};
 ```
 
-```ts title="src/hooks/useSyncedState.test.ts"
-const useTestSyncedState = createSyncedStateHook({
-  hooks: {
-    useState,
-    useEffect,
-    useRef,
-    useCallback,
-  },
+#### Using Key Handlers (Server-Side)
+
+Key handlers allow you to transform keys on the server, which is useful for server-enforced scoping:
+
+```tsx title="src/worker.tsx"
+import { requestInfo } from "rwsdk/worker";
+
+SyncedStateServer.registerKeyHandler(async (key, stub) => {
+  // Access user ID from request context
+  const userId = requestInfo.ctx.userId;
+  
+  // Scope keys that start with "user:" to the current user
+  if (key.startsWith("user:")) {
+    return `${key}:${userId}`;
+  }
+  
+  return key;
 });
 ```
 
----
+Then in your component:
 
-## Future: Error Handling and Offline Support
+```tsx title="src/components/UserSettings.tsx"
+"use client";
 
-<Aside type="note">
-  These features are planned but not yet implemented. See the [architecture
-  documentation](https://github.com/redwoodjs/sdk/blob/main/docs/architecture/realtimeStateErrorHandling.md)
-  for the full design.
-</Aside>
+import { useSyncedState } from "rwsdk/use-synced-state/client";
 
-Future versions will include:
-
-### Connection Status Monitoring
-
-A separate `useSyncedStateStatus` hook will expose connection state and sync progress:
-
-```tsx
-const [count, setCount] = useSyncedState(0, "counter");
-const { connected, syncing, error } = useSyncedStateStatus("counter");
-
-if (!connected) {
-  return <Banner>Working offline - changes will sync when reconnected</Banner>;
-}
+export const UserSettings = () => {
+  // The key handler will transform this to "user:settings:123" (where 123 is the userId)
+  // Each user gets their own isolated settings
+  const [settings, setSettings] = useSyncedState({}, "user:settings");
+  
+  // ... settings UI
+};
 ```
 
-### Offline Queue with Pluggable Storage
+#### Server-Side Room Transformation
 
-An offline queue will store failed operations and retry them when connectivity returns. The queue interface will be pluggable, allowing you to choose between:
+You can also transform room IDs on the server using a room handler. This is useful for features like "private" rooms that should be scoped per user:
 
-- **InMemoryQueue (default)**: Fast, no setup, lost on page refresh
-- **IndexedDBQueue**: Persists across page reloads
-- **SqliteQueue**: Browser SQLite for complex offline scenarios
-- **Custom implementations**: Use any storage backend
+```tsx title="src/worker.tsx"
+import { requestInfo } from "rwsdk/worker";
 
-```tsx
-import { initSyncedStateClient } from "rwsdk/use-sync-state";
-import { IndexedDBQueue } from "rwsdk/use-sync-state/queues";
-
-initSyncedStateClient({
-  queue: new IndexedDBQueue(),
+SyncedStateServer.registerRoomHandler(async (roomId, reqInfo) => {
+  const userId = reqInfo?.ctx?.userId;
+  
+  // Transform "private" room requests to user-specific rooms
+  if (roomId === "private" && userId) {
+    return `user:${userId}`;
+  }
+  
+  // Pass through other room IDs as-is
+  return roomId ?? "syncedState";
 });
 ```
 
-### Automatic Retry Logic
+Then clients can request a "private" room, and the server will automatically scope it to the current user:
 
-Failed operations will automatically retry with exponential backoff, handling transient network failures without user intervention.
+```tsx title="src/components/PrivateNotes.tsx"
+"use client";
+
+import { useSyncedState } from "rwsdk/use-synced-state/client";
+
+export const PrivateNotes = () => {
+  // Server transforms "private" to "user:${userId}" automatically
+  const [notes, setNotes] = useSyncedState("", "notes", "private");
+  
+  // ... notes UI
+};
+```
+
+### Persisting State
+
+Since the state is in-memory, you might want to save it to a database. You can register handlers for when state is set or retrieved.
+
+```tsx title="src/worker.tsx"
+SyncedStateServer.registerSetStateHandler((key, value) => {
+  console.log("State updated:", key, value);
+  // db.save(key, value);
+});
+
+SyncedStateServer.registerGetStateHandler((key, value) => {
+   // potentially load from DB if value is undefined
+});
+```
+
+## Future Plans
+
+We are working on making this even more powerful out of the box:
+
+- **Offline Support**: Local persistence (e.g., via IndexedDB) so your app works offline and syncs changes when the connection is restored.
+- **Durable Storage**: Built-in persistence to the Durable Object's SQLite storage, ensuring state survives worker restarts without custom handlers.

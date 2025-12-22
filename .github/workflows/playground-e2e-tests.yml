@@ -88,9 +88,9 @@ jobs:
             echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"npm"}]}' >> $GITHUB_OUTPUT
           fi
 
-  playground-e2e:
+  playground-e2e-dev:
     needs: setup-matrix
-    name: Playground E2E Test
+    name: Playground E2E Tests (Dev)
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -100,14 +100,13 @@ jobs:
       DEBUG: rwsdk:e2e:*
       MAX_RETRIES: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '10' || '1' }}
       RWSDK_SETUP_PLAYGROUND_ENV_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '1800000' || '' }} # 30 mins
-      RWSDK_DEPLOYMENT_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '900000' || '' }} # 15 mins
-      RWSDK_DEPLOYMENT_MIN_TRIES: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '10' || '' }}
-      RWSDK_DEPLOYMENT_CHECK_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '600000' || '' }} # 10 mins
       RWSDK_PUPPETEER_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '300000' || '' }} # 5 mins
       RWSDK_HYDRATION_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '10000' || '' }} # 10s
       RWSDK_DEV_SERVER_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '900000' || '' }} # 15 mins
       RWSDK_TEST_MAX_RETRIES: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '12' || '' }}
       RWSDK_TEST_MAX_RETRIES_PER_CODE: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '20' || '' }}
+      RWSDK_SKIP_DEPLOY: "1"
+      RWSDK_SEQUENTIAL: "1"
 
     # context(justinvdm, 2025-09-20):
     # Only run this job for PRs from the same repository and pushes to main
@@ -161,7 +160,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ matrix.package-manager }}-e2e-deps-
 
-      - name: Run Playground E2E Tests
+      - name: Run Playground E2E Tests (Dev)
         id: tests
         run: |
           pnpm install
@@ -171,7 +170,96 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playground-e2e-artifacts-${{ matrix.os }}-${{ matrix.package-manager }}
+          name: playground-e2e-dev-artifacts-${{ matrix.os }}-${{ matrix.package-manager }}
+          path: |
+            /tmp/*-e2e-test-*
+            playground/**/node_modules/.cache/wrangler
+          retention-days: 7
+
+  playground-e2e-deploy:
+    needs: setup-matrix
+    name: Playground E2E Tests (Deploy)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
+    timeout-minutes: 60
+    env:
+      DEBUG: rwsdk:e2e:*
+      MAX_RETRIES: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '10' || '1' }}
+      RWSDK_SETUP_PLAYGROUND_ENV_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '1800000' || '' }} # 30 mins
+      RWSDK_DEPLOYMENT_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '900000' || '' }} # 15 mins
+      RWSDK_DEPLOYMENT_MIN_TRIES: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '10' || '' }}
+      RWSDK_DEPLOYMENT_CHECK_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '600000' || '' }} # 10 mins
+      RWSDK_PUPPETEER_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '300000' || '' }} # 5 mins
+      RWSDK_HYDRATION_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '10000' || '' }} # 10s
+      RWSDK_TEST_MAX_RETRIES: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '12' || '' }}
+      RWSDK_TEST_MAX_RETRIES_PER_CODE: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '20' || '' }}
+      RWSDK_SKIP_DEV: "1"
+
+    # context(justinvdm, 2025-09-20):
+    # Only run this job for PRs from the same repository and pushes to main
+    # For security, GH won't expose secrets for fork PRs
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'pull_request_target'
+
+    steps:
+      - name: Require approval for external contributors
+        if: |
+          github.event_name == 'pull_request_target' &&
+          github.event.pull_request.user.login != 'renovate[bot]' &&
+          github.event.pull_request.author_association != 'OWNER' &&
+          github.event.pull_request.author_association != 'MEMBER' &&
+          github.event.pull_request.author_association != 'COLLABORATOR' &&
+          !contains(github.event.pull_request.labels.*.name, 'run-secure-tests')
+        run: |
+          echo "ERROR: This PR is from an external contributor and requires the 'run-secure-tests' label."
+          exit 1
+
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.event.inputs.ref || github.ref }}
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build SDK
+        run: |
+          cd sdk
+          pnpm build
+
+      - name: Setup E2E Cache
+        uses: actions/cache@v4
+        with:
+          path: .tmp/rwsdk-e2e/rwsdk-e2e-cache
+          key: ${{ runner.os }}-${{ matrix.package-manager }}-e2e-deps-${{ hashFiles('playground/**/package.json', 'playground/**/pnpm-lock.yaml', 'playground/**/yarn.lock', 'playground/**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.package-manager }}-e2e-deps-
+
+      - name: Run Playground E2E Tests (Deploy)
+        id: tests
+        run: |
+          pnpm install
+          pnpm test:e2e
+
+      - name: Upload playground artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playground-e2e-deploy-artifacts-${{ matrix.os }}-${{ matrix.package-manager }}
           path: |
             /tmp/*-e2e-test-*
             playground/**/node_modules/.cache/wrangler

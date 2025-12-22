@@ -3,6 +3,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { $, $sh } from "../../lib/$.mjs";
 import { poll } from "./poll.mjs";
 import { PackageManager } from "./types.mjs";
+import { IS_DEBUG_MODE } from "./constants.mjs";
 
 const DEV_SERVER_CHECK_TIMEOUT = process.env.RWSDK_DEV_SERVER_CHECK_TIMEOUT
   ? parseInt(process.env.RWSDK_DEV_SERVER_CHECK_TIMEOUT, 10)
@@ -129,8 +130,10 @@ export async function runDevServer(
     // Listen for all output to get the URL
     const handleOutput = (data: Buffer, source: string) => {
       const output = data.toString();
-      // Raw output for debugging
-      process.stdout.write(`[dev:${source}] ` + output);
+      // Raw output for debugging - only in debug mode
+      if (IS_DEBUG_MODE) {
+        process.stdout.write(`[dev:${source}] ` + output);
+      }
       allOutput += output; // Accumulate all output
 
       if (!url) {
@@ -174,17 +177,20 @@ export async function runDevServer(
       !!devProcess.stderr,
     );
 
-    devProcess.all?.on("data", (data: Buffer) => handleOutput(data, "all"));
-    devProcess.stdout?.on("data", (data: Buffer) =>
-      handleOutput(data, "stdout"),
-    );
-    devProcess.stderr?.on("data", (data: Buffer) =>
-      handleOutput(data, "stderr"),
-    );
+    if (devProcess.all) {
+      devProcess.all.on("data", (data: Buffer) => handleOutput(data, "all"));
+    } else {
+      devProcess.stdout?.on("data", (data: Buffer) =>
+        handleOutput(data, "stdout"),
+      );
+      devProcess.stderr?.on("data", (data: Buffer) =>
+        handleOutput(data, "stderr"),
+      );
+    }
 
-    // Also try listening to the raw process output
+    // Also try listening to the raw process events
     if (devProcess.child) {
-      log("Setting up child process stream listeners");
+      log("Setting up child process events listeners");
       devProcess.child.on("spawn", () => {
         log("Child process spawned successfully.");
       });
@@ -196,12 +202,6 @@ export async function runDevServer(
         (code: number | null, signal: string | null) => {
           log("Child process exited with code %s and signal %s", code, signal);
         },
-      );
-      devProcess.child.stdout?.on("data", (data: Buffer) =>
-        handleOutput(data, "child.stdout"),
-      );
-      devProcess.child.stderr?.on("data", (data: Buffer) =>
-        handleOutput(data, "child.stderr"),
       );
     }
 
@@ -217,10 +217,6 @@ export async function runDevServer(
 
         // Fallback: check accumulated output if stream listeners aren't working
         if (!url && allOutput) {
-          log(
-            "Checking accumulated output for URL patterns: %s",
-            allOutput.replace(/\n/g, "\\n"),
-          );
           const patterns = [
             /Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
             /[➜→]\s*Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,

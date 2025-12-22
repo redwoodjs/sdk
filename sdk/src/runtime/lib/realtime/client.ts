@@ -3,7 +3,11 @@
 // prettier-ignore
 import { initClient } from "../../client/client";
 // prettier-ignore
-import { type ActionResponse,type Transport } from "../../client/types";
+import {
+type RscActionResponse,
+type Transport,
+isActionResponse,
+} from "../../client/types";
 // prettier-ignore
 import { createFromReadableStream } from "react-server-dom-webpack/client.browser";
 // prettier-ignore
@@ -151,10 +155,31 @@ export const realtimeTransport =
 
         const rscPayload = createFromReadableStream(streamForRsc!, {
           callServer: realtimeCallServer as any,
-        }) as Promise<ActionResponse<unknown>>;
+        }) as Promise<RscActionResponse<unknown>>;
 
         transportContext.setRscPayload(rscPayload);
-        return (await rscPayload).actionResult as T | null;
+        const rawActionResult = (await rscPayload).actionResult;
+
+        if (isActionResponse(rawActionResult)) {
+          const actionResponse = rawActionResult.__rw_action_response;
+          const handledByHook =
+            transportContext.onActionResponse?.(actionResponse) === true;
+
+          if (!handledByHook) {
+            const location = actionResponse.headers["location"];
+            const isRedirect =
+              actionResponse.status >= 300 && actionResponse.status < 400;
+
+            if (location && isRedirect) {
+              window.location.href = location;
+              return null;
+            }
+          }
+
+          return rawActionResult as T | null;
+        }
+
+        return rawActionResult as T | null;
       } catch (err) {
         throw err;
       }
