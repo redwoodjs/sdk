@@ -1,20 +1,24 @@
 import { initClient } from "rwsdk/client";
 
-// Example: Error handling with React 19 APIs
+const redirectToError = () => {
+  window.location.replace("/error");
+};
+
+window.addEventListener("error", () => {
+  redirectToError();
+});
+
+window.onunhandledrejection = () => {
+  redirectToError();
+};
+
 initClient({
   hydrateRootOptions: {
-    onUncaughtError: (error, errorInfo) => {
-      console.error("Uncaught error:", error);
-      console.error("Component stack:", errorInfo.componentStack);
-      // In a real app, you would send this to a monitoring service
-      // e.g., Sentry.captureException(error, { contexts: { react: errorInfo } });
-      window.location.href = "/error";
+    onUncaughtError: () => {
+      redirectToError();
     },
-    onCaughtError: (error, errorInfo) => {
-      console.error("Caught error:", error);
-      console.error("Component stack:", errorInfo.componentStack);
-      // In a real app, you would send this to a monitoring service
-      window.location.href = "/error";
+    onCaughtError: () => {
+      redirectToError();
     },
   },
 });

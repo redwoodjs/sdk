@@ -39,30 +39,48 @@ testDevAndDeploy(
     await page.waitForFunction("document.readyState === 'complete'");
 
     // Wait for the error demo buttons to be available
-    await page.waitForSelector("button:has-text('Trigger Uncaught Error')");
+    const getUncaughtErrorButton = async () => {
+      const buttons = await page.$$("button");
+      for (const button of buttons) {
+        const text = await page.evaluate((el) => el.textContent, button);
+        if (text?.includes("Trigger Uncaught Error")) {
+          return button;
+        }
+      }
+      return null;
+    };
 
-    // Click the button that triggers an uncaught error
-    const button = await page.$("button:has-text('Trigger Uncaught Error')");
-    expect(button).not.toBeNull();
+    await poll(async () => {
+      const button = await getUncaughtErrorButton();
+      expect(button).not.toBeNull();
+      return button !== null;
+    });
 
-    if (button) {
-      await button.click();
+    const uncaughtErrorButton = await getUncaughtErrorButton();
 
-      // Wait for the page to redirect to /error
-      await poll(async () => {
-        const currentUrl = page.url();
-        expect(currentUrl).toContain("/error");
-        return true;
-      });
+    // Click the button and wait for navigation to /error
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: "networkidle0", timeout: 10000 }),
+      uncaughtErrorButton!.click(),
+    ]);
 
-      // Verify the error page content is displayed
-      const getErrorPageContent = () => page.content();
-      await poll(async () => {
+    // Verify we were redirected to /error
+    expect(page.url()).toContain("/error");
+
+    // Wait for the error page to be fully loaded
+    await page.waitForFunction("document.readyState === 'complete'");
+
+    // Verify the error page content is displayed
+    const getErrorPageContent = () => page.content();
+    await poll(
+      async () => {
         const content = await getErrorPageContent();
         expect(content).toContain("Error Page");
+        expect(content).not.toContain("Hello World");
         return true;
-      });
-    }
+      },
+      { timeout: 10000 },
+    );
   },
 );
 
@@ -75,30 +93,48 @@ testDevAndDeploy(
     await page.waitForFunction("document.readyState === 'complete'");
 
     // Wait for the error demo buttons to be available
-    await page.waitForSelector("button:has-text('Trigger Async Error')");
+    const getAsyncErrorButton = async () => {
+      const buttons = await page.$$("button");
+      for (const button of buttons) {
+        const text = await page.evaluate((el) => el.textContent, button);
+        if (text?.includes("Trigger Async Error")) {
+          return button;
+        }
+      }
+      return null;
+    };
+
+    await poll(async () => {
+      const button = await getAsyncErrorButton();
+      expect(button).not.toBeNull();
+      return button !== null;
+    });
+
+    const asyncErrorButton = await getAsyncErrorButton();
 
     // Click the button that triggers an async error
-    const button = await page.$("button:has-text('Trigger Async Error')");
-    expect(button).not.toBeNull();
+    // Async errors happen after a setTimeout, so navigation may be delayed
+    await asyncErrorButton!.click();
 
-    if (button) {
-      await button.click();
+    // Wait for navigation to /error (with longer timeout for async error)
+    await page.waitForNavigation({ waitUntil: "networkidle0", timeout: 10000 });
 
-      // Wait for the page to redirect to /error
-      // Async errors happen after a setTimeout, so we need to wait longer
-      await poll(async () => {
-        const currentUrl = page.url();
-        expect(currentUrl).toContain("/error");
-        return true;
-      });
+    // Verify we were redirected to /error
+    expect(page.url()).toContain("/error");
 
-      // Verify the error page content is displayed
-      const getErrorPageContent = () => page.content();
-      await poll(async () => {
+    // Wait for the error page to be fully loaded
+    await page.waitForFunction("document.readyState === 'complete'");
+
+    // Verify the error page content is displayed
+    const getErrorPageContent = () => page.content();
+    await poll(
+      async () => {
         const content = await getErrorPageContent();
         expect(content).toContain("Error Page");
+        expect(content).not.toContain("Hello World");
         return true;
-      });
-    }
+      },
+      { timeout: 10000 },
+    );
   },
 );

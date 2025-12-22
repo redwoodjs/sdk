@@ -3,7 +3,9 @@
 // Example component that demonstrates error handling
 export function ErrorDemo() {
   return (
-    <div style={{ marginTop: "2rem", padding: "1rem", border: "1px solid #ccc" }}>
+    <div
+      style={{ marginTop: "2rem", padding: "1rem", border: "1px solid #ccc" }}
+    >
       <h2>Error Handling Demo</h2>
       <p>
         These buttons trigger different types of errors to demonstrate the error
@@ -20,7 +22,8 @@ export function ErrorDemo() {
 // Component that throws an error in an event handler (uncaught error)
 function UncaughtErrorButton() {
   const handleClick = () => {
-    throw new Error("This is an uncaught error from an event handler");
+    const err = new Error("This is an uncaught error from an event handler");
+    throw err;
   };
 
   return (
@@ -64,4 +67,3 @@ function AsyncErrorButton() {
     </button>
   );
 }
-
