@@ -1,0 +1,410 @@
+---
+title: Error Handling
+description: How to handle React errors in your RedwoodSDK application using React 19's error handling APIs
+---
+
+import { Aside, Steps } from "@astrojs/starlight/components";
+
+RedwoodSDK supports React 19's powerful error handling APIs, allowing you to catch and handle errors at the React root level. This enables production-ready error monitoring, custom recovery strategies, and better debugging capabilities.
+
+## Overview
+
+React 19 introduced two main error handling APIs:
+
+- **`onUncaughtError`**: Handles uncaught errors that escape error boundaries (async errors, event handler errors, etc.)
+- **`onCaughtError`**: Handles errors that are caught by error boundaries
+
+These APIs are available through the `hydrateRootOptions` parameter in `initClient`, which passes options directly to React's `hydrateRoot` function.
+
+## When to Use Each Handler
+
+### `onUncaughtError`
+
+Use `onUncaughtError` for errors that are not caught by error boundaries:
+
+- Async errors in components (e.g., in `useEffect`, promises, timers)
+- Event handler errors
+- Errors in callbacks outside the React tree
+- Any error that escapes error boundaries
+
+```tsx title="Example: Uncaught error in event handler"
+"use client";
+
+export function Button() {
+  const handleClick = () => {
+    // This error will trigger onUncaughtError
+    throw new Error("Button click error");
+  };
+
+  return <button onClick={handleClick}>Click me</button>;
+}
+```
+
+### `onCaughtError`
+
+Use `onCaughtError` for errors that are caught by error boundaries:
+
+- Component rendering errors
+- Errors in component lifecycle methods
+- Errors caught by `<ErrorBoundary>` components
+
+```tsx title="Example: Error caught by error boundary"
+"use client";
+
+export function ErrorBoundary({ children }: { children: React.ReactNode }) {
+  // This error will trigger onCaughtError
+  return <ErrorBoundary>{children}</ErrorBoundary>;
+}
+
+export function Component() {
+  throw new Error("Component error");
+  return <div>This won't render</div>;
+}
+```
+
+## Basic Setup
+
+<Steps>
+1. Import `initClient` from `rwsdk/client`:
+
+```tsx title="src/client.tsx"
+import { initClient } from "rwsdk/client";
+```
+
+2. Configure error handlers via `hydrateRootOptions`:
+
+```tsx title="src/client.tsx"
+initClient({
+  hydrateRootOptions: {
+    onUncaughtError: (error, errorInfo) => {
+      console.error("Uncaught error:", error);
+      console.error("Component stack:", errorInfo.componentStack);
+    },
+    onCaughtError: (error, errorInfo) => {
+      console.error("Caught error:", error);
+      console.error("Component stack:", errorInfo.componentStack);
+    },
+  },
+});
+```
+
+3. The error handlers will now catch and log all React errors in your application.
+   </Steps>
+
+## Integration with Monitoring Services
+
+### Sentry
+
+```tsx title="src/client.tsx"
+import { initClient } from "rwsdk/client";
+import * as Sentry from "@sentry/browser";
+
+initClient({
+  hydrateRootOptions: {
+    onUncaughtError: (error, errorInfo) => {
+      Sentry.captureException(error, {
+        contexts: {
+          react: {
+            componentStack: errorInfo.componentStack,
+            errorBoundary: errorInfo.errorBoundary?.constructor.name,
+          },
+        },
+        tags: { errorType: "uncaught" },
+      });
+    },
+    onCaughtError: (error, errorInfo) => {
+      Sentry.captureException(error, {
+        contexts: {
+          react: {
+            componentStack: errorInfo.componentStack,
+            errorBoundary: errorInfo.errorBoundary?.constructor.name,
+          },
+        },
+        tags: { errorType: "caught" },
+      });
+    },
+  },
+});
+```
+
+### Custom Monitoring Service
+
+```tsx title="src/client.tsx"
+import { initClient } from "rwsdk/client";
+
+function sendToMonitoring(
+  error: unknown,
+  errorInfo: { componentStack: string; errorBoundary?: React.Component | null },
+  type: "uncaught" | "caught",
+) {
+  fetch("/api/errors", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      componentStack: errorInfo.componentStack,
+      errorBoundary: errorInfo.errorBoundary?.constructor.name,
+      type,
+      timestamp: new Date().toISOString(),
+    }),
+  });
+}
+
+initClient({
+  hydrateRootOptions: {
+    onUncaughtError: (error, errorInfo) => {
+      sendToMonitoring(error, errorInfo, "uncaught");
+    },
+    onCaughtError: (error, errorInfo) => {
+      sendToMonitoring(error, errorInfo, "caught");
+    },
+  },
+});
+```
+
+## Error Recovery Strategies
+
+### Show User-Friendly Messages
+
+```tsx title="src/client.tsx"
+import { initClient } from "rwsdk/client";
+
+function showErrorToast(message: string) {
+  // Your toast implementation
+  console.log("Error:", message);
+}
+
+initClient({
+  hydrateRootOptions: {
+    onUncaughtError: (error, errorInfo) => {
+      // Log for debugging
+      console.error("Uncaught error:", error, errorInfo);
+
+      // Show user-friendly message
+      showErrorToast("Something went wrong. Please try again.");
+
+      // Send to monitoring
+      sendToMonitoring(error, errorInfo);
+    },
+  },
+});
+```
+
+### Reload on Critical Errors
+
+```tsx title="src/client.tsx"
+import { initClient } from "rwsdk/client";
+
+function isCriticalError(error: unknown): boolean {
+  // Define your critical error logic
+  return error instanceof Error && error.message.includes("CRITICAL");
+}
+
+initClient({
+  hydrateRootOptions: {
+    onUncaughtError: (error, errorInfo) => {
+      console.error("Uncaught error:", error, errorInfo);
+
+      if (isCriticalError(error)) {
+        // Reload page for critical errors
+        window.location.reload();
+      } else {
+        // Handle non-critical errors gracefully
+        showErrorToast("An error occurred. Please refresh the page.");
+      }
+    },
+  },
+});
+```
+
+## Best Practices
+
+### 1. Always Log Errors
+
+Even if you're sending errors to a monitoring service, log them locally for debugging:
+
+```tsx
+onUncaughtError: (error, errorInfo) => {
+  console.error("Uncaught error:", error);
+  console.error("Component stack:", errorInfo.componentStack);
+  // Then send to monitoring
+};
+```
+
+### 2. Include Component Stack
+
+The `errorInfo.componentStack` provides valuable debugging information. Always include it in your error reports:
+
+```tsx
+Sentry.captureException(error, {
+  contexts: {
+    react: {
+      componentStack: errorInfo.componentStack,
+    },
+  },
+});
+```
+
+### 3. Distinguish Error Types
+
+Use tags or metadata to distinguish between caught and uncaught errors:
+
+```tsx
+onUncaughtError: (error, errorInfo) => {
+  sendToMonitoring(error, { ...errorInfo, type: "uncaught" });
+},
+onCaughtError: (error, errorInfo) => {
+  sendToMonitoring(error, { ...errorInfo, type: "caught" });
+},
+```
+
+### 4. Don't Block the UI
+
+Error handlers should not throw errors themselves. Keep them lightweight:
+
+```tsx
+onUncaughtError: (error, errorInfo) => {
+  try {
+    // Safe error handling
+    sendToMonitoring(error, errorInfo);
+  } catch (e) {
+    // Fallback to console if monitoring fails
+    console.error("Error in error handler:", e);
+  }
+},
+```
+
+## Relationship to Error Boundaries
+
+Error boundaries and root-level error handlers serve different purposes:
+
+- **Error Boundaries**: Catch errors in component trees and render fallback UI
+- **Root Error Handlers**: Catch all errors (including those that escape boundaries) for monitoring and logging
+
+You should use both:
+
+```tsx title="Example: Using both error boundaries and root handlers"
+"use client";
+
+export function ErrorBoundary({ children }: { children: React.ReactNode }) {
+  return (
+    <React.ErrorBoundary
+      fallback={<div>Something went wrong</div>}
+      onError={(error, errorInfo) => {
+        // This will trigger onCaughtError in initClient
+        console.log("Error boundary caught:", error);
+      }}
+    >
+      {children}
+    </React.ErrorBoundary>
+  );
+}
+```
+
+## Scope and Limitations
+
+### What These APIs Handle
+
+- Component rendering errors (post-hydration)
+- Event handler errors
+- Async operation errors in components
+- Errors that escape error boundaries
+
+### What They Don't Handle
+
+- Server-side RSC rendering errors (use router's `onError` callback)
+- Router-level errors (use router's `onError` callback)
+- SSR errors (handled server-side)
+- Network request errors (unless in React components)
+
+<Aside type="tip">
+  For server-side error handling, see the router documentation on error handling
+  callbacks.
+</Aside>
+
+## Common Patterns
+
+### Pattern 1: Development vs Production
+
+```tsx title="src/client.tsx"
+import { initClient } from "rwsdk/client";
+
+const isDevelopment = import.meta.env.DEV;
+
+initClient({
+  hydrateRootOptions: {
+    onUncaughtError: (error, errorInfo) => {
+      if (isDevelopment) {
+        // Detailed logging in development
+        console.error("Uncaught error:", error);
+        console.error("Component stack:", errorInfo.componentStack);
+      } else {
+        // Send to monitoring in production
+        sendToMonitoring(error, errorInfo);
+      }
+    },
+  },
+});
+```
+
+### Pattern 2: Error Rate Limiting
+
+```tsx title="src/client.tsx"
+import { initClient } from "rwsdk/client";
+
+let errorCount = 0;
+const MAX_ERRORS = 10;
+const RESET_INTERVAL = 60000; // 1 minute
+
+setInterval(() => {
+  errorCount = 0;
+}, RESET_INTERVAL);
+
+initClient({
+  hydrateRootOptions: {
+    onUncaughtError: (error, errorInfo) => {
+      errorCount++;
+      if (errorCount <= MAX_ERRORS) {
+        sendToMonitoring(error, errorInfo);
+      } else if (errorCount === MAX_ERRORS + 1) {
+        console.warn("Error rate limit exceeded. Suppressing further errors.");
+      }
+    },
+  },
+});
+```
+
+### Pattern 3: User Feedback
+
+```tsx title="src/client.tsx"
+import { initClient } from "rwsdk/client";
+
+initClient({
+  hydrateRootOptions: {
+    onUncaughtError: (error, errorInfo) => {
+      // Log error
+      console.error("Uncaught error:", error, errorInfo);
+
+      // Send to monitoring
+      sendToMonitoring(error, errorInfo);
+
+      // Show user feedback
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      showErrorNotification(`Error: ${errorMessage}`);
+    },
+  },
+});
+```
+
+## Summary
+
+React 19's error handling APIs provide powerful tools for monitoring and handling errors in production. By configuring `onUncaughtError` and `onCaughtError` through `hydrateRootOptions`, you can:
+
+- Track errors in production
+- Integrate with monitoring services
+- Implement custom recovery strategies
+- Improve debugging with component stacks
+
+Remember to use these APIs alongside error boundaries for comprehensive error handling in your RedwoodSDK application.

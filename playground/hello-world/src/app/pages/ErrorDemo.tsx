@@ -1,19 +1,7 @@
-import { RequestInfo } from "rwsdk/worker";
-import { ErrorDemo } from "./ErrorDemo";
+"use client";
 
-export function Home({ ctx }: RequestInfo) {
-  return (
-    <div>
-      <h1>Hello World</h1>
-      <p>This playground demonstrates error handling with React 19 APIs.</p>
-      <p>
-        Open the browser console and click the buttons below to see error
-        handling in action.
-      </p>
-      <ErrorDemo />
-    </div>
-  );
-}
+// Example component that demonstrates error handling
+export function ErrorDemo() {
   return (
     <div style={{ marginTop: "2rem", padding: "1rem", border: "1px solid #ccc" }}>
       <h2>Error Handling Demo</h2>
@@ -76,3 +64,4 @@ function AsyncErrorButton() {
     </button>
   );
 }
+

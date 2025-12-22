@@ -100,6 +100,10 @@ export default defineConfig({
                   label: "Client Side Navigation (SPA)",
                   slug: "guides/frontend/client-side-nav",
                 },
+                {
+                  label: "Error Handling",
+                  slug: "guides/frontend/error-handling",
+                },
               ],
             },
             {
