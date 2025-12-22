@@ -150,7 +150,11 @@ export const fetchTransport: Transport = (transportContext) => {
  * making the page interactive. Call this from your client entry point.
  *
  * @param transport - Custom transport for server communication (defaults to fetchTransport)
- * @param hydrateRootOptions - Options passed to React's hydrateRoot
+ * @param hydrateRootOptions - Options passed to React's `hydrateRoot`. Supports all React hydration options including:
+ *                             - `onUncaughtError`: Handler for uncaught errors (async errors, event handler errors).
+ *                               If not provided, defaults to logging errors to console.
+ *                             - `onCaughtError`: Handler for errors caught by error boundaries
+ *                             - `onRecoverableError`: Handler for recoverable errors
  * @param handleResponse - Custom response handler for navigation errors (navigation GETs)
  * @param onHydrationUpdate - Callback invoked after a new RSC payload has been committed on the client
  * @param onActionResponse - Optional hook invoked when an action returns a Response;
@@ -169,6 +173,23 @@ export const fetchTransport: Transport = (transportContext) => {
  *
  * const { handleResponse } = initClientNavigation();
  * initClient({ handleResponse });
+ *
+ * @example
+ * // With error handling
+ * initClient({
+ *   hydrateRootOptions: {
+ *     onUncaughtError: (error, errorInfo) => {
+ *       console.error("Uncaught error:", error);
+ *       // Send to monitoring service
+ *       sendToSentry(error, errorInfo);
+ *     },
+ *     onCaughtError: (error, errorInfo) => {
+ *       console.error("Caught error:", error);
+ *       // Handle errors from error boundaries
+ *       sendToSentry(error, errorInfo);
+ *     },
+ *   },
+ * });
  *
  * @example
  * // With custom React hydration options
@@ -264,7 +285,6 @@ export const initClient = async ({
         componentStack,
       );
     },
-
     ...hydrateRootOptions,
   });
 

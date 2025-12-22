@@ -68,17 +68,6 @@ export default defineConfig({
           label: "Guides",
           items: [
             {
-              label: "Email",
-              collapsed: false,
-              items: [
-                { label: "Sending Email", slug: "guides/email/sending-email" },
-                {
-                  label: "Email Templates",
-                  slug: "guides/email/email-templates",
-                },
-              ],
-            },
-            {
               label: "Frontend Development",
               collapsed: false,
               items: [
@@ -100,7 +89,25 @@ export default defineConfig({
                   label: "Client Side Navigation (SPA)",
                   slug: "guides/frontend/client-side-nav",
                 },
-                { label: "Dark / Light Mode", slug: "guides/frontend/dark-mode" },
+                {
+                  label: "Error Handling",
+                  slug: "guides/frontend/error-handling",
+                },
+                {
+                  label: "Dark / Light Mode",
+                  slug: "guides/frontend/dark-mode",
+                },
+              ],
+            },
+            {
+              label: "Email",
+              collapsed: false,
+              items: [
+                { label: "Sending Email", slug: "guides/email/sending-email" },
+                {
+                  label: "Email Templates",
+                  slug: "guides/email/email-templates",
+                },
               ],
             },
             {
