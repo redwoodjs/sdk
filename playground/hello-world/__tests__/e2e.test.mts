@@ -138,3 +138,28 @@ testDevAndDeploy(
     );
   },
 );
+
+testDevAndDeploy(
+  "except handler catches errors from route handlers",
+  async ({ page, url }) => {
+    // Navigate directly to the route that throws an error
+    await page.goto(`${url}/debug/throw`);
+
+    // Wait for page to be fully loaded
+    await page.waitForFunction("document.readyState === 'complete'");
+
+    // Verify the error page is displayed (caught by except handler)
+    const getErrorPageContent = () => page.content();
+    await poll(
+      async () => {
+        const content = await getErrorPageContent();
+        expect(content).toContain("Error Page");
+        expect(content).toContain("Error Details");
+        expect(content).toContain("This is a test error from the /debug/throw route");
+        expect(content).not.toContain("Hello World");
+        return true;
+      },
+      { timeout: 10000 },
+    );
+  },
+);

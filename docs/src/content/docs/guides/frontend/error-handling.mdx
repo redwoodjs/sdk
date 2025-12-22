@@ -96,7 +96,7 @@ initClient({
 
 ## Universal Error Handling
 
-To ensure that *all* client-side errors (including event handlers, timeouts, and promise rejections) are caught and handled uniformly, you should combine React's error handlers with global browser listeners.
+To ensure that _all_ client-side errors (including event handlers, timeouts, and promise rejections) are caught and handled uniformly, you should combine React's error handlers with global browser listeners.
 
 This pattern is particularly useful for redirecting users to a dedicated error page on any fatal error:
 
@@ -320,6 +320,85 @@ onUncaughtError: (error, errorInfo) => {
 },
 ```
 
+## Server-Side Error Handling
+
+For server-side errors (errors in Server Components, middleware, route handlers, and RSC actions), use the `except` function from `rwsdk/router`. This provides a declarative way to handle errors that integrates with your routing structure.
+
+### Basic Usage
+
+```tsx title="src/worker.tsx"
+import { except, route } from "rwsdk/router";
+import { defineApp } from "rwsdk/worker";
+
+export default defineApp([
+  except((error) => {
+    console.error("Server error:", error);
+    return <ErrorPage error={error} />;
+  }),
+
+  route("/", () => <HomePage />),
+]);
+```
+
+### Integration with Monitoring
+
+You can combine `except` with monitoring services:
+
+```tsx title="src/worker.tsx"
+import { except, route } from "rwsdk/router";
+import { defineApp } from "rwsdk/worker";
+
+export default defineApp([
+  except(async (error, requestInfo) => {
+    // Send to monitoring service
+    await sendToMonitoring(error, {
+      url: requestInfo.request.url,
+      method: requestInfo.request.method,
+    });
+
+    // Return user-friendly error page
+    return <ErrorPage error={error} />;
+  }),
+
+  route("/", () => <HomePage />),
+]);
+```
+
+### Nested Error Handling
+
+You can define multiple `except` handlers for different sections of your application:
+
+```tsx title="src/worker.tsx"
+import { except, prefix, route } from "rwsdk/router";
+import { defineApp } from "rwsdk/worker";
+
+export default defineApp([
+  // Global error handler
+  except((error) => {
+    return <GlobalErrorPage error={error} />;
+  }),
+
+  prefix("/api", [
+    // API-specific error handler
+    except((error) => {
+      return Response.json(
+        { error: error instanceof Error ? error.message : "API Error" },
+        { status: 500 },
+      );
+    }),
+
+    route("/users", async () => {
+      // This error will be caught by the API handler
+      throw new Error("Database error");
+    }),
+  ]),
+
+  route("/", () => <HomePage />),
+]);
+```
+
+For more details on `except`, see the [router documentation](/reference/sdk-router/#except).
+
 ## Relationship to Error Boundaries
 
 Error boundaries are React components that catch errors in their child component tree. However, they have important limitations in a React Server Components (RSC) world:
@@ -337,7 +416,7 @@ Root-level error handlers (`onUncaughtError` and `onCaughtError`) are more suita
 - Provide a single place to handle all React errors for monitoring and logging
 - Preserve the benefits of RSC by not forcing components to be client components
 
-For server-side rendering errors, use the router's error handling (see [router error handling documentation](/reference/sdk-router/#error-handling)).
+For server-side rendering errors, use the `except` function from `rwsdk/router` (see [router error handling documentation](/reference/sdk-router/#except)).
 
 ## Scope and Limitations
 
@@ -353,7 +432,7 @@ For server-side rendering errors, use the router's error handling (see [router e
 - **Imperative event handlers**: Errors in `onClick`, `onBlur`, etc., often bubble directly to the browser.
 - **Asynchronous code**: `setTimeout`, `setInterval`, or third-party callbacks outside of React's control.
 - **Unhandled rejections**: Promise failures that are not part of a React transition.
-- **Server-side RSC rendering errors**: Use [router error handling](/reference/sdk-router/#error-handling) or wrap `defineApp`'s `fetch` method.
+- **Server-side RSC rendering errors**: Use the [`except` function](/reference/sdk-router/#except) or wrap `defineApp`'s `fetch` method.
 - **SSR errors**: Handled server-side.
 
 <Aside type="tip">

@@ -1,4 +1,4 @@
-import { render, route } from "rwsdk/router";
+import { except, render, route } from "rwsdk/router";
 import { defineApp } from "rwsdk/worker";
 
 import { Document } from "@/app/Document";
@@ -13,5 +13,14 @@ export default defineApp([
     // setup ctx here
     ctx;
   },
-  render(Document, [route("/", Home), route("/error", ErrorPage)]),
+  except((error) => {
+    return <ErrorPage error={error} />;
+  }),
+  render(Document, [
+    route("/", Home),
+    route("/error", ErrorPage),
+    route("/debug/throw", () => {
+      throw new Error("This is a test error from the /debug/throw route");
+    }),
+  ]),
 ]);
