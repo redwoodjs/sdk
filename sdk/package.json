@@ -23,8 +23,8 @@
   },
   "exports": {
     "./vite": {
-      "default": "./dist/vite/index.mjs",
-      "types": "./dist/vite/index.d.mts"
+      "types": "./dist/vite/index.d.mts",
+      "default": "./dist/vite/index.mjs"
     },
     "./worker": {
       "react-server": "./dist/runtime/entries/worker.js",
