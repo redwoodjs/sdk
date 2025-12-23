@@ -53,6 +53,9 @@ This collection of documents provides a high-level overview of the core architec
 - [**Client-Side Navigation**](./clientSideNavigation.md)
   An explanation of how client-side navigation works in RedwoodSDK, providing a Single Page App (SPA) like experience.
 
+- [**Router Architecture**](./router.md)
+  Describes the core principles of the router, its flattened route table structure, and its performance characteristics.
+
 - [**Executing Worker Scripts**](./workerScripts.md)
   This document details the mechanism for running one-off scripts, such as database seeds, within the context of the application's worker environment.
 

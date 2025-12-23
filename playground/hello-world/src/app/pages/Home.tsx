@@ -1,5 +1,7 @@
 import { RequestInfo } from "rwsdk/worker";
+import { Button } from "./Button.client";
 import { ErrorDemo } from "./ErrorDemo";
+import { Stars } from "./Stars.client";
 
 export function Home({ ctx }: RequestInfo) {
   return (
@@ -10,6 +12,8 @@ export function Home({ ctx }: RequestInfo) {
         Open the browser console and click the buttons below to see error
         handling in action.
       </p>
+      <Button />
+      <Stars level={5} />
       <ErrorDemo />
     </div>
   );

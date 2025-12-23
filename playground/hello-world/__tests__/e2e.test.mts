@@ -155,11 +155,59 @@ testDevAndDeploy(
         const content = await getErrorPageContent();
         expect(content).toContain("Error Page");
         expect(content).toContain("Error Details");
-        expect(content).toContain("This is a test error from the /debug/throw route");
+        expect(content).toContain(
+          "This is a test error from the /debug/throw route",
+        );
         expect(content).not.toContain("Hello World");
         return true;
       },
       { timeout: 10000 },
     );
+  },
+);
+
+testDevAndDeploy(
+  "client components work on initial load (inc. .client.tsx and inlined functions)",
+  async ({ page, url }) => {
+    await page.goto(url);
+
+    // Wait for page to be fully interactive
+    await page.waitForFunction("document.readyState === 'complete'");
+
+    // 1. Verify Button.client.tsx works
+    const getClientButton = () => page.$("#client-button");
+    await poll(async () => {
+      const button = await getClientButton();
+      expect(button).not.toBeNull();
+      return true;
+    });
+
+    const buttonTextBefore = await page.$eval(
+      "#client-button",
+      (el) => el.textContent,
+    );
+    expect(buttonTextBefore).toContain("Client Count: 0");
+
+    await (await getClientButton())!.click();
+
+    await poll(async () => {
+      const text = await page.$eval("#client-button", (el) => el.textContent);
+      expect(text).toContain("Client Count: 1");
+      return true;
+    });
+
+    // 2. Verify Stars.client.tsx works (Issue #471 repro)
+    const getStarsContainer = () => page.$("#stars-container");
+    await poll(async () => {
+      const container = await getStarsContainer();
+      expect(container).not.toBeNull();
+      return true;
+    });
+
+    const starsCount = await page.$eval(
+      "#stars-container",
+      (el) => el.children.length,
+    );
+    expect(starsCount).toBe(5);
   },
 );
