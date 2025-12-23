@@ -366,15 +366,12 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
       rscActionHandler,
     }) {
       const requestInfo = getRequestInfo();
-      if (!requestInfo.path) {
-        const url = new URL(request.url);
-        let p = url.pathname;
-        if (p !== "/" && !p.endsWith("/")) {
-          p = p + "/";
-        }
-        requestInfo.path = p;
+      const url = new URL(request.url);
+      let path = url.pathname;
+      if (path !== "/" && !path.endsWith("/")) {
+        path = path + "/";
       }
-      const path = requestInfo.path;
+      requestInfo.path = path;
 
       // --- Helpers ---
       // (Hoisted for readability)
@@ -459,8 +456,12 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
       let firstRouteDefinitionEncountered = false;
       let actionHandled = false;
       const handleAction = async () => {
-        if (!actionHandled && requestInfo.isAction) {
-          requestInfo.rw.actionResult = await rscActionHandler(request);
+        // Handle RSC actions once per request, based on the incoming URL.
+        if (!actionHandled) {
+          const url = new URL(request.url);
+          if (url.searchParams.has("__rsc_action_id")) {
+            requestInfo.rw.actionResult = await rscActionHandler(request);
+          }
           actionHandled = true;
         }
       };

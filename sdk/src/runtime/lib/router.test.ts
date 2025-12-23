@@ -97,6 +97,7 @@ describe("defineRoutes - Request Handling Behavior", () => {
   const createMockDependencies = () => {
     const mockRequestInfo: RequestInfo = {
       request: new Request("http://localhost:3000/"),
+      path: "/",
       params: {},
       ctx: {},
       rw: {
