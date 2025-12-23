@@ -1,0 +1,584 @@
+---
+title: Troubleshooting
+description: Common issues and solutions when building RedwoodSDK applications
+---
+
+import { Aside, Steps } from "@astrojs/starlight/components";
+
+## React Server Components Configuration Errors
+
+### Error: "A client-only module was incorrectly resolved with the 'react-server' condition"
+
+This error occurs when client-only modules (like `rwsdk/client`, `rwsdk/__ssr`, or `rwsdk/__ssr_bridge`) are being resolved with the `react-server` condition, which they should not be.
+
+#### What This Means
+
+RedwoodSDK uses Node.js package.json [export conditions](https://nodejs.org/api/packages.html#conditional-exports) to ensure the correct code is loaded for each environment:
+
+- **Worker environment** (React Server Components): Uses `react-server` condition for server-only modules
+- **SSR environment**: Does NOT use `react-server` condition
+- **Client environment**: Uses `browser` condition
+
+When client-only modules are incorrectly resolved with `react-server`, it indicates a configuration issue.
+
+#### How to Fix
+
+<Steps>
+  <Step>
+    **Check your Vite configuration**
+
+    If you're using RedwoodSDK's `configPlugin`, the resolve conditions are set automatically. However, if you're manually configuring Vite, ensure:
+
+    ```ts
+    // Worker environment (RSC)
+    resolve: {
+      conditions: ["workerd", "react-server", "module", "node"]
+    }
+
+    // SSR environment
+    resolve: {
+      conditions: ["workerd", "module", "browser"]
+      // Note: NO "react-server" condition
+    }
+
+    // Client environment
+    resolve: {
+      conditions: ["browser", "module"]
+    }
+    ```
+
+  </Step>
+
+  <Step>
+    **Verify you're not overriding resolve conditions**
+
+    Check your `vite.config.ts` or `vite.config.mts` to ensure you're not manually overriding `resolve.conditions` in a way that conflicts with RedwoodSDK's configuration.
+
+    ```ts
+    // ❌ Don't do this
+    export default defineConfig({
+      environments: {
+        ssr: {
+          resolve: {
+            conditions: ["react-server", "workerd"] // Wrong!
+          }
+        }
+      }
+    })
+
+    // ✅ Let RedwoodSDK handle it
+    import { configPlugin } from "rwsdk/vite";
+    export default defineConfig({
+      plugins: [configPlugin({ /* ... */ })]
+    })
+    ```
+
+  </Step>
+
+  <Step>
+    **Check for incorrect imports**
+
+    Ensure that client-only code is not being imported in server components:
+
+    ```tsx
+    // ❌ Don't import client-only modules in server components
+    import { initClient } from "rwsdk/client"; // This is client-only!
+
+    export default function ServerComponent() {
+      // This will cause the error
+      return <div>Server Component</div>;
+    }
+
+    // ✅ Client-only imports should only be in client components
+    "use client";
+    import { initClient } from "rwsdk/client";
+
+    export default function ClientComponent() {
+      return <div>Client Component</div>;
+    }
+    ```
+
+  </Step>
+
+  <Step>
+    **Intermittent errors (race conditions)**
+
+    If this error appears intermittently, especially during development server startup, it may indicate a race condition in dependency optimization. This can happen with large libraries.
+
+    Try:
+    - Restarting the dev server
+    - Clearing Vite's cache: `rm -rf node_modules/.vite`
+    - If the issue persists, it may be a bug in RedwoodSDK - please [file an issue](https://github.com/redwoodjs/sdk/issues)
+
+  </Step>
+</Steps>
+
+#### Understanding Export Conditions
+
+RedwoodSDK's package.json uses export conditions to route imports correctly:
+
+```json
+{
+  "exports": {
+    "./client": {
+      "react-server": "./dist/runtime/entries/no-react-server.js",
+      "default": "./dist/runtime/entries/client.js"
+    },
+    "./worker": {
+      "react-server": "./dist/runtime/entries/worker.js",
+      "default": "./dist/runtime/entries/react-server-only.js"
+    }
+  }
+}
+```
+
+- When `rwsdk/client` is imported with `react-server` condition → throws error (client code shouldn't run in RSC)
+- When `rwsdk/client` is imported with `default` condition → loads client code ✅
+- When `rwsdk/worker` is imported with `react-server` condition → loads worker code ✅
+- When `rwsdk/worker` is imported with `default` condition → throws error (server code shouldn't run in client)
+
+The build system automatically selects the correct condition based on the environment, but configuration issues can cause the wrong condition to be used.
+
+---
+
+## Directive Scan Errors
+
+### Error: "Directive scan failed. This often happens due to syntax errors in files using 'use client' or 'use server'"
+
+This error occurs during RedwoodSDK's initial scan of your codebase to identify files with `"use client"` and `"use server"` directives. The scan uses esbuild to parse and analyze your files, and it can fail if it encounters syntax errors or other issues.
+
+#### What This Means
+
+RedwoodSDK scans all files in your `src` directory to:
+
+- Identify which files are client components (`"use client"`)
+- Identify which files are server functions (`"use server"`)
+- Build a dependency graph to classify modules correctly
+- Handle MDX files by compiling them
+
+The scan must successfully parse all files to build an accurate picture of your application structure.
+
+#### How to Fix
+
+<Steps>
+  <Step>
+    **Check for syntax errors**
+
+    The most common cause is syntax errors in files that use directives. Check the error stack trace in the console - it will usually point to the problematic file.
+
+    Common syntax errors include:
+    - Missing closing braces or parentheses
+    - Incorrect JSX syntax
+    - TypeScript type errors that prevent parsing
+    - Invalid import statements
+
+    ```tsx
+    // ❌ Missing closing brace
+    "use client";
+    export function Component() {
+      return <div>Hello
+      // Missing closing brace and tag
+    }
+
+    // ✅ Correct syntax
+    "use client";
+    export function Component() {
+      return <div>Hello</div>;
+    }
+    ```
+
+  </Step>
+
+  <Step>
+    **Check MDX files**
+
+    If you're using MDX files, ensure they compile correctly. MDX compilation errors can cause the scan to fail.
+
+    ```mdx
+    // ❌ Invalid MDX syntax
+    ---
+    title: My Page
+    ---
+
+    <Component prop={unclosed
+    ```
+
+    Try compiling the MDX file manually to see the specific error:
+    ```bash
+    npx @mdx-js/mdx compile src/pages/page.mdx
+    ```
+
+  </Step>
+
+  <Step>
+    **Check for import resolution issues**
+
+    The scan needs to resolve all imports. Issues that can cause failures:
+
+    - **Circular dependencies**: Files that import each other in a loop
+    - **Missing modules**: Imports that can't be resolved
+    - **Invalid import paths**: Typos in import statements
+
+    ```tsx
+    // ❌ Circular dependency
+    // FileA.tsx
+    import { ComponentB } from "./FileB";
+
+    // FileB.tsx
+    import { ComponentA } from "./FileA"; // Circular!
+
+    // ❌ Missing module
+    import { something } from "./non-existent-file";
+    ```
+
+    Check the error stack trace to identify which file has the problematic import.
+
+  </Step>
+
+  <Step>
+    **Check TypeScript configuration**
+
+    If you're using TypeScript, ensure your `tsconfig.json` is valid and doesn't have configuration errors that prevent parsing:
+
+    ```bash
+    # Check for TypeScript errors
+    npx tsc --noEmit
+    ```
+
+    While TypeScript errors won't always prevent the scan, severe configuration issues might.
+
+  </Step>
+
+  <Step>
+    **Enable verbose logging**
+
+    To get more information about what's failing, enable verbose logging:
+
+    ```bash
+    VERBOSE=1 pnpm dev
+    ```
+
+    This will show detailed logs about which files are being scanned and where failures occur.
+
+  </Step>
+
+  <Step>
+    **Check for file encoding issues**
+
+    Ensure all your source files are valid UTF-8. Files with invalid encoding can cause parsing failures.
+
+    ```bash
+    # Check file encoding (macOS/Linux)
+    file -I src/**/*.{ts,tsx,js,jsx}
+    ```
+
+  </Step>
+
+  <Step>
+    **Isolate the problematic file**
+
+    If the error doesn't clearly point to a specific file, try temporarily removing files with directives to isolate the issue:
+
+    1. Comment out or rename files with `"use client"` or `"use server"`
+    2. Restart the dev server
+    3. If it works, add files back one by one to find the problematic one
+
+  </Step>
+</Steps>
+
+#### Understanding the Directive Scan
+
+The directive scan is a critical part of RedwoodSDK's build process. It:
+
+1. **Scans all files** in your `src` directory (`.ts`, `.tsx`, `.js`, `.jsx`, `.mts`, `.mjs`, `.mdx`)
+2. **Identifies directives** by looking for `"use client"` and `"use server"` at the top of files
+3. **Builds a dependency graph** by following imports to classify modules as client or server
+4. **Handles MDX files** by compiling them with `@mdx-js/mdx` before parsing
+
+The scan must complete successfully before your application can build or run. If it fails, the build process stops to prevent incorrect module classification.
+
+<Aside type="tip">
+  If you're seeing this error intermittently, it might indicate a race condition
+  or caching issue. Try clearing Vite's cache: `rm -rf node_modules/.vite`
+</Aside>
+
+---
+
+## Request Context Errors
+
+### Error: "Request context not found. getRequestInfo() can only be called within the request lifecycle"
+
+This error occurs when you try to call `getRequestInfo()` outside of a request context. RedwoodSDK uses Node.js `AsyncLocalStorage` to provide request-scoped data, which is only available during the request lifecycle.
+
+#### What This Means
+
+`getRequestInfo()` provides access to request-specific data like:
+
+- The incoming `Request` object
+- Route `params` (e.g., `/users/:id` → `params.id`)
+- Application `ctx` (context set by middleware)
+- Response headers and status
+- RSC (React Server Components) configuration
+
+This data is only available when code is running as part of handling an HTTP request. It's not available in:
+
+- Module-level code (top-level of files)
+- Code that runs outside the request lifecycle
+- **Queue handlers** (background task processing)
+- **Cron triggers** (scheduled tasks)
+- Callbacks that execute after the request completes
+- Code in client components
+
+#### How to Fix
+
+<Steps>
+  <Step>
+    **Use requestInfo as a prop instead**
+
+    In React Server Components, `requestInfo` is automatically passed as props. Use it directly rather than calling `getRequestInfo()`:
+
+    ```tsx
+    // ❌ Don't do this in a server component
+    import { getRequestInfo } from "rwsdk/worker";
+
+    export default function MyPage() {
+      const requestInfo = getRequestInfo(); // Error!
+      return <div>{requestInfo.request.url}</div>;
+    }
+
+    // ✅ Do this instead - requestInfo is passed as props
+    import type { RequestInfo } from "rwsdk/worker";
+
+    export default function MyPage({ request, ctx }: RequestInfo) {
+      const url = new URL(request.url);
+      return <div>{url.pathname}</div>;
+    }
+    ```
+
+  </Step>
+
+  <Step>
+    **In route handlers and middleware**
+
+    Route handlers and middleware receive `requestInfo` as a parameter:
+
+    ```tsx
+    // ✅ Route handler - requestInfo is the parameter
+    import { route } from "rwsdk/router";
+    import type { RequestInfo } from "rwsdk/worker";
+
+    route("/users/:id", ({ params, request, ctx }: RequestInfo) => {
+      // Use params, request, ctx directly
+      return <UserPage userId={params.id} />;
+    });
+
+    // ✅ Middleware - requestInfo is the parameter
+    function authMiddleware(requestInfo: RequestInfo) {
+      // Access requestInfo directly
+      if (!requestInfo.ctx.user) {
+        return new Response("Unauthorized", { status: 401 });
+      }
+    }
+    ```
+
+  </Step>
+
+  <Step>
+    **In server functions ("use server")**
+
+    Server functions also receive `requestInfo` automatically. You can access it via the `requestInfo` import:
+
+    ```tsx
+    // ✅ Server function - use requestInfo import
+    "use server";
+    import { requestInfo } from "rwsdk/worker";
+
+    export async function myServerAction() {
+      // requestInfo is available here
+      const { ctx, params } = requestInfo;
+      // ... your code
+    }
+    ```
+
+    Note: The `requestInfo` import (not `getRequestInfo()`) works in server functions because they run within the request context.
+
+  </Step>
+
+  <Step>
+    **Avoid calling getRequestInfo() in delayed callbacks**
+
+    If you need request context in a callback that executes after the request completes (like `setTimeout`, `setInterval`, or promise callbacks that run after the function returns), you need to capture the values you need before the callback:
+
+    ```tsx
+    // ❌ This won't work
+    "use server";
+    import { getRequestInfo } from "rwsdk/worker";
+
+    export async function myAction() {
+      setTimeout(() => {
+        const info = getRequestInfo(); // Error! Context is lost
+      }, 1000);
+    }
+
+    // ✅ Capture what you need first
+    "use server";
+    import { requestInfo } from "rwsdk/worker";
+
+    export async function myAction() {
+      const userId = requestInfo.ctx.user.id; // Capture value
+      setTimeout(() => {
+        // Use the captured value, not getRequestInfo()
+        console.log(userId);
+      }, 1000);
+    }
+    ```
+
+  </Step>
+
+  <Step>
+    **Don't call getRequestInfo() in client components**
+
+    Client components run in the browser and don't have access to server-side request context:
+
+    ```tsx
+    // ❌ This will never work
+    "use client";
+    import { getRequestInfo } from "rwsdk/worker";
+
+    export default function ClientComponent() {
+      const info = getRequestInfo(); // Error! Client components don't have request context
+      return <div>Client</div>;
+    }
+
+    // ✅ Pass data as props instead
+    "use client";
+    export default function ClientComponent({ userId }: { userId: string }) {
+      return <div>User: {userId}</div>;
+    }
+
+    // In server component:
+    export default function ServerPage({ ctx }: RequestInfo) {
+      return <ClientComponent userId={ctx.user.id} />;
+    }
+    ```
+
+  </Step>
+
+  <Step>
+    **Module-level code**
+
+    Code that runs at the module level (top-level of a file) executes before any request is handled:
+
+    ```tsx
+    // ❌ This won't work - runs at module load time
+    import { getRequestInfo } from "rwsdk/worker";
+
+    const info = getRequestInfo(); // Error! No request context yet
+
+    export default function Page() {
+      return <div>Page</div>;
+    }
+
+    // ✅ Move it inside a function that runs during request handling
+    import type { RequestInfo } from "rwsdk/worker";
+
+    export default function Page({ request }: RequestInfo) {
+      // Access request here, inside the component
+      return <div>{request.url}</div>;
+    }
+    ```
+
+  </Step>
+
+  <Step>
+    **Queue handlers and cron triggers**
+
+    Queue handlers and scheduled tasks (cron triggers) run outside of the HTTP request lifecycle, so they don't have request context:
+
+    ```tsx
+    // ❌ This won't work - queue handlers don't have request context
+    import { getRequestInfo } from "rwsdk/worker";
+
+    const app = defineApp([/* routes */]);
+
+    export default {
+      fetch: app.fetch,
+      async queue(batch) {
+        const info = getRequestInfo(); // Error! No request context in queue handler
+        for (const message of batch.messages) {
+          // Process message
+        }
+      }
+    };
+
+    // ✅ Pass data through the message body instead
+    const app = defineApp([
+      route("/send-email", ({ ctx }: RequestInfo) => {
+        // Capture data from request context
+        env.QUEUE.send({
+          userId: ctx.user.id,
+          email: ctx.user.email,
+          // ... other data you need
+        });
+        return new Response("Queued");
+      })
+    ]);
+
+    export default {
+      fetch: app.fetch,
+      async queue(batch) {
+        for (const message of batch.messages) {
+          const { userId, email } = message.body as { userId: number; email: string };
+          // Use the data from the message, not request context
+          await sendEmail(email);
+        }
+      }
+    };
+    ```
+
+    The same applies to cron triggers:
+
+    ```tsx
+    // ❌ This won't work
+    import { getRequestInfo } from "rwsdk/worker";
+
+    export default {
+      fetch: app.fetch,
+      async scheduled(controller) {
+        const info = getRequestInfo(); // Error! No request context in cron
+        // ... scheduled task
+      }
+    };
+
+    // ✅ Cron triggers don't have request context - they're background tasks
+    export default {
+      fetch: app.fetch,
+      async scheduled(controller) {
+        // Do your scheduled work without request context
+        await cleanupOldData();
+        await generateReports();
+      }
+    };
+    ```
+
+  </Step>
+</Steps>
+
+#### Understanding Request Context
+
+RedwoodSDK uses Node.js `AsyncLocalStorage` to provide request-scoped data. This means:
+
+1. **Request context is set** when a request starts (in the router's `handle` method)
+2. **Context is available** to all code that runs synchronously within that request
+3. **Context is lost** when:
+   - The request completes
+   - Code runs in a different async context (like `setTimeout`, `setInterval`)
+   - Code runs in a client component (browser environment)
+
+The `requestInfo` import works in server functions because they're called during the request lifecycle. The `getRequestInfo()` function throws an error if called outside this context to prevent bugs from accessing stale or missing data.
+
+<Aside type="tip">
+  If you need to pass request data to code that runs outside the request
+  context, capture the specific values you need as variables before the context
+  is lost.
+</Aside>

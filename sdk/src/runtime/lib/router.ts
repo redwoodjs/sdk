@@ -12,14 +12,13 @@ type BivariantRouteHandler<T extends RequestInfo, R> = {
 export type RouteMiddleware<T extends RequestInfo = RequestInfo> =
   BivariantRouteHandler<T, MaybePromise<React.JSX.Element | Response | void>>;
 
-type RouteFunction<T extends RequestInfo = RequestInfo> =
-  BivariantRouteHandler<T, MaybePromise<Response>>;
+type RouteFunction<T extends RequestInfo = RequestInfo> = BivariantRouteHandler<
+  T,
+  MaybePromise<Response>
+>;
 
 type RouteComponent<T extends RequestInfo = RequestInfo> =
-  BivariantRouteHandler<
-    T,
-    MaybePromise<React.JSX.Element | Response | void>
-  >;
+  BivariantRouteHandler<T, MaybePromise<React.JSX.Element | Response | void>>;
 
 type RouteHandler<T extends RequestInfo = RequestInfo> =
   | RouteFunction<T>
@@ -123,7 +122,7 @@ export function matchPath<T extends RequestInfo = RequestInfo>(
     for (const segment of segments) {
       if ((segment.match(/:/g) || []).length > 1) {
         throw new Error(
-          `Invalid route pattern: segment "${segment}" in "${routePath}" contains multiple colons.`,
+          `RedwoodSDK: Invalid route pattern: segment "${segment}" in "${routePath}" contains multiple colons. Each route parameter should use a single colon (e.g., ":id"). Check for accidental double colons ("::").`,
         );
       }
     }
@@ -132,7 +131,7 @@ export function matchPath<T extends RequestInfo = RequestInfo>(
   // Check for invalid pattern: double wildcard (e.g., /**/)
   if (routePath.indexOf("**") !== -1) {
     throw new Error(
-      `Invalid route pattern: "${routePath}" contains "**". Use "*" for a single wildcard segment.`,
+      `RedwoodSDK: Invalid route pattern: "${routePath}" contains "**". Use "*" for a single wildcard segment. Double wildcards are not supported.`,
     );
   }
 
@@ -433,9 +432,12 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
               return handledTail;
             }
 
-            return new Response("Response not returned from route handler", {
-              status: 500,
-            });
+            return new Response(
+              "RedwoodSDK: Response not returned from route handler. Ensure your route handler returns either a `Response` object or a JSX element.",
+              {
+                status: 500,
+              },
+            );
           },
         );
       }
