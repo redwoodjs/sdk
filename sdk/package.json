@@ -18,6 +18,9 @@
     "build:watch": "npm run build -- --watch",
     "release": "./scripts/release.sh",
     "test": "vitest --run",
+    "bench": "vitest bench --run",
+    "bench:baseline": "vitest bench --run --outputJson=benchmarks/router-bench-baseline.json",
+    "bench:compare": "vitest bench --run --compare=benchmarks/router-bench-baseline.json",
     "debug:sync": "tsx ./src/scripts/debug-sync.mts",
     "smoke-test": "tsx ./src/scripts/smoke-test.mts"
   },
