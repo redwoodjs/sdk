@@ -44,12 +44,12 @@ export const defineApp = <
 >(
   routes: Routes,
 ): AppDefinition<Routes, T> => {
+  const router = defineRoutes<T>(routes);
+
   return {
     __rwRoutes: routes,
     fetch: async (request: Request, env: Env, cf: ExecutionContext) => {
       globalThis.__webpack_require__ = ssrWebpackRequire;
-
-      const router = defineRoutes<T>(routes);
 
       // context(justinvdm, 5 Feb 2025): Serve assets requests using the assets service binding
       // todo(justinvdm, 5 Feb 2025): Find a way to avoid this so asset requests are served directly
@@ -107,6 +107,11 @@ export const defineApp = <
 
       try {
         const url = new URL(request.url);
+        let path = url.pathname;
+        if (path !== "/" && !path.endsWith("/")) {
+          path = path + "/";
+        }
+
         const isRSCRequest =
           url.searchParams.has("__rsc") ||
           request.headers.get("accept")?.includes("text/x-component");
@@ -131,6 +136,7 @@ export const defineApp = <
 
         const outerRequestInfo: RequestInfo<any, T["ctx"]> = {
           request,
+          path,
           cf,
           params: {},
           ctx: {},

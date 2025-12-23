@@ -47,28 +47,29 @@ The core pattern matching engine. It converts route patterns into regular expres
 
 ## Performance Characteristics
 
-Based on our benchmarking of the standard implementation, the router has the following performance profile:
+Based on our benchmarking of the optimized implementation, the router has the following performance profile:
 
 ### Hotspots: O(n) Linear Scans
 
-The primary performance bottleneck is the linear scan through the route table.
+The primary performance bottleneck remains the linear scan through the flattened route table, but its constant factor has been significantly reduced via caching and pre-compilation.
 
-- **Performance scales with route count**: 100 routes take ~30μs to scan, while 200 routes take ~45-50μs.
-- **Worst-case**: A "404 Not Found" result is the most expensive operation because every single route must be checked before failing.
+- **Performance scales with route count**: 100 routes now typically take on the order of 3–6μs to scan, while 200 routes are ~5–6μs on our reference hardware (measured via `sdk/src/runtime/lib/router.bench.ts`).
+- **Worst-case**: A "404 Not Found" result (no route matches) still requires checking every route, but is now roughly an order of magnitude faster than the original implementation.
 
 ### What is Efficient
 
 - **Prefixing & Nesting**: Deeply nested prefixes (10+ levels) have negligible impact on matching speed once flattened.
 - **Layout Wrapping**: Adding multiple layouts adds minimal overhead (~1μs for 5 layouts).
 - **Middleware**: A handful of global or route-specific middlewares are very efficient.
-- **Regex Matching**: The underlying `matchPath` regex execution is extremely fast (millions of ops/sec).
+- **Path Matching**: The combination of path normalization, `matchPath` pre-compilation, and regex caching yields tens of millions of matches per second in micro-benchmarks, so individual path matches are effectively “free” compared to the cost of scanning many routes.
 
 ## Optimization Guardrails
 
 When modifying the router, the following guardrails should be observed:
 
 1. **Protect the Fast Path**: Common cases (first few routes matching) should remain in the 4-5μs range.
-2. **Prioritize Algorithmic Wins**: Optimization efforts should focus on reducing the number of `matchPath` calls (e.g., via prefix bucketing or indexing) rather than micro-optimizing the regex internals.
+2. **Prioritize Algorithmic Wins**: Optimization efforts should focus on reducing the number of routes that need to be scanned (e.g., via prefix bucketing or indexing) rather than further micro-optimizing the already-cached `matchPath` internals.
 3. **Preserve Ordering**: The strictly left-to-right evaluation order must be maintained to ensure predictable middleware and route precedence.
 
 For detailed benchmarking instructions and regression testing, see [Router Performance Benchmarks](./router-performance.md).
+
