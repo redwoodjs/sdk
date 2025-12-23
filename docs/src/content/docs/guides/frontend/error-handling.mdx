@@ -342,19 +342,21 @@ export default defineApp([
 
 ### Integration with Monitoring
 
-You can combine `except` with monitoring services:
+You can combine `except` with monitoring services. Since monitoring calls are often asynchronous, use `ctx.waitUntil()` to ensure the worker doesn't terminate before the error is sent:
 
 ```tsx title="src/worker.tsx"
 import { except, route } from "rwsdk/router";
 import { defineApp } from "rwsdk/worker";
 
 export default defineApp([
-  except(async (error, requestInfo) => {
-    // Send to monitoring service
-    await sendToMonitoring(error, {
-      url: requestInfo.request.url,
-      method: requestInfo.request.method,
-    });
+  except(async (error, { request, cf: ctx }) => {
+    // Send to monitoring service asynchronously without blocking the response
+    ctx.waitUntil(
+      sendToMonitoring(error, {
+        url: request.url,
+        method: request.method,
+      }),
+    );
 
     // Return user-friendly error page
     return <ErrorPage error={error} />;
