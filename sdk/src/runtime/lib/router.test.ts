@@ -387,6 +387,143 @@ describe("defineRoutes - Request Handling Behavior", () => {
       expect(executionOrder).toEqual(["prefixedMiddleware"]);
       expect(await response.text()).toBe("From prefixed middleware");
     });
+
+    it("should pass prefix parameters to route handlers", async () => {
+      let capturedParams: any = null;
+
+      const TaskDetailPage = (requestInfo: RequestInfo) => {
+        capturedParams = requestInfo.params;
+        return React.createElement("div", {}, "Task Detail");
+      };
+
+      const router = defineRoutes([
+        ...prefix("/tasks/:containerId", [route("/", TaskDetailPage)]),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request(
+        "http://localhost:3000/tasks/123/",
+      );
+      const request = new Request("http://localhost:3000/tasks/123/");
+
+      await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(capturedParams).toEqual({ containerId: "123" });
+    });
+
+    it("should pass prefix parameters to middlewares within a parameterized prefix", async () => {
+      const executionOrder: string[] = [];
+      let capturedParams: any = null;
+
+      const prefixedMiddleware = (requestInfo: RequestInfo) => {
+        executionOrder.push("prefixedMiddleware");
+        capturedParams = requestInfo.params;
+      };
+
+      const PageComponent = () => {
+        executionOrder.push("PageComponent");
+        return React.createElement("div", {}, "Page");
+      };
+
+      const router = defineRoutes([
+        ...prefix("/tasks/:containerId", [
+          prefixedMiddleware,
+          route("/", PageComponent),
+        ]),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request(
+        "http://localhost:3000/tasks/123/",
+      );
+      const request = new Request("http://localhost:3000/tasks/123/");
+
+      await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(executionOrder).toEqual(["prefixedMiddleware", "PageComponent"]);
+      // The wildcard captures the trailing slash as an empty string
+      expect(capturedParams).toEqual({ containerId: "123", $0: "" });
+    });
+
+    it("should pass prefix parameters to route handlers (array)", async () => {
+      let capturedParamsInMiddleware: any = null;
+      let capturedParamsInComponent: any = null;
+
+      const middleware = (requestInfo: RequestInfo) => {
+        capturedParamsInMiddleware = requestInfo.params;
+      };
+
+      const Component = (requestInfo: RequestInfo) => {
+        capturedParamsInComponent = requestInfo.params;
+        return React.createElement("div", {}, "Component");
+      };
+
+      const router = defineRoutes([
+        ...prefix("/tasks/:containerId", [route("/", [middleware, Component])]),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request(
+        "http://localhost:3000/tasks/123/",
+      );
+      const request = new Request("http://localhost:3000/tasks/123/");
+
+      await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(capturedParamsInMiddleware).toEqual({ containerId: "123" });
+      expect(capturedParamsInComponent).toEqual({ containerId: "123" });
+    });
+
+    it("should match even if prefix has a trailing slash", async () => {
+      let capturedParams: any = null;
+
+      const TaskDetailPage = (requestInfo: RequestInfo) => {
+        capturedParams = requestInfo.params;
+        return React.createElement("div", {}, "Task Detail");
+      };
+
+      const router = defineRoutes([
+        ...prefix("/tasks/:containerId/", [route("/", TaskDetailPage)]),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request(
+        "http://localhost:3000/tasks/123/",
+      );
+      const request = new Request("http://localhost:3000/tasks/123/");
+
+      await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(capturedParams).toEqual({ containerId: "123" });
+    });
   });
 
   describe("RSC Action Handling", () => {

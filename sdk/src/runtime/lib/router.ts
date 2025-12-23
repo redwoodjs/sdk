@@ -174,7 +174,7 @@ function compilePath(routePath: string): CompiledPath {
   }
 
   const pattern = routePath
-    .replace(/:[a-zA-Z0-9]+/g, "([^/]+)") // Convert :param to capture group
+    .replace(/:[a-zA-Z0-9_]+/g, "([^/]+)") // Convert :param to capture group
     .replace(/\*/g, "(.*)"); // Convert * to wildcard capture group
 
   const result = {
@@ -680,6 +680,9 @@ export function route<Path extends string, T extends RequestInfo = RequestInfo>(
 ): RouteDefinition<NormalizePath<Path>, T> {
   let normalizedPath: string = path;
 
+  if (!normalizedPath.startsWith("/")) {
+    normalizedPath = "/" + normalizedPath;
+  }
   if (!normalizedPath.endsWith("/")) {
     normalizedPath = normalizedPath + "/";
   }
@@ -765,23 +768,71 @@ export function except<T extends RequestInfo = RequestInfo>(
  *   ]),
  * ])
  */
+function joinPaths(p1: string, p2: string): string {
+  // Normalize p1: ensure it doesn't end with / (except if it's just "/")
+  const part1 = p1 === "/" ? "/" : p1.endsWith("/") ? p1.slice(0, -1) : p1;
+  // Normalize p2: ensure it starts with /
+  const part2 = p2.startsWith("/") ? p2 : `/${p2}`;
+  return part1 + part2;
+}
+
 export function prefix<
   Prefix extends string,
   T extends RequestInfo = RequestInfo,
   Routes extends readonly Route<T>[] = readonly Route<T>[],
 >(prefixPath: Prefix, routes: Routes): PrefixedRouteArray<Prefix, Routes> {
-  const normalizedPrefix = prefixPath.endsWith("/")
-    ? prefixPath
-    : prefixPath + "/";
+  // Normalize prefix path
+  let normalizedPrefix: string = prefixPath;
+  if (!normalizedPrefix.startsWith("/")) {
+    normalizedPrefix = "/" + normalizedPrefix;
+  }
+  if (!normalizedPrefix.endsWith("/")) {
+    normalizedPrefix = normalizedPrefix + "/";
+  }
+
+  // Check if prefix has parameters
+  const hasParams =
+    normalizedPrefix.includes(":") || normalizedPrefix.includes("*");
+
+  // Create a pattern for matching: if prefix has params, append wildcard to match any path under it
+  const matchPattern: string = hasParams
+    ? normalizedPrefix.endsWith("/")
+      ? normalizedPrefix.slice(0, -1) + "/*"
+      : normalizedPrefix + "/*"
+    : normalizedPrefix;
 
   const prefixed = routes.map((r) => {
     if (typeof r === "function") {
       const middleware: RouteMiddleware<T> = (requestInfo) => {
-        if (
-          requestInfo.path === prefixPath ||
-          requestInfo.path.startsWith(normalizedPrefix)
-        ) {
-          return r(requestInfo);
+        const path = requestInfo.path;
+
+        // Check if path matches the prefix pattern
+        let matches = false;
+        let prefixParams: Record<string, string> = {};
+
+        if (hasParams) {
+          // Use matchPath to check if path matches and extract params
+          const params = matchPath<T>(matchPattern, path);
+          if (params) {
+            matches = true;
+            prefixParams = params;
+          }
+        } else {
+          // For static prefixes, use simple string matching
+          if (path === normalizedPrefix || path.startsWith(normalizedPrefix)) {
+            matches = true;
+          }
+        }
+
+        if (matches) {
+          // Merge prefix params with existing params
+          const mergedParams = { ...requestInfo.params, ...prefixParams };
+          // Create a new requestInfo with merged params
+          const modifiedRequestInfo = {
+            ...requestInfo,
+            params: mergedParams,
+          } as T;
+          return r(modifiedRequestInfo);
         }
         return;
       };
@@ -801,7 +852,9 @@ export function prefix<
       return prefix(prefixPath, r) as PrefixedRouteValue<Prefix, typeof r>;
     }
     const routeDef = r as RouteDefinition<string, T>;
-    const combinedPath = prefixPath + routeDef.path;
+    // Use joinPaths to properly combine paths
+    const combinedPath = joinPaths(prefixPath, routeDef.path);
+    // Normalize double slashes
     const normalizedCombinedPath = combinedPath.replace(/\/+/g, "/");
 
     return {
