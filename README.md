@@ -6,31 +6,31 @@
     </picture>
   </a>
 
-  <h1>A React Framework for <a href="https://www.cloudflare.com/">Cloudflare</a>.</h1>
+  <h1>A simple framework for humans</h1>
 
-  <p><b>It begins as a Vite plugin that unlocks SSR, React Server Components, Server Functions, and realtime features.</b></p>
+  <p><b>Server-first React with zero magic. Built to stay understandable.</b></p>
 
 <a href="https://rwsdk.com"><img alt="Redwood Inc. logo" src="https://img.shields.io/badge/MADE%20BY%20Redwood%20Inc.-000000.svg?style=for-the-badge&logo=Redwood&labelColor=000"></a>
 <a href="https://docs.rwsdk.com"><img alt="Documentation" src="https://img.shields.io/badge/Documentation-000000.svg?style=for-the-badge&logo=Redwood&labelColor=000"></a>
 <a href="https://discord.gg/redwoodjs"><img alt="Join the community on Discord" src="https://img.shields.io/badge/Join%20the%20community-blueviolet.svg?style=for-the-badge&logo=Discord&labelColor=000000&logoWidth=20"></a>
 <a href="https://github.com/redwoodjs/sdk/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/redwoodjs/sdk?style=for-the-badge&labelColor=000000"></a>
 
-
 </div>
 
 ---
 
+## What is this?
 
-## ✨ RedwoodSDK
+RedwoodSDK is a server-first React framework.
+It starts as a Vite plugin that enables React Server Components and Server Functions, then layers on a type-safe, standards-compliant router that takes you from request to response—end to end.
 
-**RedwoodSDK** is the missing React framework for Cloudflare — bringing SSR, React Server Components, Server Functions, and Realtime APIs to the edge with the power of [Vite](https://vitejs.dev/).
+It includes:
 
-It features:
-
-- ⚡️ **Zero-config Vite integration**
-- 🔁 **Realtime server functions**
-- 🧠 **Smart, composable router with middleware and interruptors**
-- 🔥 **Blazing-fast SSR and RSC support**
+- Vite-first setup (no ceremony)
+- React Server Components + Server Functions
+- Type-safe server router (web standards, not framework magic)
+- Middleware & per router middleware for request/response control
+- Realtime-ready primitives for modern apps
 
 ---
 
