@@ -24,6 +24,8 @@
 RedwoodSDK is a server-first React framework.
 It starts as a Vite plugin that enables React Server Components and Server Functions, then layers on a type-safe, standards-compliant router that takes you from request to response—end to end.
 
+(For Cloudflare (workerd) only)
+
 It includes:
 
 - Vite-first setup (no ceremony)
