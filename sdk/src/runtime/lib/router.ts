@@ -12,6 +12,14 @@ type BivariantRouteHandler<T extends RequestInfo, R> = {
 export type RouteMiddleware<T extends RequestInfo = RequestInfo> =
   BivariantRouteHandler<T, MaybePromise<React.JSX.Element | Response | void>>;
 
+export type ExceptHandler<T extends RequestInfo = RequestInfo> = {
+  __rwExcept: true;
+  handler: (
+    error: unknown,
+    requestInfo: T,
+  ) => MaybePromise<React.JSX.Element | Response | void>;
+};
+
 type RouteFunction<T extends RequestInfo = RequestInfo> =
   BivariantRouteHandler<T, MaybePromise<Response>>;
 
@@ -45,6 +53,7 @@ export type MethodHandlers<T extends RequestInfo = RequestInfo> = {
 export type Route<T extends RequestInfo = RequestInfo> =
   | RouteMiddleware<T>
   | RouteDefinition<string, T>
+  | ExceptHandler<T>
   | readonly Route<T>[];
 
 type NormalizedRouteDefinition<T extends RequestInfo = RequestInfo> = {
@@ -88,9 +97,11 @@ type JoinPaths<Prefix extends string, Path extends string> =
 type PrefixedRouteValue<Prefix extends string, Value> =
   Value extends RouteDefinition<infer Path, infer Req>
     ? RouteDefinition<JoinPaths<Prefix, Path>, Req>
-    : Value extends readonly Route<any>[]
-      ? PrefixedRouteArray<Prefix, Value>
-      : Value;
+    : Value extends ExceptHandler<any>
+      ? Value
+      : Value extends readonly Route<any>[]
+        ? PrefixedRouteArray<Prefix, Value>
+        : Value;
 
 type PrefixedRouteArray<
   Prefix extends string,
@@ -184,16 +195,18 @@ export function matchPath<T extends RequestInfo = RequestInfo>(
 
 function flattenRoutes<T extends RequestInfo = RequestInfo>(
   routes: readonly Route<T>[],
-): (RouteMiddleware<T> | RouteDefinition<string, T>)[] {
-  return routes.reduce<(RouteMiddleware<T> | RouteDefinition<string, T>)[]>(
-    (acc, route) => {
-      if (Array.isArray(route)) {
-        return [...acc, ...flattenRoutes(route)];
-      }
-      return [...acc, route as RouteMiddleware<T> | RouteDefinition<string, T>];
-    },
-    [],
-  );
+): (RouteMiddleware<T> | RouteDefinition<string, T> | ExceptHandler<T>)[] {
+  return routes.reduce<
+    (RouteMiddleware<T> | RouteDefinition<string, T> | ExceptHandler<T>)[]
+  >((acc, route) => {
+    if (Array.isArray(route)) {
+      return [...acc, ...flattenRoutes(route)];
+    }
+    return [
+      ...acc,
+      route as RouteMiddleware<T> | RouteDefinition<string, T> | ExceptHandler<T>,
+    ];
+  }, []);
 }
 
 function isMethodHandlers<T extends RequestInfo = RequestInfo>(
@@ -313,7 +326,18 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
 
       function renderElement(element: React.ReactElement) {
         const requestInfo = getRequestInfo();
+        // Try to preserve the component name from the element's type
+        const elementType = element.type;
+        const componentName =
+          typeof elementType === "function" && elementType.name
+            ? elementType.name
+            : "Element";
         const Element: React.FC = () => element;
+        // Set the name for better debugging
+        Object.defineProperty(Element, "name", {
+          value: componentName,
+          configurable: true,
+        });
         return renderPage(requestInfo, Element, onError);
       }
 
@@ -329,6 +353,43 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
         return undefined;
       }
 
+      function isExceptHandler(
+        route: RouteMiddleware<T> | RouteDefinition<string, T> | ExceptHandler<T>,
+      ): route is ExceptHandler<T> {
+        return (
+          typeof route === "object" &&
+          route !== null &&
+          "__rwExcept" in route &&
+          route.__rwExcept === true
+        );
+      }
+
+      async function executeExceptHandlers(
+        error: unknown,
+        startIndex: number,
+      ): Promise<Response> {
+        // Search backwards from startIndex to find the most recent except handler
+        for (let i = startIndex; i >= 0; i--) {
+          const route = flattenedRoutes[i];
+          if (isExceptHandler(route)) {
+            try {
+              const result = await route.handler(error, getRequestInfo());
+              const handled = await handleMiddlewareResult(result);
+              if (handled) {
+                return handled;
+              }
+              // If the handler didn't return a Response or JSX, continue to next handler (further back)
+            } catch (nextError) {
+              // If the except handler itself throws, try the next one (further back)
+              return await executeExceptHandlers(nextError, i - 1);
+            }
+          }
+        }
+        // No handler found, throw to top-level onError
+        onError(error);
+        throw error;
+      }
+
       // --- Main flow ---
       let firstRouteDefinitionEncountered = false;
       let actionHandled = false;
@@ -339,114 +400,148 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
         }
       };
 
-      for (const route of flattenedRoutes) {
-        if (typeof route === "function") {
-          // This is a global middleware.
-          const result = await route(getRequestInfo());
-          const handled = await handleMiddlewareResult(result);
-          if (handled) {
-            return handled; // Short-circuit
-          }
-          continue;
-        }
-
-        // This is a RouteDefinition.
-        // The first time we see one, we handle any RSC actions.
-        if (!firstRouteDefinitionEncountered) {
-          firstRouteDefinitionEncountered = true;
-          await handleAction();
-        }
-
-        const params = matchPath<T>(route.path, path);
-        if (!params) {
-          continue; // Not a match, keep going.
-        }
-
-        // Resolve handler if method-based routing
-        let handler: RouteHandler<T> | undefined;
-        if (isMethodHandlers(route.handler)) {
-          const requestMethod = request.method;
-
-          // Handle OPTIONS request
-          if (
-            requestMethod === "OPTIONS" &&
-            !route.handler.config?.disableOptions
-          ) {
-            return handleOptionsRequest(route.handler);
-          }
-
-          // Try to find handler for the request method
-          handler = getHandlerForMethod(route.handler, requestMethod);
-
-          if (!handler) {
-            // Method not supported for this route
-            if (!route.handler.config?.disable405) {
-              return handleMethodNotAllowed(route.handler);
-            }
-            // If 405 is disabled, continue to next route
+      try {
+        let currentRouteIndex = 0;
+        for (const route of flattenedRoutes) {
+          // Skip except handlers during normal execution
+          if (isExceptHandler(route)) {
+            currentRouteIndex++;
             continue;
           }
-        } else {
-          handler = route.handler;
-        }
 
-        // Found a match: run route-specific middlewares, then the final component, then stop.
-        return await runWithRequestInfoOverrides(
-          { params } as Partial<T>,
-          async () => {
-            const { routeMiddlewares, componentHandler } =
-              parseHandlers(handler);
-
-            // Route-specific middlewares
-            for (const mw of routeMiddlewares) {
-              const result = await mw(getRequestInfo());
+          if (typeof route === "function") {
+            // This is a global middleware.
+            try {
+              const result = await route(getRequestInfo());
               const handled = await handleMiddlewareResult(result);
               if (handled) {
-                return handled;
+                return handled; // Short-circuit
               }
+            } catch (error) {
+              return await executeExceptHandlers(error, currentRouteIndex);
+            }
+            currentRouteIndex++;
+            continue;
+          }
+
+          // This is a RouteDefinition.
+          // The first time we see one, we handle any RSC actions.
+          if (!firstRouteDefinitionEncountered) {
+            firstRouteDefinitionEncountered = true;
+            try {
+              await handleAction();
+            } catch (error) {
+              return await executeExceptHandlers(error, currentRouteIndex);
+            }
+          }
+
+          const params = matchPath<T>(route.path, path);
+          if (!params) {
+            currentRouteIndex++;
+            continue; // Not a match, keep going.
+          }
+
+          // Resolve handler if method-based routing
+          let handler: RouteHandler<T> | undefined;
+          if (isMethodHandlers(route.handler)) {
+            const requestMethod = request.method;
+
+            // Handle OPTIONS request
+            if (
+              requestMethod === "OPTIONS" &&
+              !route.handler.config?.disableOptions
+            ) {
+              return handleOptionsRequest(route.handler);
             }
 
-            // Final component/handler
-            if (isRouteComponent(componentHandler)) {
-              const requestInfo = getRequestInfo();
-              const WrappedComponent = wrapWithLayouts(
-                wrapHandlerToThrowResponses(
-                  componentHandler as RouteComponent<T>,
-                ) as React.FC,
-                route.layouts || [],
-                requestInfo,
-              );
+            // Try to find handler for the request method
+            handler = getHandlerForMethod(route.handler, requestMethod);
 
-              if (!isClientReference(componentHandler)) {
-                requestInfo.rw.pageRouteResolved = Promise.withResolvers();
+            if (!handler) {
+              // Method not supported for this route
+              if (!route.handler.config?.disable405) {
+                return handleMethodNotAllowed(route.handler);
               }
-
-              return await renderPage(requestInfo, WrappedComponent, onError);
+              // If 405 is disabled, continue to next route
+              currentRouteIndex++;
+              continue;
             }
+          } else {
+            handler = route.handler;
+          }
 
-            // Handle non-component final handler (e.g., returns new Response)
-            const tailResult = await (componentHandler(
-              getRequestInfo(),
-            ) as Promise<Response | React.JSX.Element | void>);
-            const handledTail = await handleMiddlewareResult(tailResult);
-            if (handledTail) {
-              return handledTail;
-            }
+          // Found a match: run route-specific middlewares, then the final component, then stop.
+          try {
+            return await runWithRequestInfoOverrides(
+              { params } as Partial<T>,
+              async () => {
+                const { routeMiddlewares, componentHandler } =
+                  parseHandlers(handler);
 
-            return new Response("Response not returned from route handler", {
-              status: 500,
-            });
-          },
-        );
+                // Route-specific middlewares
+                for (const mw of routeMiddlewares) {
+                  const result = await mw(getRequestInfo());
+                  const handled = await handleMiddlewareResult(result);
+                  if (handled) {
+                    return handled;
+                  }
+                }
+
+                // Final component/handler
+                if (isRouteComponent(componentHandler)) {
+                  const requestInfo = getRequestInfo();
+                  const WrappedComponent = wrapWithLayouts(
+                    wrapHandlerToThrowResponses(
+                      componentHandler as RouteComponent<T>,
+                    ) as React.FC,
+                    route.layouts || [],
+                    requestInfo,
+                  );
+
+                  if (!isClientReference(componentHandler)) {
+                    requestInfo.rw.pageRouteResolved = Promise.withResolvers();
+                  }
+
+                  return await renderPage(requestInfo, WrappedComponent, onError);
+                }
+
+                // Handle non-component final handler (e.g., returns new Response)
+                const tailResult = await (componentHandler(
+                  getRequestInfo(),
+                ) as Promise<Response | React.JSX.Element | void>);
+                const handledTail = await handleMiddlewareResult(tailResult);
+                if (handledTail) {
+                  return handledTail;
+                }
+
+                return new Response("Response not returned from route handler", {
+                  status: 500,
+                });
+              },
+            );
+          } catch (error) {
+            return await executeExceptHandlers(error, currentRouteIndex);
+          }
+        }
+
+        // If we've gotten this far, no route was matched.
+        // We still need to handle a possible action if the app has no route definitions at all.
+        if (!firstRouteDefinitionEncountered) {
+          try {
+            await handleAction();
+          } catch (error) {
+            return await executeExceptHandlers(
+              error,
+              flattenedRoutes.length - 1,
+            );
+          }
+        }
+
+        return new Response("Not Found", { status: 404 });
+      } catch (error) {
+        // Top-level catch for any unhandled errors
+        return await executeExceptHandlers(error, flattenedRoutes.length - 1);
       }
-
-      // If we've gotten this far, no route was matched.
-      // We still need to handle a possible action if the app has no route definitions at all.
-      if (!firstRouteDefinitionEncountered) {
-        await handleAction();
-      }
-
-      return new Response("Not Found", { status: 404 });
     },
   };
 }
@@ -536,6 +631,31 @@ export function index<T extends RequestInfo = RequestInfo>(
 }
 
 /**
+ * Defines an error handler that catches errors from routes, middleware, and RSC actions.
+ *
+ * @example
+ * // Global error handler
+ * except((error, requestInfo) => {
+ *   console.error(error);
+ *   return new Response("Internal Server Error", { status: 500 });
+ * })
+ *
+ * @example
+ * // Error handler that returns a React component
+ * except((error) => {
+ *   return <ErrorPage error={error} />;
+ * })
+ */
+export function except<T extends RequestInfo = RequestInfo>(
+  handler: (
+    error: unknown,
+    requestInfo: T,
+  ) => MaybePromise<React.JSX.Element | Response | void>,
+): ExceptHandler<T> {
+  return { __rwExcept: true, handler };
+}
+
+/**
  * Prefixes a group of routes with a path.
  *
  * @example
@@ -569,6 +689,15 @@ export function prefix<
         return;
       };
       return middleware as PrefixedRouteValue<Prefix, typeof r>;
+    }
+    if (
+      typeof r === "object" &&
+      r !== null &&
+      "__rwExcept" in r &&
+      r.__rwExcept === true
+    ) {
+      // Pass through ExceptHandler as-is
+      return r as PrefixedRouteValue<Prefix, typeof r>;
     }
     if (Array.isArray(r)) {
       // Recursively process nested route arrays
@@ -659,7 +788,7 @@ export const wrapHandlerToThrowResponses = <
  *
  * @example
  * // Define a layout component
- * function BlogLayout({ children }: { children: React.ReactNode }) {
+ * function BlogLayout({ children }: { children?: React.ReactNode }) {
  *   return (
  *     <div>
  *       <nav>Blog Navigation</nav>
@@ -681,6 +810,15 @@ export function layout<
   return routes.map((route) => {
     if (typeof route === "function") {
       // Pass through middleware as-is
+      return route;
+    }
+    if (
+      typeof route === "object" &&
+      route !== null &&
+      "__rwExcept" in route &&
+      route.__rwExcept === true
+    ) {
+      // Pass through ExceptHandler as-is
       return route;
     }
     if (Array.isArray(route)) {

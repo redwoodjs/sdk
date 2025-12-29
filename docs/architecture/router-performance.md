@@ -30,8 +30,8 @@ When running `pnpm exec vitest bench`, focus on the `hz` (operations per second)
 
 ### What is Noise vs. Reality
 
-- **0.95x to 1.05x (±5%)**: This is generally **noise**. Benchmark results can vary based on machine load, CPU frequency scaling, and background tasks. If you see a 4% slowdown (0.96x), do not treat it as a definitive regression unless it is consistent over many runs.
-- **rme (Relative Margin of Error)**: Pay attention to this value. If your `rme` is 1% but your change is 0.96x, the result is only barely outside the margin of error.
+- **0.95x to 1.05x (±5%)**: This is generally **noise**. Benchmark results can vary based on machine load, CPU frequency scaling, and background tasks. For example, if you see a 4% slowdown (`0.96x`), do not treat it as a definitive regression unless it is consistent over many runs.
+- **rme (Relative Margin of Error)**: Pay attention to this value. If your `rme` is 1% but your change is `0.96x`, the result is only barely outside the margin of error.
 
 ### What a Real Regression Looks Like
 
