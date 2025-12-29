@@ -1,5 +1,4 @@
 import { AsyncLocalStorage } from "async_hooks";
-import { experimental_taintObjectReference } from "react";
 import { defineRwState } from "rwsdk/__state";
 import { DefaultAppContext, RequestInfo } from "./types";
 
@@ -28,14 +27,6 @@ REQUEST_INFO_KEYS.forEach((key) => {
 export const requestInfo: DefaultRequestInfo = Object.freeze(
   requestInfoBase,
 ) as DefaultRequestInfo;
-
-if (typeof experimental_taintObjectReference === "function") {
-  experimental_taintObjectReference(
-    "Do not pass the full requestInfo object to Client Components. " +
-      "Instead, pass only the specific data you need via props.",
-    requestInfo,
-  );
-}
 
 export function getRequestInfo(): RequestInfo {
   const store = requestInfoStore.getStore();
