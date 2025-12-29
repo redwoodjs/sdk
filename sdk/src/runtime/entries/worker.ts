@@ -1,3 +1,4 @@
+import "server-only";
 import "./types/worker";
 export * from "../error";
 export * from "../lib/types";
