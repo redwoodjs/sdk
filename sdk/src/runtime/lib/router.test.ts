@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { RequestInfo } from "../requestInfo/types";
 import {
   defineRoutes,
+  except,
   layout,
   matchPath,
   prefix,
@@ -96,6 +97,7 @@ describe("defineRoutes - Request Handling Behavior", () => {
   const createMockDependencies = () => {
     const mockRequestInfo: RequestInfo = {
       request: new Request("http://localhost:3000/"),
+      path: "/",
       params: {},
       ctx: {},
       rw: {
@@ -384,6 +386,143 @@ describe("defineRoutes - Request Handling Behavior", () => {
 
       expect(executionOrder).toEqual(["prefixedMiddleware"]);
       expect(await response.text()).toBe("From prefixed middleware");
+    });
+
+    it("should pass prefix parameters to route handlers", async () => {
+      let capturedParams: any = null;
+
+      const TaskDetailPage = (requestInfo: RequestInfo) => {
+        capturedParams = requestInfo.params;
+        return React.createElement("div", {}, "Task Detail");
+      };
+
+      const router = defineRoutes([
+        ...prefix("/tasks/:containerId", [route("/", TaskDetailPage)]),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request(
+        "http://localhost:3000/tasks/123/",
+      );
+      const request = new Request("http://localhost:3000/tasks/123/");
+
+      await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(capturedParams).toEqual({ containerId: "123" });
+    });
+
+    it("should pass prefix parameters to middlewares within a parameterized prefix", async () => {
+      const executionOrder: string[] = [];
+      let capturedParams: any = null;
+
+      const prefixedMiddleware = (requestInfo: RequestInfo) => {
+        executionOrder.push("prefixedMiddleware");
+        capturedParams = requestInfo.params;
+      };
+
+      const PageComponent = () => {
+        executionOrder.push("PageComponent");
+        return React.createElement("div", {}, "Page");
+      };
+
+      const router = defineRoutes([
+        ...prefix("/tasks/:containerId", [
+          prefixedMiddleware,
+          route("/", PageComponent),
+        ]),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request(
+        "http://localhost:3000/tasks/123/",
+      );
+      const request = new Request("http://localhost:3000/tasks/123/");
+
+      await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(executionOrder).toEqual(["prefixedMiddleware", "PageComponent"]);
+      // The wildcard captures the trailing slash as an empty string
+      expect(capturedParams).toEqual({ containerId: "123", $0: "" });
+    });
+
+    it("should pass prefix parameters to route handlers (array)", async () => {
+      let capturedParamsInMiddleware: any = null;
+      let capturedParamsInComponent: any = null;
+
+      const middleware = (requestInfo: RequestInfo) => {
+        capturedParamsInMiddleware = requestInfo.params;
+      };
+
+      const Component = (requestInfo: RequestInfo) => {
+        capturedParamsInComponent = requestInfo.params;
+        return React.createElement("div", {}, "Component");
+      };
+
+      const router = defineRoutes([
+        ...prefix("/tasks/:containerId", [route("/", [middleware, Component])]),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request(
+        "http://localhost:3000/tasks/123/",
+      );
+      const request = new Request("http://localhost:3000/tasks/123/");
+
+      await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(capturedParamsInMiddleware).toEqual({ containerId: "123" });
+      expect(capturedParamsInComponent).toEqual({ containerId: "123" });
+    });
+
+    it("should match even if prefix has a trailing slash", async () => {
+      let capturedParams: any = null;
+
+      const TaskDetailPage = (requestInfo: RequestInfo) => {
+        capturedParams = requestInfo.params;
+        return React.createElement("div", {}, "Task Detail");
+      };
+
+      const router = defineRoutes([
+        ...prefix("/tasks/:containerId/", [route("/", TaskDetailPage)]),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request(
+        "http://localhost:3000/tasks/123/",
+      );
+      const request = new Request("http://localhost:3000/tasks/123/");
+
+      await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(capturedParams).toEqual({ containerId: "123" });
     });
   });
 
@@ -1145,6 +1284,321 @@ describe("defineRoutes - Request Handling Behavior", () => {
 
       expect(response.status).not.toBe(404);
       expect(await response.text()).toBe("Rendered: Element");
+    });
+  });
+
+  describe("except - Error Handling", () => {
+    it("should catch errors from global middleware", async () => {
+      const errorMessage = "Middleware error";
+      const middleware = () => {
+        throw new Error(errorMessage);
+      };
+
+      const errorHandler = except((error) => {
+        return new Response(
+          `Caught: ${error instanceof Error ? error.message : String(error)}`,
+          {
+            status: 500,
+          },
+        );
+      });
+
+      const router = defineRoutes([
+        middleware,
+        errorHandler,
+        route("/test/", () => React.createElement("div")),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request("http://localhost:3000/test/");
+
+      const request = new Request("http://localhost:3000/test/");
+      const response = await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(response.status).toBe(500);
+      expect(await response.text()).toBe(`Caught: ${errorMessage}`);
+    });
+
+    it("should catch errors from route handlers (components)", async () => {
+      const errorMessage = "Component error";
+      const PageComponent = () => {
+        throw new Error(errorMessage);
+      };
+
+      const errorHandler = except((error) => {
+        return new Response(
+          `Caught: ${error instanceof Error ? error.message : String(error)}`,
+          {
+            status: 500,
+          },
+        );
+      });
+
+      const router = defineRoutes([
+        errorHandler,
+        route("/test/", PageComponent),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request("http://localhost:3000/test/");
+
+      const request = new Request("http://localhost:3000/test/");
+      const response = await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(response.status).toBe(500);
+      expect(await response.text()).toBe(`Caught: ${errorMessage}`);
+    });
+
+    it("should catch errors from route handlers (functions)", async () => {
+      const errorMessage = "Handler error";
+      const routeHandler = () => {
+        throw new Error(errorMessage);
+      };
+
+      const errorHandler = except((error) => {
+        return new Response(
+          `Caught: ${error instanceof Error ? error.message : String(error)}`,
+          {
+            status: 500,
+          },
+        );
+      });
+
+      const router = defineRoutes([
+        errorHandler,
+        route("/test/", routeHandler),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request("http://localhost:3000/test/");
+
+      const request = new Request("http://localhost:3000/test/");
+      const response = await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(response.status).toBe(500);
+      expect(await response.text()).toBe(`Caught: ${errorMessage}`);
+    });
+
+    it("should catch errors from RSC actions", async () => {
+      const errorMessage = "RSC action error";
+      const errorHandler = except((error) => {
+        return new Response(
+          `Caught: ${error instanceof Error ? error.message : String(error)}`,
+          {
+            status: 500,
+          },
+        );
+      });
+
+      const router = defineRoutes([
+        errorHandler,
+        route("/test/", () => React.createElement("div")),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request(
+        "http://localhost:3000/test/?__rsc_action_id=test",
+      );
+      deps.mockRscActionHandler = async () => {
+        throw new Error(errorMessage);
+      };
+
+      const request = new Request(
+        "http://localhost:3000/test/?__rsc_action_id=test",
+      );
+      const response = await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(response.status).toBe(500);
+      expect(await response.text()).toBe(`Caught: ${errorMessage}`);
+    });
+
+    it("should use the most recent except handler before the error", async () => {
+      const errorMessage = "Route error";
+      const firstHandler = except((error) => {
+        return new Response("First handler", { status: 500 });
+      });
+
+      const secondHandler = except((error) => {
+        return new Response("Second handler", { status: 500 });
+      });
+
+      const PageComponent = () => {
+        throw new Error(errorMessage);
+      };
+
+      const router = defineRoutes([
+        firstHandler,
+        secondHandler,
+        route("/test/", PageComponent),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request("http://localhost:3000/test/");
+
+      const request = new Request("http://localhost:3000/test/");
+      const response = await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      // Should use the second handler (most recent before the route)
+      expect(response.status).toBe(500);
+      expect(await response.text()).toBe("Second handler");
+    });
+
+    it("should try next except handler if current one throws", async () => {
+      const errorMessage = "Route error";
+      const firstHandler = except(() => {
+        throw new Error("First handler error");
+      });
+
+      const secondHandler = except((error) => {
+        return new Response(
+          `Caught by second: ${error instanceof Error ? error.message : String(error)}`,
+          {
+            status: 500,
+          },
+        );
+      });
+
+      const PageComponent = () => {
+        throw new Error(errorMessage);
+      };
+
+      const router = defineRoutes([
+        secondHandler, // Outer handler
+        firstHandler, // Inner handler (closer to route)
+        route("/test/", PageComponent),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request("http://localhost:3000/test/");
+
+      const request = new Request("http://localhost:3000/test/");
+      const response = await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      // Should catch the error from the first handler with the second handler
+      expect(response.status).toBe(500);
+      expect(await response.text()).toBe(
+        "Caught by second: First handler error",
+      );
+    });
+
+    it("should return JSX element from except handler", async () => {
+      const errorMessage = "Route error";
+      function ErrorComponent() {
+        return React.createElement("div", {}, "Error Page");
+      }
+
+      const errorHandler = except(() => {
+        return React.createElement(ErrorComponent);
+      });
+
+      const PageComponent = () => {
+        throw new Error(errorMessage);
+      };
+
+      const router = defineRoutes([
+        errorHandler,
+        route("/test/", PageComponent),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request("http://localhost:3000/test/");
+
+      const request = new Request("http://localhost:3000/test/");
+      const response = await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(await response.text()).toBe("Rendered: ErrorComponent");
+    });
+
+    it("should work with prefix and layout", async () => {
+      const errorMessage = "Route error";
+      const errorHandler = except((error) => {
+        return new Response(
+          `Caught: ${error instanceof Error ? error.message : String(error)}`,
+          {
+            status: 500,
+          },
+        );
+      });
+
+      const PageComponent = () => {
+        throw new Error(errorMessage);
+      };
+
+      const Layout = ({ children }: { children?: React.ReactNode }) => {
+        return React.createElement("div", {}, children);
+      };
+
+      const router = defineRoutes([
+        errorHandler,
+        layout(Layout, [prefix("/api", [route("/test/", PageComponent)])]),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request(
+        "http://localhost:3000/api/test/",
+      );
+
+      const request = new Request("http://localhost:3000/api/test/");
+      const response = await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(response.status).toBe(500);
+      expect(await response.text()).toBe(`Caught: ${errorMessage}`);
     });
   });
 });
