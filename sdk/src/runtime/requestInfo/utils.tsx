@@ -18,6 +18,7 @@ export const constructWithDefaultRequestInfo = (
 
   const defaultRequestInfo: RequestInfo = {
     request: new Request("http://localhost/"),
+    path: "/",
     params: {},
     ctx: {},
     cf: {

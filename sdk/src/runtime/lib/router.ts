@@ -20,14 +20,13 @@ export type ExceptHandler<T extends RequestInfo = RequestInfo> = {
   ) => MaybePromise<React.JSX.Element | Response | void>;
 };
 
-type RouteFunction<T extends RequestInfo = RequestInfo> =
-  BivariantRouteHandler<T, MaybePromise<Response>>;
+type RouteFunction<T extends RequestInfo = RequestInfo> = BivariantRouteHandler<
+  T,
+  MaybePromise<Response>
+>;
 
 type RouteComponent<T extends RequestInfo = RequestInfo> =
-  BivariantRouteHandler<
-    T,
-    MaybePromise<React.JSX.Element | Response | void>
-  >;
+  BivariantRouteHandler<T, MaybePromise<React.JSX.Element | Response | void>>;
 
 type RouteHandler<T extends RequestInfo = RequestInfo> =
   | RouteFunction<T>
@@ -124,10 +123,18 @@ type RouteMatch<T extends RequestInfo = RequestInfo> = {
   layouts?: React.FC<LayoutProps<T>>[];
 };
 
-export function matchPath<T extends RequestInfo = RequestInfo>(
-  routePath: string,
-  requestPath: string,
-): T["params"] | null {
+type CompiledPath = {
+  isStatic: boolean;
+  regex: RegExp | null;
+  paramMap: { name: string; isWildcard: boolean }[];
+};
+
+const pathCache = new Map<string, CompiledPath>();
+
+function compilePath(routePath: string): CompiledPath {
+  const cached = pathCache.get(routePath);
+  if (cached) return cached;
+
   // Check for invalid pattern: multiple colons in a segment (e.g., /:param1:param2/)
   if (routePath.includes(":")) {
     const segments = routePath.split("/");
@@ -147,47 +154,57 @@ export function matchPath<T extends RequestInfo = RequestInfo>(
     );
   }
 
+  const isStatic = !routePath.includes(":") && !routePath.includes("*");
+  if (isStatic) {
+    const result = { isStatic: true, regex: null, paramMap: [] };
+    pathCache.set(routePath, result);
+    return result;
+  }
+
+  const paramMap: { name: string; isWildcard: boolean }[] = [];
+  let wildcardCounter = 0;
+  const tokenRegex = /:([a-zA-Z0-9_]+)|\*/g;
+  let matchToken;
+  while ((matchToken = tokenRegex.exec(routePath)) !== null) {
+    if (matchToken[1]) {
+      paramMap.push({ name: matchToken[1], isWildcard: false });
+    } else {
+      paramMap.push({ name: `$${wildcardCounter++}`, isWildcard: true });
+    }
+  }
+
   const pattern = routePath
-    .replace(/:[a-zA-Z0-9]+/g, "([^/]+)") // Convert :param to capture group
+    .replace(/:[a-zA-Z0-9_]+/g, "([^/]+)") // Convert :param to capture group
     .replace(/\*/g, "(.*)"); // Convert * to wildcard capture group
 
-  const regex = new RegExp(`^${pattern}$`);
-  const matches = requestPath.match(regex);
+  const result = {
+    isStatic: false,
+    regex: new RegExp(`^${pattern}$`),
+    paramMap,
+  };
+  pathCache.set(routePath, result);
+  return result;
+}
 
+export function matchPath<T extends RequestInfo = RequestInfo>(
+  routePath: string,
+  requestPath: string,
+): T["params"] | null {
+  const compiled = compilePath(routePath);
+
+  if (compiled.isStatic) {
+    return routePath === requestPath ? {} : null;
+  }
+
+  const matches = requestPath.match(compiled.regex!);
   if (!matches) {
     return null;
   }
 
-  // Revised parameter extraction:
   const params: T["params"] = {};
-  let currentMatchIndex = 1; // Regex matches are 1-indexed
-
-  // This regex finds either a named parameter token (e.g., ":id") or a wildcard star token ("*").
-  const tokenRegex = /:([a-zA-Z0-9_]+)|\*/g;
-  let matchToken;
-  let wildcardCounter = 0;
-
-  // Ensure regex starts from the beginning of the routePath for each call if it's stateful (it is with /g)
-  tokenRegex.lastIndex = 0;
-
-  while ((matchToken = tokenRegex.exec(routePath)) !== null) {
-    // Ensure we have a corresponding match from the regex execution
-    if (matches[currentMatchIndex] === undefined) {
-      // This case should ideally not be hit if routePath and pattern generation are correct
-      // and all parts of the regex matched.
-      // Consider logging a warning or throwing an error if critical.
-      break;
-    }
-
-    if (matchToken[1]) {
-      // This token is a named parameter (e.g., matchToken[1] is "id" for ":id")
-      params[matchToken[1]] = matches[currentMatchIndex];
-    } else {
-      // This token is a wildcard "*"
-      params[`$${wildcardCounter}`] = matches[currentMatchIndex];
-      wildcardCounter++;
-    }
-    currentMatchIndex++;
+  for (let i = 0; i < compiled.paramMap.length; i++) {
+    const param = compiled.paramMap[i];
+    params[param.name] = matches[i + 1];
   }
 
   return params;
@@ -204,7 +221,10 @@ function flattenRoutes<T extends RequestInfo = RequestInfo>(
     }
     return [
       ...acc,
-      route as RouteMiddleware<T> | RouteDefinition<string, T> | ExceptHandler<T>,
+      route as
+        | RouteMiddleware<T>
+        | RouteDefinition<string, T>
+        | ExceptHandler<T>,
     ];
   }, []);
 }
@@ -263,6 +283,20 @@ function getHandlerForMethod<T extends RequestInfo = RequestInfo>(
   return methodHandlers.custom?.[lowerMethod];
 }
 
+type CompiledRoute<T extends RequestInfo = RequestInfo> =
+  | { type: "middleware"; handler: RouteMiddleware<T> }
+  | { type: "except"; handler: ExceptHandler<T> }
+  | {
+      type: "definition";
+      path: string;
+      handler: RouteHandler<T> | MethodHandlers<T>;
+      layouts?: React.FC<LayoutProps<T>>[];
+      isStatic: boolean;
+      regex?: RegExp;
+      paramNames: string[];
+      wildcardCount: number;
+    };
+
 export function defineRoutes<T extends RequestInfo = RequestInfo>(
   routes: readonly Route<T>[],
 ): {
@@ -291,6 +325,36 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
   }) => Response | Promise<Response>;
 } {
   const flattenedRoutes = flattenRoutes<T>(routes);
+  const compiledRoutes: CompiledRoute<T>[] = flattenedRoutes.map((route) => {
+    if (typeof route === "function") {
+      return { type: "middleware", handler: route };
+    }
+    if (
+      typeof route === "object" &&
+      route !== null &&
+      "__rwExcept" in route &&
+      route.__rwExcept === true
+    ) {
+      return { type: "except", handler: route };
+    }
+
+    const routeDef = route as RouteDefinition<string, T>;
+    const compiledPath = compilePath(routeDef.path);
+
+    return {
+      type: "definition",
+      path: routeDef.path,
+      handler: routeDef.handler,
+      layouts: routeDef.layouts,
+      isStatic: compiledPath.isStatic,
+      regex: compiledPath.regex ?? undefined,
+      paramNames: compiledPath.paramMap
+        .filter((p) => !p.isWildcard)
+        .map((p) => p.name),
+      wildcardCount: compiledPath.paramMap.filter((p) => p.isWildcard).length,
+    };
+  });
+
   return {
     routes: flattenedRoutes,
     async handle({
@@ -301,13 +365,13 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
       runWithRequestInfoOverrides,
       rscActionHandler,
     }) {
+      const requestInfo = getRequestInfo();
       const url = new URL(request.url);
       let path = url.pathname;
-
-      // Must end with a trailing slash.
       if (path !== "/" && !path.endsWith("/")) {
         path = path + "/";
       }
+      requestInfo.path = path;
 
       // --- Helpers ---
       // (Hoisted for readability)
@@ -354,14 +418,9 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
       }
 
       function isExceptHandler(
-        route: RouteMiddleware<T> | RouteDefinition<string, T> | ExceptHandler<T>,
-      ): route is ExceptHandler<T> {
-        return (
-          typeof route === "object" &&
-          route !== null &&
-          "__rwExcept" in route &&
-          route.__rwExcept === true
-        );
+        route: CompiledRoute<T>,
+      ): route is { type: "except"; handler: ExceptHandler<T> } {
+        return route.type === "except";
       }
 
       async function executeExceptHandlers(
@@ -370,10 +429,13 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
       ): Promise<Response> {
         // Search backwards from startIndex to find the most recent except handler
         for (let i = startIndex; i >= 0; i--) {
-          const route = flattenedRoutes[i];
+          const route = compiledRoutes[i];
           if (isExceptHandler(route)) {
             try {
-              const result = await route.handler(error, getRequestInfo());
+              const result = await route.handler.handler(
+                error,
+                getRequestInfo(),
+              );
               const handled = await handleMiddlewareResult(result);
               if (handled) {
                 return handled;
@@ -394,25 +456,29 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
       let firstRouteDefinitionEncountered = false;
       let actionHandled = false;
       const handleAction = async () => {
-        if (!actionHandled && url.searchParams.has("__rsc_action_id")) {
-          getRequestInfo().rw.actionResult = await rscActionHandler(request);
+        // Handle RSC actions once per request, based on the incoming URL.
+        if (!actionHandled) {
+          const url = new URL(request.url);
+          if (url.searchParams.has("__rsc_action_id")) {
+            requestInfo.rw.actionResult = await rscActionHandler(request);
+          }
           actionHandled = true;
         }
       };
 
       try {
         let currentRouteIndex = 0;
-        for (const route of flattenedRoutes) {
+        for (const route of compiledRoutes) {
           // Skip except handlers during normal execution
-          if (isExceptHandler(route)) {
+          if (route.type === "except") {
             currentRouteIndex++;
             continue;
           }
 
-          if (typeof route === "function") {
+          if (route.type === "middleware") {
             // This is a global middleware.
             try {
-              const result = await route(getRequestInfo());
+              const result = await route.handler(getRequestInfo());
               const handled = await handleMiddlewareResult(result);
               if (handled) {
                 return handled; // Short-circuit
@@ -424,7 +490,7 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
             continue;
           }
 
-          // This is a RouteDefinition.
+          // This is a RouteDefinition (route.type === "definition").
           // The first time we see one, we handle any RSC actions.
           if (!firstRouteDefinitionEncountered) {
             firstRouteDefinitionEncountered = true;
@@ -435,7 +501,24 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
             }
           }
 
-          const params = matchPath<T>(route.path, path);
+          let params: T["params"] | null = null;
+          if (route.isStatic) {
+            if (route.path === path) {
+              params = {};
+            }
+          } else if (route.regex) {
+            const matches = path.match(route.regex);
+            if (matches) {
+              params = {};
+              for (let i = 0; i < route.paramNames.length; i++) {
+                params[route.paramNames[i]] = matches[i + 1];
+              }
+              for (let i = 0; i < route.wildcardCount; i++) {
+                params[`$${i}`] = matches[route.paramNames.length + i + 1];
+              }
+            }
+          }
+
           if (!params) {
             currentRouteIndex++;
             continue; // Not a match, keep going.
@@ -475,8 +558,9 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
             return await runWithRequestInfoOverrides(
               { params } as Partial<T>,
               async () => {
-                const { routeMiddlewares, componentHandler } =
-                  parseHandlers(handler);
+                const { routeMiddlewares, componentHandler } = parseHandlers(
+                  handler!,
+                );
 
                 // Route-specific middlewares
                 for (const mw of routeMiddlewares) {
@@ -502,7 +586,11 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
                     requestInfo.rw.pageRouteResolved = Promise.withResolvers();
                   }
 
-                  return await renderPage(requestInfo, WrappedComponent, onError);
+                  return await renderPage(
+                    requestInfo,
+                    WrappedComponent,
+                    onError,
+                  );
                 }
 
                 // Handle non-component final handler (e.g., returns new Response)
@@ -514,9 +602,12 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
                   return handledTail;
                 }
 
-                return new Response("Response not returned from route handler", {
-                  status: 500,
-                });
+                return new Response(
+                  "Response not returned from route handler",
+                  {
+                    status: 500,
+                  },
+                );
               },
             );
           } catch (error) {
@@ -532,7 +623,7 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
           } catch (error) {
             return await executeExceptHandlers(
               error,
-              flattenedRoutes.length - 1,
+              compiledRoutes.length - 1,
             );
           }
         }
@@ -540,7 +631,7 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
         return new Response("Not Found", { status: 404 });
       } catch (error) {
         // Top-level catch for any unhandled errors
-        return await executeExceptHandlers(error, flattenedRoutes.length - 1);
+        return await executeExceptHandlers(error, compiledRoutes.length - 1);
       }
     },
   };
@@ -589,6 +680,9 @@ export function route<Path extends string, T extends RequestInfo = RequestInfo>(
 ): RouteDefinition<NormalizePath<Path>, T> {
   let normalizedPath: string = path;
 
+  if (!normalizedPath.startsWith("/")) {
+    normalizedPath = "/" + normalizedPath;
+  }
   if (!normalizedPath.endsWith("/")) {
     normalizedPath = normalizedPath + "/";
   }
@@ -674,17 +768,71 @@ export function except<T extends RequestInfo = RequestInfo>(
  *   ]),
  * ])
  */
+function joinPaths(p1: string, p2: string): string {
+  // Normalize p1: ensure it doesn't end with / (except if it's just "/")
+  const part1 = p1 === "/" ? "/" : p1.endsWith("/") ? p1.slice(0, -1) : p1;
+  // Normalize p2: ensure it starts with /
+  const part2 = p2.startsWith("/") ? p2 : `/${p2}`;
+  return part1 + part2;
+}
+
 export function prefix<
   Prefix extends string,
   T extends RequestInfo = RequestInfo,
   Routes extends readonly Route<T>[] = readonly Route<T>[],
 >(prefixPath: Prefix, routes: Routes): PrefixedRouteArray<Prefix, Routes> {
+  // Normalize prefix path
+  let normalizedPrefix: string = prefixPath;
+  if (!normalizedPrefix.startsWith("/")) {
+    normalizedPrefix = "/" + normalizedPrefix;
+  }
+  if (!normalizedPrefix.endsWith("/")) {
+    normalizedPrefix = normalizedPrefix + "/";
+  }
+
+  // Check if prefix has parameters
+  const hasParams =
+    normalizedPrefix.includes(":") || normalizedPrefix.includes("*");
+
+  // Create a pattern for matching: if prefix has params, append wildcard to match any path under it
+  const matchPattern: string = hasParams
+    ? normalizedPrefix.endsWith("/")
+      ? normalizedPrefix.slice(0, -1) + "/*"
+      : normalizedPrefix + "/*"
+    : normalizedPrefix;
+
   const prefixed = routes.map((r) => {
     if (typeof r === "function") {
       const middleware: RouteMiddleware<T> = (requestInfo) => {
-        const url = new URL(requestInfo.request.url);
-        if (url.pathname.startsWith(prefixPath)) {
-          return r(requestInfo);
+        const path = requestInfo.path;
+
+        // Check if path matches the prefix pattern
+        let matches = false;
+        let prefixParams: Record<string, string> = {};
+
+        if (hasParams) {
+          // Use matchPath to check if path matches and extract params
+          const params = matchPath<T>(matchPattern, path);
+          if (params) {
+            matches = true;
+            prefixParams = params;
+          }
+        } else {
+          // For static prefixes, use simple string matching
+          if (path === normalizedPrefix || path.startsWith(normalizedPrefix)) {
+            matches = true;
+          }
+        }
+
+        if (matches) {
+          // Merge prefix params with existing params
+          const mergedParams = { ...requestInfo.params, ...prefixParams };
+          // Create a new requestInfo with merged params
+          const modifiedRequestInfo = {
+            ...requestInfo,
+            params: mergedParams,
+          } as T;
+          return r(modifiedRequestInfo);
         }
         return;
       };
@@ -704,8 +852,13 @@ export function prefix<
       return prefix(prefixPath, r) as PrefixedRouteValue<Prefix, typeof r>;
     }
     const routeDef = r as RouteDefinition<string, T>;
+    // Use joinPaths to properly combine paths
+    const combinedPath = joinPaths(prefixPath, routeDef.path);
+    // Normalize double slashes
+    const normalizedCombinedPath = combinedPath.replace(/\/+/g, "/");
+
     return {
-      path: prefixPath + routeDef.path,
+      path: normalizedCombinedPath,
       handler: routeDef.handler,
       ...(routeDef.layouts && { layouts: routeDef.layouts }),
     } as PrefixedRouteValue<Prefix, typeof r>;
