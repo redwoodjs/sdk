@@ -70,14 +70,18 @@ export function defineLinks(routes?: readonly string[]): LinkFunction<any> {
   // Original implementation for route arrays
   routes.forEach((route) => {
     if (typeof route !== "string") {
-      throw new Error(`Invalid route: ${route}. Routes must be strings.`);
+      throw new Error(
+        `RedwoodSDK: Invalid route: ${route}. Routes must be string literals. Ensure you're passing an array of route paths.`,
+      );
     }
   });
 
   const link = createLinkFunction<(typeof routes)[number]>();
   return ((path: (typeof routes)[number], params?: Record<string, string>) => {
     if (!routes.includes(path)) {
-      throw new Error(`Invalid route: ${path}`);
+      throw new Error(
+        `RedwoodSDK: Invalid route: ${path}. This route is not included in the routes array passed to defineLinks(). Check for typos or ensure the route is defined in your router.`,
+      );
     }
     return link(path, params as any);
   }) as LinkFunction<(typeof routes)[number]>;
@@ -91,7 +95,9 @@ function createLinkFunction<Paths extends string>(): LinkFunction<Paths> {
 
     if (!params || Object.keys(params).length === 0) {
       if (expectsParams) {
-        throw new Error(`Route ${path} requires an object of parameters`);
+        throw new Error(
+          `RedwoodSDK: Route ${path} requires an object of parameters (e.g., link("${path}", { id: "123" })).`,
+        );
       }
       return path;
     }
@@ -123,7 +129,9 @@ function interpolate(template: string, params: Record<string, string>): string {
       const name = match[1];
       const value = params[name];
       if (value === undefined) {
-        throw new Error(`Missing parameter "${name}" for route ${template}`);
+        throw new Error(
+          `RedwoodSDK: Missing parameter "${name}" for route ${template}. Ensure you're providing all required parameters in the params object.`,
+        );
       }
       result += encodeURIComponent(value);
       consumed.add(name);
@@ -131,7 +139,9 @@ function interpolate(template: string, params: Record<string, string>): string {
       const key = `$${wildcardIndex}`;
       const value = params[key];
       if (value === undefined) {
-        throw new Error(`Missing parameter "${key}" for route ${template}`);
+        throw new Error(
+          `RedwoodSDK: Missing parameter "${key}" for route ${template}. Wildcard routes use $0, $1, etc. as parameter keys.`,
+        );
       }
       result += encodeWildcardValue(value);
       consumed.add(key);
@@ -145,7 +155,9 @@ function interpolate(template: string, params: Record<string, string>): string {
 
   for (const key of Object.keys(params)) {
     if (!consumed.has(key)) {
-      throw new Error(`Parameter "${key}" is not used by route ${template}`);
+      throw new Error(
+        `RedwoodSDK: Parameter "${key}" is not used by route ${template}. Check your params object for typos or remove unused parameters.`,
+      );
     }
   }
 

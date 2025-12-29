@@ -243,7 +243,9 @@ export const initClient = async ({
   const rootEl = document.getElementById("hydrate-root");
 
   if (!rootEl) {
-    throw new Error('no element with id "hydrate-root"');
+    throw new Error(
+      'RedwoodSDK: No element with id "hydrate-root" found in the document. This element is required for hydration. Ensure your Document component contains a <div id="hydrate-root">{children}</div>.',
+    );
   }
 
   let rscPayload: any;

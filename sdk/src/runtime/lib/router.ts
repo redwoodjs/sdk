@@ -141,7 +141,7 @@ function compilePath(routePath: string): CompiledPath {
     for (const segment of segments) {
       if ((segment.match(/:/g) || []).length > 1) {
         throw new Error(
-          `Invalid route pattern: segment "${segment}" in "${routePath}" contains multiple colons.`,
+          `RedwoodSDK: Invalid route pattern: segment "${segment}" in "${routePath}" contains multiple colons. Each route parameter should use a single colon (e.g., ":id"). Check for accidental double colons ("::").`,
         );
       }
     }
@@ -150,7 +150,7 @@ function compilePath(routePath: string): CompiledPath {
   // Check for invalid pattern: double wildcard (e.g., /**/)
   if (routePath.indexOf("**") !== -1) {
     throw new Error(
-      `Invalid route pattern: "${routePath}" contains "**". Use "*" for a single wildcard segment.`,
+      `RedwoodSDK: Invalid route pattern: "${routePath}" contains "**". Use "*" for a single wildcard segment. Double wildcards are not supported.`,
     );
   }
 
@@ -602,12 +602,27 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
                   return handledTail;
                 }
 
-                return new Response(
-                  "Response not returned from route handler",
-                  {
-                    status: 500,
-                  },
-                );
+                const handlerName =
+                  typeof componentHandler === "function" &&
+                  componentHandler.name
+                    ? componentHandler.name
+                    : "anonymous";
+                const errorMessage = `Route handler did not return a Response or React element.
+
+Route: ${route.path}
+Matched path: ${path}
+Method: ${request.method}
+Handler: ${handlerName}
+
+Route handlers must return one of:
+  - A Response object (e.g., \`new Response("OK")\`)
+  - A React element (e.g., \`<div>Hello</div>\`)
+  - \`void\` (if handled by middleware earlier in the chain)`;
+
+                return new Response(errorMessage, {
+                  status: 500,
+                  headers: { "Content-Type": "text/plain" },
+                });
               },
             );
           } catch (error) {
