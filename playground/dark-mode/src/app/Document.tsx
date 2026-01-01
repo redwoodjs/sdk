@@ -41,4 +41,3 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
     </html>
   );
 };
-

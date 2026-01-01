@@ -7,6 +7,12 @@ import { Aside, Steps } from "@astrojs/starlight/components";
 
 This guide demonstrates how to implement dark and light mode themes in your RedwoodSDK application. The approach uses cookies to persist user preferences and direct DOM manipulation to toggle themes, without requiring a React context provider.
 
+<Aside type="tip" title="Working Example">
+  See the [dark-mode
+  playground](https://github.com/redwoodjs/sdk/tree/main/playground/dark-mode)
+  for a complete, working implementation of this guide.
+</Aside>
+
 ## Overview
 
 The theme system supports three modes:
@@ -28,204 +34,237 @@ worker (read theme from cookie)
 
 <Steps>
 
-1. **Read theme from cookie in the worker**
+1.  **Read theme from cookie in the worker**
 
-   In your `src/worker.tsx`, read the theme cookie and add it to the app context:
+    In your `src/worker.tsx`, read the theme cookie and add it to the app context:
 
-   ```tsx title="src/worker.tsx"
-   import { defineApp, render, route, setCommonHeaders } from "rwsdk/router";
-   import Document from "./app/Document";
-   import Home from "./app/pages/Home";
+    ```tsx title="src/worker.tsx"
+    import { render, route } from "rwsdk/router";
+    import { defineApp } from "rwsdk/worker";
 
-   interface AppContext {
-     theme?: "dark" | "light" | "system";
-   }
+    import { Document } from "@/app/Document";
+    import { Home } from "@/app/pages/Home";
 
-   export default defineApp<AppContext>([
-     setCommonHeaders(),
-     ({ ctx, request }) => {
-       // Read theme from cookie
-       const cookie = request.headers.get("Cookie");
-       const match = cookie?.match(/theme=([^;]+)/);
-       ctx.theme = (match?.[1] as "dark" | "light" | "system") || "system";
-     },
-     render(Document, [route("/", Home)]),
-   ]);
-   ```
+    export interface AppContext {
+      theme?: "dark" | "light" | "system";
+    }
 
-   <Aside type="note" title="AppContext Type">
-     Make sure to define your `AppContext` type in `types/rw.d.ts` or extend the
-     default context type. See the [routing documentation](/core/routing) for
-     details on customizing app context.
-   </Aside>
+    export default defineApp([
+      ({ ctx, request }) => {
+        // Read theme from cookie
+        const cookie = request.headers.get("Cookie");
+        const match = cookie?.match(/theme=([^;]+)/);
+        ctx.theme = (match?.[1] as "dark" | "light" | "system") || "system";
+      },
+      render(Document, [route("/", Home)]),
+    ]);
+    ```
 
-2. **Create a server action to set the theme**
+        <Aside type="note" title="AppContext Type">
 
-   Create a server function that updates the theme cookie:
+    Make sure to define your `AppContext` type in `types/rw.d.ts` to extend the
+    default context type:
 
-   ```tsx title="src/app/actions/setTheme.ts"
-   "use server";
+    ```tsx title="types/rw.d.ts"
+    import { AppContext } from "../src/worker";
 
-   import { requestInfo } from "rwsdk/worker";
+    declare module "rwsdk/worker" {
+      interface DefaultAppContext extends AppContext {}
+    }
+    ```
 
-   export async function setTheme(theme: "dark" | "light" | "system") {
-     requestInfo.response.headers.set(
-       "Set-Cookie",
-       `theme=${theme}; Path=/; Max-Age=31536000; SameSite=Lax`,
-     );
-   }
-   ```
+    See the [routing documentation](/core/routing) for details on customizing app context.
 
-3. **Update Document to set theme class before render**
+        </Aside>
 
-   The `Document` component needs to set the theme class on the `<html>` element before React hydrates to prevent FOUC. This requires a small inline script:
+2.  **Create a server action to set the theme**
 
-   ```tsx title="src/app/Document.tsx"
-   import type { DocumentProps } from "rwsdk/router";
+    Create a server function that updates the theme cookie:
 
-   export default function Document({ children, requestInfo }: DocumentProps) {
-     const theme = requestInfo?.ctx?.theme || "system";
+    ```tsx title="src/app/actions/setTheme.ts"
+    "use server";
 
-     return (
-       <html lang="en">
-         <head>
-           <meta charSet="utf-8" />
-           <meta
-             name="viewport"
-             content="width=device-width, initial-scale=1"
-           />
-           <title>My App</title>
-         </head>
-         <body>
-           {/* Script to set theme class before React hydrates */}
-           <script
-             dangerouslySetInnerHTML={{
-               __html: `
-                 (function() {
-                   const theme = ${JSON.stringify(theme)};
-                   const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                   const shouldBeDark = theme === 'dark' || (theme === 'system' && isSystemDark);
-                   if (shouldBeDark) {
-                     document.documentElement.classList.add('dark');
-                   } else {
-                     document.documentElement.classList.remove('dark');
-                   }
-                 })();
-               `,
-             }}
-           />
-           {children}
-         </body>
-       </html>
-     );
-   }
-   ```
+    import { requestInfo } from "rwsdk/worker";
 
-   <Aside type="tip" title="Preventing FOUC">
-     The inline script runs synchronously before React hydrates, ensuring the
-     correct theme class is applied immediately. This prevents any flash of
-     unstyled content when the page loads.
-   </Aside>
+    export async function setTheme(theme: "dark" | "light" | "system") {
+      requestInfo.response.headers.set(
+        "Set-Cookie",
+        `theme=${theme}; Path=/; Max-Age=31536000; SameSite=Lax`,
+      );
+    }
+    ```
 
-4. **Create a theme toggle component**
+3.  **Update Document to set theme class before render**
 
-   Create a client component that toggles the theme by directly manipulating the DOM and calling the server action:
+    The `Document` component needs to set the theme class on the `<html>` element before React hydrates to prevent FOUC. This requires a small inline script:
 
-   ```tsx title="src/app/components/ThemeToggle.tsx"
-   "use client";
+    ```tsx title="src/app/Document.tsx"
+    import React from "react";
+    import { requestInfo } from "rwsdk/worker";
+    import stylesUrl from "./styles.css?url";
 
-   import { useEffect, useState } from "react";
-   import { setTheme } from "../actions/setTheme";
+    export const Document: React.FC<{ children: React.ReactNode }> = ({
+      children,
+    }) => {
+      const theme = requestInfo?.ctx?.theme || "system";
 
-   type Theme = "dark" | "light" | "system";
+      return (
+        <html lang="en">
+          <head>
+            <meta charSet="utf-8" />
+            <meta
+              name="viewport"
+              content="width=device-width, initial-scale=1"
+            />
+            <title>My App</title>
+            <link rel="modulepreload" href="/src/client.tsx" />
+            <link rel="stylesheet" href={stylesUrl} />
+          </head>
+          <body>
+            {/* Script to set theme class before React hydrates */}
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `
+                  (function() {
+                    const theme = ${JSON.stringify(theme)};
+                    const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    const shouldBeDark = theme === 'dark' || (theme === 'system' && isSystemDark);
+                    if (shouldBeDark) {
+                      document.documentElement.classList.add('dark');
+                    } else {
+                      document.documentElement.classList.remove('dark');
+                    }
+                    document.documentElement.setAttribute('data-theme', theme);
+                  })();
+                `,
+              }}
+            />
+            <div id="root">{children}</div>
+            <script>import("/src/client.tsx")</script>
+          </body>
+        </html>
+      );
+    };
+    ```
 
-   export function ThemeToggle({ initialTheme }: { initialTheme: Theme }) {
-     const [theme, setThemeState] = useState<Theme>(initialTheme);
+    <Aside type="tip" title="Preventing FOUC">
+      The inline script runs synchronously before React hydrates, ensuring the
+      correct theme class is applied immediately. This prevents any flash of
+      unstyled content when the page loads.
+    </Aside>
 
-     // Update DOM when theme changes
-     useEffect(() => {
-       const root = document.documentElement;
-       const shouldBeDark =
-         theme === "dark" ||
-         (theme === "system" &&
-           window.matchMedia("(prefers-color-scheme: dark)").matches);
+4.  **Create a theme toggle component**
 
-       if (shouldBeDark) {
-         root.classList.add("dark");
-       } else {
-         root.classList.remove("dark");
-       }
+    Create a client component that toggles the theme by directly manipulating the DOM and calling the server action:
 
-       // Persist to cookie via server action
-       setTheme(theme);
-     }, [theme]);
+    ```tsx title="src/app/components/ThemeToggle.tsx"
+    "use client";
 
-     // Listen for system theme changes when theme is "system"
-     useEffect(() => {
-       if (theme !== "system") return;
+    import { useEffect, useRef, useState } from "react";
+    import { setTheme } from "../actions/setTheme";
 
-       const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-       const handleChange = () => {
-         const root = document.documentElement;
-         if (mediaQuery.matches) {
-           root.classList.add("dark");
-         } else {
-           root.classList.remove("dark");
-         }
-       };
+    type Theme = "dark" | "light" | "system";
 
-       mediaQuery.addEventListener("change", handleChange);
-       return () => mediaQuery.removeEventListener("change", handleChange);
-     }, [theme]);
+    export function ThemeToggle({ initialTheme }: { initialTheme: Theme }) {
+      const [theme, setThemeState] = useState<Theme>(initialTheme);
+      const isInitialMount = useRef(true);
 
-     const toggleTheme = () => {
-       // Cycle through: system -> light -> dark -> system
-       if (theme === "system") {
-         setThemeState("light");
-       } else if (theme === "light") {
-         setThemeState("dark");
-       } else {
-         setThemeState("system");
-       }
-     };
+      // Update DOM when theme changes
+      useEffect(() => {
+        const root = document.documentElement;
+        const shouldBeDark =
+          theme === "dark" ||
+          (theme === "system" &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches);
 
-     return (
-       <button
-         onClick={toggleTheme}
-         className="px-4 py-2 rounded bg-gray-200 dark:bg-gray-800"
-         aria-label="Toggle theme"
-       >
-         {theme === "dark" ? "☀️" : theme === "light" ? "🌙" : "💻"}
-       </button>
-     );
-   }
-   ```
+        if (shouldBeDark) {
+          root.classList.add("dark");
+        } else {
+          root.classList.remove("dark");
+        }
 
-   <Aside type="tip" title="Tailwind Dark Mode">
-     This example uses Tailwind's `dark:` variant. Make sure you have dark mode
-     configured in your Tailwind setup. With Tailwind v4, you can use the
-     `@custom-variant dark` directive in your CSS file.
-   </Aside>
+        // Set data attribute for consistency
+        root.setAttribute("data-theme", theme);
 
-5. **Use the theme toggle in your pages**
+        // Persist to cookie via server action (only when theme actually changes, not on initial mount)
+        if (!isInitialMount.current) {
+          setTheme(theme).catch((error) => {
+            console.error("Failed to set theme:", error);
+          });
+        } else {
+          isInitialMount.current = false;
+        }
+      }, [theme]);
 
-   Pass the theme from `requestInfo` to your toggle component:
+      // Listen for system theme changes when theme is "system"
+      useEffect(() => {
+        if (theme !== "system") return;
 
-   ```tsx title="src/app/pages/Home.tsx"
-   import type { PageProps } from "rwsdk/router";
-   import { ThemeToggle } from "../components/ThemeToggle";
+        const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+        const handleChange = () => {
+          const root = document.documentElement;
+          if (mediaQuery.matches) {
+            root.classList.add("dark");
+          } else {
+            root.classList.remove("dark");
+          }
+        };
 
-   export default function Home({ requestInfo }: PageProps) {
-     const theme = requestInfo?.ctx?.theme || "system";
+        mediaQuery.addEventListener("change", handleChange);
+        return () => mediaQuery.removeEventListener("change", handleChange);
+      }, [theme]);
 
-     return (
-       <div>
-         <h1>Welcome</h1>
-         <ThemeToggle initialTheme={theme} />
-       </div>
-     );
-   }
-   ```
+      const toggleTheme = () => {
+        // Cycle through: system -> light -> dark -> system
+        if (theme === "system") {
+          setThemeState("light");
+        } else if (theme === "light") {
+          setThemeState("dark");
+        } else {
+          setThemeState("system");
+        }
+      };
+
+      return (
+        <div className="flex items-center gap-4">
+          <span>Current theme: {theme}</span>
+          <button
+            onClick={toggleTheme}
+            className="px-4 py-2 rounded bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200 transition-colors"
+            aria-label="Toggle theme"
+          >
+            {theme === "dark" ? "☀️" : theme === "light" ? "🌙" : "💻"}
+          </button>
+        </div>
+      );
+    }
+    ```
+
+    <Aside type="tip" title="Tailwind Dark Mode">
+      This example uses Tailwind's `dark:` variant. Make sure you have dark mode
+      configured in your Tailwind setup. With Tailwind v4, you can use the
+      `@custom-variant dark` directive in your CSS file.
+    </Aside>
+
+5.  **Use the theme toggle in your pages**
+
+    Pass the theme from the context to your toggle component:
+
+    ```tsx title="src/app/pages/Home.tsx"
+    import { RequestInfo } from "rwsdk/worker";
+    import { ThemeToggle } from "../components/ThemeToggle";
+
+    export function Home({ ctx }: RequestInfo) {
+      const theme = ctx.theme || "system";
+
+      return (
+        <div>
+          <h1>Welcome</h1>
+          <ThemeToggle initialTheme={theme} />
+        </div>
+      );
+    }
+    ```
 
 </Steps>
 
@@ -271,7 +310,7 @@ export function ThemeToggle({
 
 ## Reading the Current Theme
 
-If you need to read the current theme in a client component, you can check the DOM directly:
+The `ThemeToggle` component above includes a display of the current theme. If you need to read the current theme in a separate client component, you can check the DOM directly:
 
 ```tsx title="src/app/components/MyComponent.tsx"
 "use client";
@@ -305,6 +344,13 @@ export function MyComponent() {
   );
 }
 ```
+
+<Aside type="tip" title="Simpler Approach">
+  If you need to display the current theme, consider including it in your
+  `ThemeToggle` component (as shown in the example above) rather than creating a
+  separate component. This keeps the theme state and display in sync without
+  additional complexity.
+</Aside>
 
 ## CSS Styling
 
@@ -341,15 +387,12 @@ If you prefer using data attributes instead of class names, you can modify the `
 
 ```tsx title="src/app/Document.tsx"
 // In the script
-document.documentElement.setAttribute(
-  "data-theme",
-  shouldBeDark ? "dark" : "light",
-);
+document.documentElement.setAttribute("data-theme", theme);
 ```
 
 ```tsx title="src/app/components/ThemeToggle.tsx"
 // In the useEffect
-root.setAttribute("data-theme", shouldBeDark ? "dark" : "light");
+root.setAttribute("data-theme", theme);
 ```
 
 Then in your CSS:
@@ -362,5 +405,5 @@ Then in your CSS:
 
 ## Further Reading
 
-- [Reference Implementation](https://github.com/redwoodjs/invoices) - Example from the invoices repository
+- [Dark Mode Playground](https://github.com/redwoodjs/sdk/tree/main/playground/dark-mode) - Complete working example
 - [Tailwind CSS Dark Mode](https://tailwindcss.com/docs/dark-mode)

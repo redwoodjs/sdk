@@ -55,4 +55,3 @@ export function Home({ ctx }: RequestInfo) {
     </div>
   );
 }
-
