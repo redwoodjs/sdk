@@ -30,6 +30,7 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
                 } else {
                   document.documentElement.classList.remove('dark');
                 }
+                document.documentElement.setAttribute('data-theme', theme);
               })();
             `,
           }}

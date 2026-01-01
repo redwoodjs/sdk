@@ -13,10 +13,7 @@ export function Home({ ctx }: RequestInfo) {
             This playground demonstrates dark and light mode themes in
             RedwoodSDK.
           </p>
-          <div className="flex items-center gap-4">
-            <span>Current theme: {theme}</span>
-            <ThemeToggle initialTheme={theme} />
-          </div>
+          <ThemeToggle initialTheme={theme} />
         </header>
 
         <main className="space-y-8">
