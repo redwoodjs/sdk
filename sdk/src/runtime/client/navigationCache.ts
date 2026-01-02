@@ -55,16 +55,32 @@ function getOrInitializeCacheState(): NavigationCacheState {
     }
 
     if (!tabId) {
-      // 2. Find the first available integer ID to avoid collisions with other tabs
+      // 2. Find the first available integer ID to avoid collisions with other tabs.
+      // We use a safety cap and a stale-check to ensure we don't loop forever or
+      // get stuck with dead IDs from crashed tabs.
+      const now = Date.now();
+      const STALE_THRESHOLD = 24 * 60 * 60 * 1000; // 24 hours
       let i = 1;
+
       try {
-        while (localStorage.getItem(`${TAB_ID_STORAGE_KEY}-${i}`)) {
+        while (i < 1000) {
+          const key = `${TAB_ID_STORAGE_KEY}-${i}`;
+          const storedValue = localStorage.getItem(key);
+
+          // If the ID isn't reserved, or the reservation is older than 24h, we take it.
+          if (
+            !storedValue ||
+            now - parseInt(storedValue, 10) > STALE_THRESHOLD
+          ) {
+            break;
+          }
           i++;
         }
-        tabId = String(i);
 
-        // Reserve it in localStorage and save to sessionStorage
-        localStorage.setItem(`${TAB_ID_STORAGE_KEY}-${tabId}`, "1");
+        tabId = i < 1000 ? String(i) : `fallback-${now}`;
+
+        // Reserve it with a timestamp and save to sessionStorage
+        localStorage.setItem(`${TAB_ID_STORAGE_KEY}-${tabId}`, String(now));
         sessionStorage.setItem(TAB_ID_STORAGE_KEY, tabId);
 
         // Release the ID when the tab is closed
@@ -77,7 +93,7 @@ function getOrInitializeCacheState(): NavigationCacheState {
         });
       } catch {
         // Fallback if localStorage is blocked
-        tabId = String(Date.now());
+        tabId = String(now);
       }
     }
   }
