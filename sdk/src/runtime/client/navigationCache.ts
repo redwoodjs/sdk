@@ -75,7 +75,7 @@ function getOrInitializeCacheState(): NavigationCacheState {
 
 function getCurrentCacheName(): string {
   const state = getOrInitializeCacheState();
-  return `rsc-prefetch:${state.buildId}:${state.tabId}:${state.generation}`;
+  return `rsc-x-prefetch:${state.buildId}:${state.tabId}:${state.generation}`;
 }
 
 function incrementGeneration(): number {
@@ -204,6 +204,9 @@ export async function preloadNavigationUrl(
     const request = new Request(url.toString(), {
       method: "GET",
       redirect: "manual",
+      headers: {
+        "x-prefetch": "true",
+      },
     });
 
     const cacheName = getCurrentCacheName();
@@ -317,7 +320,7 @@ export async function evictOldGenerationCaches(
     try {
       // List all cache names
       const cacheNames = await storage.keys();
-      const prefix = `rsc-prefetch:${buildId}:${tabId}:`;
+      const prefix = `rsc-x-prefetch:${buildId}:${tabId}:`;
 
       // Find all caches for this tab
       const tabCaches = cacheNames.filter((name) => name.startsWith(prefix));
@@ -363,7 +366,7 @@ export function onNavigationCommit(
 }
 
 /**
- * Scan the document for `<link rel="prefetch" href="...">` elements that point
+ * Scan the document for `<link rel="x-prefetch" href="...">` elements that point
  * to same-origin paths and prefetch their RSC navigation responses into the
  * Cache API.
  *
@@ -381,7 +384,7 @@ export async function preloadFromLinkTags(
   }
 
   const links = Array.from(
-    doc.querySelectorAll<HTMLLinkElement>('link[rel="prefetch"][href]'),
+    doc.querySelectorAll<HTMLLinkElement>('link[rel="x-prefetch"][href]'),
   );
 
   await Promise.all(
