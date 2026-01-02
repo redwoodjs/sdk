@@ -698,7 +698,9 @@ export function route<Path extends string, T extends RequestInfo = RequestInfo>(
   if (!normalizedPath.startsWith("/")) {
     normalizedPath = "/" + normalizedPath;
   }
-  if (!normalizedPath.endsWith("/")) {
+  // Special case: wildcard route "*" should normalize to "/*" (not "/*/")
+  // to allow it to match the root path "/"
+  if (normalizedPath !== "/*" && !normalizedPath.endsWith("/")) {
     normalizedPath = normalizedPath + "/";
   }
 
