@@ -40,12 +40,20 @@ testDevAndDeploy(
     await page.goto(url);
     await waitForHydration(page);
 
-    const getPageContent = () => page.content();
+    const getThemeText = async () => {
+      return await page.evaluate(() => {
+        const spans = Array.from(document.querySelectorAll("span"));
+        const themeSpan = spans.find((span) =>
+          span.textContent?.includes("Current theme:"),
+        );
+        return themeSpan?.textContent || null;
+      });
+    };
 
     // Check that theme text shows "system"
     await poll(async () => {
-      const content = await getPageContent();
-      expect(content).toContain("Current theme: system");
+      const themeText = await getThemeText();
+      expect(themeText).toContain("Current theme: system");
       return true;
     });
 
