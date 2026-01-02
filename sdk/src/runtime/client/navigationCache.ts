@@ -47,54 +47,15 @@ function getOrInitializeCacheState(): NavigationCacheState {
   let tabId: string | null = null;
 
   if (typeof window !== "undefined") {
-    // 1. Try sessionStorage (persists for the life of the tab)
     try {
       tabId = sessionStorage.getItem(TAB_ID_STORAGE_KEY);
-    } catch {
-      // Storage might be blocked (e.g., private mode)
-    }
-
-    if (!tabId) {
-      // 2. Find the first available integer ID to avoid collisions with other tabs.
-      // We use a safety cap and a stale-check to ensure we don't loop forever or
-      // get stuck with dead IDs from crashed tabs.
-      const now = Date.now();
-      const STALE_THRESHOLD = 24 * 60 * 60 * 1000; // 24 hours
-      let i = 1;
-
-      try {
-        while (i < 1000) {
-          const key = `${TAB_ID_STORAGE_KEY}-${i}`;
-          const storedValue = localStorage.getItem(key);
-
-          // If the ID isn't reserved, or the reservation is older than 24h, we take it.
-          if (
-            !storedValue ||
-            now - parseInt(storedValue, 10) > STALE_THRESHOLD
-          ) {
-            break;
-          }
-          i++;
-        }
-
-        tabId = i < 1000 ? String(i) : `fallback-${now}`;
-
-        // Reserve it with a timestamp and save to sessionStorage
-        localStorage.setItem(`${TAB_ID_STORAGE_KEY}-${tabId}`, String(now));
+      if (!tabId) {
+        tabId = `${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
         sessionStorage.setItem(TAB_ID_STORAGE_KEY, tabId);
-
-        // Release the ID when the tab is closed
-        window.addEventListener("beforeunload", () => {
-          try {
-            localStorage.removeItem(`${TAB_ID_STORAGE_KEY}-${tabId!}`);
-          } catch {
-            // Ignore cleanup errors
-          }
-        });
-      } catch {
-        // Fallback if localStorage is blocked
-        tabId = String(now);
       }
+    } catch {
+      // sessionStorage might be unavailable
+      tabId = tabId || `${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
     }
   }
 
