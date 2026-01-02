@@ -54,6 +54,12 @@ describe("matchPath", () => {
     expect(matchPath("/files/*/", "/files//")).toEqual({ $0: "" });
   });
 
+  it("should match wildcard route against root path", () => {
+    // Wildcard route should match the root path "/"
+    // This tests the regression where route("*") stopped matching "/"
+    expect(matchPath("/*", "/")).toEqual({ $0: "" });
+  });
+
   // Test case 4: Paths with both parameters and wildcards
   it("should match paths with both parameters and wildcards", () => {
     expect(
@@ -708,6 +714,34 @@ describe("defineRoutes - Request Handling Behavior", () => {
 
       expect(response.status).toBe(404);
       expect(await response.text()).toBe("Not Found");
+    });
+
+    it("should match wildcard route against root path", async () => {
+      // Regression test: wildcard route should match the root path "/"
+      const executionOrder: string[] = [];
+
+      const WildcardPage = () => {
+        executionOrder.push("WildcardPage");
+        return React.createElement("div", {}, "Wildcard Page");
+      };
+
+      const router = defineRoutes([route("*", WildcardPage)]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request("http://localhost:3000/");
+      deps.mockRequestInfo.path = "/";
+
+      const request = new Request("http://localhost:3000/");
+      await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(executionOrder).toEqual(["WildcardPage"]);
     });
   });
 
