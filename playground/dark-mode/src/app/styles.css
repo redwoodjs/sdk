@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+body {
+  min-height: 100vh;
+  padding: 0;
+  margin: 0;
+  background-color: white;
+  color: black;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.dark body {
+  background-color: #1a1a1a;
+  color: white;
+}
+
+#root,
+#hydrate-root {
+  width: 100vw;
+  min-height: 100vh;
+}
+
