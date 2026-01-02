@@ -14,9 +14,17 @@ This approach is commonly referred to as a Single Page App (SPA). In RedwoodSDK,
 ```tsx title="src/client.tsx" ins="initClientNavigation()"
 import { initClient, initClientNavigation } from "rwsdk/client";
 
-const { handleResponse, onHydrationUpdate } = initClientNavigation();
-initClient({ handleResponse, onHydrationUpdate });
+const { handleResponse, onHydrated } = initClientNavigation();
+initClient({ handleResponse, onHydrated });
 ```
+
+<Aside type="note">
+  <strong>Note:</strong> The <code>onHydrated</code> callback is optional but
+  recommended. It's required if you're using prefetching (see the{" "}
+  <a href="#prefetching-routes">Prefetching Routes</a> section), and it also
+  handles cache eviction which helps prevent memory bloat. If you're not using
+  prefetching, you can omit it: <code>initClient({handleResponse})</code>.
+</Aside>
 
 Once this is initialized, internal `<a href="/some-path">` links will no longer trigger full-page reloads. Instead, the SDK will:
 
@@ -167,10 +175,10 @@ export function HomePage() {
   const contactHref = link("/contact");
 
   return (
-      <>
-        {/* React 19 will hoist these <link> tags into <head> */}
-        <link rel="x-prefetch" href={aboutHref} />
-        <link rel="x-prefetch" href={contactHref} />
+    <>
+      {/* React 19 will hoist these <link> tags into <head> */}
+      <link rel="x-prefetch" href={aboutHref} />
+      <link rel="x-prefetch" href={contactHref} />
 
       <h1>Welcome</h1>
       <nav>
@@ -225,10 +233,10 @@ This ensures that prefetched content stays fresh while providing the performance
 
 Initializes the client-side navigation. Call this function from your `client.tsx` entry point.
 
-**Returns:** An object with two properties that must be passed to `initClient`:
+**Returns:** An object with two properties that should be passed to `initClient`:
 
-- `handleResponse`: A function that handles navigation responses and errors
-- `onHydrationUpdate`: A function that runs after each hydration to manage cache and prefetching
+- `handleResponse`: A function that handles navigation responses and errors (required for error handling)
+- `onHydrated`: A function that runs after each hydration to manage cache eviction and prefetching (optional but recommended; required if using prefetching)
 
 **Parameters:**
 
@@ -242,8 +250,8 @@ Initializes the client-side navigation. Call this function from your `client.tsx
 ```tsx title="src/client.tsx"
 import { initClient, initClientNavigation } from "rwsdk/client";
 
-const { handleResponse, onHydrationUpdate } = initClientNavigation();
-initClient({ handleResponse, onHydrationUpdate });
+const { handleResponse, onHydrated } = initClientNavigation();
+initClient({ handleResponse, onHydrated });
 ```
 
 **Example with options:**
@@ -251,9 +259,9 @@ initClient({ handleResponse, onHydrationUpdate });
 ```tsx title="src/client.tsx"
 import { initClient, initClientNavigation } from "rwsdk/client";
 
-const { handleResponse, onHydrationUpdate } = initClientNavigation({
+const { handleResponse, onHydrated } = initClientNavigation({
   scrollBehavior: "smooth",
   scrollToTop: true,
 });
-initClient({ handleResponse, onHydrationUpdate });
+initClient({ handleResponse, onHydrated });
 ```

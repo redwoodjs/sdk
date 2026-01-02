@@ -126,8 +126,8 @@ function saveScrollPosition(x: number, y: number) {
  * // Basic usage
  * import { initClient, initClientNavigation } from "rwsdk/client";
  *
- * const { handleResponse, onHydrationUpdate } = initClientNavigation();
- * initClient({ handleResponse, onHydrationUpdate });
+ * const { handleResponse, onHydrated } = initClientNavigation();
+ * initClient({ handleResponse, onHydrated });
  *
  * @example
  * // With custom scroll behavior
@@ -194,7 +194,7 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
     (globalThis as any).__rsc_cacheStorage = opts.cacheStorage;
   }
 
-  function onHydrationUpdate() {
+  function onHydrated() {
     // After each RSC hydration/update, increment generation and evict old caches,
     // then warm the navigation cache based on any <link rel="x-prefetch"> tags
     // rendered for the current location.
@@ -205,6 +205,6 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
   // Return callbacks for use with initClient
   return {
     handleResponse,
-    onHydrationUpdate,
+    onHydrated,
   };
 }
