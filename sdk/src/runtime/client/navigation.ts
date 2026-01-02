@@ -196,7 +196,7 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
 
   function onHydrationUpdate() {
     // After each RSC hydration/update, increment generation and evict old caches,
-    // then warm the navigation cache based on any <link rel="prefetch"> tags
+    // then warm the navigation cache based on any <link rel="x-prefetch"> tags
     // rendered for the current location.
     onNavigationCommit(undefined, opts.cacheStorage);
     void preloadFromLinkTags(undefined, undefined, opts.cacheStorage);

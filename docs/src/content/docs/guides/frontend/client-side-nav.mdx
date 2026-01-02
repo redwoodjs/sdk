@@ -147,17 +147,17 @@ The `navigate` function accepts two parameters:
 
 ## Prefetching Routes
 
-You can improve navigation performance by prefetching routes that users are likely to visit next. RedwoodSDK automatically detects `<link rel="prefetch">` elements in your pages and fetches those routes in the background.
+You can improve navigation performance by prefetching routes that users are likely to visit next. RedwoodSDK automatically detects `<link rel="x-prefetch">` elements in your pages and fetches those routes in the background.
 
 ### How it Works
 
-After each client-side navigation, RedwoodSDK scans the document for `<link rel="prefetch" href="...">` elements that point to same-origin routes. For each prefetch link found, it issues a background GET request with the `__rsc` query parameter. Successful responses are stored in the browser's Cache API.
+After each client-side navigation, RedwoodSDK scans the document for `<link rel="x-prefetch" href="...">` elements that point to same-origin routes. For each x-prefetch link found, it issues a background GET request with the `__rsc` query parameter and an `x-prefetch: true` header. Successful responses are stored in the browser's Cache API.
 
 When a user navigates to a prefetched route, the cached response is used instead of making a network request, resulting in instant navigation.
 
 ### Basic Usage
 
-Add `<link rel="prefetch">` tags to your pages or layouts to hint at likely next destinations:
+Add `<link rel="x-prefetch">` tags to your pages or layouts to hint at likely next destinations:
 
 ```tsx title="In a route or layout component (React 19)"
 import { link } from "@/shared/links";
@@ -167,10 +167,10 @@ export function HomePage() {
   const contactHref = link("/contact");
 
   return (
-    <>
-      {/* React 19 will hoist these <link> tags into <head> */}
-      <link rel="prefetch" href={aboutHref} />
-      <link rel="prefetch" href={contactHref} />
+      <>
+        {/* React 19 will hoist these <link> tags into <head> */}
+        <link rel="x-prefetch" href={aboutHref} />
+        <link rel="x-prefetch" href={contactHref} />
 
       <h1>Welcome</h1>
       <nav>
@@ -196,7 +196,7 @@ export function BlogListPage({ posts }) {
         const postHref = link("/blog/:slug", { slug: post.slug });
         return (
           <article key={post.id}>
-            <link rel="prefetch" href={postHref} />
+            <link rel="x-prefetch" href={postHref} />
             <a href={postHref}>
               <h2>{post.title}</h2>
             </a>
