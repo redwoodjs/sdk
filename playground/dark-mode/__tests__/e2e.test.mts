@@ -1,4 +1,9 @@
-import { poll, setupPlaygroundEnvironment, testDevAndDeploy } from "rwsdk/e2e";
+import {
+  poll,
+  setupPlaygroundEnvironment,
+  testDevAndDeploy,
+  waitForHydration,
+} from "rwsdk/e2e";
 import { expect } from "vitest";
 
 setupPlaygroundEnvironment(import.meta.url);
@@ -17,11 +22,10 @@ testDevAndDeploy("renders Dark Mode Playground", async ({ page, url }) => {
 
 testDevAndDeploy("theme toggle button is visible", async ({ page, url }) => {
   await page.goto(url);
+  await waitForHydration(page);
 
-  // Wait for page to be fully interactive
-  await page.waitForFunction("document.readyState === 'complete'");
-
-  const getThemeToggle = () => page.$('button[aria-label="Toggle theme"]');
+  const getThemeToggle = () =>
+    page.waitForSelector('button[aria-label="Toggle theme"]');
 
   await poll(async () => {
     const toggle = await getThemeToggle();
@@ -34,16 +38,14 @@ testDevAndDeploy(
   "default theme is system and follows system preference",
   async ({ page, url }) => {
     await page.goto(url);
+    await waitForHydration(page);
 
-    // Wait for page to be fully interactive
-    await page.waitForFunction("document.readyState === 'complete'");
+    const getPageContent = () => page.content();
 
     // Check that theme text shows "system"
-    const getThemeText = () => page.$("text=Current theme: system");
-
     await poll(async () => {
-      const themeText = await getThemeText();
-      expect(themeText).not.toBeNull();
+      const content = await getPageContent();
+      expect(content).toContain("Current theme: system");
       return true;
     });
 
@@ -62,35 +64,32 @@ testDevAndDeploy(
   "toggling theme cycles through system -> light -> dark -> system",
   async ({ page, url }) => {
     await page.goto(url);
+    await waitForHydration(page);
 
-    // Wait for page to be fully interactive
-    await page.waitForFunction("document.readyState === 'complete'");
-
-    const getThemeToggle = async () => {
-      const buttons = await page.$$('button[aria-label="Toggle theme"]');
-      return buttons[0] || null;
+    const getThemeToggle = () =>
+      page.waitForSelector('button[aria-label="Toggle theme"]');
+    const getThemeText = async () => {
+      return await page.evaluate(() => {
+        const spans = Array.from(document.querySelectorAll("span"));
+        const themeSpan = spans.find((span) =>
+          span.textContent?.includes("Current theme:"),
+        );
+        return themeSpan?.textContent || null;
+      });
     };
-
-    await poll(async () => {
-      const toggle = await getThemeToggle();
-      expect(toggle).not.toBeNull();
-      return toggle !== null;
-    });
-
-    const themeToggle = await getThemeToggle();
 
     // Start with system (default)
     await poll(async () => {
-      const themeText = await page.$("text=Current theme: system");
-      expect(themeText).not.toBeNull();
+      const themeText = await getThemeText();
+      expect(themeText).toContain("Current theme: system");
       return true;
     });
 
-    // Click to go to light
-    await themeToggle!.click();
+    // Click to go to light - re-select element before clicking
+    (await getThemeToggle())?.click();
     await poll(async () => {
-      const themeText = await page.$("text=Current theme: light");
-      expect(themeText).not.toBeNull();
+      const themeText = await getThemeText();
+      expect(themeText).toContain("Current theme: light");
       return true;
     });
 
@@ -100,11 +99,11 @@ testDevAndDeploy(
     });
     expect(hasDarkClassAfterLight).toBe(false);
 
-    // Click to go to dark
-    await themeToggle!.click();
+    // Click to go to dark - re-select element before clicking
+    (await getThemeToggle())?.click();
     await poll(async () => {
-      const themeText = await page.$("text=Current theme: dark");
-      expect(themeText).not.toBeNull();
+      const themeText = await getThemeText();
+      expect(themeText).toContain("Current theme: dark");
       return true;
     });
 
@@ -114,11 +113,11 @@ testDevAndDeploy(
     });
     expect(hasDarkClassAfterDark).toBe(true);
 
-    // Click to go back to system
-    await themeToggle!.click();
+    // Click to go back to system - re-select element before clicking
+    (await getThemeToggle())?.click();
     await poll(async () => {
-      const themeText = await page.$("text=Current theme: system");
-      expect(themeText).not.toBeNull();
+      const themeText = await getThemeText();
+      expect(themeText).toContain("Current theme: system");
       return true;
     });
   },
@@ -128,41 +127,38 @@ testDevAndDeploy(
   "theme preference persists after page reload",
   async ({ page, url }) => {
     await page.goto(url);
+    await waitForHydration(page);
 
-    // Wait for page to be fully interactive
-    await page.waitForFunction("document.readyState === 'complete'");
-
-    const getThemeToggle = async () => {
-      const buttons = await page.$$('button[aria-label="Toggle theme"]');
-      return buttons[0] || null;
+    const getThemeToggle = () =>
+      page.waitForSelector('button[aria-label="Toggle theme"]');
+    const getThemeText = async () => {
+      return await page.evaluate(() => {
+        const spans = Array.from(document.querySelectorAll("span"));
+        const themeSpan = spans.find((span) =>
+          span.textContent?.includes("Current theme:"),
+        );
+        return themeSpan?.textContent || null;
+      });
     };
 
-    await poll(async () => {
-      const toggle = await getThemeToggle();
-      expect(toggle).not.toBeNull();
-      return toggle !== null;
-    });
-
-    const themeToggle = await getThemeToggle();
-
-    // Set theme to dark
-    await themeToggle!.click(); // system -> light
-    await themeToggle!.click(); // light -> dark
+    // Set theme to dark - re-select element before each click
+    (await getThemeToggle())?.click(); // system -> light
+    (await getThemeToggle())?.click(); // light -> dark
 
     await poll(async () => {
-      const themeText = await page.$("text=Current theme: dark");
-      expect(themeText).not.toBeNull();
+      const themeText = await getThemeText();
+      expect(themeText).toContain("Current theme: dark");
       return true;
     });
 
     // Reload the page
     await page.reload({ waitUntil: "networkidle0" });
-    await page.waitForFunction("document.readyState === 'complete'");
+    await waitForHydration(page);
 
     // Verify theme is still dark after reload
     await poll(async () => {
-      const themeText = await page.$("text=Current theme: dark");
-      expect(themeText).not.toBeNull();
+      const themeText = await getThemeText();
+      expect(themeText).toContain("Current theme: dark");
       return true;
     });
 
@@ -178,30 +174,27 @@ testDevAndDeploy(
   "dark mode styles are applied correctly",
   async ({ page, url }) => {
     await page.goto(url);
+    await waitForHydration(page);
 
-    // Wait for page to be fully interactive
-    await page.waitForFunction("document.readyState === 'complete'");
-
-    const getThemeToggle = async () => {
-      const buttons = await page.$$('button[aria-label="Toggle theme"]');
-      return buttons[0] || null;
+    const getThemeToggle = () =>
+      page.waitForSelector('button[aria-label="Toggle theme"]');
+    const getThemeText = async () => {
+      return await page.evaluate(() => {
+        const spans = Array.from(document.querySelectorAll("span"));
+        const themeSpan = spans.find((span) =>
+          span.textContent?.includes("Current theme:"),
+        );
+        return themeSpan?.textContent || null;
+      });
     };
 
-    await poll(async () => {
-      const toggle = await getThemeToggle();
-      expect(toggle).not.toBeNull();
-      return toggle !== null;
-    });
-
-    const themeToggle = await getThemeToggle();
-
-    // Set to dark mode
-    await themeToggle!.click(); // system -> light
-    await themeToggle!.click(); // light -> dark
+    // Set to dark mode - re-select element before each click
+    (await getThemeToggle())?.click(); // system -> light
+    (await getThemeToggle())?.click(); // light -> dark
 
     await poll(async () => {
-      const themeText = await page.$("text=Current theme: dark");
-      expect(themeText).not.toBeNull();
+      const themeText = await getThemeText();
+      expect(themeText).toContain("Current theme: dark");
       return true;
     });
 
@@ -218,4 +211,3 @@ testDevAndDeploy(
     expect(bodyBgColor).not.toContain("rgb(255,255,255)");
   },
 );
-

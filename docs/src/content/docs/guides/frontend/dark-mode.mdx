@@ -60,23 +60,6 @@ worker (read theme from cookie)
     ]);
     ```
 
-        <Aside type="note" title="AppContext Type">
-
-    Make sure to define your `AppContext` type in `types/rw.d.ts` to extend the
-    default context type:
-
-    ```tsx title="types/rw.d.ts"
-    import { AppContext } from "../src/worker";
-
-    declare module "rwsdk/worker" {
-      interface DefaultAppContext extends AppContext {}
-    }
-    ```
-
-    See the [routing documentation](/core/routing) for details on customizing app context.
-
-        </Aside>
-
 2.  **Create a server action to set the theme**
 
     Create a server function that updates the theme cookie:
@@ -268,46 +251,6 @@ worker (read theme from cookie)
 
 </Steps>
 
-## Alternative: Simpler Toggle (Dark/Light Only)
-
-If you only need dark and light modes (no system preference), you can simplify the toggle:
-
-```tsx title="src/app/components/ThemeToggle.tsx"
-"use client";
-
-import { useEffect, useState } from "react";
-import { setTheme } from "../actions/setTheme";
-
-export function ThemeToggle({
-  initialTheme,
-}: {
-  initialTheme: "dark" | "light";
-}) {
-  const [isDark, setIsDark] = useState(initialTheme === "dark");
-
-  useEffect(() => {
-    const root = document.documentElement;
-    if (isDark) {
-      root.classList.add("dark");
-      setTheme("dark");
-    } else {
-      root.classList.remove("dark");
-      setTheme("light");
-    }
-  }, [isDark]);
-
-  return (
-    <button
-      onClick={() => setIsDark(!isDark)}
-      className="px-4 py-2 rounded bg-gray-200 dark:bg-gray-800"
-      aria-label="Toggle theme"
-    >
-      {isDark ? "☀️" : "🌙"}
-    </button>
-  );
-}
-```
-
 ## Reading the Current Theme
 
 The `ThemeToggle` component above includes a display of the current theme. If you need to read the current theme in a separate client component, you can check the DOM directly:
@@ -344,13 +287,6 @@ export function MyComponent() {
   );
 }
 ```
-
-<Aside type="tip" title="Simpler Approach">
-  If you need to display the current theme, consider including it in your
-  `ThemeToggle` component (as shown in the example above) rather than creating a
-  separate component. This keeps the theme state and display in sync without
-  additional complexity.
-</Aside>
 
 ## CSS Styling
 
