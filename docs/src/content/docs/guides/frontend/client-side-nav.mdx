@@ -23,7 +23,8 @@ initClient({ handleResponse, onHydrated });
   recommended. It's required if you're using prefetching (see the{" "}
   <a href="#prefetching-routes">Prefetching Routes</a> section), and it also
   handles cache eviction which helps prevent memory bloat. If you're not using
-  prefetching, you can omit it: <code>initClient({handleResponse})</code>.
+  prefetching, you can omit it and only pass <code>handleResponse</code> to{" "}
+  <code>initClient</code>.
 </Aside>
 
 Once this is initialized, internal `<a href="/some-path">` links will no longer trigger full-page reloads. Instead, the SDK will:
