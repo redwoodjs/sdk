@@ -1,17 +1,26 @@
+import { except, render, route } from "rwsdk/router";
 import { defineApp } from "rwsdk/worker";
-import { render, route } from "rwsdk/router";
 
 import { Document } from "@/app/Document";
+import { ErrorPage } from "@/app/pages/ErrorPage";
 import { Home } from "@/app/pages/Home";
-import { setCommonHeaders } from "@/app/headers";
 
 export type AppContext = {};
 
 export default defineApp([
-  setCommonHeaders(),
+  // setCommonHeaders(),
   ({ ctx }) => {
     // setup ctx here
     ctx;
   },
-  render(Document, [route("/", Home)]),
+  except((error) => {
+    return <ErrorPage error={error} />;
+  }),
+  render(Document, [
+    route("/", Home),
+    route("/error", ErrorPage),
+    route("/debug/throw", () => {
+      throw new Error("This is a test error from the /debug/throw route");
+    }),
+  ]),
 ]);

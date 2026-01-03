@@ -21,6 +21,11 @@ export default defineConfig({
     // context(justinvdm, 24 Sep 2025): Use 4x the number of logical CPUs. The tests
     // are heavily network-bound (e.g. deploying workers), so a high degree of
     // concurrency is beneficial as most workers will be idle waiting on I/O.
-    maxWorkers: Math.ceil(os.cpus().length * 2),
+    // When RWSDK_SEQUENTIAL=1, run tests sequentially (maxWorkers: 1) to avoid
+    // resource contention during dev server startup.
+    maxWorkers:
+      process.env.RWSDK_SEQUENTIAL === "1"
+        ? 1
+        : Math.ceil(os.cpus().length * 2),
   },
 });

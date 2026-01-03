@@ -48,7 +48,7 @@ declare module "react-server-dom-webpack/server.edge" {
   export function renderToReadableStream(
     model: ReactClientValue,
     webpackMap: ClientManifest,
-    options?: Options
+    options?: Options,
   ): ReadableStream;
 
   /**
@@ -64,7 +64,7 @@ declare module "react-server-dom-webpack/server.edge" {
   export function registerClientReference<T>(
     proxyImplementation: T,
     id: string,
-    exportName: string
+    exportName: string,
   ): T;
 }
 
@@ -77,7 +77,11 @@ declare module "react-dom/server.edge" {
 declare module "react-server-dom-webpack/client" {
   // https://github.com/facebook/react/blob/dfaed5582550f11b27aae967a8e7084202dd2d90/packages/react-server-dom-webpack/src/ReactFlightDOMClientBrowser.js#L31
   export type Options<A, T> = {
-    callServer?: (id: string, args: A) => Promise<T>;
+    callServer?: (
+      id: string,
+      args: A,
+      source?: "action" | "navigation",
+    ) => Promise<T>;
   };
 
   /**
@@ -94,7 +98,7 @@ declare module "react-server-dom-webpack/client" {
     // `Response` is a Web Response:
     // https://developer.mozilla.org/en-US/docs/Web/API/Response
     promiseForResponse: Promise<Response>,
-    options?: Options<A, T>
+    options?: Options<A, T>,
   ): Thenable<T>;
 
   /**
@@ -108,7 +112,7 @@ declare module "react-server-dom-webpack/client" {
    */
   export function encodeReply(
     // https://github.com/facebook/react/blob/dfaed5582550f11b27aae967a8e7084202dd2d90/packages/react-client/src/ReactFlightReplyClient.js#L65
-    value: ReactServerValue
+    value: ReactServerValue,
   ): Promise<string | URLSearchParams | FormData>;
 }
 
@@ -121,42 +125,42 @@ declare module "react-server-dom-webpack/server.edge" {
     bundlerConfig: import("./react").BundlerConfig,
     opitons?: {
       onError: import("react-dom/server").RenderToReadableStreamOptions["onError"];
-    }
+    },
   ): ReadableStream<Uint8Array>;
 
   export function registerClientReference<T>(
     ref: T,
     id: string,
-    name: string
+    name: string,
   ): T;
 
   export function registerServerReference<T>(
     ref: T,
     id: string,
-    name: string
+    name: string,
   ): T;
 
   export function decodeReply(
     body: string | FormData,
-    bundlerConfig: import("./react").BundlerConfig
+    bundlerConfig: import("./react").BundlerConfig,
     // TODO: temporaryReferences
   ): Promise<unknown[]>;
 
   export function decodeAction(
     body: FormData,
-    bundlerConfig: import("./react").BundlerConfig
+    bundlerConfig: import("./react").BundlerConfig,
   ): Promise<() => Promise<unknown>>;
 
   export function decodeFormState(
     actionResult: unknown,
     body: FormData,
-    serverManifest?: unknown
+    serverManifest?: unknown,
   ): Promise<unknown>;
 }
 
 declare module "react-server-dom-webpack/server" {
-  import type { Writable } from "node:stream";
   import type { Busboy } from "busboy";
+  import type { Writable } from "node:stream";
 
   // It's difficult to know the true type of `ServerManifest`.
   // A lot of react's source files are stubs that are replaced at build time.
@@ -176,7 +180,7 @@ declare module "react-server-dom-webpack/server" {
    */
   export function decodeReply<T>(
     body: string | FormData,
-    webpackMap?: ServerManifest
+    webpackMap?: ServerManifest,
   ): Promise<T>;
 
   /**
@@ -190,7 +194,7 @@ declare module "react-server-dom-webpack/server" {
    */
   export function decodeReplyFromBusboy<T>(
     busboyStream: Busboy,
-    webpackMap?: ServerManifest
+    webpackMap?: ServerManifest,
   ): Promise<T>;
 
   type PipeableStream = {
@@ -211,33 +215,37 @@ declare module "react-server-dom-webpack/server" {
    */
   export function renderToPipeableStream(
     model: ReactClientValue,
-    webpackMap: ClientManifest
+    webpackMap: ClientManifest,
   ): PipeableStream;
 }
 
 // From https://github.com/hi-ogawa/vite-plugins/blob/ca3f97ec09c2549d98779acbf9a24e97706c125d/packages/react-server/src/types/react-lib.d.ts#L64-L87
 // https://github.com/facebook/react/blob/89021fb4ec9aa82194b0788566e736a4cedfc0e4/packages/react-server-dom-webpack/src/ReactFlightDOMClientBrowser.js
 declare module "react-server-dom-webpack/client.browser" {
-  export type CallServerCallback = (id: any, args: any) => Promise<unknown>;
+  export type CallServerCallback = (
+    id: any,
+    args: any,
+    source?: "action" | "navigation",
+  ) => Promise<unknown>;
 
   export function createServerReference(
     id: string,
     callServer: CallServerCallback,
-    encodeFormAction?: unknown
+    encodeFormAction?: unknown,
   ): Function;
 
   export function createFromReadableStream<T>(
     stream: ReadableStream<Uint8Array>,
     options?: {
       callServer?: CallServerCallback;
-    }
+    },
   ): Promise<T>;
 
   export function createFromFetch<T>(
     promiseForResponse: Promise<Response>,
     options?: {
       callServer?: import("./react").CallServerCallback;
-    }
+    },
   ): Promise<T>;
 
   export function encodeReply(v: unknown[]): Promise<string | FormData>;
@@ -261,11 +269,11 @@ declare module "react-server-dom-webpack/client.edge" {
         moduleMap: ClientManifest;
         moduleLoading: null;
       };
-    }
+    },
   ): Thenable<T>;
 
   export function createServerReference<A, T>(
     id: string,
-    callServer: (id: string, args: A) => Promise<T>
+    callServer: (id: string, args: A) => Promise<T>,
   );
 }

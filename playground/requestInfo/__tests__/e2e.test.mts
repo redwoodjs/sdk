@@ -30,7 +30,7 @@ async function modifyFile(
   await writeFile(absolutePath, content);
 }
 
-testSDK(
+testSDK.dev(
   "requestInfo state is preserved across HMR and works in server actions",
   async ({ page, projectDir }) => {
     // 1. Comment out all the dynamic parts of the app
@@ -141,14 +141,13 @@ testSDK(
       ],
     ]);
 
-    const getButton = async () => page.waitForSelector("button");
-
     // 10. Assert that the server action result is displayed and state is preserved when the button is clicked
     await poll(async () => {
       // context(justinvdm, 21 Oct 2025): We need to retry the click because the
       // action's response will initially be a 307 because of the discovered
       // dependency causing a re-optimization to happen.
-      (await getButton())?.click();
+      const button = await page.waitForSelector("button");
+      await button?.click();
 
       const textContent = await page.evaluate(() => document.body.innerText);
 
@@ -187,8 +186,8 @@ testDeploy(
     });
 
     // 3. Click the button to call the server action
-    const getButton = async () => page.waitForSelector("button");
-    (await getButton())?.click();
+    const button = await page.waitForSelector("button");
+    await button?.click();
 
     // 4. Assert that the server action result is displayed
     await poll(async () => {

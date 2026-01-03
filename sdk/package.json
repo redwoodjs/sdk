@@ -1,6 +1,6 @@
 {
   "name": "rwsdk",
-  "version": "1.0.0-beta.39",
+  "version": "1.0.0-beta.45",
   "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime",
   "type": "module",
   "bin": {
@@ -15,15 +15,19 @@
   ],
   "scripts": {
     "build": "tsc --build --clean && tsc",
+    "build:watch": "npm run build -- --watch",
     "release": "./scripts/release.sh",
     "test": "vitest --run",
+    "bench": "vitest bench --run",
+    "bench:baseline": "vitest bench --run --outputJson=benchmarks/router-bench-baseline.json",
+    "bench:compare": "vitest bench --run --compare=benchmarks/router-bench-baseline.json",
     "debug:sync": "tsx ./src/scripts/debug-sync.mts",
     "smoke-test": "tsx ./src/scripts/smoke-test.mts"
   },
   "exports": {
     "./vite": {
-      "default": "./dist/vite/index.mjs",
-      "types": "./dist/vite/index.d.mts"
+      "types": "./dist/vite/index.d.mts",
+      "default": "./dist/vite/index.mjs"
     },
     "./worker": {
       "react-server": "./dist/runtime/entries/worker.js",
@@ -178,6 +182,7 @@
     "puppeteer-core": "~24.22.0",
     "react-is": "~19.1.0",
     "rsc-html-stream": "~0.0.6",
+    "server-only": "^0.0.1",
     "tmp-promise": "~3.0.3",
     "ts-morph": "~27.0.0",
     "unique-names-generator": "~4.7.1",
