@@ -66,6 +66,8 @@ export const directiveModulesDevPlugin = ({
 }): Plugin => {
   const { promise: scanPromise, resolve: resolveScanPromise } =
     Promise.withResolvers<void>();
+  const { promise: optimizePromise, resolve: resolveOptimizePromise } =
+    Promise.withResolvers<void>();
 
   const tempDir = mkdtempSync(path.join(os.tmpdir(), "rwsdk-"));
   const APP_CLIENT_BARREL_PATH = path.join(tempDir, "app-client-barrel.js");
@@ -171,8 +173,8 @@ export const directiveModulesDevPlugin = ({
             );
 
             build.onResolve({ filter: /.*/ }, async (args: any) => {
-              // Block all resolutions until the scan is complete.
-              await scanPromise;
+              // Block all resolutions until configResolved completes.
+              await optimizePromise;
 
               // Handle app barrel files
               if (appBarrelFilter.test(args.path)) {
@@ -214,6 +216,9 @@ export const directiveModulesDevPlugin = ({
           },
         });
       }
+
+      // Resolve optimizePromise to unblock dep optimization
+      resolveOptimizePromise();
     },
   };
 };
