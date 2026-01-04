@@ -85,11 +85,9 @@ body {
   color: #718096;
 }
 
-/* Accordion Styles */
 [data-scope="accordion"][data-part="root"] {
   border: 1px solid #e2e8f0;
   border-radius: 0.5rem;
-  overflow: hidden;
   background: white;
 }
 
@@ -126,16 +124,10 @@ body {
 }
 
 [data-scope="accordion"][data-part="item-content"] {
-  padding: 0 1.5rem;
-  max-height: 0;
+  padding: 20px;
   overflow: hidden;
   transition: all 0.3s ease;
   color: #4a5568;
-}
-
-[data-scope="accordion"][data-part="item-content"][data-state="open"] {
-  padding: 1rem 1.5rem 1.5rem;
-  max-height: 500px;
 }
 
 [data-scope="accordion"][data-part="item-indicator"] {
@@ -147,7 +139,6 @@ body {
   transform: rotate(180deg);
 }
 
-/* Checkbox Styles */
 [data-scope="checkbox"][data-part="root"] {
   display: flex;
   align-items: center;
@@ -192,7 +183,6 @@ body {
   user-select: none;
 }
 
-/* Switch Styles */
 [data-scope="switch"][data-part="root"] {
   display: flex;
   align-items: center;
@@ -235,7 +225,6 @@ body {
   user-select: none;
 }
 
-/* Slider Styles */
 [data-scope="slider"][data-part="root"] {
   width: 100%;
   max-width: 300px;
@@ -290,7 +279,6 @@ body {
   box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.2);
 }
 
-/* Radio Group Styles */
 [data-scope="radio-group"][data-part="root"] {
   display: flex;
   gap: 1rem;

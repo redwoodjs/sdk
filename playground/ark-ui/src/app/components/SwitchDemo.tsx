@@ -1,3 +1,5 @@
+"use client";
+
 import { Switch } from '@ark-ui/react/switch';
 import { DemoList } from './Layout';
 

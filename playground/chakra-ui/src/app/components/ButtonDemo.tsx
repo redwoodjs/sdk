@@ -1,4 +1,4 @@
-import { HStack, Button } from "@chakra-ui/react";
+import { Button, HStack } from "@chakra-ui/react";
 import { DemoList } from "./Layout";
 
 export const ButtonDemo = () => {

@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 import { RadioGroup } from '@ark-ui/react/radio-group';
 import { DemoList } from './Layout';

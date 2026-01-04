@@ -1,3 +1,5 @@
+"use client";
+
 import { Slider } from '@ark-ui/react/slider';
 import { DemoList } from './Layout';
 
