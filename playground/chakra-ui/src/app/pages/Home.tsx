@@ -26,7 +26,7 @@ export function Home({ ctx }: RequestInfo) {
         >
           <Box textAlign="center" py="8" mb="8">
             <Heading as="h1" size="2xl" mb={4} data-testid="main-title">
-              RedwoodSDK Playground
+              Chakra UI Playground
             </Heading>
             <Text fontSize="lg" color="fg.muted" data-testid="subtitle">
               Component showcase for RedwoodSDK with Chakra UI

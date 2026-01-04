@@ -1,4 +1,3 @@
-import React from 'react';
 import { RequestInfo } from "rwsdk/worker";
 import { Section, SectionTitle, SectionContent } from '../components/Layout';
 import { AccordionDemo } from '../components/AccordionDemo';
@@ -12,7 +11,7 @@ export function Home({ ctx }: RequestInfo) {
     <div className="playground-container">
       <div className="playground-header">
         <h1>Ark UI Playground</h1>
-        <p>Headless components styled with pure CSS</p>
+        <p>Component showcase for RedwoodSDK with Ark UI</p>
       </div>
 
       <Section>
