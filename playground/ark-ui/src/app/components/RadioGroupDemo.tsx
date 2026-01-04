@@ -1,6 +1,3 @@
-"use client";
-
-import React from 'react';
 import { RadioGroup } from '@ark-ui/react/radio-group';
 import { DemoList } from './Layout';
 
@@ -12,18 +9,21 @@ export const RadioGroupDemo = () => (
         component: (
           <RadioGroup.Root defaultValue="react">
             <RadioGroup.Item value="react">
+              <RadioGroup.ItemHiddenInput />
               <RadioGroup.ItemControl>
                 <span />
               </RadioGroup.ItemControl>
               <RadioGroup.ItemText>React</RadioGroup.ItemText>
             </RadioGroup.Item>
             <RadioGroup.Item value="vue">
+              <RadioGroup.ItemHiddenInput />
               <RadioGroup.ItemControl>
                 <span />
               </RadioGroup.ItemControl>
               <RadioGroup.ItemText>Vue</RadioGroup.ItemText>
             </RadioGroup.Item>
             <RadioGroup.Item value="svelte">
+              <RadioGroup.ItemHiddenInput />
               <RadioGroup.ItemControl>
                 <span />
               </RadioGroup.ItemControl>

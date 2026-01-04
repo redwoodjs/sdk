@@ -10,6 +10,7 @@ export const CheckboxDemo = () => (
         component: (
           <div className="component-grid">
             <Checkbox.Root>
+              <Checkbox.HiddenInput />
               <Checkbox.Control>
                 <Checkbox.Indicator>
                   <Check size={14} />
@@ -18,6 +19,7 @@ export const CheckboxDemo = () => (
               <Checkbox.Label>Accept terms</Checkbox.Label>
             </Checkbox.Root>
             <Checkbox.Root defaultChecked>
+              <Checkbox.HiddenInput />
               <Checkbox.Control>
                 <Checkbox.Indicator>
                   <Check size={14} />
@@ -26,6 +28,7 @@ export const CheckboxDemo = () => (
               <Checkbox.Label>Subscribe to newsletter</Checkbox.Label>
             </Checkbox.Root>
             <Checkbox.Root>
+              <Checkbox.HiddenInput />
               <Checkbox.Control>
                 <Checkbox.Indicator>
                   <Check size={14} />

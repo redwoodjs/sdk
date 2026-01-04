@@ -1,5 +1,3 @@
-"use client";
-
 import { Switch } from '@ark-ui/react/switch';
 import { DemoList } from './Layout';
 
@@ -11,18 +9,21 @@ export const SwitchDemo = () => (
         component: (
           <div className="component-grid">
             <Switch.Root>
+              <Switch.HiddenInput />
               <Switch.Control>
                 <Switch.Thumb />
               </Switch.Control>
               <Switch.Label>Airplane mode</Switch.Label>
             </Switch.Root>
             <Switch.Root defaultChecked>
+              <Switch.HiddenInput />
               <Switch.Control>
                 <Switch.Thumb />
               </Switch.Control>
               <Switch.Label>Wi-Fi enabled</Switch.Label>
             </Switch.Root>
             <Switch.Root>
+              <Switch.HiddenInput />
               <Switch.Control>
                 <Switch.Thumb />
               </Switch.Control>

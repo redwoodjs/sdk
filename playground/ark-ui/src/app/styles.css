@@ -173,10 +173,11 @@ body {
   display: none;
 }
 
-[data-scope="checkbox"][data-part="indicator"][data-state="checked"] {
-  display: block;
+[data-scope="checkbox"][data-part="indicator"]:not([hidden]) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-
 [data-scope="checkbox"][data-part="label"] {
   font-size: 0.875rem;
   color: #1a202c;
