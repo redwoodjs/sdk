@@ -1,7 +1,7 @@
 {
-  "name": "chakra-ui-playground",
+  "name": "hello-world",
   "version": "1.0.0",
-  "description": "A comprehensive Chakra UI playground for RedwoodSDK",
+  "description": "A bare-bones RedwoodSDK starter",
   "main": "index.js",
   "type": "module",
   "keywords": [],
@@ -19,35 +19,25 @@
     "release": "rw-scripts ensure-deploy-env && npm run clean && npm run build && wrangler deploy",
     "generate": "rw-scripts ensure-env && wrangler types",
     "check": "npm run generate && npm run types",
-    "types": "tsc",
-    "test": "vitest run --config ../vitest.config.mts"
+    "types": "tsc"
   },
   "dependencies": {
-    "@chakra-ui/react": "^3.27.0",
-    "@emotion/react": "^11.14.0",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "react-server-dom-webpack": "19.2.3",
+    "@ark-ui/react": "^5.29.1",
+    "react": "19.2.1",
+    "react-dom": "19.2.1",
+    "react-server-dom-webpack": "19.2.1",
     "rwsdk": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.16.1",
     "@cloudflare/workers-types": "4.20251202.0",
     "@types/node": "22.18.8",
-    "@types/react": "19.2.3",
-    "@types/react-dom": "19.2.3",
+    "@types/react": "19.1.2",
+    "@types/react-dom": "19.1.2",
     "typescript": "5.9.3",
     "vite": "7.2.6",
     "vitest": "^3.1.1",
     "wrangler": "4.52.1"
-  },
-  "overrides": {
-    "react": "19.2.3",
-    "react-dom": "19.2.3"
-  },
-  "resolutions": {
-    "react": "19.2.3",
-    "react-dom": "19.2.3"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
