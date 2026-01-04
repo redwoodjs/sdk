@@ -2,7 +2,7 @@
 
 This playground demonstrates client-side navigation features in RedwoodSDK.
 
-- **Home page (`/`)**: A client component that uses `navigate` to programmatically move to different pages and renders a prefetch `<link>` to warm the RSC cache.
+- **Home page (`/`)**: A client component that uses `navigate` to programmatically move to different pages and renders an x-prefetch `<link>` to warm the RSC cache.
 - **About page (`/about`)**:
   - A server component that shows a basic About layout.
   - Includes a `React.Suspense` boundary that wraps an async server component with an artificial delay.

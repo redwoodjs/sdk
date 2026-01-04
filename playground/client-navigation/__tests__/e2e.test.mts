@@ -51,7 +51,7 @@ testDevAndDeploy(
 
     // React will hoist this <link> into <head>, and the client navigation
     // runtime will use it to warm the navigation cache for /about.
-    await page.waitForSelector('link[rel="prefetch"][href="/about"]');
+    await page.waitForSelector('link[rel="x-prefetch"][href="/about"]');
   },
 );
 

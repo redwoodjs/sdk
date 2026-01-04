@@ -156,7 +156,7 @@ export const fetchTransport: Transport = (transportContext) => {
  *                             - `onCaughtError`: Handler for errors caught by error boundaries
  *                             - `onRecoverableError`: Handler for recoverable errors
  * @param handleResponse - Custom response handler for navigation errors (navigation GETs)
- * @param onHydrationUpdate - Callback invoked after a new RSC payload has been committed on the client
+ * @param onHydrated - Callback invoked after a new RSC payload has been committed on the client
  * @param onActionResponse - Optional hook invoked when an action returns a Response;
  *                           return true to signal that the response has been handled and
  *                           default behaviour (e.g. redirects) should be skipped
@@ -205,19 +205,19 @@ export const initClient = async ({
   transport = fetchTransport,
   hydrateRootOptions,
   handleResponse,
-  onHydrationUpdate,
+  onHydrated,
   onActionResponse,
 }: {
   transport?: Transport;
   hydrateRootOptions?: HydrationOptions;
   handleResponse?: (response: Response) => boolean;
-  onHydrationUpdate?: () => void;
+  onHydrated?: () => void;
   onActionResponse?: (actionResponse: ActionResponseData) => boolean | void;
 } = {}) => {
   const transportContext: TransportContext = {
     setRscPayload: () => {},
     handleResponse,
-    onHydrationUpdate,
+    onHydrated,
     onActionResponse,
   };
 
@@ -243,7 +243,9 @@ export const initClient = async ({
   const rootEl = document.getElementById("hydrate-root");
 
   if (!rootEl) {
-    throw new Error('no element with id "hydrate-root"');
+    throw new Error(
+      'RedwoodSDK: No element with id "hydrate-root" found in the document. This element is required for hydration. Ensure your Document component contains a <div id="hydrate-root">{children}</div>.',
+    );
   }
 
   let rscPayload: any;
@@ -266,7 +268,7 @@ export const initClient = async ({
 
     React.useEffect(() => {
       if (!streamData) return;
-      transportContext.onHydrationUpdate?.();
+      transportContext.onHydrated?.();
     }, [streamData]);
     return (
       <>

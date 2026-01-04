@@ -37,7 +37,7 @@ export type TransportContext = {
    * This is useful for features like client-side navigation that want to run logic
    * after hydration/updates, e.g. warming navigation caches.
    */
-  onHydrationUpdate?: () => void;
+  onHydrated?: () => void;
   /**
    * Optional callback invoked when an action returns a Response.
    * Return true to signal that the response has been handled and

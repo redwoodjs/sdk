@@ -188,6 +188,22 @@ describe("navigationCache", () => {
       expect(requestUrl.searchParams.has("__rsc")).toBe(true);
     });
 
+    it("should add x-prefetch header", async () => {
+      const env: NavigationCacheEnvironment = {
+        isSecureContext: true,
+        origin: "https://example.com",
+        caches: mockCacheStorage,
+        fetch: mockFetch,
+      };
+
+      const url = new URL("https://example.com/test");
+      await preloadNavigationUrl(url, env);
+
+      const fetchCall = (mockFetch as any).mock.calls[0];
+      const request = fetchCall[0] as Request;
+      expect(request.headers.get("x-prefetch")).toBe("true");
+    });
+
     it("should use custom cacheStorage when provided", async () => {
       const customCache: NavigationCache = {
         put: vi.fn().mockResolvedValue(undefined),
@@ -355,7 +371,7 @@ describe("navigationCache", () => {
       await preloadNavigationUrl(url, env);
       const openCall = (mockCacheStorage.open as any).mock.calls[0];
       const cacheName = openCall[0] as string;
-      const tabIdMatch = cacheName.match(/^rsc-prefetch:rwsdk:([^:]+):\d+$/);
+      const tabIdMatch = cacheName.match(/^rsc-x-prefetch:rwsdk:([^:]+):\d+$/);
       const tabId = tabIdMatch ? tabIdMatch[1] : "test-uuid-123";
 
       // Increment generation to 2 by calling onNavigationCommit twice
@@ -364,10 +380,10 @@ describe("navigationCache", () => {
 
       // Mock cache names matching the actual tabId
       const allCacheNames = [
-        `rsc-prefetch:rwsdk:${tabId}:0`,
-        `rsc-prefetch:rwsdk:${tabId}:1`,
-        `rsc-prefetch:rwsdk:${tabId}:2`,
-        "rsc-prefetch:rwsdk:other-tab:0",
+        `rsc-x-prefetch:rwsdk:${tabId}:0`,
+        `rsc-x-prefetch:rwsdk:${tabId}:1`,
+        `rsc-x-prefetch:rwsdk:${tabId}:2`,
+        "rsc-x-prefetch:rwsdk:other-tab:0",
       ];
       (mockCacheStorage.keys as any).mockResolvedValue(allCacheNames);
 
@@ -378,16 +394,16 @@ describe("navigationCache", () => {
 
       // Should delete generations 0 and 1, but not 2 (current) or other-tab
       expect(mockCacheStorage.delete).toHaveBeenCalledWith(
-        `rsc-prefetch:rwsdk:${tabId}:0`,
+        `rsc-x-prefetch:rwsdk:${tabId}:0`,
       );
       expect(mockCacheStorage.delete).toHaveBeenCalledWith(
-        `rsc-prefetch:rwsdk:${tabId}:1`,
+        `rsc-x-prefetch:rwsdk:${tabId}:1`,
       );
       expect(mockCacheStorage.delete).not.toHaveBeenCalledWith(
-        `rsc-prefetch:rwsdk:${tabId}:2`,
+        `rsc-x-prefetch:rwsdk:${tabId}:2`,
       );
       expect(mockCacheStorage.delete).not.toHaveBeenCalledWith(
-        "rsc-prefetch:rwsdk:other-tab:0",
+        "rsc-x-prefetch:rwsdk:other-tab:0",
       );
     });
 
@@ -403,7 +419,7 @@ describe("navigationCache", () => {
       await preloadNavigationUrl(url, env);
       const openCall = (mockCacheStorage.open as any).mock.calls[0];
       const cacheName = openCall[0] as string;
-      const tabIdMatch = cacheName.match(/^rsc-prefetch:rwsdk:([^:]+):\d+$/);
+      const tabIdMatch = cacheName.match(/^rsc-x-prefetch:rwsdk:([^:]+):\d+$/);
       const tabId = tabIdMatch ? tabIdMatch[1] : "test-uuid-123";
 
       const customStorage: NavigationCacheStorage = {
@@ -412,8 +428,8 @@ describe("navigationCache", () => {
         keys: vi
           .fn()
           .mockResolvedValue([
-            `rsc-prefetch:rwsdk:${tabId}:0`,
-            `rsc-prefetch:rwsdk:${tabId}:1`,
+            `rsc-x-prefetch:rwsdk:${tabId}:0`,
+            `rsc-x-prefetch:rwsdk:${tabId}:1`,
           ]),
       };
 
@@ -470,7 +486,7 @@ describe("navigationCache", () => {
   });
 
   describe("preloadFromLinkTags", () => {
-    it("should preload URLs from prefetch link tags", async () => {
+    it("should preload URLs from x-prefetch link tags", async () => {
       const env: NavigationCacheEnvironment = {
         isSecureContext: true,
         origin: "https://example.com",
@@ -478,7 +494,7 @@ describe("navigationCache", () => {
         fetch: mockFetch,
       };
 
-      // Create a mock document with prefetch links
+      // Create a mock document with x-prefetch links
       const mockDoc = {
         querySelectorAll: vi.fn().mockReturnValue([
           {
@@ -570,7 +586,7 @@ describe("navigationCache", () => {
       const openCall = (mockCacheStorage.open as any).mock.calls[0];
       const cacheName = openCall[0] as string;
 
-      expect(cacheName).toMatch(/^rsc-prefetch:rwsdk:[^:]+:\d+$/);
+      expect(cacheName).toMatch(/^rsc-x-prefetch:rwsdk:[^:]+:\d+$/);
     });
   });
 });

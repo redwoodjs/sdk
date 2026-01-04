@@ -433,7 +433,11 @@ export const runDirectivesScan = async ({
       plugins: [esbuildScanPlugin],
     });
   } catch (e: any) {
-    throw new Error(`RWSDK directive scan failed:\n${e.stack}`);
+    throw new Error(
+      `RedwoodSDK: Directive scan failed. This often happens due to syntax errors in files using "use client" or "use server". Check your directive files for issues.\n\n` +
+        `For detailed troubleshooting steps, see: https://docs.rwsdk.com/guides/troubleshooting#directive-scan-errors\n\n` +
+        `${e.stack}`,
+    );
   } finally {
     deferredLog(
       "✔ (rwsdk) Done scanning for 'use client' and 'use server' directives.",

@@ -12,14 +12,21 @@ type BivariantRouteHandler<T extends RequestInfo, R> = {
 export type RouteMiddleware<T extends RequestInfo = RequestInfo> =
   BivariantRouteHandler<T, MaybePromise<React.JSX.Element | Response | void>>;
 
-type RouteFunction<T extends RequestInfo = RequestInfo> =
-  BivariantRouteHandler<T, MaybePromise<Response>>;
+export type ExceptHandler<T extends RequestInfo = RequestInfo> = {
+  __rwExcept: true;
+  handler: (
+    error: unknown,
+    requestInfo: T,
+  ) => MaybePromise<React.JSX.Element | Response | void>;
+};
+
+type RouteFunction<T extends RequestInfo = RequestInfo> = BivariantRouteHandler<
+  T,
+  MaybePromise<Response>
+>;
 
 type RouteComponent<T extends RequestInfo = RequestInfo> =
-  BivariantRouteHandler<
-    T,
-    MaybePromise<React.JSX.Element | Response | void>
-  >;
+  BivariantRouteHandler<T, MaybePromise<React.JSX.Element | Response | void>>;
 
 type RouteHandler<T extends RequestInfo = RequestInfo> =
   | RouteFunction<T>
@@ -45,6 +52,7 @@ export type MethodHandlers<T extends RequestInfo = RequestInfo> = {
 export type Route<T extends RequestInfo = RequestInfo> =
   | RouteMiddleware<T>
   | RouteDefinition<string, T>
+  | ExceptHandler<T>
   | readonly Route<T>[];
 
 type NormalizedRouteDefinition<T extends RequestInfo = RequestInfo> = {
@@ -88,9 +96,11 @@ type JoinPaths<Prefix extends string, Path extends string> =
 type PrefixedRouteValue<Prefix extends string, Value> =
   Value extends RouteDefinition<infer Path, infer Req>
     ? RouteDefinition<JoinPaths<Prefix, Path>, Req>
-    : Value extends readonly Route<any>[]
-      ? PrefixedRouteArray<Prefix, Value>
-      : Value;
+    : Value extends ExceptHandler<any>
+      ? Value
+      : Value extends readonly Route<any>[]
+        ? PrefixedRouteArray<Prefix, Value>
+        : Value;
 
 type PrefixedRouteArray<
   Prefix extends string,
@@ -113,17 +123,25 @@ type RouteMatch<T extends RequestInfo = RequestInfo> = {
   layouts?: React.FC<LayoutProps<T>>[];
 };
 
-export function matchPath<T extends RequestInfo = RequestInfo>(
-  routePath: string,
-  requestPath: string,
-): T["params"] | null {
+type CompiledPath = {
+  isStatic: boolean;
+  regex: RegExp | null;
+  paramMap: { name: string; isWildcard: boolean }[];
+};
+
+const pathCache = new Map<string, CompiledPath>();
+
+function compilePath(routePath: string): CompiledPath {
+  const cached = pathCache.get(routePath);
+  if (cached) return cached;
+
   // Check for invalid pattern: multiple colons in a segment (e.g., /:param1:param2/)
   if (routePath.includes(":")) {
     const segments = routePath.split("/");
     for (const segment of segments) {
       if ((segment.match(/:/g) || []).length > 1) {
         throw new Error(
-          `Invalid route pattern: segment "${segment}" in "${routePath}" contains multiple colons.`,
+          `RedwoodSDK: Invalid route pattern: segment "${segment}" in "${routePath}" contains multiple colons. Each route parameter should use a single colon (e.g., ":id"). Check for accidental double colons ("::").`,
         );
       }
     }
@@ -132,51 +150,61 @@ export function matchPath<T extends RequestInfo = RequestInfo>(
   // Check for invalid pattern: double wildcard (e.g., /**/)
   if (routePath.indexOf("**") !== -1) {
     throw new Error(
-      `Invalid route pattern: "${routePath}" contains "**". Use "*" for a single wildcard segment.`,
+      `RedwoodSDK: Invalid route pattern: "${routePath}" contains "**". Use "*" for a single wildcard segment. Double wildcards are not supported.`,
     );
   }
 
+  const isStatic = !routePath.includes(":") && !routePath.includes("*");
+  if (isStatic) {
+    const result = { isStatic: true, regex: null, paramMap: [] };
+    pathCache.set(routePath, result);
+    return result;
+  }
+
+  const paramMap: { name: string; isWildcard: boolean }[] = [];
+  let wildcardCounter = 0;
+  const tokenRegex = /:([a-zA-Z0-9_]+)|\*/g;
+  let matchToken;
+  while ((matchToken = tokenRegex.exec(routePath)) !== null) {
+    if (matchToken[1]) {
+      paramMap.push({ name: matchToken[1], isWildcard: false });
+    } else {
+      paramMap.push({ name: `$${wildcardCounter++}`, isWildcard: true });
+    }
+  }
+
   const pattern = routePath
-    .replace(/:[a-zA-Z0-9]+/g, "([^/]+)") // Convert :param to capture group
+    .replace(/:[a-zA-Z0-9_]+/g, "([^/]+)") // Convert :param to capture group
     .replace(/\*/g, "(.*)"); // Convert * to wildcard capture group
 
-  const regex = new RegExp(`^${pattern}$`);
-  const matches = requestPath.match(regex);
+  const result = {
+    isStatic: false,
+    regex: new RegExp(`^${pattern}$`),
+    paramMap,
+  };
+  pathCache.set(routePath, result);
+  return result;
+}
 
+export function matchPath<T extends RequestInfo = RequestInfo>(
+  routePath: string,
+  requestPath: string,
+): T["params"] | null {
+  const compiled = compilePath(routePath);
+
+  if (compiled.isStatic) {
+    return routePath === requestPath ? {} : null;
+  }
+
+  const matches = requestPath.match(compiled.regex!);
   if (!matches) {
     return null;
   }
 
-  // Revised parameter extraction:
   const params: T["params"] = {};
-  let currentMatchIndex = 1; // Regex matches are 1-indexed
-
-  // This regex finds either a named parameter token (e.g., ":id") or a wildcard star token ("*").
-  const tokenRegex = /:([a-zA-Z0-9_]+)|\*/g;
-  let matchToken;
-  let wildcardCounter = 0;
-
-  // Ensure regex starts from the beginning of the routePath for each call if it's stateful (it is with /g)
-  tokenRegex.lastIndex = 0;
-
-  while ((matchToken = tokenRegex.exec(routePath)) !== null) {
-    // Ensure we have a corresponding match from the regex execution
-    if (matches[currentMatchIndex] === undefined) {
-      // This case should ideally not be hit if routePath and pattern generation are correct
-      // and all parts of the regex matched.
-      // Consider logging a warning or throwing an error if critical.
-      break;
-    }
-
-    if (matchToken[1]) {
-      // This token is a named parameter (e.g., matchToken[1] is "id" for ":id")
-      params[matchToken[1]] = matches[currentMatchIndex];
-    } else {
-      // This token is a wildcard "*"
-      params[`$${wildcardCounter}`] = matches[currentMatchIndex];
-      wildcardCounter++;
-    }
-    currentMatchIndex++;
+  for (let i = 0; i < compiled.paramMap.length; i++) {
+    const param = compiled.paramMap[i];
+    params[param.name] = matches[i + 1];
   }
 
   return params;
@@ -184,16 +212,21 @@ export function matchPath<T extends RequestInfo = RequestInfo>(
 
 function flattenRoutes<T extends RequestInfo = RequestInfo>(
   routes: readonly Route<T>[],
-): (RouteMiddleware<T> | RouteDefinition<string, T>)[] {
-  return routes.reduce<(RouteMiddleware<T> | RouteDefinition<string, T>)[]>(
-    (acc, route) => {
-      if (Array.isArray(route)) {
-        return [...acc, ...flattenRoutes(route)];
-      }
-      return [...acc, route as RouteMiddleware<T> | RouteDefinition<string, T>];
-    },
-    [],
-  );
+): (RouteMiddleware<T> | RouteDefinition<string, T> | ExceptHandler<T>)[] {
+  return routes.reduce<
+    (RouteMiddleware<T> | RouteDefinition<string, T> | ExceptHandler<T>)[]
+  >((acc, route) => {
+    if (Array.isArray(route)) {
+      return [...acc, ...flattenRoutes(route)];
+    }
+    return [
+      ...acc,
+      route as
+        | RouteMiddleware<T>
+        | RouteDefinition<string, T>
+        | ExceptHandler<T>,
+    ];
+  }, []);
 }
 
 function isMethodHandlers<T extends RequestInfo = RequestInfo>(
@@ -250,6 +283,20 @@ function getHandlerForMethod<T extends RequestInfo = RequestInfo>(
   return methodHandlers.custom?.[lowerMethod];
 }
 
+type CompiledRoute<T extends RequestInfo = RequestInfo> =
+  | { type: "middleware"; handler: RouteMiddleware<T> }
+  | { type: "except"; handler: ExceptHandler<T> }
+  | {
+      type: "definition";
+      path: string;
+      handler: RouteHandler<T> | MethodHandlers<T>;
+      layouts?: React.FC<LayoutProps<T>>[];
+      isStatic: boolean;
+      regex?: RegExp;
+      paramNames: string[];
+      wildcardCount: number;
+    };
+
 export function defineRoutes<T extends RequestInfo = RequestInfo>(
   routes: readonly Route<T>[],
 ): {
@@ -278,6 +325,36 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
   }) => Response | Promise<Response>;
 } {
   const flattenedRoutes = flattenRoutes<T>(routes);
+  const compiledRoutes: CompiledRoute<T>[] = flattenedRoutes.map((route) => {
+    if (typeof route === "function") {
+      return { type: "middleware", handler: route };
+    }
+    if (
+      typeof route === "object" &&
+      route !== null &&
+      "__rwExcept" in route &&
+      route.__rwExcept === true
+    ) {
+      return { type: "except", handler: route };
+    }
+
+    const routeDef = route as RouteDefinition<string, T>;
+    const compiledPath = compilePath(routeDef.path);
+
+    return {
+      type: "definition",
+      path: routeDef.path,
+      handler: routeDef.handler,
+      layouts: routeDef.layouts,
+      isStatic: compiledPath.isStatic,
+      regex: compiledPath.regex ?? undefined,
+      paramNames: compiledPath.paramMap
+        .filter((p) => !p.isWildcard)
+        .map((p) => p.name),
+      wildcardCount: compiledPath.paramMap.filter((p) => p.isWildcard).length,
+    };
+  });
+
   return {
     routes: flattenedRoutes,
     async handle({
@@ -288,13 +365,13 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
       runWithRequestInfoOverrides,
       rscActionHandler,
     }) {
+      const requestInfo = getRequestInfo();
       const url = new URL(request.url);
       let path = url.pathname;
-
-      // Must end with a trailing slash.
       if (path !== "/" && !path.endsWith("/")) {
         path = path + "/";
       }
+      requestInfo.path = path;
 
       // --- Helpers ---
       // (Hoisted for readability)
@@ -313,7 +390,18 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
 
       function renderElement(element: React.ReactElement) {
         const requestInfo = getRequestInfo();
+        // Try to preserve the component name from the element's type
+        const elementType = element.type;
+        const componentName =
+          typeof elementType === "function" && elementType.name
+            ? elementType.name
+            : "Element";
         const Element: React.FC = () => element;
+        // Set the name for better debugging
+        Object.defineProperty(Element, "name", {
+          value: componentName,
+          configurable: true,
+        });
         return renderPage(requestInfo, Element, onError);
       }
 
@@ -329,124 +417,237 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
         return undefined;
       }
 
-      // --- Main flow ---
-      let firstRouteDefinitionEncountered = false;
-      let actionHandled = false;
-      const handleAction = async () => {
-        if (!actionHandled && url.searchParams.has("__rsc_action_id")) {
-          getRequestInfo().rw.actionResult = await rscActionHandler(request);
-          actionHandled = true;
-        }
-      };
+      function isExceptHandler(
+        route: CompiledRoute<T>,
+      ): route is { type: "except"; handler: ExceptHandler<T> } {
+        return route.type === "except";
+      }
 
-      for (const route of flattenedRoutes) {
-        if (typeof route === "function") {
-          // This is a global middleware.
-          const result = await route(getRequestInfo());
-          const handled = await handleMiddlewareResult(result);
-          if (handled) {
-            return handled; // Short-circuit
-          }
-          continue;
-        }
-
-        // This is a RouteDefinition.
-        // The first time we see one, we handle any RSC actions.
-        if (!firstRouteDefinitionEncountered) {
-          firstRouteDefinitionEncountered = true;
-          await handleAction();
-        }
-
-        const params = matchPath<T>(route.path, path);
-        if (!params) {
-          continue; // Not a match, keep going.
-        }
-
-        // Resolve handler if method-based routing
-        let handler: RouteHandler<T> | undefined;
-        if (isMethodHandlers(route.handler)) {
-          const requestMethod = request.method;
-
-          // Handle OPTIONS request
-          if (
-            requestMethod === "OPTIONS" &&
-            !route.handler.config?.disableOptions
-          ) {
-            return handleOptionsRequest(route.handler);
-          }
-
-          // Try to find handler for the request method
-          handler = getHandlerForMethod(route.handler, requestMethod);
-
-          if (!handler) {
-            // Method not supported for this route
-            if (!route.handler.config?.disable405) {
-              return handleMethodNotAllowed(route.handler);
-            }
-            // If 405 is disabled, continue to next route
-            continue;
-          }
-        } else {
-          handler = route.handler;
-        }
-
-        // Found a match: run route-specific middlewares, then the final component, then stop.
-        return await runWithRequestInfoOverrides(
-          { params } as Partial<T>,
-          async () => {
-            const { routeMiddlewares, componentHandler } =
-              parseHandlers(handler);
-
-            // Route-specific middlewares
-            for (const mw of routeMiddlewares) {
-              const result = await mw(getRequestInfo());
+      async function executeExceptHandlers(
+        error: unknown,
+        startIndex: number,
+      ): Promise<Response> {
+        // Search backwards from startIndex to find the most recent except handler
+        for (let i = startIndex; i >= 0; i--) {
+          const route = compiledRoutes[i];
+          if (isExceptHandler(route)) {
+            try {
+              const result = await route.handler.handler(
+                error,
+                getRequestInfo(),
+              );
               const handled = await handleMiddlewareResult(result);
               if (handled) {
                 return handled;
               }
+              // If the handler didn't return a Response or JSX, continue to next handler (further back)
+            } catch (nextError) {
+              // If the except handler itself throws, try the next one (further back)
+              return await executeExceptHandlers(nextError, i - 1);
             }
+          }
+        }
+        // No handler found, throw to top-level onError
+        onError(error);
+        throw error;
+      }
 
-            // Final component/handler
-            if (isRouteComponent(componentHandler)) {
-              const requestInfo = getRequestInfo();
-              const WrappedComponent = wrapWithLayouts(
-                wrapHandlerToThrowResponses(
-                  componentHandler as RouteComponent<T>,
-                ) as React.FC,
-                route.layouts || [],
-                requestInfo,
-              );
+      // --- Main flow ---
+      let firstRouteDefinitionEncountered = false;
+      let actionHandled = false;
+      const handleAction = async () => {
+        // Handle RSC actions once per request, based on the incoming URL.
+        if (!actionHandled) {
+          const url = new URL(request.url);
+          if (url.searchParams.has("__rsc_action_id")) {
+            requestInfo.rw.actionResult = await rscActionHandler(request);
+          }
+          actionHandled = true;
+        }
+      };
 
-              if (!isClientReference(componentHandler)) {
-                requestInfo.rw.pageRouteResolved = Promise.withResolvers();
+      try {
+        let currentRouteIndex = 0;
+        for (const route of compiledRoutes) {
+          // Skip except handlers during normal execution
+          if (route.type === "except") {
+            currentRouteIndex++;
+            continue;
+          }
+
+          if (route.type === "middleware") {
+            // This is a global middleware.
+            try {
+              const result = await route.handler(getRequestInfo());
+              const handled = await handleMiddlewareResult(result);
+              if (handled) {
+                return handled; // Short-circuit
               }
+            } catch (error) {
+              return await executeExceptHandlers(error, currentRouteIndex);
+            }
+            currentRouteIndex++;
+            continue;
+          }
 
-              return await renderPage(requestInfo, WrappedComponent, onError);
+          // This is a RouteDefinition (route.type === "definition").
+          // The first time we see one, we handle any RSC actions.
+          if (!firstRouteDefinitionEncountered) {
+            firstRouteDefinitionEncountered = true;
+            try {
+              await handleAction();
+            } catch (error) {
+              return await executeExceptHandlers(error, currentRouteIndex);
+            }
+          }
+
+          let params: T["params"] | null = null;
+          if (route.isStatic) {
+            if (route.path === path) {
+              params = {};
+            }
+          } else if (route.regex) {
+            const matches = path.match(route.regex);
+            if (matches) {
+              params = {};
+              for (let i = 0; i < route.paramNames.length; i++) {
+                params[route.paramNames[i]] = matches[i + 1];
+              }
+              for (let i = 0; i < route.wildcardCount; i++) {
+                params[`$${i}`] = matches[route.paramNames.length + i + 1];
+              }
+            }
+          }
+
+          if (!params) {
+            currentRouteIndex++;
+            continue; // Not a match, keep going.
+          }
+
+          // Resolve handler if method-based routing
+          let handler: RouteHandler<T> | undefined;
+          if (isMethodHandlers(route.handler)) {
+            const requestMethod = request.method;
+
+            // Handle OPTIONS request
+            if (
+              requestMethod === "OPTIONS" &&
+              !route.handler.config?.disableOptions
+            ) {
+              return handleOptionsRequest(route.handler);
             }
 
-            // Handle non-component final handler (e.g., returns new Response)
-            const tailResult = await (componentHandler(
-              getRequestInfo(),
-            ) as Promise<Response | React.JSX.Element | void>);
-            const handledTail = await handleMiddlewareResult(tailResult);
-            if (handledTail) {
-              return handledTail;
+            // Try to find handler for the request method
+            handler = getHandlerForMethod(route.handler, requestMethod);
+
+            if (!handler) {
+              // Method not supported for this route
+              if (!route.handler.config?.disable405) {
+                return handleMethodNotAllowed(route.handler);
+              }
+              // If 405 is disabled, continue to next route
+              currentRouteIndex++;
+              continue;
             }
+          } else {
+            handler = route.handler;
+          }
 
-            return new Response("Response not returned from route handler", {
-              status: 500,
-            });
-          },
-        );
+          // Found a match: run route-specific middlewares, then the final component, then stop.
+          try {
+            return await runWithRequestInfoOverrides(
+              { params } as Partial<T>,
+              async () => {
+                const { routeMiddlewares, componentHandler } = parseHandlers(
+                  handler!,
+                );
+
+                // Route-specific middlewares
+                for (const mw of routeMiddlewares) {
+                  const result = await mw(getRequestInfo());
+                  const handled = await handleMiddlewareResult(result);
+                  if (handled) {
+                    return handled;
+                  }
+                }
+
+                // Final component/handler
+                if (isRouteComponent(componentHandler)) {
+                  const requestInfo = getRequestInfo();
+                  const WrappedComponent = wrapWithLayouts(
+                    wrapHandlerToThrowResponses(
+                      componentHandler as RouteComponent<T>,
+                    ) as React.FC,
+                    route.layouts || [],
+                    requestInfo,
+                  );
+
+                  if (!isClientReference(componentHandler)) {
+                    requestInfo.rw.pageRouteResolved = Promise.withResolvers();
+                  }
+
+                  return await renderPage(
+                    requestInfo,
+                    WrappedComponent,
+                    onError,
+                  );
+                }
+
+                // Handle non-component final handler (e.g., returns new Response)
+                const tailResult = await (componentHandler(
+                  getRequestInfo(),
+                ) as Promise<Response | React.JSX.Element | void>);
+                const handledTail = await handleMiddlewareResult(tailResult);
+                if (handledTail) {
+                  return handledTail;
+                }
+
+                const handlerName =
+                  typeof componentHandler === "function" &&
+                  componentHandler.name
+                    ? componentHandler.name
+                    : "anonymous";
+                const errorMessage = `Route handler did not return a Response or React element.
+
+Route: ${route.path}
+Matched path: ${path}
+Method: ${request.method}
+Handler: ${handlerName}
+
+Route handlers must return one of:
+  - A Response object (e.g., \`new Response("OK")\`)
+  - A React element (e.g., \`<div>Hello</div>\`)
+  - \`void\` (if handled by middleware earlier in the chain)`;
+
+                return new Response(errorMessage, {
+                  status: 500,
+                  headers: { "Content-Type": "text/plain" },
+                });
+              },
+            );
+          } catch (error) {
+            return await executeExceptHandlers(error, currentRouteIndex);
+          }
+        }
+
+        // If we've gotten this far, no route was matched.
+        // We still need to handle a possible action if the app has no route definitions at all.
+        if (!firstRouteDefinitionEncountered) {
+          try {
+            await handleAction();
+          } catch (error) {
+            return await executeExceptHandlers(
+              error,
+              compiledRoutes.length - 1,
+            );
+          }
+        }
+
+        return new Response("Not Found", { status: 404 });
+      } catch (error) {
+        // Top-level catch for any unhandled errors
+        return await executeExceptHandlers(error, compiledRoutes.length - 1);
       }
-
-      // If we've gotten this far, no route was matched.
-      // We still need to handle a possible action if the app has no route definitions at all.
-      if (!firstRouteDefinitionEncountered) {
-        await handleAction();
-      }
-
-      return new Response("Not Found", { status: 404 });
     },
   };
 }
@@ -494,7 +695,12 @@ export function route<Path extends string, T extends RequestInfo = RequestInfo>(
 ): RouteDefinition<NormalizePath<Path>, T> {
   let normalizedPath: string = path;
 
-  if (!normalizedPath.endsWith("/")) {
+  if (!normalizedPath.startsWith("/")) {
+    normalizedPath = "/" + normalizedPath;
+  }
+  // Special case: wildcard route "*" should normalize to "/*" (not "/*/")
+  // to allow it to match the root path "/"
+  if (normalizedPath !== "/*" && !normalizedPath.endsWith("/")) {
     normalizedPath = normalizedPath + "/";
   }
 
@@ -536,6 +742,31 @@ export function index<T extends RequestInfo = RequestInfo>(
 }
 
 /**
+ * Defines an error handler that catches errors from routes, middleware, and RSC actions.
+ *
+ * @example
+ * // Global error handler
+ * except((error, requestInfo) => {
+ *   console.error(error);
+ *   return new Response("Internal Server Error", { status: 500 });
+ * })
+ *
+ * @example
+ * // Error handler that returns a React component
+ * except((error) => {
+ *   return <ErrorPage error={error} />;
+ * })
+ */
+export function except<T extends RequestInfo = RequestInfo>(
+  handler: (
+    error: unknown,
+    requestInfo: T,
+  ) => MaybePromise<React.JSX.Element | Response | void>,
+): ExceptHandler<T> {
+  return { __rwExcept: true, handler };
+}
+
+/**
  * Prefixes a group of routes with a path.
  *
  * @example
@@ -554,29 +785,97 @@ export function index<T extends RequestInfo = RequestInfo>(
  *   ]),
  * ])
  */
+function joinPaths(p1: string, p2: string): string {
+  // Normalize p1: ensure it doesn't end with / (except if it's just "/")
+  const part1 = p1 === "/" ? "/" : p1.endsWith("/") ? p1.slice(0, -1) : p1;
+  // Normalize p2: ensure it starts with /
+  const part2 = p2.startsWith("/") ? p2 : `/${p2}`;
+  return part1 + part2;
+}
+
 export function prefix<
   Prefix extends string,
   T extends RequestInfo = RequestInfo,
   Routes extends readonly Route<T>[] = readonly Route<T>[],
 >(prefixPath: Prefix, routes: Routes): PrefixedRouteArray<Prefix, Routes> {
+  // Normalize prefix path
+  let normalizedPrefix: string = prefixPath;
+  if (!normalizedPrefix.startsWith("/")) {
+    normalizedPrefix = "/" + normalizedPrefix;
+  }
+  if (!normalizedPrefix.endsWith("/")) {
+    normalizedPrefix = normalizedPrefix + "/";
+  }
+
+  // Check if prefix has parameters
+  const hasParams =
+    normalizedPrefix.includes(":") || normalizedPrefix.includes("*");
+
+  // Create a pattern for matching: if prefix has params, append wildcard to match any path under it
+  const matchPattern: string = hasParams
+    ? normalizedPrefix.endsWith("/")
+      ? normalizedPrefix.slice(0, -1) + "/*"
+      : normalizedPrefix + "/*"
+    : normalizedPrefix;
+
   const prefixed = routes.map((r) => {
     if (typeof r === "function") {
       const middleware: RouteMiddleware<T> = (requestInfo) => {
-        const url = new URL(requestInfo.request.url);
-        if (url.pathname.startsWith(prefixPath)) {
-          return r(requestInfo);
+        const path = requestInfo.path;
+
+        // Check if path matches the prefix pattern
+        let matches = false;
+        let prefixParams: Record<string, string> = {};
+
+        if (hasParams) {
+          // Use matchPath to check if path matches and extract params
+          const params = matchPath<T>(matchPattern, path);
+          if (params) {
+            matches = true;
+            prefixParams = params;
+          }
+        } else {
+          // For static prefixes, use simple string matching
+          if (path === normalizedPrefix || path.startsWith(normalizedPrefix)) {
+            matches = true;
+          }
+        }
+
+        if (matches) {
+          // Merge prefix params with existing params
+          const mergedParams = { ...requestInfo.params, ...prefixParams };
+          // Create a new requestInfo with merged params
+          const modifiedRequestInfo = {
+            ...requestInfo,
+            params: mergedParams,
+          } as T;
+          return r(modifiedRequestInfo);
         }
         return;
       };
       return middleware as PrefixedRouteValue<Prefix, typeof r>;
+    }
+    if (
+      typeof r === "object" &&
+      r !== null &&
+      "__rwExcept" in r &&
+      r.__rwExcept === true
+    ) {
+      // Pass through ExceptHandler as-is
+      return r as PrefixedRouteValue<Prefix, typeof r>;
     }
     if (Array.isArray(r)) {
       // Recursively process nested route arrays
       return prefix(prefixPath, r) as PrefixedRouteValue<Prefix, typeof r>;
     }
     const routeDef = r as RouteDefinition<string, T>;
+    // Use joinPaths to properly combine paths
+    const combinedPath = joinPaths(prefixPath, routeDef.path);
+    // Normalize double slashes
+    const normalizedCombinedPath = combinedPath.replace(/\/+/g, "/");
+
     return {
-      path: prefixPath + routeDef.path,
+      path: normalizedCombinedPath,
       handler: routeDef.handler,
       ...(routeDef.layouts && { layouts: routeDef.layouts }),
     } as PrefixedRouteValue<Prefix, typeof r>;
@@ -659,7 +958,7 @@ export const wrapHandlerToThrowResponses = <
  *
  * @example
  * // Define a layout component
- * function BlogLayout({ children }: { children: React.ReactNode }) {
+ * function BlogLayout({ children }: { children?: React.ReactNode }) {
  *   return (
  *     <div>
  *       <nav>Blog Navigation</nav>
@@ -681,6 +980,15 @@ export function layout<
   return routes.map((route) => {
     if (typeof route === "function") {
       // Pass through middleware as-is
+      return route;
+    }
+    if (
+      typeof route === "object" &&
+      route !== null &&
+      "__rwExcept" in route &&
+      route.__rwExcept === true
+    ) {
+      // Pass through ExceptHandler as-is
       return route;
     }
     if (Array.isArray(route)) {

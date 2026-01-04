@@ -31,7 +31,10 @@ export const requestInfo: DefaultRequestInfo = Object.freeze(
 export function getRequestInfo(): RequestInfo {
   const store = requestInfoStore.getStore();
   if (!store) {
-    throw new Error("Request context not found");
+    throw new Error(
+      "RedwoodSDK: Request context not found. getRequestInfo() can only be called within the request lifecycle (e.g., in a route handler, middleware, or server action).\n\n" +
+        "For detailed troubleshooting steps, see: https://docs.rwsdk.com/guides/troubleshooting#request-context-errors",
+    );
   }
   return store as RequestInfo;
 }

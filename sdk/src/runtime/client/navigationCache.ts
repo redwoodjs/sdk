@@ -44,28 +44,23 @@ function getOrInitializeCacheState(): NavigationCacheState {
     return cacheState;
   }
 
-  // Get or generate tabId
-  let tabId: string;
-  if (typeof window !== "undefined" && window.sessionStorage) {
+  let tabId: string | null = null;
+
+  if (typeof window !== "undefined") {
     try {
-      const stored = sessionStorage.getItem(TAB_ID_STORAGE_KEY);
-      if (stored) {
-        tabId = stored;
-      } else {
-        tabId = crypto.randomUUID();
+      tabId = sessionStorage.getItem(TAB_ID_STORAGE_KEY);
+      if (!tabId) {
+        tabId = `${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
         sessionStorage.setItem(TAB_ID_STORAGE_KEY, tabId);
       }
     } catch {
-      // Fallback to in-memory tabId if sessionStorage is unavailable
-      tabId = crypto.randomUUID();
+      // sessionStorage might be unavailable
+      tabId = tabId || `${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
     }
-  } else {
-    // Fallback for non-browser environments
-    tabId = crypto.randomUUID();
   }
 
   cacheState = {
-    tabId,
+    tabId: tabId || "1",
     generation: 0,
     buildId: BUILD_ID,
   };
@@ -75,7 +70,7 @@ function getOrInitializeCacheState(): NavigationCacheState {
 
 function getCurrentCacheName(): string {
   const state = getOrInitializeCacheState();
-  return `rsc-prefetch:${state.buildId}:${state.tabId}:${state.generation}`;
+  return `rsc-x-prefetch:${state.buildId}:${state.tabId}:${state.generation}`;
 }
 
 function incrementGeneration(): number {
@@ -204,6 +199,9 @@ export async function preloadNavigationUrl(
     const request = new Request(url.toString(), {
       method: "GET",
       redirect: "manual",
+      headers: {
+        "x-prefetch": "true",
+      },
     });
 
     const cacheName = getCurrentCacheName();
@@ -317,7 +315,7 @@ export async function evictOldGenerationCaches(
     try {
       // List all cache names
       const cacheNames = await storage.keys();
-      const prefix = `rsc-prefetch:${buildId}:${tabId}:`;
+      const prefix = `rsc-x-prefetch:${buildId}:${tabId}:`;
 
       // Find all caches for this tab
       const tabCaches = cacheNames.filter((name) => name.startsWith(prefix));
@@ -358,12 +356,20 @@ export function onNavigationCommit(
   env?: NavigationCacheEnvironment,
   cacheStorage?: NavigationCacheStorage,
 ): void {
+  const runtimeEnv = env ?? getBrowserNavigationCacheEnvironment();
+  const storage =
+    cacheStorage ?? createDefaultNavigationCacheStorage(runtimeEnv);
+
+  if (!storage) {
+    return;
+  }
+
   incrementGeneration();
-  void evictOldGenerationCaches(env, cacheStorage);
+  void evictOldGenerationCaches(env, storage);
 }
 
 /**
- * Scan the document for `<link rel="prefetch" href="...">` elements that point
+ * Scan the document for `<link rel="x-prefetch" href="...">` elements that point
  * to same-origin paths and prefetch their RSC navigation responses into the
  * Cache API.
  *
@@ -381,7 +387,7 @@ export async function preloadFromLinkTags(
   }
 
   const links = Array.from(
-    doc.querySelectorAll<HTMLLinkElement>('link[rel="prefetch"][href]'),
+    doc.querySelectorAll<HTMLLinkElement>('link[rel="x-prefetch"][href]'),
   );
 
   await Promise.all(
