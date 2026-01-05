@@ -1,0 +1,208 @@
+---
+title: Ark UI
+description: A step-by-step guide for installing and configuring Ark UI headless components in Redwood SDK projects, with styling examples using Tailwind CSS.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import { Steps } from "@astrojs/starlight/components";
+
+import { PackageManagers } from "starlight-package-managers";
+
+## Installing Ark UI
+
+Ark UI is a headless component library that provides unstyled, accessible components powered by state machines. It gives you complete control over styling while handling all the complex behavior and accessibility.
+
+<Steps>
+
+1. Install Ark UI
+
+   <PackageManagers pkg="@ark-ui/react" />
+
+2. Import and use components
+
+   Ark UI components follow a namespace pattern. Here's an example with a Dialog:
+
+   ```tsx title="src/app/pages/Home.tsx"
+   import { Dialog } from "@ark-ui/react/dialog";
+   import { Portal } from "@ark-ui/react/portal";
+
+   export function Home() {
+     return (
+       <Dialog.Root>
+         <Dialog.Trigger>Open Dialog</Dialog.Trigger>
+
+         <Portal>
+           <Dialog.Backdrop />
+           <Dialog.Positioner>
+             <Dialog.Content>
+               <Dialog.Title>Dialog Title</Dialog.Title>
+               <Dialog.Description>
+                 This is a dialog description.
+               </Dialog.Description>
+               <Dialog.CloseTrigger>Close</Dialog.CloseTrigger>
+             </Dialog.Content>
+           </Dialog.Positioner>
+         </Portal>
+       </Dialog.Root>
+     );
+   }
+   ```
+
+   <Aside type="note">
+     Components are completely unstyled by default. You'll see functionality but no visual styling until you add CSS.
+   </Aside>
+
+3. Run development server
+   <PackageManagers type="run" args="dev" />
+
+</Steps>
+
+## Styling Ark UI Components
+
+Since Ark UI components are headless, you need to style them yourself. Each component part includes `data-scope` and `data-part` attributes for easy targeting.
+
+### Using Tailwind CSS
+
+If you're using [Tailwind CSS](/guides/frontend/tailwind), you can style components with utility classes:
+
+```tsx title="src/components/ui/dialog.tsx"
+import { Dialog } from "@ark-ui/react/dialog";
+import { Portal } from "@ark-ui/react/portal";
+
+export function StyledDialog({ children }: { children: React.ReactNode }) {
+  return (
+    <Dialog.Root>
+      <Dialog.Trigger className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+        Open Dialog
+      </Dialog.Trigger>
+
+      <Portal>
+        <Dialog.Backdrop className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
+        <Dialog.Positioner className="fixed inset-0 flex items-center justify-center p-4">
+          <Dialog.Content className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <Dialog.Title className="text-2xl font-bold mb-2">
+              Dialog Title
+            </Dialog.Title>
+            <Dialog.Description className="text-gray-600 mb-4">
+              Dialog description goes here.
+            </Dialog.Description>
+
+            <div className="mb-4">{children}</div>
+
+            <div className="flex gap-2 justify-end">
+              <Dialog.CloseTrigger className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300">
+                Cancel
+              </Dialog.CloseTrigger>
+            </div>
+          </Dialog.Content>
+        </Dialog.Positioner>
+      </Portal>
+    </Dialog.Root>
+  );
+}
+```
+
+### Using Vanilla CSS
+
+Alternatively, target components using their data attributes:
+
+```css title="src/app/styles.css"
+/* Dialog Backdrop */
+[data-scope="dialog"][data-part="backdrop"] {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+/* Dialog Content */
+[data-scope="dialog"][data-part="content"] {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  max-width: 28rem;
+  padding: 1.5rem;
+}
+
+/* Dialog Title */
+[data-scope="dialog"][data-part="title"] {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+```
+
+<Aside type="tip">
+  For component states like `disabled`, `checked`, or `open`, Ark UI adds data attributes you can target with CSS selectors like `[data-disabled]`, `[data-checked]`, or `[data-state="open"]`.
+</Aside>
+
+## Component Patterns
+
+### Controlled Components
+
+```tsx
+import { Slider } from "@ark-ui/react/slider";
+import { useState } from "react";
+
+export function ControlledSlider() {
+  const [value, setValue] = useState([30]);
+
+  return (
+    <Slider.Root
+      value={value}
+      onValueChange={(details) => setValue(details.value)}
+    >
+      <Slider.Label>Volume: {value}</Slider.Label>
+      <Slider.Control>
+        <Slider.Track>
+          <Slider.Range />
+        </Slider.Track>
+        <Slider.Thumb index={0}>
+          <Slider.HiddenInput />
+        </Slider.Thumb>
+      </Slider.Control>
+    </Slider.Root>
+  );
+}
+```
+
+### TypeScript Support
+
+Ark UI is fully typed. Import types from component namespaces:
+
+```tsx
+import { Select } from "@ark-ui/react/select";
+import type { SelectRootProps } from "@ark-ui/react/select";
+
+interface CustomSelectProps extends SelectRootProps {
+  label: string;
+  options: string[];
+}
+
+export function CustomSelect({ label, options, ...props }: CustomSelectProps) {
+  return (
+    <Select.Root {...props}>
+      <Select.Label>{label}</Select.Label>
+      {/* Select implementation */}
+    </Select.Root>
+  );
+}
+```
+
+<Aside type="note" title="Tree Shaking">
+  Import components from specific paths for better tree shaking: `import { Dialog } from "@ark-ui/react/dialog"` instead of `import { Dialog } from "@ark-ui/react"`.
+</Aside>
+
+## Pre-Styled Options
+
+If you want pre-styled Ark UI components instead of building from scratch:
+
+- **[Park UI](https://park-ui.com/)** - Ark UI components styled with Panda CSS
+- **[Tark UI](https://tarkui.com/)** - Ark UI components styled with Tailwind CSS
+
+## Further Reading
+
+- [Ark UI Documentation](https://ark-ui.com/)
+- [Ark UI Components](https://ark-ui.com/docs/components/accordion)
+- [Ark UI GitHub](https://github.com/chakra-ui/ark)
+- [Zag.js State Machines](https://zagjs.com/)

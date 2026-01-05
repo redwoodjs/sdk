@@ -1,0 +1,471 @@
+---
+title: Chakra UI
+description: A step-by-step guide for installing and configuring Chakra UI v3 in Redwood SDK projects, including customization options and theming techniques.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import { Steps } from "@astrojs/starlight/components";
+
+import { PackageManagers } from "starlight-package-managers";
+
+## Installing Chakra UI
+
+Since the Redwood SDK is based on React and Vite, we can work through the ["Using Vite" documentation](https://chakra-ui.com/docs/get-started/frameworks/vite) from Chakra UI.
+
+<Aside type="note" title="Version Requirements">
+  The minimum Node version required is Node.20.x. Chakra UI v3 represents a major rewrite with significant changes from v2, including new dependencies, component structures, and theming approaches.
+</Aside>
+
+<Steps>
+
+1. Install Chakra UI
+
+   <PackageManagers pkg="@chakra-ui/react @emotion/react" />
+
+   <Aside type="caution" title="Removed Dependencies">
+     Unlike v2, Chakra UI v3 no longer requires `@emotion/styled` or `framer-motion`. These packages have been removed to improve performance and reduce bundle size.
+   </Aside>
+
+2. Add Component Snippets
+
+   Chakra UI v3 introduces a snippet-based system that gives you full control over components. Snippets are pre-built component compositions that are copied into your project.
+
+   ```bash
+   npx @chakra-ui/cli snippet add
+   ```
+
+   This command adds the default snippet set and writes files into `src/components/ui/`.
+   You can also add all snippets or choose specific ones.
+
+   <Aside type="tip">
+     If you find the number of snippets overwhelming, you can remove the ones you don't need after installation. Only add snippets for components you plan to use.
+   </Aside>
+
+3. Configure TypeScript Paths
+
+   Update your `tsconfig.json` to include path mappings for the snippets:
+
+   ```json title="tsconfig.json" ins={4-6}
+   {
+     "compilerOptions": {
+       "target": "ESNext",
+       "module": "ESNext",
+       "moduleResolution": "Bundler",
+       "skipLibCheck": true,
+       "paths": {
+         "@/*": ["./src/*"]
+       }
+     }
+   }
+   ```
+
+   For JavaScript projects, create a `jsconfig.json` file with the same configuration.
+
+4. Install Vite TypeScript Paths Plugin
+
+   To sync your TypeScript paths with Vite, install the `vite-tsconfig-paths` plugin:
+
+   <PackageManagers type="exec" args="install -D vite-tsconfig-paths" />
+
+5. Configure the Vite Plugin
+
+   ```ts ins={3, 8} title="vite.config.mts"
+   import { defineConfig } from "vite";
+   import react from "@vitejs/plugin-react";
+   import tsconfigPaths from "vite-tsconfig-paths";
+   import { redwood } from "rwsdk/vite";
+   import { cloudflare } from "@cloudflare/vite-plugin";
+
+   export default defineConfig({
+     plugins: [
+       cloudflare({
+         viteEnvironment: { name: "worker" },
+       }),
+       redwood(),
+       react(),
+       tsconfigPaths(),
+     ],
+   });
+   ```
+
+6. Set Up the Provider
+
+   The Chakra UI provider needs to wrap your application. In Redwood SDK, you'll want to add this to your root component or layout.
+
+   First, create a provider component if the snippet didn't generate one:
+
+   ```tsx title="src/components/ui/provider.tsx"
+   import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+   import { ColorModeProvider } from "@/components/ui/color-mode";
+
+   export function Provider(props: { children: React.ReactNode }) {
+     return (
+       <ChakraProvider value={defaultSystem}>
+         <ColorModeProvider>{props.children}</ColorModeProvider>
+       </ChakraProvider>
+     );
+   }
+   ```
+
+   Then wrap your routes with a layout:
+
+   ```tsx title="src/app/layouts/AppLayout.tsx"
+   import { Provider } from "@/components/ui/provider";
+
+   export function AppLayout({ children }: { children?: React.ReactNode }) {
+     return <Provider>{children}</Provider>;
+   }
+   ```
+
+   ```tsx title="src/worker.tsx" ins={1, 6, 16}
+   import { layout, render, route } from "rwsdk/router";
+   import { defineApp } from "rwsdk/worker";
+
+   import { Document } from "@/app/Document";
+   import { AppLayout } from "@/app/layouts/AppLayout";
+   import { setCommonHeaders } from "@/app/headers";
+   import { Home } from "@/app/pages/Home";
+
+   export default defineApp([
+     setCommonHeaders(),
+     render(Document, [layout(AppLayout, [route("/", Home)])]),
+   ]);
+   ```
+
+7. Test Your Installation
+
+   Try using some Chakra UI components in your app to verify everything is working:
+
+   ```tsx title="src/app/pages/Home.tsx"
+   import { Button, HStack, Heading } from "@chakra-ui/react";
+
+   export function Home() {
+     return (
+       <div>
+         <Heading>Welcome to Chakra UI v3</Heading>
+         <HStack>
+           <Button colorScheme="blue">Primary Button</Button>
+           <Button variant="outline">Secondary Button</Button>
+         </HStack>
+       </div>
+     );
+   }
+   ```
+
+8. Run Development Server
+
+   <PackageManagers type="run" args="dev" />
+
+</Steps>
+
+## Customizing Chakra UI
+
+Chakra UI v3 uses a completely new theming system based on the `createSystem` API, inspired by Panda CSS. The old `extendTheme` approach from v2 is no longer used.
+
+### Creating a Custom System
+
+Create a theme configuration file:
+
+```ts title="src/theme.ts"
+import { createSystem, defaultConfig, defineConfig } from "@chakra-ui/react";
+
+const customConfig = defineConfig({
+  theme: {
+    tokens: {
+      colors: {
+        brand: {
+          50: { value: "#e6f7ff" },
+          100: { value: "#bae7ff" },
+          200: { value: "#91d5ff" },
+          300: { value: "#69c0ff" },
+          400: { value: "#40a9ff" },
+          500: { value: "#1890ff" },
+          600: { value: "#096dd9" },
+          700: { value: "#0050b3" },
+          800: { value: "#003a8c" },
+          900: { value: "#002766" },
+        },
+      },
+      fonts: {
+        heading: { value: "'Inter', sans-serif" },
+        body: { value: "'Inter', sans-serif" },
+      },
+    },
+    semanticTokens: {
+      colors: {
+        "bg.primary": {
+          value: { _light: "{colors.white}", _dark: "{colors.gray.900}" },
+        },
+        "text.primary": {
+          value: { _light: "{colors.gray.900}", _dark: "{colors.gray.100}" },
+        },
+      },
+    },
+  },
+});
+
+export const system = createSystem(defaultConfig, customConfig);
+```
+
+### Using Your Custom System
+
+Update the provider to use your custom system:
+
+```tsx title="src/components/ui/provider.tsx" ins={2, 6}
+import { ChakraProvider } from "@chakra-ui/react";
+import { system } from "@/theme";
+import { ColorModeProvider } from "@/components/ui/color-mode";
+
+export function Provider(props: { children: React.ReactNode }) {
+  return (
+    <ChakraProvider value={system}>
+      <ColorModeProvider>{props.children}</ColorModeProvider>
+    </ChakraProvider>
+  );
+}
+```
+
+### Customization Options
+
+<Aside type="note">
+  The new theming system uses **tokens** (design primitives), **semantic tokens** (contextual tokens that reference other tokens), and **recipes** (component variants) for styling.
+</Aside>
+
+#### Tokens
+
+Tokens are the foundation of your design system. They represent raw design values:
+
+```ts
+defineConfig({
+  theme: {
+    tokens: {
+      colors: {
+        // Color tokens
+        primary: { value: "#3182ce" },
+      },
+      spacing: {
+        // Spacing tokens
+        xs: { value: "0.5rem" },
+        sm: { value: "1rem" },
+      },
+      radii: {
+        // Border radius tokens
+        base: { value: "0.375rem" },
+      },
+    },
+  },
+});
+```
+
+#### Semantic Tokens
+
+Semantic tokens provide contextual meaning and can change based on conditions (like color mode):
+
+```ts
+defineConfig({
+  theme: {
+    semanticTokens: {
+      colors: {
+        "bg.canvas": {
+          value: {
+            _light: "{colors.white}",
+            _dark: "{colors.gray.950}",
+          },
+        },
+        "text.heading": {
+          value: {
+            _light: "{colors.gray.900}",
+            _dark: "{colors.gray.50}",
+          },
+        },
+      },
+    },
+  },
+});
+```
+
+#### Recipes
+
+Recipes define component variants and styling patterns:
+
+```ts
+defineConfig({
+  theme: {
+    recipes: {
+      button: {
+        base: {
+          fontWeight: "semibold",
+          borderRadius: "md",
+        },
+        variants: {
+          variant: {
+            solid: {
+              bg: "brand.500",
+              color: "white",
+            },
+            outline: {
+              borderWidth: "1px",
+              borderColor: "brand.500",
+              color: "brand.500",
+            },
+          },
+        },
+      },
+    },
+  },
+});
+```
+
+### Ejecting the Default Theme
+
+If you want complete control over all tokens and recipes, you can eject the default theme:
+
+```bash
+npx @chakra-ui/cli eject --outdir src/theme
+```
+
+This generates a file containing all default Chakra UI tokens and recipes, which you can then customize as needed.
+
+<Aside type="caution">
+  Ejecting the theme gives you maximum control but also means you're responsible for maintaining all theme values. Use this approach only if you need extensive customization.
+</Aside>
+
+## Color Mode
+
+Chakra UI v3 uses `next-themes` for color mode management instead of the built-in color mode from v2.
+
+### Using Color Mode
+
+The snippet system should have generated a color mode component. You can use the `useColorMode` hook:
+
+```tsx
+import { Button } from "@chakra-ui/react";
+import { useColorMode } from "@/components/ui/color-mode";
+
+export function ColorModeToggle() {
+  const { colorMode, toggleColorMode } = useColorMode();
+
+  return (
+    <Button onClick={toggleColorMode}>
+      Toggle {colorMode === "light" ? "Dark" : "Light"} Mode
+    </Button>
+  );
+}
+```
+
+### Forcing a Color Mode
+
+To lock a section to a specific color mode, use the `Theme` component:
+
+```tsx
+import { Theme } from "@chakra-ui/react";
+import { ColorModeProvider } from "@/components/ui/color-mode";
+
+export function DarkSection({ children }) {
+  return (
+    <ColorModeProvider forcedTheme="dark">
+      <Theme appearance="dark">{children}</Theme>
+    </ColorModeProvider>
+  );
+}
+```
+
+## Component Changes from v2 to v3
+
+<Aside type="caution" title="Breaking Changes">
+  Chakra UI v3 introduces significant component API changes. Most components now use a namespace pattern with compound components.
+</Aside>
+
+### Common Migration Patterns
+
+#### Before (v2)
+```tsx
+<Menu>
+  <MenuButton as={Button}>Actions</MenuButton>
+  <MenuList>
+    <MenuItem>Download</MenuItem>
+    <MenuItem>Create a Copy</MenuItem>
+  </MenuList>
+</Menu>
+```
+
+#### After (v3)
+```tsx
+<Menu.Root>
+  <Menu.Trigger asChild>
+    <Button>Actions</Button>
+  </Menu.Trigger>
+  <Menu.Content>
+    <Menu.Item value="download">Download</Menu.Item>
+    <Menu.Item value="copy">Create a Copy</Menu.Item>
+  </Menu.Content>
+</Menu.Root>
+```
+
+### Icons
+
+The `@chakra-ui/icons` package has been deprecated. Use icon libraries like `react-icons` or `lucide-react`:
+
+```tsx
+import { Icon } from "@chakra-ui/react";
+import { FaDownload } from "react-icons/fa";
+
+export function DownloadButton() {
+  return (
+    <Button>
+      <Icon>
+        <FaDownload />
+      </Icon>
+      Download
+    </Button>
+  );
+}
+```
+
+## Managing Snippets
+
+### Adding More Snippets
+
+You can add additional snippets at any time:
+
+```bash
+# Add all snippets
+npx @chakra-ui/cli snippet add --all
+
+# Add a specific snippet
+npx @chakra-ui/cli snippet add button
+
+# List available snippets
+npx @chakra-ui/cli snippet list
+
+# Specify output directory
+npx @chakra-ui/cli snippet add --outdir ./src/components/ui
+```
+
+### Customizing Snippets
+
+Since snippets are copied directly into your project, you have complete control to modify them. Edit the files in `src/components/ui/` to match your needs.
+
+## Type Generation
+
+Generate TypeScript types for your custom theme to get autocompletion and type safety:
+
+```bash
+# Generate types for your theme
+npx @chakra-ui/cli typegen src/theme.ts
+
+# Watch for changes and regenerate
+npx @chakra-ui/cli typegen src/theme.ts --watch
+
+# Generate strict types for component variants
+npx @chakra-ui/cli typegen src/theme.ts --strict
+```
+
+## Further Reading
+
+- [Chakra UI v3 Documentation](https://chakra-ui.com/docs/get-started/installation)
+- [Migration Guide from v2 to v3](https://chakra-ui.com/docs/get-started/migration)
+- [Chakra UI CLI Documentation](https://chakra-ui.com/docs/get-started/cli)
+- [Theming and Customization](https://chakra-ui.com/docs/theming/customization/overview)
+- [Component Documentation](https://chakra-ui.com/docs/components/concepts/overview)
+- [next-themes Documentation](https://github.com/pacocoursey/next-themes)

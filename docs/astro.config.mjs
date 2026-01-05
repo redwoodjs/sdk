@@ -74,6 +74,8 @@ export default defineConfig({
                 { label: "Tailwind CSS", slug: "guides/frontend/tailwind" },
                 { label: "Storybook", slug: "guides/frontend/storybook" },
                 { label: "shadcn/ui", slug: "guides/frontend/shadcn" },
+                { label: "Chakra UI", slug: "guides/frontend/chakra-ui" },
+                { label: "Ark UI", slug: "guides/frontend/ark-ui" },
                 { label: "Layouts", slug: "guides/frontend/layouts" },
                 { label: "Documents", slug: "guides/frontend/documents" },
                 {
