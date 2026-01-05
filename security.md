@@ -58,7 +58,7 @@ Once RedwoodSDK reaches a stable 1.0 release, this policy may be updated to refl
 Security issues affecting:
 - RedwoodSDK core packages
 - Official starters and templates
-- Authentication helpers and infrastructure provided by the SDK
+- Addons and infrastructure provided by RedwoodSDK
 
 Including vulnerabilities that:
 - Allow unintended access
