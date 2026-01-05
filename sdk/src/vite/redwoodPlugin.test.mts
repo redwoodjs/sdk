@@ -1,4 +1,4 @@
-import path from "node:path";
+import { join } from "node:path/posix";
 import { describe, expect, it } from "vitest";
 import { determineWorkerEntryPathname } from "./redwoodPlugin.mjs";
 
@@ -11,7 +11,7 @@ describe("determineWorkerEntryPathname", () => {
       workerConfigPath: "/test/project/wrangler.toml",
       options: { entry: { worker: "src/custom-worker.ts" } },
     });
-    expect(result).toBe(path.join(projectRootDir, "src/custom-worker.ts"));
+    expect(result).toBe(join(projectRootDir, "src/custom-worker.ts"));
   });
 
   it("should use the main path from wrangler config if no entry option is provided", async () => {
@@ -22,7 +22,7 @@ describe("determineWorkerEntryPathname", () => {
       options: {},
       readConfig: readConfig as any,
     });
-    expect(result).toBe(path.join(projectRootDir, "src/wrangler-worker.tsx"));
+    expect(result).toBe(join(projectRootDir, "src/wrangler-worker.tsx"));
   });
 
   it("should use the default path if wrangler config has no main property", async () => {
@@ -33,6 +33,6 @@ describe("determineWorkerEntryPathname", () => {
       options: {},
       readConfig: readConfig as any,
     });
-    expect(result).toBe(path.join(projectRootDir, "src/worker.tsx"));
+    expect(result).toBe(join(projectRootDir, "src/worker.tsx"));
   });
 });

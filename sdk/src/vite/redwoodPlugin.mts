@@ -1,5 +1,5 @@
 import { cloudflare } from "@cloudflare/vite-plugin";
-import { resolve } from "node:path";
+import { resolve } from "node:path/posix";
 import { InlineConfig, Plugin } from "vite";
 import { unstable_readConfig } from "wrangler";
 

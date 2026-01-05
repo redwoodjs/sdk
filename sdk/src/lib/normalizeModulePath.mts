@@ -1,4 +1,4 @@
-import * as path from "node:path";
+import { posix as path } from "node:path";
 import { normalizePath as normalizePathSeparators } from "vite";
 
 /**
