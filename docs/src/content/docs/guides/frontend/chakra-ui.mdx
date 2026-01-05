@@ -107,37 +107,39 @@ Since the Redwood SDK is based on React and Vite, we can work through the ["Usin
    }
    ```
 
-   Then wrap your app in the `Document.tsx` file:
+   Then wrap your routes with a layout:
 
-   ```tsx title="src/app/Document.tsx" ins={1, 13}
+   ```tsx title="src/app/layouts/AppLayout.tsx"
    import { Provider } from "@/components/ui/provider";
 
-   export const Document: React.FC<{ children: React.ReactNode }> = ({
-     children,
-   }) => (
-     <html lang="en">
-       <head>
-         <meta charSet="utf-8" />
-         <meta name="viewport" content="width=device-width, initial-scale=1" />
-         <title>@redwoodjs/starter-minimal</title>
-         <link rel="modulepreload" href="/src/client.tsx" />
-       </head>
-       <body>
-         <div id="root"><Provider>{children}</Provider></div>
-         <script>import("/src/client.tsx")</script>
-       </body>
-     </html>
-   );
+   export function AppLayout({ children }: { children?: React.ReactNode }) {
+     return <Provider>{children}</Provider>;
+   }
+   ```
+
+   ```tsx title="src/worker.tsx" ins={1, 6, 16}
+   import { layout, render, route } from "rwsdk/router";
+   import { defineApp } from "rwsdk/worker";
+
+   import { Document } from "@/app/Document";
+   import { AppLayout } from "@/app/layouts/AppLayout";
+   import { setCommonHeaders } from "@/app/headers";
+   import { Home } from "@/app/pages/Home";
+
+   export default defineApp([
+     setCommonHeaders(),
+     render(Document, [layout(AppLayout, [route("/", Home)])]),
+   ]);
    ```
 
 7. Test Your Installation
 
    Try using some Chakra UI components in your app to verify everything is working:
 
-   ```tsx title="src/pages/HomePage.tsx"
+   ```tsx title="src/app/pages/Home.tsx"
    import { Button, HStack, Heading } from "@chakra-ui/react";
 
-   export function HomePage() {
+   export function Home() {
      return (
        <div>
          <Heading>Welcome to Chakra UI v3</Heading>
