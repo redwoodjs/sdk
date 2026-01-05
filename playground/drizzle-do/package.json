@@ -1,0 +1,51 @@
+{
+  "name": "drizzle-do-todo",
+  "version": "1.0.0",
+  "description": "A to-do list playground demonstrating Drizzle ORM with Cloudflare Durable Objects",
+  "main": "index.js",
+  "type": "module",
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite dev",
+    "dev:init": "rw-scripts dev-init",
+    "preview": "vite preview",
+    "seed": "rwsdk worker-run ./src/scripts/seed.ts",
+    "worker:run": "rw-scripts worker-run",
+    "clean": "npm run clean:vite",
+    "clean:vite": "rm -rf ./node_modules/.vite",
+    "release": "rw-scripts ensure-deploy-env && npm run clean && npm run build && wrangler deploy",
+    "generate": "rw-scripts ensure-env && wrangler types",
+    "check": "npm run generate && npm run types",
+    "types": "tsc"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-server-dom-webpack": "19.2.3",
+    "rwsdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.17.1",
+    "@cloudflare/workers-types": "4.20260103.0",
+    "@types/node": "22.18.8",
+    "@types/react": "19.1.2",
+    "@types/react-dom": "19.1.2",
+    "drizzle-kit": "^0.30.0",
+    "typescript": "5.9.3",
+    "vite": "7.3.0",
+    "vitest": "^3.1.1",
+    "wrangler": "4.54.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "workerd"
+    ]
+  }
+}

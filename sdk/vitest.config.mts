@@ -13,4 +13,11 @@ export default defineConfig({
       ),
     },
   },
+  test: {
+    benchmark: {
+      include: ["**/*.bench.ts"],
+      exclude: ["**/node_modules/**", "**/dist/**"],
+      outputJson: "benchmarks/router-bench-latest.json",
+    },
+  },
 });

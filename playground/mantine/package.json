@@ -23,29 +23,29 @@
   },
   "dependencies": {
     "rwsdk": "workspace:*",
-    "react": "19.3.0-canary-fd524fe0-20251121",
-    "react-dom": "19.3.0-canary-fd524fe0-20251121",
-    "react-server-dom-webpack": "19.3.0-canary-fd524fe0-20251121",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-server-dom-webpack": "19.2.3",
     "@mantine/core": "^7.11.0",
     "@mantine/hooks": "^7.11.0"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.15.3",
-    "@cloudflare/workers-types": "4.20251202.0",
+    "@cloudflare/vite-plugin": "1.17.1",
+    "@cloudflare/workers-types": "4.20260103.0",
     "@types/node": "22.18.8",
     "@types/react": "19.1.2",
     "@types/react-dom": "19.1.2",
     "typescript": "5.9.3",
-    "vite": "7.2.6",
+    "vite": "7.3.0",
     "vitest": "^3.1.1",
-    "wrangler": "4.51.0",
+    "wrangler": "4.54.0",
     "postcss": "^8.4.38",
     "postcss-preset-mantine": "^1.15.0",
     "postcss-simple-vars": "^7.0.1"
   },
   "overrides": {
-    "react": "19.3.0-canary-fd524fe0-20251121",
-    "react-dom": "19.3.0-canary-fd524fe0-20251121"
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

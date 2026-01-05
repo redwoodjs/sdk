@@ -2,6 +2,7 @@
 
 *.log
 .rwsync.lock
+sdk/benchmarks
 
 .tmp/
 
@@ -181,6 +182,7 @@ dist
 .env
 .dev.vars
 .wrangler/
+
 
 .DS_Store
 .vscode/settings.json

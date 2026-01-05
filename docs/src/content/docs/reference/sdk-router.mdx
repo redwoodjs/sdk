@@ -73,6 +73,17 @@ route("/api/search", {
 - Unsupported methods return `405 Method Not Allowed` with `Allow` header
 - Use `config.disableOptions` or `config.disable405` to opt out
 
+## Important Notes
+
+**HEAD Requests**: Unlike Express.js, RedwoodSDK does not automatically map HEAD requests to GET handlers. You must explicitly define a HEAD handler if you want to support HEAD requests.
+
+```ts
+route("/api/users", {
+  get: getHandler,
+  head: getHandler, // Explicitly provide HEAD handler
+});
+```
+
 ## `prefix`
 
 The `prefix` function is used to modify the matched string of a group of routes, by adding a prefix to the matched string. This essentially allows you to group related functionality into a seperate file, import those routes and place it into your `defineApp` function.
@@ -136,15 +147,283 @@ export default defineApp([
 ]);
 ```
 
----
+## `except`
 
-## Important Notes
+The `except` function defines an error handler that catches errors from subsequent routes, middleware, and RSC actions in the routing tree. Error handlers are searched backwards from where the error occurred, allowing you to create nested error handling with different handlers for different sections of your application.
 
-**HEAD Requests**: Unlike Express.js, RedwoodSDK does not automatically map HEAD requests to GET handlers. You must explicitly define a HEAD handler if you want to support HEAD requests.
+### Basic Usage
+
+```tsx
+import { except, route } from "rwsdk/router";
+import { defineApp } from "rwsdk/worker";
+
+export default defineApp([
+  except((error) => {
+    console.error(error);
+    return new Response("Something went wrong", { status: 500 });
+  }),
+  route("/", () => <HomePage />),
+  route("/api/users", async () => {
+    throw new Error("Database connection failed");
+  }),
+]);
+```
+
+### Returning JSX Elements
+
+You can return a React component from an `except` handler to render a custom error page:
+
+```tsx
+import { except, route } from "rwsdk/router";
+import { defineApp } from "rwsdk/worker";
+
+function ErrorPage({ error }: { error: unknown }) {
+  return (
+    <div>
+      <h1>Error</h1>
+      <p>{error instanceof Error ? error.message : "An error occurred"}</p>
+    </div>
+  );
+}
+
+export default defineApp([
+  except((error) => {
+    return <ErrorPage error={error} />;
+  }),
+  route("/", () => <HomePage />),
+]);
+```
+
+### Multiple Handlers and Nesting
+
+You can define multiple `except` handlers in your route tree. The router searches backwards from where the error occurred to find the nearest handler. This allows you to create nested error handling:
+
+```tsx
+import { except, prefix, route } from "rwsdk/router";
+import { defineApp } from "rwsdk/worker";
+
+export default defineApp([
+  // Global catch-all handler
+  except((error) => {
+    return <GlobalErrorPage error={error} />;
+  }),
+
+  prefix("/admin", [
+    // Specific handler for admin routes
+    except((error) => {
+      if (error instanceof PermissionError) {
+        return new Response("Admin Access Denied", { status: 403 });
+      }
+      // Return nothing (void) to let it bubble up to the global handler
+    }),
+
+    route("/dashboard", AdminDashboard),
+    route("/settings", AdminSettings),
+  ]),
+
+  route("/", Home),
+]);
+```
+
+In this example:
+- An error in `/admin/dashboard` is first checked by the admin-specific handler
+- If the admin handler doesn't handle it (returns `void`), the error bubbles up to the global handler
+- Errors in other routes (like `/`) are handled by the global handler
+
+### Error Bubbling
+
+If an `except` handler itself throws an error, that new error will bubble up to the next `except` handler further back in the tree:
+
+```tsx
+export default defineApp([
+  except((error) => {
+    // This handler catches errors from the inner handler
+    return <FallbackErrorPage error={error} />;
+  }),
+
+  except(() => {
+    // This handler throws, so the error bubbles up
+    throw new Error("Handler error");
+  }),
+
+  route("/", () => {
+    throw new Error("Route error");
+  }),
+]);
+```
+
+### What Errors Are Caught
+
+`except` handlers catch errors from:
+
+- **Global middleware**: Errors thrown in middleware functions
+- **Route handlers**: Errors thrown in route components or functions
+- **Route-specific middleware**: Errors thrown in middleware arrays
+- **RSC actions**: Errors thrown during RSC action execution
+
+### Type Signature
 
 ```ts
-route("/api/users", {
-  get: getHandler,
-  head: getHandler, // Explicitly provide HEAD handler
+function except<T extends RequestInfo = RequestInfo>(
+  handler: (
+    error: unknown,
+    requestInfo: T,
+  ) => MaybePromise<React.JSX.Element | Response | void>
+): ExceptHandler<T>;
+```
+
+---
+
+## Error Handling
+
+Errors in route handlers and middleware are handled automatically by RedwoodSDK. The framework provides several ways to handle errors:
+
+### Using `ErrorResponse`
+
+The `ErrorResponse` class allows you to return structured errors with status codes:
+
+```ts
+import { route } from "rwsdk/router";
+import { ErrorResponse } from "rwsdk/worker";
+
+route("/api/users/:id", async ({ params }) => {
+  const user = await getUserById(params.id);
+  if (!user) {
+    throw new ErrorResponse(404, "User not found");
+  }
+  return Response.json(user);
 });
 ```
+
+When an `ErrorResponse` is thrown, RedwoodSDK automatically converts it to an HTTP response with the specified status code and message.
+
+### Try-Catch in Route Handlers
+
+You can use try-catch blocks to handle errors in your route handlers:
+
+```ts
+import { route } from "rwsdk/router";
+import { ErrorResponse } from "rwsdk/worker";
+
+route("/api/users", async ({ request }) => {
+  try {
+    const data = await request.json();
+    const user = await createUser(data);
+    return Response.json(user, { status: 201 });
+  } catch (error) {
+    if (error instanceof ErrorResponse) {
+      throw error; // Re-throw ErrorResponse to preserve status code
+    }
+    // Handle other errors
+    throw new ErrorResponse(500, "Internal server error");
+  }
+});
+```
+
+### Using `except` for Error Handling
+
+The `except` function is the recommended way to handle errors from Server Components, middleware, and RSC actions. It provides a declarative way to define error handlers that integrate with your routing structure:
+
+```tsx
+import { except, route } from "rwsdk/router";
+import { defineApp } from "rwsdk/worker";
+
+export default defineApp([
+  except((error) => {
+    // Log error for monitoring
+    console.error("Route error:", error);
+    
+    // Return a user-friendly error page
+    return <ErrorPage error={error} />;
+  }),
+  
+  route("/", () => <HomePage />),
+  route("/api/users", async () => {
+    const users = await fetchUsers();
+    if (!users) {
+      throw new Error("Failed to fetch users");
+    }
+    return Response.json(users);
+  }),
+]);
+```
+
+See the [`except` documentation](#except) above for more details on nesting, bubbling, and advanced usage patterns.
+
+### Server-Side Rendering Errors
+
+Errors that occur during React Server Component rendering are automatically caught and handled by `except` handlers if defined. If no `except` handler is found, the error is logged and the request is rejected, which will be caught by the outer error handler in `defineApp`.
+
+### Global Error Handling
+
+You can wrap the `fetch` method exposed by `defineApp` to handle all errors globally:
+
+```ts title="src/worker.tsx"
+import { defineApp, ErrorResponse } from "rwsdk/worker";
+import { route } from "rwsdk/router";
+
+const app = defineApp([
+  route("/", () => <HomePage />),
+  route("/api/users", async () => {
+    // This might throw an error
+    const users = await fetchUsers();
+    return Response.json(users);
+  }),
+]);
+
+export default {
+  fetch: async (request: Request, env: Env, ctx: ExecutionContext) => {
+    try {
+      return await app.fetch(request, env, ctx);
+    } catch (error) {
+      // Handle all unhandled errors globally
+      if (error instanceof ErrorResponse) {
+        return new Response(error.message, { status: error.code });
+      }
+
+      if (error instanceof Response) {
+        return error;
+      }
+
+      // Log error to monitoring service
+      console.error("Unhandled error:", error);
+
+      // Send to monitoring service asynchronously
+      // Use waitUntil to prevent the worker from being killed
+      // before the async operation completes
+      ctx.waitUntil(
+        sendToMonitoring(error).catch((monitoringError) => {
+          console.error("Failed to send error to monitoring:", monitoringError);
+        }),
+      );
+
+      // Return a generic error response
+      return new Response("Internal Server Error", { status: 500 });
+    }
+  },
+};
+```
+
+**Important**: When sending errors to monitoring services (Sentry, DataDog, etc.), these calls are often async. Use `ctx.waitUntil()` from Cloudflare's `ExecutionContext` to ensure the worker doesn't terminate before the async operation completes. Without `waitUntil`, the worker may be killed before the monitoring service receives the error.
+
+This pattern allows you to:
+
+- Catch all errors that escape route handlers and middleware
+- Send errors to monitoring services (Sentry, DataDog, etc.) without blocking the response
+- Return consistent error responses
+- Prevent unhandled exceptions from reaching Cloudflare Workers
+
+### Unhandled Errors
+
+If an error is thrown that is not an `ErrorResponse` or `Response` instance, and you haven't wrapped the `fetch` method, RedwoodSDK will:
+
+1. Log the error to the console
+2. Re-throw the error (which will surface as an unhandled exception in Cloudflare Workers)
+
+To prevent unhandled exceptions, you can either:
+
+- Wrap the `fetch` method from `defineApp` (recommended for global error handling)
+- Wrap potentially failing code in try-catch blocks within route handlers and either:
+  - Return an `ErrorResponse` for structured errors
+  - Return a `Response` for custom error responses
+  - Handle the error gracefully within your route handler

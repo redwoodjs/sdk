@@ -352,6 +352,7 @@ function SidebarGroup() { return jsx("div", {}); }
 function SidebarGroupLabel() { return jsx("div", {}); }
 function SidebarGroupAction() { return jsx("div", {}); }
 function SidebarGroupContent() { return jsx("div", {}); }
+function SidebarGroupContent() { return jsx("div", {}); }
 function SidebarMenu() { return jsx("div", {}); }
 function SidebarMenuItem() { return jsx("div", {}); }
 function SidebarMenuButton() { return jsx("div", {}); }
@@ -392,6 +393,45 @@ const SidebarSeparator = registerClientReference(SSRModule, "/test/file.tsx", "S
 const SidebarTrigger = registerClientReference(SSRModule, "/test/file.tsx", "SidebarTrigger");
 const useSidebar = registerClientReference(SSRModule, "/test/file.tsx", "useSidebar");
 export { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInput, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, useSidebar };
+`,
+    );
+  });
+
+  it("does not transform inlined functions (Issue #471)", async () => {
+    const code = `"use client"
+
+export function Stars({ level }) {
+  const renderStars = (level) => {
+    return level;
+  }
+  return renderStars(level);
+}`;
+
+    expect((await transform(code)) ?? "").toEqual(
+      `import { ssrLoadModule } from "rwsdk/__ssr_bridge";
+import { registerClientReference } from "rwsdk/worker";
+const SSRModule = await ssrLoadModule("/test/file.tsx");
+const Stars = registerClientReference(SSRModule, "/test/file.tsx", "Stars");
+export { Stars };
+`,
+    );
+  });
+
+  it("does not transform inlined functions in default export (Issue #471)", async () => {
+    const code = `"use client"
+
+export default function Stars({ level }) {
+  const renderStars = (level) => {
+    return level;
+  }
+  return renderStars(level);
+}`;
+
+    expect((await transform(code)) ?? "").toEqual(
+      `import { ssrLoadModule } from "rwsdk/__ssr_bridge";
+import { registerClientReference } from "rwsdk/worker";
+const SSRModule = await ssrLoadModule("/test/file.tsx");
+export default registerClientReference(SSRModule, "/test/file.tsx", "default");
 `,
     );
   });

@@ -25,13 +25,13 @@
   },
   "dependencies": {
     "rwsdk": "workspace:*",
-    "react": "19.3.0-canary-fd524fe0-20251121",
-    "react-dom": "19.3.0-canary-fd524fe0-20251121",
-    "react-server-dom-webpack": "19.3.0-canary-fd524fe0-20251121"
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-server-dom-webpack": "19.2.3"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.15.3",
-    "@cloudflare/workers-types": "4.20251202.0",
+    "@cloudflare/vite-plugin": "1.17.1",
+    "@cloudflare/workers-types": "4.20260103.0",
     "@types/node": "~24.5.2",
     "@types/react": "19.1.2",
     "@types/react-dom": "19.1.2",
@@ -46,9 +46,9 @@
     "@storybook/addon-vitest": "^10.0.3",
     "@storybook/testing-library": "^0.2.2",
     "typescript": "5.8.3",
-    "vite": "7.2.6",
+    "vite": "7.3.0",
     "vitest": "^3.1.1",
-    "wrangler": "4.51.0"
+    "wrangler": "4.54.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

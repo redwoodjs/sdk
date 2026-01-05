@@ -75,6 +75,7 @@ export const configPlugin = ({
       build: {
         outDir: resolve(projectRootDir, "dist", "worker"),
         emitAssets: true,
+        ssrManifest: true,
         emptyOutDir: false,
         ssr: true,
       },

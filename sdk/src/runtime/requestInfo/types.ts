@@ -8,6 +8,7 @@ export interface DefaultAppContext {}
 // HttpMessages?
 export interface RequestInfo<Params = any, AppContext = DefaultAppContext> {
   request: Request;
+  path: string;
   params: Params;
   ctx: AppContext;
   rw: RwContext;

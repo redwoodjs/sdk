@@ -42,6 +42,19 @@ testDevAndDeploy(
   },
 );
 
+testDevAndDeploy(
+  "renders a navigation preload link for /about in the head",
+  async ({ page, url }) => {
+    await page.goto(url);
+
+    await waitForHydration(page);
+
+    // React will hoist this <link> into <head>, and the client navigation
+    // runtime will use it to warm the navigation cache for /about.
+    await page.waitForSelector('link[rel="x-prefetch"][href="/about"]');
+  },
+);
+
 testDevAndDeploy("navigates on link click", async ({ page, url }) => {
   await page.goto(url);
 

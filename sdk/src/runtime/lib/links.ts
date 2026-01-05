@@ -1,8 +1,4 @@
-import type {
-  Route,
-  RouteDefinition,
-  RouteMiddleware,
-} from "./router";
+import type { RouteDefinition, RouteMiddleware } from "./router";
 
 type PathParams<Path extends string> =
   Path extends `${string}:${infer Param}/${infer Rest}`
@@ -15,18 +11,11 @@ type PathParams<Path extends string> =
           ? { $0: string }
           : {};
 
-type ParamsForPath<Path extends string> = PathParams<Path> extends Record<
-  string,
-  never
->
-  ? undefined
-  : PathParams<Path>;
+type ParamsForPath<Path extends string> =
+  PathParams<Path> extends Record<string, never> ? undefined : PathParams<Path>;
 
 export type LinkFunction<Paths extends string> = {
-  <Path extends Paths>(
-    path: Path,
-    params?: ParamsForPath<Path>,
-  ): string;
+  <Path extends Paths>(path: Path, params?: ParamsForPath<Path>): string;
 };
 
 type RoutePaths<Value> =
@@ -38,15 +27,14 @@ type RoutePaths<Value> =
         ? never
         : never;
 
-type RouteArrayPaths<Routes extends readonly any[]> = number extends Routes["length"]
-  ? RoutePaths<Routes[number]>
-  : Routes extends readonly [infer Head, ...infer Tail]
-    ? RoutePaths<Head> | RouteArrayPaths<Tail>
-    : never;
+type RouteArrayPaths<Routes extends readonly any[]> =
+  number extends Routes["length"]
+    ? RoutePaths<Routes[number]>
+    : Routes extends readonly [infer Head, ...infer Tail]
+      ? RoutePaths<Head> | RouteArrayPaths<Tail>
+      : never;
 
-type AppRoutes<App> = App extends { __rwRoutes: infer Routes }
-  ? Routes
-  : never;
+type AppRoutes<App> = App extends { __rwRoutes: infer Routes } ? Routes : never;
 
 export type AppRoutePaths<App> = RoutePaths<AppRoutes<App>>;
 
@@ -60,22 +48,43 @@ export function createLinks<App>(_app?: App): AppLink<App> {
   return linkFor<App>();
 }
 
+// Overload for automatic route inference from app type
+export function defineLinks<App extends { __rwRoutes: any }>(): AppLink<App>;
+// Overload for manual route array
 export function defineLinks<const T extends readonly string[]>(
   routes: T,
-): LinkFunction<T[number]> {
+): LinkFunction<T[number]>;
+// Implementation
+export function defineLinks(routes?: readonly string[]): LinkFunction<any> {
+  // If no routes provided, this is the app type overload
+  // At runtime, we can't distinguish, but the type system ensures
+  // this only happens when called as defineLinks<App>()
+  // We delegate to linkFor which handles app types correctly
+  if (routes === undefined) {
+    // This branch is only reachable when called as defineLinks<App>()
+    // The return type is AppLink<App> due to the overload
+    // We use linkFor internally which doesn't need runtime route validation
+    return linkFor<any>() as any;
+  }
+
+  // Original implementation for route arrays
   routes.forEach((route) => {
     if (typeof route !== "string") {
-      throw new Error(`Invalid route: ${route}. Routes must be strings.`);
+      throw new Error(
+        `RedwoodSDK: Invalid route: ${route}. Routes must be string literals. Ensure you're passing an array of route paths.`,
+      );
     }
   });
 
-  const link = createLinkFunction<T[number]>();
-  return ((path: T[number], params?: Record<string, string>) => {
+  const link = createLinkFunction<(typeof routes)[number]>();
+  return ((path: (typeof routes)[number], params?: Record<string, string>) => {
     if (!routes.includes(path)) {
-      throw new Error(`Invalid route: ${path}`);
+      throw new Error(
+        `RedwoodSDK: Invalid route: ${path}. This route is not included in the routes array passed to defineLinks(). Check for typos or ensure the route is defined in your router.`,
+      );
     }
     return link(path, params as any);
-  }) as LinkFunction<T[number]>;
+  }) as LinkFunction<(typeof routes)[number]>;
 }
 
 const TOKEN_REGEX = /:([a-zA-Z0-9_]+)|\*/g;
@@ -86,7 +95,9 @@ function createLinkFunction<Paths extends string>(): LinkFunction<Paths> {
 
     if (!params || Object.keys(params).length === 0) {
       if (expectsParams) {
-        throw new Error(`Route ${path} requires an object of parameters`);
+        throw new Error(
+          `RedwoodSDK: Route ${path} requires an object of parameters (e.g., link("${path}", { id: "123" })).`,
+        );
       }
       return path;
     }
@@ -102,10 +113,7 @@ function hasRouteParameters(path: string): boolean {
   return result;
 }
 
-function interpolate(
-  template: string,
-  params: Record<string, string>,
-): string {
+function interpolate(template: string, params: Record<string, string>): string {
   let result = "";
   let lastIndex = 0;
   let wildcardIndex = 0;
@@ -122,7 +130,7 @@ function interpolate(
       const value = params[name];
       if (value === undefined) {
         throw new Error(
-          `Missing parameter "${name}" for route ${template}`,
+          `RedwoodSDK: Missing parameter "${name}" for route ${template}. Ensure you're providing all required parameters in the params object.`,
         );
       }
       result += encodeURIComponent(value);
@@ -132,7 +140,7 @@ function interpolate(
       const value = params[key];
       if (value === undefined) {
         throw new Error(
-          `Missing parameter "${key}" for route ${template}`,
+          `RedwoodSDK: Missing parameter "${key}" for route ${template}. Wildcard routes use $0, $1, etc. as parameter keys.`,
         );
       }
       result += encodeWildcardValue(value);
@@ -147,7 +155,9 @@ function interpolate(
 
   for (const key of Object.keys(params)) {
     if (!consumed.has(key)) {
-      throw new Error(`Parameter "${key}" is not used by route ${template}`);
+      throw new Error(
+        `RedwoodSDK: Parameter "${key}" is not used by route ${template}. Check your params object for typos or remove unused parameters.`,
+      );
     }
   }
 
