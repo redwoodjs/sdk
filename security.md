@@ -17,7 +17,7 @@ Private reporting helps prevent unpatched vulnerabilities from being exploited b
 
 - **Do not** open a public GitHub issue for suspected security vulnerabilities.
 - Instead, report the issue using **GitHub Security Advisories** for this repository  
-  (via the “Report a vulnerability” button under the repository’s *Security* tab).
+  (via the “Report a vulnerability” button under the repository's *Security* tab).
 
 When reporting, please include:
 - A description of the issue
@@ -35,7 +35,7 @@ We follow a coordinated disclosure process:
 
 - Security reports are handled privately.
 - If a report is accepted, we will work on a fix before any public disclosure.
-- A public security advisory **may** be published after a fix is released, at the maintainers’ discretion.
+- A public security advisory **may** be published after a fix is released, at the maintainers' discretion.
 
 ---
 
