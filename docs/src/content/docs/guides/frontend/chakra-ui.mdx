@@ -109,20 +109,25 @@ Since the Redwood SDK is based on React and Vite, we can work through the ["Usin
 
    Then wrap your app in the `Document.tsx` file:
 
-   ```tsx title="src/app/Document.tsx" ins={2, 7, 9}
+   ```tsx title="src/app/Document.tsx" ins={1, 13}
    import { Provider } from "@/components/ui/provider";
 
-   export function Document({ children }: { children: React.ReactNode }) {
-     return (
-       <html lang="en">
-         <body>
-           <Provider>
-             {children}
-           </Provider>
-         </body>
-       </html>
-     );
-   }
+   export const Document: React.FC<{ children: React.ReactNode }> = ({
+     children,
+   }) => (
+     <html lang="en">
+       <head>
+         <meta charSet="utf-8" />
+         <meta name="viewport" content="width=device-width, initial-scale=1" />
+         <title>@redwoodjs/starter-minimal</title>
+         <link rel="modulepreload" href="/src/client.tsx" />
+       </head>
+       <body>
+         <div id="root"><Provider>{children}</Provider></div>
+         <script>import("/src/client.tsx")</script>
+       </body>
+     </html>
+   );
    ```
 
 7. Test Your Installation
