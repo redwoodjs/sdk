@@ -130,55 +130,6 @@ importers:
         specifier: ^3.1.1
         version: 3.2.4(@types/debug@4.1.12)(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.1)(msw@2.11.3(@types/node@24.10.1)(typescript@5.9.3))(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1)
 
-  playground/ark-ui:
-    dependencies:
-      '@ark-ui/react':
-        specifier: ^5.29.1
-        version: 5.29.1(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
-      lucide-react:
-        specifier: ^0.562.0
-        version: 0.562.0(react@19.2.1)
-      react:
-        specifier: 19.2.1
-        version: 19.2.1
-      react-dom:
-        specifier: 19.2.1
-        version: 19.2.1(react@19.2.1)
-      react-server-dom-webpack:
-        specifier: 19.2.1
-        version: 19.2.1(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(webpack@5.97.1)
-      rwsdk:
-        specifier: workspace:*
-        version: link:../../sdk
-    devDependencies:
-      '@cloudflare/vite-plugin':
-        specifier: 1.16.1
-        version: 1.16.1(vite@7.2.6(@types/node@22.18.8)(jiti@2.6.1)(lightningcss@1.30.1)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1))(workerd@1.20251202.0)(wrangler@4.52.1(@cloudflare/workers-types@4.20251202.0))
-      '@cloudflare/workers-types':
-        specifier: 4.20251202.0
-        version: 4.20251202.0
-      '@types/node':
-        specifier: 22.18.8
-        version: 22.18.8
-      '@types/react':
-        specifier: 19.1.2
-        version: 19.1.2
-      '@types/react-dom':
-        specifier: 19.1.2
-        version: 19.1.2(@types/react@19.1.2)
-      typescript:
-        specifier: 5.9.3
-        version: 5.9.3
-      vite:
-        specifier: 7.2.6
-        version: 7.2.6(@types/node@22.18.8)(jiti@2.6.1)(lightningcss@1.30.1)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1)
-      vitest:
-        specifier: ^3.1.1
-        version: 3.2.4(@types/debug@4.1.12)(@types/node@22.18.8)(jiti@2.6.1)(lightningcss@1.30.1)(msw@2.11.3(@types/node@22.18.8)(typescript@5.9.3))(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1)
-      wrangler:
-        specifier: 4.52.1
-        version: 4.52.1(@cloudflare/workers-types@4.20251202.0)
-
   playground/baseui:
     dependencies:
       '@base-ui-components/react':
@@ -226,16 +177,19 @@ importers:
     dependencies:
       '@chakra-ui/react':
         specifier: ^3.27.0
-        version: 3.27.0(@emotion/react@11.14.0(@types/react@19.1.2)(react@19.2.1))(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+        version: 3.27.0(@emotion/react@11.14.0(@types/react@19.1.2)(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@emotion/react':
+        specifier: ^11.14.0
+        version: 11.14.0(@types/react@19.1.2)(react@19.2.3)
       react:
-        specifier: 19.2.1
-        version: 19.2.1
+        specifier: 19.2.3
+        version: 19.2.3
       react-dom:
-        specifier: 19.2.1
-        version: 19.2.1(react@19.2.1)
+        specifier: 19.2.3
+        version: 19.2.3(react@19.2.3)
       react-server-dom-webpack:
         specifier: 19.2.3
-        version: 19.2.3(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(webpack@5.97.1)
+        version: 19.2.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(webpack@5.97.1)
       rwsdk:
         specifier: workspace:*
         version: link:../../sdk
@@ -1755,7 +1709,7 @@ importers:
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.13.3
-        version: 1.13.3(vite@7.3.0(@types/node@24.5.2)(jiti@2.6.1)(lightningcss@1.30.1)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1))(workerd@1.20251210.0)(wrangler@4.52.1(@cloudflare/workers-types@4.20250924.0))
+        version: 1.13.3(vite@7.3.0(@types/node@24.5.2)(jiti@2.6.1)(lightningcss@1.30.1)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1))(workerd@1.20251202.0)(wrangler@4.52.1(@cloudflare/workers-types@4.20250924.0))
       '@types/debug':
         specifier: ~4.1.12
         version: 4.1.12
@@ -2318,12 +2272,6 @@ packages:
       vite: ^6.1.0 || ^7.0.0
       wrangler: ^4.38.0
 
-  '@cloudflare/vite-plugin@1.16.1':
-    resolution: {integrity: sha512-8C4OUJfwX7jz7FBka5PkZRs6EMPg47YL00SgSG8R/N0MymhfkJREnCMBCSyEYdQNFfhGPLefgPKbPKnZqylxoA==}
-    peerDependencies:
-      vite: ^6.1.0 || ^7.0.0
-      wrangler: ^4.52.1
-
   '@cloudflare/vite-plugin@1.17.1':
     resolution: {integrity: sha512-QHxTDhvJakWCs4mu7Q6fB02CPT5MvZkyxufwX7dCIDqLfav5ohIQ7+wdTU7AYwPJ7tF8/a82dBpwnt7+wHooXg==}
     peerDependencies:
@@ -2452,9 +2400,6 @@ packages:
 
   '@cloudflare/workers-types@4.20250924.0':
     resolution: {integrity: sha512-pi/OYCroYdwjFWbkciC5oYzlyimDF4ymNotDK0zpLNq91Ogz1IXnVBAYV7fCFAJ/zIxU0RiIBrJIOll/C0pR9Q==}
-
-  '@cloudflare/workers-types@4.20251202.0':
-    resolution: {integrity: sha512-Q7m1Ivu2fbKalOPm00KLpu6GfRaq4TlrPknqugvZgp/gDH96OYKINO4x7jvCIBvCz/aK9vVoOj8tlbSQBervVA==}
 
   '@cloudflare/workers-types@4.20260103.0':
     resolution: {integrity: sha512-jANmoGpJcXARnwlkvrQOeWyjYD1quTfHcs+++Z544XRHOSfLc4XSlts7snIhbiIGgA5bo66zDhraF+9lKUr2hw==}
@@ -8918,11 +8863,6 @@ packages:
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
-  lucide-react@0.562.0:
-    resolution: {integrity: sha512-82hOAu7y0dbVuFfmO4bYF1XEwYk/mEbM5E+b1jgci/udUBEE/R7LF5Ip0CCEmXe8AybRM8L+04eP+LGZeDvkiw==}
-    peerDependencies:
-      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
-
   lz-string@1.5.0:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
     hasBin: true
@@ -9816,11 +9756,6 @@ packages:
     resolution: {integrity: sha512-+NRMYs2DyTP4/tqWz371Oo50JqmWltR1h2gcdgUMAWZJIAvrd0/SqlCfx7tpzpl/s36rzw6qH2MjoNrxtRNYhA==}
     engines: {node: ^20.9.0 || >=22}
 
-  react-dom@19.2.1:
-    resolution: {integrity: sha512-ibrK8llX2a4eOskq1mXKu/TGZj9qzomO+sNfO98M6d9zIPOEhlBkMkBUBLd1vgS0gQsLDBzA+8jJBVXDnfHmJg==}
-    peerDependencies:
-      react: ^19.2.1
-
   react-dom@19.2.3:
     resolution: {integrity: sha512-yELu4WmLPw5Mr/lmeEpox5rw3RETacE++JgHqQzd2dg+YbJuat3jH4ingc+WPZhxaoFzdv9y33G+F7Nl5O0GBg==}
     peerDependencies:
@@ -9897,14 +9832,6 @@ packages:
       react: ^16.14.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc
       react-dom: ^16.14.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc
 
-  react-server-dom-webpack@19.2.1:
-    resolution: {integrity: sha512-6z3FuEtZ7wVWyPYRhKKRo4TF7IyQ7XrQZRW1fTjzK2mLVmcv7xJtoANSixaUJ+EFjCh2ekNOaBSoI9spiMSnNA==}
-    engines: {node: '>=0.10.0'}
-    peerDependencies:
-      react: ^19.2.1
-      react-dom: ^19.2.1
-      webpack: ^5.59.0
-
   react-server-dom-webpack@19.2.3:
     resolution: {integrity: sha512-ifo7aqqdNJyV6U2zuvvWX4rRQ51pbleuUFNG7ZYhIuSuWZzQPbfmYv11GNsyJm/3uGNbt8buJ9wmoISn/uOAfw==}
     engines: {node: '>=0.10.0'}
@@ -9936,10 +9863,6 @@ packages:
     engines: {node: '>=10'}
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-
-  react@19.2.1:
-    resolution: {integrity: sha512-DGrYcCWK7tvYMnWh79yrPHt+vdx9tY+1gPZa7nJQtO/p8bLTDaHp4dzwEhQB7pZ4Xe3ok4XKuEPrVuc+wlpkmw==}
-    engines: {node: '>=0.10.0'}
 
   react@19.2.3:
     resolution: {integrity: sha512-Ku/hhYbVjOQnXDZFv2+RibmLFGwFdeeKHFcOTlrt7xplBnya5OGn/hIRDsqDiSUcfORsDC7MPxwork8jBwsIWA==}
@@ -11180,46 +11103,6 @@ packages:
       yaml:
         optional: true
 
-  vite@7.2.6:
-    resolution: {integrity: sha512-tI2l/nFHC5rLh7+5+o7QjKjSR04ivXDF4jcgV0f/bTQ+OJiITy5S6gaynVsEM+7RqzufMnVbIon6Sr5x1SDYaQ==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    hasBin: true
-    peerDependencies:
-      '@types/node': ^20.19.0 || >=22.12.0
-      jiti: '>=1.21.0'
-      less: ^4.0.0
-      lightningcss: ^1.21.0
-      sass: ^1.70.0
-      sass-embedded: ^1.70.0
-      stylus: '>=0.54.8'
-      sugarss: ^5.0.0
-      terser: ^5.16.0
-      tsx: ^4.8.1
-      yaml: ^2.4.2
-    peerDependenciesMeta:
-      '@types/node':
-        optional: true
-      jiti:
-        optional: true
-      less:
-        optional: true
-      lightningcss:
-        optional: true
-      sass:
-        optional: true
-      sass-embedded:
-        optional: true
-      stylus:
-        optional: true
-      sugarss:
-        optional: true
-      terser:
-        optional: true
-      tsx:
-        optional: true
-      yaml:
-        optional: true
-
   vite@7.3.0:
     resolution: {integrity: sha512-dZwN5L1VlUBewiP6H9s2+B3e3Jg96D0vzN+Ry73sOefebhYr9f94wwkMNN/9ouoU8pV1BqA1d1zGk8928cx0rg==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -11646,7 +11529,7 @@ snapshots:
       package-manager-detector: 1.5.0
       tinyexec: 1.0.2
 
-  '@ark-ui/react@5.29.1(react-dom@19.2.1(react@19.2.1))(react@19.2.1)':
+  '@ark-ui/react@5.29.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@internationalized/date': 3.10.0
       '@zag-js/accordion': 1.29.1
@@ -11692,7 +11575,7 @@ snapshots:
       '@zag-js/qr-code': 1.29.1
       '@zag-js/radio-group': 1.29.1
       '@zag-js/rating-group': 1.29.1
-      '@zag-js/react': 1.29.1(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      '@zag-js/react': 1.29.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@zag-js/scroll-area': 1.29.1
       '@zag-js/select': 1.29.1
       '@zag-js/signature-pad': 1.29.1
@@ -11711,8 +11594,8 @@ snapshots:
       '@zag-js/tree-view': 1.29.1
       '@zag-js/types': 1.29.1
       '@zag-js/utils': 1.29.1
-      react: 19.2.1
-      react-dom: 19.2.1(react@19.2.1)
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
 
   '@ast-grep/napi-darwin-arm64@0.39.5':
     optional: true
@@ -12245,19 +12128,19 @@ snapshots:
     dependencies:
       fontkit: 2.0.4
 
-  '@chakra-ui/react@3.27.0(@emotion/react@11.14.0(@types/react@19.1.2)(react@19.2.1))(react-dom@19.2.1(react@19.2.1))(react@19.2.1)':
+  '@chakra-ui/react@3.27.0(@emotion/react@11.14.0(@types/react@19.1.2)(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
-      '@ark-ui/react': 5.29.1(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      '@ark-ui/react': 5.29.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@emotion/is-prop-valid': 1.4.0
-      '@emotion/react': 11.14.0(@types/react@19.1.2)(react@19.2.1)
+      '@emotion/react': 11.14.0(@types/react@19.1.2)(react@19.2.3)
       '@emotion/serialize': 1.3.3
-      '@emotion/use-insertion-effect-with-fallbacks': 1.2.0(react@19.2.1)
+      '@emotion/use-insertion-effect-with-fallbacks': 1.2.0(react@19.2.3)
       '@emotion/utils': 1.4.2
       '@pandacss/is-valid-prop': 0.54.0
       csstype: 3.1.3
       fast-safe-stringify: 2.1.1
-      react: 19.2.1
-      react-dom: 19.2.1(react@19.2.1)
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
 
   '@clack/core@0.5.0':
     dependencies:
@@ -12290,11 +12173,11 @@ snapshots:
     optionalDependencies:
       workerd: 1.20251210.0
 
-  '@cloudflare/unenv-preset@2.7.4(unenv@2.0.0-rc.21)(workerd@1.20251210.0)':
+  '@cloudflare/unenv-preset@2.7.4(unenv@2.0.0-rc.21)(workerd@1.20251202.0)':
     dependencies:
       unenv: 2.0.0-rc.21
     optionalDependencies:
-      workerd: 1.20251210.0
+      workerd: 1.20251202.0
 
   '@cloudflare/unenv-preset@2.7.6(unenv@2.0.0-rc.21)(workerd@1.20251001.0)':
     dependencies:
@@ -12302,9 +12185,9 @@ snapshots:
     optionalDependencies:
       workerd: 1.20251001.0
 
-  '@cloudflare/vite-plugin@1.13.3(vite@7.3.0(@types/node@24.5.2)(jiti@2.6.1)(lightningcss@1.30.1)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1))(workerd@1.20251210.0)(wrangler@4.52.1(@cloudflare/workers-types@4.20250924.0))':
+  '@cloudflare/vite-plugin@1.13.3(vite@7.3.0(@types/node@24.5.2)(jiti@2.6.1)(lightningcss@1.30.1)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1))(workerd@1.20251202.0)(wrangler@4.52.1(@cloudflare/workers-types@4.20250924.0))':
     dependencies:
-      '@cloudflare/unenv-preset': 2.7.4(unenv@2.0.0-rc.21)(workerd@1.20251210.0)
+      '@cloudflare/unenv-preset': 2.7.4(unenv@2.0.0-rc.21)(workerd@1.20251202.0)
       '@remix-run/node-fetch-server': 0.8.0
       get-port: 7.1.0
       miniflare: 4.20250917.0
@@ -12313,24 +12196,6 @@ snapshots:
       unenv: 2.0.0-rc.21
       vite: 7.3.0(@types/node@24.5.2)(jiti@2.6.1)(lightningcss@1.30.1)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1)
       wrangler: 4.52.1(@cloudflare/workers-types@4.20250924.0)
-      ws: 8.18.0
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-      - workerd
-
-  '@cloudflare/vite-plugin@1.16.1(vite@7.2.6(@types/node@22.18.8)(jiti@2.6.1)(lightningcss@1.30.1)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1))(workerd@1.20251202.0)(wrangler@4.52.1(@cloudflare/workers-types@4.20251202.0))':
-    dependencies:
-      '@cloudflare/unenv-preset': 2.7.12(unenv@2.0.0-rc.24)(workerd@1.20251202.0)
-      '@remix-run/node-fetch-server': 0.8.0
-      defu: 6.1.4
-      get-port: 7.1.0
-      miniflare: 4.20251202.0
-      picocolors: 1.1.1
-      tinyglobby: 0.2.15
-      unenv: 2.0.0-rc.24
-      vite: 7.2.6(@types/node@22.18.8)(jiti@2.6.1)(lightningcss@1.30.1)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1)
-      wrangler: 4.52.1(@cloudflare/workers-types@4.20251202.0)
       ws: 8.18.0
     transitivePeerDependencies:
       - bufferutil
@@ -12434,8 +12299,6 @@ snapshots:
     optional: true
 
   '@cloudflare/workers-types@4.20250924.0': {}
-
-  '@cloudflare/workers-types@4.20251202.0': {}
 
   '@cloudflare/workers-types@4.20260103.0': {}
 
@@ -12550,17 +12413,17 @@ snapshots:
 
   '@emotion/memoize@0.9.0': {}
 
-  '@emotion/react@11.14.0(@types/react@19.1.2)(react@19.2.1)':
+  '@emotion/react@11.14.0(@types/react@19.1.2)(react@19.2.3)':
     dependencies:
       '@babel/runtime': 7.28.4
       '@emotion/babel-plugin': 11.13.5
       '@emotion/cache': 11.14.0
       '@emotion/serialize': 1.3.3
-      '@emotion/use-insertion-effect-with-fallbacks': 1.2.0(react@19.2.1)
+      '@emotion/use-insertion-effect-with-fallbacks': 1.2.0(react@19.2.3)
       '@emotion/utils': 1.4.2
       '@emotion/weak-memoize': 0.4.0
       hoist-non-react-statics: 3.3.2
-      react: 19.2.1
+      react: 19.2.3
     optionalDependencies:
       '@types/react': 19.1.2
     transitivePeerDependencies:
@@ -12578,9 +12441,9 @@ snapshots:
 
   '@emotion/unitless@0.10.0': {}
 
-  '@emotion/use-insertion-effect-with-fallbacks@1.2.0(react@19.2.1)':
+  '@emotion/use-insertion-effect-with-fallbacks@1.2.0(react@19.2.3)':
     dependencies:
-      react: 19.2.1
+      react: 19.2.3
 
   '@emotion/utils@1.4.2': {}
 
@@ -16350,14 +16213,14 @@ snapshots:
       '@zag-js/types': 1.29.1
       '@zag-js/utils': 1.29.1
 
-  '@zag-js/react@1.29.1(react-dom@19.2.1(react@19.2.1))(react@19.2.1)':
+  '@zag-js/react@1.29.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@zag-js/core': 1.29.1
       '@zag-js/store': 1.29.1
       '@zag-js/types': 1.29.1
       '@zag-js/utils': 1.29.1
-      react: 19.2.1
-      react-dom: 19.2.1(react@19.2.1)
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
 
   '@zag-js/rect-utils@1.29.1': {}
 
@@ -19265,10 +19128,6 @@ snapshots:
     dependencies:
       react: 19.2.3
 
-  lucide-react@0.562.0(react@19.2.1):
-    dependencies:
-      react: 19.2.1
-
   lz-string@1.5.0: {}
 
   magic-string@0.30.19:
@@ -20626,11 +20485,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  react-dom@19.2.1(react@19.2.1):
-    dependencies:
-      react: 19.2.1
-      scheduler: 0.27.0
-
   react-dom@19.2.3(react@19.2.3):
     dependencies:
       react: 19.2.3
@@ -20695,24 +20549,6 @@ snapshots:
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
 
-  react-server-dom-webpack@19.2.1(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(webpack@5.97.1):
-    dependencies:
-      acorn-loose: 8.4.0
-      neo-async: 2.6.2
-      react: 19.2.1
-      react-dom: 19.2.1(react@19.2.1)
-      webpack: 5.97.1
-      webpack-sources: 3.3.3
-
-  react-server-dom-webpack@19.2.3(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(webpack@5.97.1):
-    dependencies:
-      acorn-loose: 8.4.0
-      neo-async: 2.6.2
-      react: 19.2.1
-      react-dom: 19.2.1(react@19.2.1)
-      webpack: 5.97.1
-      webpack-sources: 3.3.3
-
   react-server-dom-webpack@19.2.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(webpack@5.97.1(esbuild@0.19.12)):
     dependencies:
       acorn-loose: 8.4.0
@@ -20765,8 +20601,6 @@ snapshots:
       use-latest: 1.3.0(@types/react@19.1.2)(react@19.2.3)
     transitivePeerDependencies:
       - '@types/react'
-
-  react@19.2.1: {}
 
   react@19.2.3: {}
 
@@ -22313,24 +22147,6 @@ snapshots:
       tsx: 4.20.6
       yaml: 2.8.1
 
-  vite@7.2.6(@types/node@22.18.8)(jiti@2.6.1)(lightningcss@1.30.1)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1):
-    dependencies:
-      esbuild: 0.25.12
-      fdir: 6.5.0(picomatch@4.0.3)
-      picomatch: 4.0.3
-      postcss: 8.5.6
-      rollup: 4.53.3
-      tinyglobby: 0.2.15
-    optionalDependencies:
-      '@types/node': 22.18.8
-      fsevents: 2.3.3
-      jiti: 2.6.1
-      lightningcss: 1.30.1
-      sugarss: 5.0.1(postcss@8.5.6)
-      terser: 5.44.1
-      tsx: 4.20.6
-      yaml: 2.8.1
-
   vite@7.3.0(@types/node@22.18.8)(jiti@2.6.1)(lightningcss@1.30.1)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1):
     dependencies:
       esbuild: 0.27.2
@@ -22790,23 +22606,6 @@ snapshots:
       workerd: 1.20251202.0
     optionalDependencies:
       '@cloudflare/workers-types': 4.20250924.0
-      fsevents: 2.3.3
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-
-  wrangler@4.52.1(@cloudflare/workers-types@4.20251202.0):
-    dependencies:
-      '@cloudflare/kv-asset-handler': 0.4.1
-      '@cloudflare/unenv-preset': 2.7.12(unenv@2.0.0-rc.24)(workerd@1.20251202.0)
-      blake3-wasm: 2.1.5
-      esbuild: 0.27.0
-      miniflare: 4.20251202.0
-      path-to-regexp: 6.3.0
-      unenv: 2.0.0-rc.24
-      workerd: 1.20251202.0
-    optionalDependencies:
-      '@cloudflare/workers-types': 4.20251202.0
       fsevents: 2.3.3
     transitivePeerDependencies:
       - bufferutil
