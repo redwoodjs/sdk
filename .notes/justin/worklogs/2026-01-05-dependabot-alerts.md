@@ -41,16 +41,16 @@ Resolves multiple security alerts reported by Dependabot by applying targeted ov
 ### Changes
 
 - Added `pnpm.overrides` to `package.json` for the following packages to force patched versions:
-    - `@modelcontextprotocol/sdk` (DNS rebinding)
-    - `body-parser` (DoS)
-    - `esbuild` (Dev server exposure)
-    - `glob` (Command injection)
-    - `js-yaml` (Prototype pollution)
-    - `mdast-util-to-hast` (XSS)
-    - `qs` (DoS)
-    - `tar`, `tar-fs` (Symlink/Race condition issues)
-    - `tmp` (Symlink arbitrary write)
-    - `vite` (Windows backslash bypass)
+    - `@modelcontextprotocol/sdk` ([GHSA-w48q-cv73-mx4w](https://github.com/advisories/GHSA-w48q-cv73-mx4w))
+    - `body-parser` ([GHSA-wqch-xfxh-vrr4](https://github.com/advisories/GHSA-wqch-xfxh-vrr4))
+    - `esbuild` ([GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99))
+    - `glob` ([GHSA-5j98-mcp5-4vw2](https://github.com/advisories/GHSA-5j98-mcp5-4vw2))
+    - `js-yaml` ([GHSA-mh29-5h37-fv8m](https://github.com/advisories/GHSA-mh29-5h37-fv8m))
+    - `mdast-util-to-hast` ([GHSA-4fh9-h7wg-q85m](https://github.com/advisories/GHSA-4fh9-h7wg-q85m))
+    - `qs` ([GHSA-6rw7-vpxm-498p](https://github.com/advisories/GHSA-6rw7-vpxm-498p))
+    - `tar`, `tar-fs` ([GHSA-29xp-372q-xqph](https://github.com/advisories/GHSA-29xp-372q-xqph), [GHSA-vj76-c3g6-qr5v](https://github.com/advisories/GHSA-vj76-c3g6-qr5v))
+    - `tmp` ([GHSA-52f5-9888-hmc6](https://github.com/advisories/GHSA-52f5-9888-hmc6))
+    - `vite` ([GHSA-93m4-6634-74q7](https://github.com/advisories/GHSA-93m4-6634-74q7))
 - Refreshed `pnpm-lock.yaml` to apply these resolutions.
 - Added `.github/dependabot.yml` configured with `open-pull-requests-limit: 0` to enable the configuration required for Dependabot while preventing scheduled version-update PRs (relying on repo settings for security PRs).
 
