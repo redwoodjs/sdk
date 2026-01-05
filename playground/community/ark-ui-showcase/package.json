@@ -24,9 +24,9 @@
   "dependencies": {
     "@ark-ui/react": "^5.29.1",
     "lucide-react": "^0.562.0",
-    "react": "19.2.1",
-    "react-dom": "19.2.1",
-    "react-server-dom-webpack": "19.2.1",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-server-dom-webpack": "19.2.3",
     "rwsdk": "workspace:*"
   },
   "devDependencies": {
