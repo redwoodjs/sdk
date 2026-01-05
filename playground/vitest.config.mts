@@ -14,7 +14,7 @@ export default defineConfig({
     dangerouslyIgnoreUnhandledErrors: true,
     globalSetup: "./globalSetup.mts",
     include: ["**/__tests__/**/*.test.mts"],
-    exclude: ["**/node_modules/**", "**/dist/**"],
+    exclude: ["**/node_modules/**", "**/dist/**", "**/community/**"],
     testTimeout: 15 * 60 * 1000,
     hookTimeout: 15 * 60 * 1000,
     pool: "threads",

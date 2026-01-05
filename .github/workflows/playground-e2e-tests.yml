@@ -9,6 +9,7 @@ on:
       - ".notes/**"
       - "*.md"
       - "src/**/*.test.*"
+      - "playground/community/**"
   pull_request_target:
     types: [opened, synchronize, reopened]
     paths-ignore:
@@ -16,6 +17,7 @@ on:
       - ".notes/**"
       - "*.md"
       - "src/**/*.test.*"
+      - "playground/community/**"
   workflow_dispatch:
     inputs:
       ref:

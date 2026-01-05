@@ -4,6 +4,24 @@ This document provides context on contributing to the SDK.
 
 For context on how the system works, check out the [architecture documents](./docs/architecture/).
 
+## Policies
+
+### Contributor responsibilities
+
+You are responsible for validating the correctness of your code. Run relevant tests locally before opening a pull request. This applies to all contributions, including those assisted by AI.
+
+In the pull request description, specify the commands you ran to verify your changes (for example: `pnpm test:e2e -- playground/hello-world/__tests__/e2e.test.mts`).
+
+### Playground examples
+ 
+When adding or modifying playground examples, choose the right location based on your goal:
+ 
+- **Use `playground/` for official SDK tests.**
+  These projects verify specific SDK features in isolation and serve as our primary E2E test suite. Keep them minimal. If you add or change behaviour here, you **must** include E2E tests covering the change. CI runs these tests on every commit.
+ 
+- **Use `playground/community/` for showcases and demos.**
+  These projects demonstrate how the SDK works with other libraries or in larger applications. They can be extensive and do not require E2E tests. Note that these are excluded from CI and may not be actively maintained by the core team.
+
 ## Getting Started
 
 1.  Make sure you have [Node.js](https://nodejs.org) (>=22) installed.
@@ -73,7 +91,7 @@ npx rwsync --watch "npm run dev"
 
 ### Creating Playground Examples
 
-When creating a new playground example, it's helpful to start by copying the `hello-world` example:
+When creating a playground example, it's helpful to start by copying the `hello-world` example:
 
 ```sh
 cp -r playground/hello-world playground/my-new-example
@@ -81,7 +99,7 @@ cd playground/my-new-example
 # Update package.json name and other project-specific details
 ```
 
-Each playground example should include an `__tests__` directory with end-to-end tests. See the [End-to-End Tests (Playground)](#end-to-end-tests-playground) section for more details.
+Each official playground example should include an `__tests__` directory with end-to-end tests. See the [End-to-End Tests (Playground)](#end-to-end-tests-playground) section for more details.
 
 ## Debugging the Vite Plugin
 
