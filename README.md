@@ -167,5 +167,10 @@ If this project saves you time or sparks ideas, please [⭐ star the repo](https
 
 This is a monorepo. To contribute or explore packages:
 
-- Fix bugs or propose features
 - Join our community on [Discord](https://discord.gg/redwoodjs)
+- Check out the [Contributing Guide](./CONTRIBUTING.md) for how to get started.
+
+**Policy docs:**
+- [Contributing](./CONTRIBUTING.md)
+- [Support & Versioning](./SUPPORT.md)
+- [Security Policy](./SECURITY.md)
