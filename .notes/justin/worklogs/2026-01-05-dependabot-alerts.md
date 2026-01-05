@@ -30,3 +30,31 @@
 - Added `.github/dependabot.yml` with `open-pull-requests-limit: 0` so scheduled version update PRs are suppressed. Security update PRs are handled by the GitHub setting.
 
 
+## PR Title & Description
+
+**Title:** chore: resolve dependabot alerts and configure security-only updates
+
+**Description:**
+
+Resolves multiple security alerts reported by Dependabot by applying targeted overrides and ensuring the repo is configured for security updates.
+
+### Changes
+
+- Added `pnpm.overrides` to `package.json` for the following packages to force patched versions:
+    - `@modelcontextprotocol/sdk` (DNS rebinding)
+    - `body-parser` (DoS)
+    - `esbuild` (Dev server exposure)
+    - `glob` (Command injection)
+    - `js-yaml` (Prototype pollution)
+    - `mdast-util-to-hast` (XSS)
+    - `qs` (DoS)
+    - `tar`, `tar-fs` (Symlink/Race condition issues)
+    - `tmp` (Symlink arbitrary write)
+    - `vite` (Windows backslash bypass)
+- Refreshed `pnpm-lock.yaml` to apply these resolutions.
+- Added `.github/dependabot.yml` configured with `open-pull-requests-limit: 0` to enable the configuration required for Dependabot while preventing scheduled version-update PRs (relying on repo settings for security PRs).
+
+### Verification
+
+- `pnpm audit` is clean (0 vulnerabilities).
+- `pnpm check` (build + typecheck) passes.
