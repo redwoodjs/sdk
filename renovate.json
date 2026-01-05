@@ -25,21 +25,21 @@
       "description": "Group infrastructure dependencies (Actions, Docker, Node.js, pnpm).",
       "matchManagers": ["github-actions", "dockerfile", "nodenv"],
       "groupName": "docs-and-infra-deps",
-      "schedule": ["at 00:00 on sunday"]
+      "schedule": ["on sunday"]
     },
     {
       "description": "Group pnpm version from root package.json with other infra deps",
       "matchFileNames": ["package.json"],
       "matchPackageNames": ["pnpm"],
       "groupName": "docs-and-infra-deps",
-      "schedule": ["at 00:00 on sunday"]
+      "schedule": ["on sunday"]
     },
     {
       "description": "Group all SDK internal dependencies into a single weekly PR.",
       "matchFileNames": ["sdk/package.json"],
       "excludePackageNames": ["vite"],
       "groupName": "sdk-internal-deps",
-      "schedule": ["at 00:00 on sunday"]
+      "schedule": ["on sunday"]
     },
     {
       "description": "Group all starter application dependencies into a single weekly PR.",
@@ -54,7 +54,7 @@
         "react-server-dom-webpack"
       ],
       "groupName": "starter-deps",
-      "schedule": ["at 00:00 on sunday"]
+      "schedule": ["on sunday"]
     },
     {
       "description": "Update non-React SDK peer dependencies in starter, playground, and addon projects as soon as they are available.",
@@ -110,14 +110,14 @@
       "description": "Group dependencies for the docs site.",
       "matchFileNames": ["docs/package.json"],
       "groupName": "docs-and-infra-deps",
-      "schedule": ["at 00:00 on sunday"]
+      "schedule": ["on sunday"]
     },
     {
       "description": "Group dependencies from the root package.json.",
       "matchFileNames": ["package.json"],
       "excludePackageNames": ["pnpm"],
       "groupName": "docs-and-infra-deps",
-      "schedule": ["at 00:00 on sunday"]
+      "schedule": ["on sunday"]
     },
     {
       "description": "Group playground and addon non-peer dependencies with other infrastructure dependencies.",
@@ -135,7 +135,7 @@
         "react-server-dom-webpack"
       ],
       "groupName": "docs-and-infra-deps",
-      "schedule": ["at 00:00 on sunday"]
+      "schedule": ["on sunday"]
     }
   ],
   "prHeader": " chore(deps): {{{prTitle}}}",
