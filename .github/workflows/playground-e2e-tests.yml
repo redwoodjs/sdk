@@ -133,7 +133,7 @@ jobs:
           exit 1
 
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha || github.event.inputs.ref || github.ref }}
 
@@ -141,9 +141,9 @@ jobs:
         run: corepack enable
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
           cache: "pnpm"
 
       - name: Install dependencies
@@ -155,7 +155,7 @@ jobs:
           pnpm build
 
       - name: Setup E2E Cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .tmp/rwsdk-e2e/rwsdk-e2e-cache
           key: ${{ runner.os }}-${{ matrix.package-manager }}-e2e-deps-${{ hashFiles('playground/**/package.json', 'playground/**/pnpm-lock.yaml', 'playground/**/yarn.lock', 'playground/**/package-lock.json') }}
@@ -169,7 +169,7 @@ jobs:
           pnpm test:e2e
 
       - name: Upload playground artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: playground-e2e-dev-artifacts-${{ matrix.os }}-${{ matrix.package-manager }}
@@ -222,7 +222,7 @@ jobs:
           exit 1
 
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha || github.event.inputs.ref || github.ref }}
 
@@ -230,9 +230,9 @@ jobs:
         run: corepack enable
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
           cache: "pnpm"
 
       - name: Install dependencies
@@ -244,7 +244,7 @@ jobs:
           pnpm build
 
       - name: Setup E2E Cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .tmp/rwsdk-e2e/rwsdk-e2e-cache
           key: ${{ runner.os }}-${{ matrix.package-manager }}-e2e-deps-${{ hashFiles('playground/**/package.json', 'playground/**/pnpm-lock.yaml', 'playground/**/yarn.lock', 'playground/**/package-lock.json') }}
@@ -258,7 +258,7 @@ jobs:
           pnpm test:e2e
 
       - name: Upload playground artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: playground-e2e-deploy-artifacts-${{ matrix.os }}-${{ matrix.package-manager }}
