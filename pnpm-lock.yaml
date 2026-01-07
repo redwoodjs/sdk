@@ -302,6 +302,9 @@ importers:
       rwsdk:
         specifier: workspace:*
         version: link:../../sdk
+      zod:
+        specifier: ^4.1.11
+        version: 4.3.5
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.17.1

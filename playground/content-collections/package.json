@@ -28,7 +28,8 @@
     "react-server-dom-webpack": "19.2.3",
     "@content-collections/core": "^0.13.0",
     "@content-collections/markdown": "^0.1.4",
-    "@content-collections/vite": "^0.2.7"
+    "@content-collections/vite": "^0.2.7",
+    "zod": "^4.1.11"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.17.1",

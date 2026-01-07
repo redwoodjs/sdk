@@ -66,3 +66,13 @@ This is a packaging bug in the dependency. When our ESM-based Astro build tries 
 After reviewing the dependency's repository and observing an unstable versioning history (`1.0.0` then `0.1.0`), the decision was made to revert to the last known stable version to ensure stability and avoid further issues. The `pnpm patch` solution was considered but ultimately rejected in favor of using a stable version.
 
 The `@fujocoded/expressive-code-output` package has been downgraded to `0.0.1`.
+
+## Attempt: Playground E2E failure - content-collections schema
+
+After the CI workflow fixes, the `Playground E2E Tests` workflow was still failing.
+
+The failing project was `playground/content-collections`. The dev server failed to start with:
+
+- RetiredFeatureError: The use of a function as a schema is retired.
+
+The config in `playground/content-collections/content-collections.ts` used the retired `schema: (z) => ({ ... })` form. I updated it to use a direct schema object via zod, and added `zod` as a dependency for that playground project.
