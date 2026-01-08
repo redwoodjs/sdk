@@ -76,3 +76,11 @@ The failing project was `playground/content-collections`. The dev server failed 
 - RetiredFeatureError: The use of a function as a schema is retired.
 
 The config in `playground/content-collections/content-collections.ts` used the retired `schema: (z) => ({ ... })` form. I updated it to use a direct schema object via zod, and added `zod` as a dependency for that playground project.
+
+## Attempt: Playground deploy failure - release command exit code 1
+
+After fixing the content-collections schema issue, `Playground E2E Tests (Dev)` passed, but `Playground E2E Tests (Deploy)` still failed.
+
+The failure is reported as `Release command failed with exit code 1`, but the CI logs do not include the underlying output from the deploy command.
+
+I updated the test harness release helper so that when the release command exits non-zero it includes a tail of stdout and stderr in the thrown error. This should make the next CI run show the actual reason the deploy failed (for example an interactive prompt mismatch or a wrangler error).

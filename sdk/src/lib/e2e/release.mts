@@ -467,10 +467,13 @@ export async function runRelease(
       // Add more contextual information about the error
       let errorMessage = `Release command failed with exit code ${result.code}`;
 
+      const stdout = result.stdout?.trim() ? result.stdout : "";
+      const stderr = result.stderr?.trim() ? result.stderr : "";
+
       // Add stderr output to the error message if available
-      if (result.stderr && result.stderr.trim().length > 0) {
+      if (stderr) {
         // Extract the most relevant part of the error message
-        const errorLines = result.stderr
+        const errorLines = stderr
           .split("\n")
           .filter(
             (line) =>
@@ -483,6 +486,22 @@ export async function runRelease(
 
         if (errorLines) {
           errorMessage += `\nError details: ${errorLines}`;
+        }
+      }
+
+      // Also include some stdout context. In some cases (e.g. interactive prompts or
+      // cancellations) the useful output is only printed to stdout.
+      if (stdout) {
+        const stdoutTail = stdout.split("\n").slice(-40).join("\n").trim();
+        if (stdoutTail) {
+          errorMessage += `\n\nstdout (tail):\n${stdoutTail}`;
+        }
+      }
+
+      if (stderr) {
+        const stderrTail = stderr.split("\n").slice(-40).join("\n").trim();
+        if (stderrTail) {
+          errorMessage += `\n\nstderr (tail):\n${stderrTail}`;
         }
       }
 
