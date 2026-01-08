@@ -27,7 +27,7 @@
     "eslint": "^9.5.0",
     "expect-type": "^1.2.2",
     "knip": "~5.64.0",
-    "pnpm": "^10.0.0",
+    "pnpm": "^10.27.0",
     "prettier": "^3.3.2",
     "prettier-plugin-organize-imports": "^4.3.0",
     "tsx": "^4.15.7",
