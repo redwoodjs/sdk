@@ -527,7 +527,7 @@ This section outlines the strategy for managing dependencies to maintain stabili
 
 ### Dependency Categories and Update Cadence
 
-#### 1. Peer Dependencies (`starter-peer-deps`)
+#### 1. Critical Dependencies (`critical-deps`)
 
 -   **What**: The most critical dependencies (`wrangler`, `react`, `vite`, etc.) that are defined as `peerDependencies` in the SDK and tested in the `starters/*`, `playground/*`, and `addons/*` projects.
 -   **When**: As Soon As Possible (ASAP). Renovate creates a PR immediately when a new version is available.
@@ -538,7 +538,7 @@ The starters intentionally use `canary` versions of React. This is the official 
 
 To manage these potentially unstable versions, Renovate is specifically configured to track React's `next` distribution tag on npm. This provides a more reliable signal for the latest available canary version than tracking the `canary` tag directly, which can be more volatile.
 
-#### 2. All Other Dependencies (`all-other-deps`)
+#### 2. Regular Dependencies (`regular-deps`)
 
 -   **What**: All other dependencies, including the SDK's internal dependencies, starter application dependencies, documentation, and infrastructure tools (pnpm, GitHub Actions, etc.).
 -   **When**: Weekly, in a single grouped pull request.

@@ -8,7 +8,7 @@
   "packageRules": [
     {
       "description": "Group 1: Peer Dependencies (React, Cloudflare, Vite) - Critical updates that impact users.",
-      "groupName": "starter-peer-deps",
+      "groupName": "critical-deps",
       "prPriority": 1,
       "matchPackageNames": [
         "react",
@@ -23,11 +23,9 @@
     },
     {
       "description": "Group 2: Everything else - Internal tools, dev dependencies, infra, docs, etc.",
-      "groupName": "all-other-deps",
+      "groupName": "regular-deps",
       "schedule": ["every weekend"],
-      "matchPackageNames": [
-        "*"
-      ],
+      "matchPackageNames": ["*"],
       "excludePackageNames": [
         "react",
         "react-dom",
