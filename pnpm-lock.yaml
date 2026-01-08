@@ -282,14 +282,14 @@ importers:
   playground/content-collections:
     dependencies:
       '@content-collections/core':
-        specifier: 0.13.0
-        version: 0.13.0(typescript@5.9.3)
+        specifier: 0.9.1
+        version: 0.9.1(typescript@5.9.3)
       '@content-collections/markdown':
         specifier: ^0.1.4
-        version: 0.1.4(@content-collections/core@0.13.0(typescript@5.9.3))
+        version: 0.1.4(@content-collections/core@0.9.1(typescript@5.9.3))
       '@content-collections/vite':
         specifier: 0.2.7
-        version: 0.2.7(@content-collections/core@0.13.0(typescript@5.9.3))(vite@7.3.0(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+        version: 0.2.7(@content-collections/core@0.9.1(typescript@5.9.3))(vite@7.3.0(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       react:
         specifier: 19.2.3
         version: 19.2.3
@@ -2324,8 +2324,8 @@ packages:
   '@cloudflare/workers-types@4.20260103.0':
     resolution: {integrity: sha512-jANmoGpJcXARnwlkvrQOeWyjYD1quTfHcs+++Z544XRHOSfLc4XSlts7snIhbiIGgA5bo66zDhraF+9lKUr2hw==}
 
-  '@content-collections/core@0.13.0':
-    resolution: {integrity: sha512-AWU06OLQ8N6Ma2ICLOCDqEaRZZHidmbXzKDTEtPh9JOiP6S6LBUqvBarWopeeqs3l4p830kCywFJ3rPv9rOPWA==}
+  '@content-collections/core@0.9.1':
+    resolution: {integrity: sha512-8IJBr8EDBm181WDjteZh8pLJD95B5at/HLofhrWVyqi5lSsDO1ajJxGNwrdprbLnZ2fKHjTX1vjUU1f3YIG6Cw==}
     peerDependencies:
       typescript: ^5.0.2
 
@@ -3628,6 +3628,88 @@ packages:
 
   '@pandacss/is-valid-prop@1.8.0':
     resolution: {integrity: sha512-ni3nGvk7K7OwvS5QWljnPgLaNhfcqFJnCYQxyEgUBXcAd/hEbwMhXjfuL/VFczWPERJITJdi1FB/giau3pF+DQ==}
+
+  '@parcel/watcher-android-arm64@2.5.1':
+    resolution: {integrity: sha512-KF8+j9nNbUN8vzOFDpRMsaKBHZ/mcjEjMToVMJOhTozkDonQFFrRcfdLWn6yWKCmJKmdVxSgHiYvTCef4/qcBA==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [arm64]
+    os: [android]
+
+  '@parcel/watcher-darwin-arm64@2.5.1':
+    resolution: {integrity: sha512-eAzPv5osDmZyBhou8PoF4i6RQXAfeKL9tjb3QzYuccXFMQU0ruIc/POh30ePnaOyD1UXdlKguHBmsTs53tVoPw==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@parcel/watcher-darwin-x64@2.5.1':
+    resolution: {integrity: sha512-1ZXDthrnNmwv10A0/3AJNZ9JGlzrF82i3gNQcWOzd7nJ8aj+ILyW1MTxVk35Db0u91oD5Nlk9MBiujMlwmeXZg==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [x64]
+    os: [darwin]
+
+  '@parcel/watcher-freebsd-x64@2.5.1':
+    resolution: {integrity: sha512-SI4eljM7Flp9yPuKi8W0ird8TI/JK6CSxju3NojVI6BjHsTyK7zxA9urjVjEKJ5MBYC+bLmMcbAWlZ+rFkLpJQ==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [x64]
+    os: [freebsd]
+
+  '@parcel/watcher-linux-arm-glibc@2.5.1':
+    resolution: {integrity: sha512-RCdZlEyTs8geyBkkcnPWvtXLY44BCeZKmGYRtSgtwwnHR4dxfHRG3gR99XdMEdQ7KeiDdasJwwvNSF5jKtDwdA==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [arm]
+    os: [linux]
+
+  '@parcel/watcher-linux-arm-musl@2.5.1':
+    resolution: {integrity: sha512-6E+m/Mm1t1yhB8X412stiKFG3XykmgdIOqhjWj+VL8oHkKABfu/gjFj8DvLrYVHSBNC+/u5PeNrujiSQ1zwd1Q==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [arm]
+    os: [linux]
+
+  '@parcel/watcher-linux-arm64-glibc@2.5.1':
+    resolution: {integrity: sha512-LrGp+f02yU3BN9A+DGuY3v3bmnFUggAITBGriZHUREfNEzZh/GO06FF5u2kx8x+GBEUYfyTGamol4j3m9ANe8w==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [arm64]
+    os: [linux]
+
+  '@parcel/watcher-linux-arm64-musl@2.5.1':
+    resolution: {integrity: sha512-cFOjABi92pMYRXS7AcQv9/M1YuKRw8SZniCDw0ssQb/noPkRzA+HBDkwmyOJYp5wXcsTrhxO0zq1U11cK9jsFg==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [arm64]
+    os: [linux]
+
+  '@parcel/watcher-linux-x64-glibc@2.5.1':
+    resolution: {integrity: sha512-GcESn8NZySmfwlTsIur+49yDqSny2IhPeZfXunQi48DMugKeZ7uy1FX83pO0X22sHntJ4Ub+9k34XQCX+oHt2A==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [x64]
+    os: [linux]
+
+  '@parcel/watcher-linux-x64-musl@2.5.1':
+    resolution: {integrity: sha512-n0E2EQbatQ3bXhcH2D1XIAANAcTZkQICBPVaxMeaCVBtOpBZpWJuf7LwyWPSBDITb7In8mqQgJ7gH8CILCURXg==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [x64]
+    os: [linux]
+
+  '@parcel/watcher-win32-arm64@2.5.1':
+    resolution: {integrity: sha512-RFzklRvmc3PkjKjry3hLF9wD7ppR4AKcWNzH7kXR7GUe0Igb3Nz8fyPwtZCSquGrhU5HhUNDr/mKBqj7tqA2Vw==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [arm64]
+    os: [win32]
+
+  '@parcel/watcher-win32-ia32@2.5.1':
+    resolution: {integrity: sha512-c2KkcVN+NJmuA7CGlaGD1qJh1cLfDnQsHjE89E60vUEMlqduHGCdCLJCID5geFVM0dOtA3ZiIO8BoEQmzQVfpQ==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [ia32]
+    os: [win32]
+
+  '@parcel/watcher-win32-x64@2.5.1':
+    resolution: {integrity: sha512-9lHBdJITeNR++EvSQVUcaZoWupyHfXe1jZvGZ06O/5MflPcuPLtEphScIBL+AiCWBO46tDSHzWyD0uDmmZqsgA==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [x64]
+    os: [win32]
+
+  '@parcel/watcher@2.5.1':
+    resolution: {integrity: sha512-dfUnCxiN9H4ap84DvD2ubjw+3vUNpstxa0TneY/Paat8a3R4uQZDLSvWjmznAY/DoahqTHl9V46HF/Zs3F29pg==}
+    engines: {node: '>= 10.0.0'}
 
   '@parse5/tools@0.7.0':
     resolution: {integrity: sha512-JDvrGhc8kYBq7/SM4obJkpgwWo6pRjF/fo9CCaiJyVOkDf203Ciq2UF6TjzCFXKs7Q/zS2sS4deyBx0XzRvh9Q==}
@@ -6656,6 +6738,11 @@ packages:
     resolution: {integrity: sha512-y+8xyqdGLL+6sh0tVeHcfP/QDd8gUgbasolJJpY7NgeQGSZ739bDtSiaiDgtoicy+mtYB81dKLxO9xRhCyIB3A==}
     engines: {node: '>=12.20'}
 
+  detect-libc@1.0.3:
+    resolution: {integrity: sha512-pGjwhsmsp4kL2RTz08wcOlGN83otlqHeD/Z5T8GXZB+/YcpQ/dgo+lbU8ZsGxV0HIvqqxo9l7mqYwyYMD9bKDg==}
+    engines: {node: '>=0.10'}
+    hasBin: true
+
   detect-libc@2.1.2:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
     engines: {node: '>=8'}
@@ -8656,6 +8743,9 @@ packages:
 
   nlcst-to-string@4.0.0:
     resolution: {integrity: sha512-YKLBCcUYKAg0FNlOBT6aI91qFmSiFKiluk655WzPF+DDMA02qIyy8uiRqI8QXtcFpEvll12LpL5MXqEmAZ+dcA==}
+
+  node-addon-api@7.1.1:
+    resolution: {integrity: sha512-5m3bsyrjFWE1xf7nz7YXdN4udnVtXK6/Yfgn5qnahL6bCkf2yKt4k3nuTKAtT4r3IG8JNR2ncsIMdZuAzJjHQQ==}
 
   node-domexception@1.0.0:
     resolution: {integrity: sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==}
@@ -11674,11 +11764,11 @@ snapshots:
 
   '@cloudflare/workers-types@4.20260103.0': {}
 
-  '@content-collections/core@0.13.0(typescript@5.9.3)':
+  '@content-collections/core@0.9.1(typescript@5.9.3)':
     dependencies:
+      '@parcel/watcher': 2.5.1
       '@standard-schema/spec': 1.0.0
       camelcase: 8.0.0
-      chokidar: 4.0.3
       esbuild: 0.25.12
       gray-matter: 4.0.3
       p-limit: 6.2.0
@@ -11688,14 +11778,15 @@ snapshots:
       tinyglobby: 0.2.15
       typescript: 5.9.3
       yaml: 2.8.2
+      zod: 3.25.76
 
-  '@content-collections/integrations@0.3.0(@content-collections/core@0.13.0(typescript@5.9.3))':
+  '@content-collections/integrations@0.3.0(@content-collections/core@0.9.1(typescript@5.9.3))':
     dependencies:
-      '@content-collections/core': 0.13.0(typescript@5.9.3)
+      '@content-collections/core': 0.9.1(typescript@5.9.3)
 
-  '@content-collections/markdown@0.1.4(@content-collections/core@0.13.0(typescript@5.9.3))':
+  '@content-collections/markdown@0.1.4(@content-collections/core@0.9.1(typescript@5.9.3))':
     dependencies:
-      '@content-collections/core': 0.13.0(typescript@5.9.3)
+      '@content-collections/core': 0.9.1(typescript@5.9.3)
       rehype-raw: 7.0.0
       rehype-stringify: 10.0.1
       remark-parse: 11.0.0
@@ -11704,10 +11795,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@content-collections/vite@0.2.7(@content-collections/core@0.13.0(typescript@5.9.3))(vite@7.3.0(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))':
+  '@content-collections/vite@0.2.7(@content-collections/core@0.9.1(typescript@5.9.3))(vite@7.3.0(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
-      '@content-collections/core': 0.13.0(typescript@5.9.3)
-      '@content-collections/integrations': 0.3.0(@content-collections/core@0.13.0(typescript@5.9.3))
+      '@content-collections/core': 0.9.1(typescript@5.9.3)
+      '@content-collections/integrations': 0.3.0(@content-collections/core@0.9.1(typescript@5.9.3))
       vite: 7.3.0(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
 
   '@cspotcode/source-map-support@0.8.1':
@@ -12822,6 +12913,66 @@ snapshots:
     optional: true
 
   '@pandacss/is-valid-prop@1.8.0': {}
+
+  '@parcel/watcher-android-arm64@2.5.1':
+    optional: true
+
+  '@parcel/watcher-darwin-arm64@2.5.1':
+    optional: true
+
+  '@parcel/watcher-darwin-x64@2.5.1':
+    optional: true
+
+  '@parcel/watcher-freebsd-x64@2.5.1':
+    optional: true
+
+  '@parcel/watcher-linux-arm-glibc@2.5.1':
+    optional: true
+
+  '@parcel/watcher-linux-arm-musl@2.5.1':
+    optional: true
+
+  '@parcel/watcher-linux-arm64-glibc@2.5.1':
+    optional: true
+
+  '@parcel/watcher-linux-arm64-musl@2.5.1':
+    optional: true
+
+  '@parcel/watcher-linux-x64-glibc@2.5.1':
+    optional: true
+
+  '@parcel/watcher-linux-x64-musl@2.5.1':
+    optional: true
+
+  '@parcel/watcher-win32-arm64@2.5.1':
+    optional: true
+
+  '@parcel/watcher-win32-ia32@2.5.1':
+    optional: true
+
+  '@parcel/watcher-win32-x64@2.5.1':
+    optional: true
+
+  '@parcel/watcher@2.5.1':
+    dependencies:
+      detect-libc: 1.0.3
+      is-glob: 4.0.3
+      micromatch: 4.0.8
+      node-addon-api: 7.1.1
+    optionalDependencies:
+      '@parcel/watcher-android-arm64': 2.5.1
+      '@parcel/watcher-darwin-arm64': 2.5.1
+      '@parcel/watcher-darwin-x64': 2.5.1
+      '@parcel/watcher-freebsd-x64': 2.5.1
+      '@parcel/watcher-linux-arm-glibc': 2.5.1
+      '@parcel/watcher-linux-arm-musl': 2.5.1
+      '@parcel/watcher-linux-arm64-glibc': 2.5.1
+      '@parcel/watcher-linux-arm64-musl': 2.5.1
+      '@parcel/watcher-linux-x64-glibc': 2.5.1
+      '@parcel/watcher-linux-x64-musl': 2.5.1
+      '@parcel/watcher-win32-arm64': 2.5.1
+      '@parcel/watcher-win32-ia32': 2.5.1
+      '@parcel/watcher-win32-x64': 2.5.1
 
   '@parse5/tools@0.7.0(parse5@8.0.0)':
     dependencies:
@@ -16409,6 +16560,8 @@ snapshots:
 
   detect-indent@7.0.2: {}
 
+  detect-libc@1.0.3: {}
+
   detect-libc@2.1.2: {}
 
   detect-node-es@1.1.0: {}
@@ -18916,6 +19069,8 @@ snapshots:
   nlcst-to-string@4.0.0:
     dependencies:
       '@types/nlcst': 2.0.3
+
+  node-addon-api@7.1.1: {}
 
   node-domexception@1.0.0: {}
 
