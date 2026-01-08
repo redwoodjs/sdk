@@ -7,118 +7,41 @@
   },
   "packageRules": [
     {
-      "description": "Group infrastructure dependencies (Actions, Docker, Node.js, pnpm).",
-      "matchManagers": ["github-actions", "dockerfile", "nodenv"],
-      "groupName": "docs-and-infra-deps",
-      "schedule": ["every weekend"]
-    },
-    {
-      "description": "Group pnpm version from root package.json with other infra deps",
-      "matchFileNames": ["package.json"],
-      "matchPackageNames": ["pnpm"],
-      "groupName": "docs-and-infra-deps",
-      "schedule": ["every weekend"]
-    },
-    {
-      "description": "Group all SDK internal dependencies into a single weekly PR.",
-      "matchFileNames": ["sdk/package.json"],
-      "groupName": "sdk-internal-deps",
-      "schedule": ["every weekend"],
-      "matchPackageNames": ["!vite"]
-    },
-    {
-      "description": "Group all starter application dependencies into a single weekly PR.",
-      "matchFileNames": ["starter/package.json"],
-      "groupName": "starter-deps",
-      "schedule": ["every weekend"],
+      "description": "Group 1: Peer Dependencies (React, Cloudflare, Vite) - Critical updates that impact users.",
+      "groupName": "starter-peer-deps",
+      "prPriority": 1,
       "matchPackageNames": [
-        "!@cloudflare/vite-plugin",
-        "!@cloudflare/workers-types",
-        "!wrangler",
-        "!vite",
-        "!react",
-        "!react-dom",
-        "!react-server-dom-webpack"
-      ]
-    },
-    {
-      "description": "Update SDK peer dependencies in starter, playground, and addon projects as soon as they are available.",
-      "matchFileNames": [
-        "starter/package.json",
-        "playground/**/package.json",
-        "addons/**/package.json"
-      ],
-      "matchPackageNames": [
+        "react",
+        "react-dom",
+        "react-server-dom-webpack",
         "@cloudflare/vite-plugin",
         "@cloudflare/workers-types",
         "wrangler",
         "vite"
       ],
-      "groupName": "starter-peer-deps",
-      "prPriority": 1
-    },
-    {
-      "description": "Update React dependencies to stable versions only, preferring stable over canary.",
-      "matchFileNames": [
-        "starter/package.json",
-        "playground/**/package.json",
-        "addons/**/package.json"
-      ],
-      "matchPackageNames": ["react", "react-dom", "react-server-dom-webpack"],
-      "groupName": "starter-peer-deps",
-      "prPriority": 1,
       "ignoreUnstable": true
     },
     {
-      "description": "Group the SDK's vite dev dependency with starter peer deps to keep them in sync.",
-      "matchFileNames": ["sdk/package.json"],
-      "matchPackageNames": ["vite"],
-      "matchDepTypes": ["devDependencies"],
-      "groupName": "starter-peer-deps",
-      "prPriority": 1
-    },
-    {
-      "description": "Ignore non-React peerDependencies in the SDK to maintain a wide compatibility range.",
-      "matchFileNames": ["sdk/package.json"],
+      "description": "Group 2: Everything else - Internal tools, dev dependencies, infra, docs, etc.",
+      "groupName": "all-other-deps",
+      "schedule": ["every weekend"],
       "matchPackageNames": [
+        "*"
+      ],
+      "excludePackageNames": [
+        "react",
+        "react-dom",
+        "react-server-dom-webpack",
         "@cloudflare/vite-plugin",
         "@cloudflare/workers-types",
         "wrangler",
         "vite"
-      ],
-      "matchDepTypes": ["peerDependencies"],
-      "enabled": false
-    },
-    {
-      "description": "Group dependencies for the docs site.",
-      "matchFileNames": ["docs/package.json"],
-      "groupName": "docs-and-infra-deps",
-      "schedule": ["every weekend"]
-    },
-    {
-      "description": "Group dependencies from the root package.json.",
-      "matchFileNames": ["package.json"],
-      "groupName": "docs-and-infra-deps",
-      "schedule": ["every weekend"],
-      "matchPackageNames": ["!pnpm"]
-    },
-    {
-      "description": "Group playground and addon non-peer dependencies with other infrastructure dependencies.",
-      "matchFileNames": [
-        "playground/**/package.json",
-        "addons/**/package.json"
-      ],
-      "groupName": "docs-and-infra-deps",
-      "schedule": ["every weekend"],
-      "matchPackageNames": [
-        "!@cloudflare/vite-plugin",
-        "!@cloudflare/workers-types",
-        "!wrangler",
-        "!vite",
-        "!react",
-        "!react-dom",
-        "!react-server-dom-webpack"
       ]
+    },
+    {
+      "description": "Specific rule for React to ensure we track the 'next' tag for canary releases, as per existing policy.",
+      "matchPackageNames": ["react", "react-dom", "react-server-dom-webpack"],
+      "followTag": "next"
     }
   ],
   "prHeader": " chore(deps): {{{prTitle}}}",

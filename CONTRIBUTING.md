@@ -538,23 +538,11 @@ The starters intentionally use `canary` versions of React. This is the official 
 
 To manage these potentially unstable versions, Renovate is specifically configured to track React's `next` distribution tag on npm. This provides a more reliable signal for the latest available canary version than tracking the `canary` tag directly, which can be more volatile.
 
-#### 2. SDK Internal Dependencies (`sdk-internal-deps`)
+#### 2. All Other Dependencies (`all-other-deps`)
 
--   **What**: The SDK's own `dependencies` and `devDependencies` from `sdk/package.json`.
+-   **What**: All other dependencies, including the SDK's internal dependencies, starter application dependencies, documentation, and infrastructure tools (pnpm, GitHub Actions, etc.).
 -   **When**: Weekly, in a single grouped pull request.
--   **Why**: To keep the SDK's own build tooling and internal dependencies up-to-date in a predictable, non-disruptive manner.
-
-#### 3. Starter Application Dependencies (`starter-deps`)
-
--   **What**: All non-peer dependencies in the `starters/*` projects.
--   **When**: Weekly, in a single grouped pull request.
--   **Why**: To ensure our starter templates remain current with their own dependencies.
-
-#### 4. Repository, Docs, and Infrastructure Dependencies (`docs-and-infra-deps`)
-
--   **What**: A consolidated group for all remaining repository maintenance dependencies. This includes dependencies from the root `package.json`, `docs/package.json`, non-peer dependencies from `playground/*` and `addons/*` projects (such as `vitest`), GitHub Actions, Docker images, and the `.node-version` file.
--   **When**: Weekly, in a single grouped pull request.
--   **Why**: To bundle all miscellaneous tooling, documentation, and infrastructure updates into one convenient PR to reduce noise.
+-   **Why**: To reduce noise and bundle routine maintenance updates into a single, manageable PR.
 
 ### Using the Dependency Dashboard
 
