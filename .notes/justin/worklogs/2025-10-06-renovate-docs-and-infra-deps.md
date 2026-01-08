@@ -84,3 +84,11 @@ After fixing the content-collections schema issue, `Playground E2E Tests (Dev)` 
 The failure is reported as `Release command failed with exit code 1`, but the CI logs do not include the underlying output from the deploy command.
 
 I updated the test harness release helper so that when the release command exits non-zero it includes a tail of stdout and stderr in the thrown error. This should make the next CI run show the actual reason the deploy failed (for example an interactive prompt mismatch or a wrangler error).
+
+The next CI run showed the underlying error for content-collections (npm install in the tarball env):
+
+- [plugin: external-packages] __dirname is not defined
+
+This appears to be coming from `@content-collections/core` as resolved by npm for the `^0.13.0` range. Since the playground E2E suite intentionally runs installs with npm (not pnpm-lock.yaml), the exact version matters.
+
+I pinned `@content-collections/core` and `@content-collections/vite` to exact versions in the content-collections playground to avoid pulling a newer version that triggers this failure under npm.
