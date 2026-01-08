@@ -44,7 +44,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           # We need to fetch all history for semver to work correctly and to push changes.
           fetch-depth: 0
@@ -62,9 +62,9 @@ jobs:
         run: corepack enable
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
           cache: "pnpm"
 
       - name: Update npm
@@ -135,14 +135,14 @@ jobs:
 
       - name: Upload logs on failure
         if: failure() && steps.release_script.outputs.project-dir
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: smoke-test-failure-logs
           path: ${{ steps.release_script.outputs.project-dir }}
 
       - name: Upload smoke test artifacts
         if: always() && steps.release_script.outputs.project-dir
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: release-smoke-test-artifacts
           path: ${{ steps.release_script.outputs.project-dir }}/artifacts
