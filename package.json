@@ -48,7 +48,7 @@
       "tar-fs@3.1.0": "3.1.1",
       "tar@7.5.1": "7.5.2",
       "tmp@0.2.3": "0.2.5",
-      "vite@7.1.9": "7.3.0"
+      "vite@7.1.9": "7.3.1"
     },
     "onlyBuiltDependencies": [
       "@prisma/client",
