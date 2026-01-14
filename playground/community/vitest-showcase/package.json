@@ -1,0 +1,55 @@
+{
+  "name": "@redwoodjs/starter",
+  "version": "1.0.0",
+  "description": "A bare-bones RedwoodSDK starter",
+  "main": "index.js",
+  "type": "module",
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite dev",
+    "dev:init": "rw-scripts dev-init",
+    "preview": "vite preview",
+    "worker:run": "rw-scripts worker-run",
+    "clean": "npm run clean:vite",
+    "clean:vite": "rm -rf ./node_modules/.vite",
+    "release": "rw-scripts ensure-deploy-env && npm run clean && npm run build && wrangler deploy",
+    "generate": "rw-scripts ensure-env && wrangler types --include-runtime false",
+    "check": "npm run generate && npm run types",
+    "types": "tsc",
+    "test": "rm -rf ./node_modules/.vite && vitest"
+  },
+  "dependencies": {
+    "react": "19.3.0-canary-d6cae440-20260106",
+    "react-dom": "19.3.0-canary-d6cae440-20260106",
+    "react-server-dom-webpack": "19.3.0-canary-d6cae440-20260106",
+    "rwsdk": "1.0.0-beta.48"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.20.1",
+    "@cloudflare/workers-types": "4.20260111.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "~24.10.0",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-rsc": "0.4.16",
+    "@vitest/browser-playwright": "^4.0.17",
+    "msw": "^2.12.7",
+    "typescript": "5.9.3",
+    "vite": "7.3.1",
+    "vitest": "^4.0.17",
+    "vitest-plugin-rsc": "0.0.0-experimental-64e35ee-20250807",
+    "wrangler": "4.58.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "workerd"
+    ]
+  }
+}
