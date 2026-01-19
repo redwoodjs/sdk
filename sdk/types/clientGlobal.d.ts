@@ -4,9 +4,19 @@
 import { CallServerCallback } from "react-server-dom-webpack/client.browser";
 
 declare global {
-  var __rsc_callServer: CallServerCallback;
+  var __rsc_callServer: (
+    id: any,
+    args: any,
+    source?: "action" | "navigation" | "query",
+    method?: "GET" | "POST",
+  ) => Promise<any>;
   var __rw: {
-    callServer: CallServerCallback;
+    callServer: (
+      id: any,
+      args: any,
+      source?: "action" | "navigation" | "query",
+      method?: "GET" | "POST",
+    ) => Promise<any>;
     upgradeToRealtime: (options?: { key?: string }) => Promise<void>;
   };
 }

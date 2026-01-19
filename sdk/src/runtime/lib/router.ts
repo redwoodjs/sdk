@@ -463,6 +463,13 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
             requestInfo.rw.actionResult = await rscActionHandler(request);
           }
           actionHandled = true;
+
+          const isDataOnly = request.headers.get("x-rsc-data-only") === "true";
+          if (isDataOnly && requestInfo.rw.actionResult !== undefined) {
+            return new Response(JSON.stringify(requestInfo.rw.actionResult), {
+              headers: { "Content-Type": "application/json" },
+            });
+          }
         }
       };
 
@@ -495,7 +502,10 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
           if (!firstRouteDefinitionEncountered) {
             firstRouteDefinitionEncountered = true;
             try {
-              await handleAction();
+              const actionResponse = await handleAction();
+              if (actionResponse) {
+                return actionResponse;
+              }
             } catch (error) {
               return await executeExceptHandlers(error, currentRouteIndex);
             }
@@ -634,7 +644,10 @@ Route handlers must return one of:
         // We still need to handle a possible action if the app has no route definitions at all.
         if (!firstRouteDefinitionEncountered) {
           try {
-            await handleAction();
+            const actionResponse = await handleAction();
+            if (actionResponse) {
+              return actionResponse;
+            }
           } catch (error) {
             return await executeExceptHandlers(
               error,

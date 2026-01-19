@@ -79,11 +79,20 @@ export async function rscActionHandler(req: Request): Promise<unknown> {
   const url = new URL(req.url);
   const contentType = req.headers.get("content-type");
 
-  const data = contentType?.startsWith("multipart/form-data")
-    ? await req.formData()
-    : await req.text();
+  let args: unknown[] = [];
+  
+  if (req.method === "GET") {
+    const argsParam = url.searchParams.get("args");
+    if (argsParam) {
+      args = JSON.parse(argsParam);
+    }
+  } else {
+    const data = contentType?.startsWith("multipart/form-data")
+      ? await req.formData()
+      : await req.text();
 
-  const args = (await decodeReply(data, null)) as unknown[];
+    args = (await decodeReply(data, null)) as unknown[];
+  }
   const actionId = url.searchParams.get("__rsc_action_id");
 
   if (import.meta.env.VITE_IS_DEV_SERVER && actionId === "__rsc_hot_update") {
