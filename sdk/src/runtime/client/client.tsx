@@ -71,7 +71,9 @@ export const fetchTransport: Transport = (transportContext) => {
     } else {
       const headers = new Headers();
       // Add x-rsc-data-only header if we want to skip the React tree render on the server
-      headers.set("x-rsc-data-only", "true");
+      if (source === "query") {
+        headers.set("x-rsc-data-only", "true");
+      }
 
       if (method === "GET") {
         fetchPromise = fetch(url, {
@@ -102,7 +104,9 @@ export const fetchTransport: Transport = (transportContext) => {
         callServer: fetchCallServer,
       }) as Promise<RscActionResponse<Result>>;
 
-      transportContext.setRscPayload(streamData);
+      if (source === "navigation" || source === "action") {
+        transportContext.setRscPayload(streamData);
+      }
       const result = await streamData;
       const rawActionResult = (result as { actionResult: Result }).actionResult;
 
@@ -133,7 +137,9 @@ export const fetchTransport: Transport = (transportContext) => {
       callServer: fetchCallServer,
     }) as Promise<RscActionResponse<Result>>;
 
-    transportContext.setRscPayload(streamData);
+    if (source === "navigation" || source === "action") {
+      transportContext.setRscPayload(streamData);
+    }
     const result = await streamData;
     const rawActionResult = (result as { actionResult: Result }).actionResult;
 
