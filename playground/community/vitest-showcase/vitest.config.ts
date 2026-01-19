@@ -12,7 +12,7 @@ export default defineConfig({
     exclude: ["src/**/*.worker.test.{ts,tsx}"],
     browser: {
       enabled: true,
-      provider: playwright() as any,
+      provider: "playwright",
       screenshotFailures: false,
       instances: [{ browser: "chromium" }],
     },

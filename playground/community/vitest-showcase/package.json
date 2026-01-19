@@ -20,7 +20,9 @@
     "generate": "rw-scripts ensure-env && wrangler types --include-runtime false",
     "check": "npm run generate && npm run types",
     "types": "tsc",
-    "test": "rm -rf ./node_modules/.vite && vitest"
+    "test": "rm -rf ./node_modules/.vite && vitest",
+    "test:workers": "pnpm build && vitest -c ./vitest.workers.config.ts",
+    "test:watch": "vitest watch"
   },
   "dependencies": {
     "react": "19.3.0-canary-d6cae440-20260106",
@@ -29,19 +31,22 @@
     "rwsdk": "1.0.0-beta.48"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.20.1",
-    "@cloudflare/workers-types": "4.20260111.0",
-    "@testing-library/dom": "^10.4.1",
+    "@cloudflare/vite-plugin": "1.17.1",
+    "@cloudflare/vitest-pool-workers": "^0.12.1",
+    "@cloudflare/workers-types": "4.20260103.0",
+    "@testing-library/dom": "^10.4.0",
     "@testing-library/user-event": "^14.6.1",
-    "@types/node": "~24.10.0",
-    "@types/react": "19.2.7",
-    "@types/react-dom": "19.2.3",
+    "@types/node": "~24.5.2",
+    "@types/react": "19.1.2",
+    "@types/react-dom": "19.1.2",
     "@vitejs/plugin-rsc": "0.4.16",
-    "@vitest/browser-playwright": "^4.0.17",
-    "msw": "^2.12.7",
+    "@vitest/browser": "3.2.4",
+    "@vitest/ui": "^3.2.4",
+    "msw": "^2.10.4",
+    "playwright": "^1.54.1",
     "typescript": "5.9.3",
     "vite": "7.3.1",
-    "vitest": "^4.0.17",
+    "vitest": "3.2.4",
     "vitest-plugin-rsc": "0.0.0-experimental-64e35ee-20250807",
     "wrangler": "4.58.0"
   },
