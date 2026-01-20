@@ -2,19 +2,37 @@
 
 import { serverAction, serverQuery } from "rwsdk/worker";
 
-export const getGreeting = serverQuery(async (name: string) => {
-  return `Hello, ${name}! (from serverQuery GET)`;
-});
+const logger = async ({ request, args }: { request: Request; args: any[] }) => {
+  console.log(`[server-function] ${request.method} ${request.url} with args:`, args);
+};
 
-export const getGreetingPost = serverQuery(async (name: string) => {
-  return `Hello, ${name}! (from serverQuery POST)`;
-}, { method: "POST" });
+export const getGreeting = serverQuery([
+  logger,
+  async (name: string) => {
+    return `Hello, ${name}! (from serverQuery GET)`;
+  },
+]);
 
-export const updateName = serverAction(async (name: string) => {
-  console.log("Updating name to:", name);
-  return { success: true, newName: name };
-});
+export const getGreetingPost = serverQuery(
+  [
+    logger,
+    async (name: string) => {
+      return `Hello, ${name}! (from serverQuery POST)`;
+    },
+  ],
+  { method: "POST" },
+);
 
-export default serverAction(async () => {
-  return "Default action result";
-});
+export const updateName = serverAction([
+  logger,
+  async (name: string) => {
+    return `Greeting updated to: Hello, ${name}! (from serverAction POST)`;
+  },
+]);
+
+export default serverAction([
+  logger,
+  async () => {
+    return "Default action called!";
+  },
+]);

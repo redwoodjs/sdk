@@ -53,7 +53,7 @@ function createServerFunction<TArgs extends any[] = any[], TResult = any>(
 export function serverQuery<TArgs extends any[] = any[], TResult = any>(
   fnsOrFn:
     | ServerFunction<TArgs, TResult>
-    | (Interruptor<TArgs, TResult> | ServerFunction<TArgs, TResult>)[],
+    | [...Interruptor<TArgs, TResult>[], ServerFunction<TArgs, TResult>],
   options?: ServerFunctionOptions,
 ): WrappedServerFunction<TArgs, TResult> {
   let fns: Interruptor<TArgs, TResult>[] = [];
@@ -75,7 +75,7 @@ export function serverQuery<TArgs extends any[] = any[], TResult = any>(
 export function serverAction<TArgs extends any[] = any[], TResult = any>(
   fnsOrFn:
     | ServerFunction<TArgs, TResult>
-    | (Interruptor<TArgs, TResult> | ServerFunction<TArgs, TResult>)[],
+    | [...Interruptor<TArgs, TResult>[], ServerFunction<TArgs, TResult>],
   options?: ServerFunctionOptions,
 ): WrappedServerFunction<TArgs, TResult> {
   let fns: Interruptor<TArgs, TResult>[] = [];

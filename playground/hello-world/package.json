@@ -11,6 +11,8 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite dev",
+    "test:e2e": "pnpm -w test:e2e hello-world",
+    "test:e2e:dev": "RWSDK_SKIP_DEPLOY=1 pnpm test:e2e",
     "dev:init": "rw-scripts dev-init",
     "preview": "vite preview",
     "worker:run": "rw-scripts worker-run",

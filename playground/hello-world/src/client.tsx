@@ -1,7 +1,7 @@
 import { initClient } from "rwsdk/client";
 
 const redirectToError = () => {
-  //window.location.replace("/error", {});
+  window.location.href = "/error";
 };
 
 window.addEventListener("error", () => {
