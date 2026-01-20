@@ -133,7 +133,7 @@ We will wait for the `workers-sdk` overhaul to land.
 *   **State of Flux**: The `workers-sdk` ecosystem is undergoing major changes.
     *   `vitest-pool-workers` currently only supports Vitest < 4.
     *   A massive overhaul is in progress (PR #11632) to support Vitest 4+ and re-architect how environments are handled. This will likely remove the hard-coded "SSR" assumption that conflicts with our "Worker/RSC" model.
-*   **Conflicting Assumptions**: Current `vitest-pool-workers` code (e.g., `src/config/index.ts`) hardcodes `config.ssr.target = "webworker"`, reinforcing the SSR-only path which we are fighting against.
+*   **Conflicting Assumptions**: Current `vitest-pool-workers` code (e.g., `src/config/index.ts`) hardcodes assumptions about the environment being `ssr` (RedwoodSDK relies on "entry" env being `worker`), reinforcing the SSR-only path which we are fighting against.
 
 ### Decision: Hold Off
 We have decided to **stop the current investigation and hold off** on implementing native support.
