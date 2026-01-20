@@ -19,7 +19,8 @@
     "release": "rw-scripts ensure-deploy-env && npm run clean && npm run build && wrangler deploy",
     "generate": "rw-scripts ensure-env && wrangler types",
     "check": "npm run generate && npm run types",
-    "types": "tsc"
+    "types": "tsc",
+    "test": "vitest"
   },
   "dependencies": {
     "rwsdk": "workspace:*",
@@ -35,7 +36,7 @@
     "@types/react-dom": "19.2.3",
     "typescript": "5.9.3",
     "vite": "7.3.1",
-    "vitest": "^4.0.0",
+    "vitest": "3.2.4",
     "@cloudflare/vitest-pool-workers": "0.12.5",
     "wrangler": "4.58.0"
   },
