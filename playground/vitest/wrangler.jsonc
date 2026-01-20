@@ -14,7 +14,8 @@
 
   // Assets configuration
   "assets": {
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    "directory": "public"
   },
 
   // Observability settings
