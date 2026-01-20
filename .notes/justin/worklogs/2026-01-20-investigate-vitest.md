@@ -31,9 +31,21 @@ To reproduce the reported error ("'react-server' import condition needs to be us
     - [x] Add `@cloudflare/vitest-pool-workers` and `vitest` to `playground/vitest/package.json`.
     - [x] Create `playground/vitest/vitest.config.mts` configured to use the pool.
     - [x] Add a test case (e.g. `__tests__/worker.test.tsx`) that imports `rwsdk` (or uses `defineApp`) and tries to run.
-2.  **Verify Failure**:
+2.  [x] **Verify Failure**:
     - Run the test and confirm the `react-server` condition error.
 3.  **Investigate & Implement Native Support**:
     - Investigate why the `react-server` condition is missing in the pool environment.
     - Explore providing a custom environment or configuration within `rwsdk` to inject the condition.
     - Attempt to solve this within the SDK's existing tooling/hooks.
+
+## Achieved reproduction in playground/vitest
+
+To get the reproduction working with `vitest-pool-workers`, the following adjustments were necessary:
+- **Rename**: Renamed `vitest-repro` to `vitest`.
+- **Downgrade**: Reverted Vitest to `3.2.4` and `@cloudflare/vitest-pool-workers` to `0.12.5` to match Cloudflare documentation constraints (must be <= 3.2.x).
+- **Types**: Added `@cloudflare/vitest-pool-workers` to `tsconfig.json` types to avoid resolution errors in the test environment.
+- **Wrangler Config**: Fixed `wrangler.jsonc` by adding `directory: "public"` to the `assets` configuration, which is required when the `assets` key is present.
+
+The test now runs (`pnpm test` in the playground) and correctly reproduces the target error:
+`Error: RedwoodSDK: 'react-server' import condition needs to be used in this environment`
+
