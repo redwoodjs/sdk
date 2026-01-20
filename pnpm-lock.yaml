@@ -1573,7 +1573,7 @@ importers:
         version: 1.20.1(vite@7.3.1(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.1)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))(workerd@1.20260116.0)(wrangler@4.58.0(@cloudflare/workers-types@4.20260111.0))
       '@cloudflare/vitest-pool-workers':
         specifier: 0.12.5
-        version: 0.12.5(@cloudflare/workers-types@4.20260111.0)(@vitest/runner@4.0.16)(@vitest/snapshot@4.0.16)(vitest@4.0.16(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.1)(msw@2.11.3(@types/node@24.10.4)(typescript@5.9.3))(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+        version: 0.12.5(@cloudflare/workers-types@4.20260111.0)(@vitest/runner@4.0.16)(@vitest/snapshot@4.0.16)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.1)(msw@2.11.3(@types/node@24.10.4)(typescript@5.9.3))(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@cloudflare/workers-types':
         specifier: 4.20260111.0
         version: 4.20260111.0
@@ -1593,8 +1593,8 @@ importers:
         specifier: 7.3.1
         version: 7.3.1(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.1)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
       vitest:
-        specifier: ^4.0.0
-        version: 4.0.16(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.1)(msw@2.11.3(@types/node@24.10.4)(typescript@5.9.3))(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
+        specifier: 3.2.4
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.1)(msw@2.11.3(@types/node@24.10.4)(typescript@5.9.3))(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
       wrangler:
         specifier: 4.58.0
         version: 4.58.0(@cloudflare/workers-types@4.20260111.0)
@@ -10198,9 +10198,6 @@ packages:
   std-env@3.10.0:
     resolution: {integrity: sha512-5GS12FdOZNliM5mAOxFRg7Ir0pWz8MdpYm6AY6VPkGpbA7ZzmbzNcBJQ0GPvvyWgcY7QAhCgf9Uy89I03faLkg==}
 
-  std-env@3.9.0:
-    resolution: {integrity: sha512-UGvjygr6F6tpH7o2qyqR6QYpwraIjKSdtzyBdyytFOHmPZY917kwdwLG0RbOjWOnKmnm3PeHjaoLLMie7kPLQw==}
-
   stdin-discarder@0.2.2:
     resolution: {integrity: sha512-UhDfHmA92YAlNnCfhmq0VeNL5bDbiZGg7sZ2IvPsXubGkiNa9EC+tUTsjBRsYUAz87btI6/1wf4XoVvQ3uRnmQ==}
     engines: {node: '>=18'}
@@ -12046,14 +12043,14 @@ snapshots:
       - utf-8-validate
       - workerd
 
-  '@cloudflare/vitest-pool-workers@0.12.5(@cloudflare/workers-types@4.20260111.0)(@vitest/runner@4.0.16)(@vitest/snapshot@4.0.16)(vitest@4.0.16(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.1)(msw@2.11.3(@types/node@24.10.4)(typescript@5.9.3))(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))':
+  '@cloudflare/vitest-pool-workers@0.12.5(@cloudflare/workers-types@4.20260111.0)(@vitest/runner@4.0.16)(@vitest/snapshot@4.0.16)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.1)(msw@2.11.3(@types/node@24.10.4)(typescript@5.9.3))(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
       '@vitest/runner': 4.0.16
       '@vitest/snapshot': 4.0.16
       cjs-module-lexer: 1.4.3
       esbuild: 0.27.0
       miniflare: 4.20260116.0
-      vitest: 4.0.16(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.1)(msw@2.11.3(@types/node@24.10.4)(typescript@5.9.3))(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
+      vitest: 3.2.4(@types/debug@4.1.12)(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.1)(msw@2.11.3(@types/node@24.10.4)(typescript@5.9.3))(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
       wrangler: 4.59.3(@cloudflare/workers-types@4.20260111.0)
       zod: 3.25.76
     transitivePeerDependencies:
@@ -15497,7 +15494,7 @@ snapshots:
   '@vitest/snapshot@3.2.4':
     dependencies:
       '@vitest/pretty-format': 3.2.4
-      magic-string: 0.30.19
+      magic-string: 0.30.21
       pathe: 2.0.3
 
   '@vitest/snapshot@4.0.16':
@@ -21009,8 +21006,6 @@ snapshots:
 
   std-env@3.10.0: {}
 
-  std-env@3.9.0: {}
-
   stdin-discarder@0.2.2: {}
 
   stop-iteration-iterator@1.1.0:
@@ -21792,10 +21787,10 @@ snapshots:
       chai: 5.3.3
       debug: 4.4.3
       expect-type: 1.2.2
-      magic-string: 0.30.19
+      magic-string: 0.30.21
       pathe: 2.0.3
       picomatch: 4.0.3
-      std-env: 3.9.0
+      std-env: 3.10.0
       tinybench: 2.9.0
       tinyexec: 0.3.2
       tinyglobby: 0.2.15
