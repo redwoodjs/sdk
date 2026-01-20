@@ -32,10 +32,7 @@ To reproduce the reported error ("'react-server' import condition needs to be us
     - Add a test case (e.g. `__tests__/worker.test.tsx`) that imports `rwsdk` (or uses `defineApp`) and tries to run.
 2.  **Verify Failure**:
     - Run the test and confirm the `react-server` condition error.
-3.  **Investigate & Implement Native Support (Plan A)**:
+3.  **Investigate & Implement Native Support**:
     - Investigate why the `react-server` condition is missing in the pool environment.
     - Explore providing a custom environment or configuration within `rwsdk` to inject the condition.
     - Attempt to solve this within the SDK's existing tooling/hooks.
-4.  **Fallback (Plan B)**:
-    - If native support is blocked, investigate `vitest-plugin-rsc` as a stopgap.
-    - Document the setup for users.
