@@ -16,7 +16,7 @@ Users are encountering errors like `Error: RedwoodSDK: 'react-server' import con
 
 ## Assessed current state and defined plan
 
-The existing `playground/vitest-repro` exists but is currently a clone of `hello-world`. It is set up for E2E tests (`e2e.test.mts` using `rwsdk/e2e`), NOT for Vitest unit/integration tests with `vitest-pool-workers`. `package.json` in the repro does not have `@cloudflare/vitest-pool-workers` yet.
+The existing `playground/vitest` exists but is currently a clone of `hello-world`. It is set up for E2E tests (`e2e.test.mts` using `rwsdk/e2e`), NOT for Vitest unit/integration tests with `vitest-pool-workers`. `package.json` in the repro does not have `@cloudflare/vitest-pool-workers` yet.
 
 To reproduce the reported error ("'react-server' import condition needs to be used"), we need to configure Vitest to run *inside* the worker context using the pool.
 
@@ -27,10 +27,10 @@ To reproduce the reported error ("'react-server' import condition needs to be us
   - `vitest-plugin-rsc` is considered a Plan B that is **out of the scope of this investigation** if native support proves unfeasible in the short term.
 
 ### Next Steps
-1.  **Reproduction Setup**:
-    - Add `@cloudflare/vitest-pool-workers` and `vitest` to `playground/vitest-repro/package.json`.
-    - Create `playground/vitest-repro/vitest.config.mts` configured to use the pool.
-    - Add a test case (e.g. `__tests__/worker.test.tsx`) that imports `rwsdk` (or uses `defineApp`) and tries to run.
+1.  [x] **Reproduction Setup**:
+    - [x] Add `@cloudflare/vitest-pool-workers` and `vitest` to `playground/vitest/package.json`.
+    - [x] Create `playground/vitest/vitest.config.mts` configured to use the pool.
+    - [x] Add a test case (e.g. `__tests__/worker.test.tsx`) that imports `rwsdk` (or uses `defineApp`) and tries to run.
 2.  **Verify Failure**:
     - Run the test and confirm the `react-server` condition error.
 3.  **Investigate & Implement Native Support**:

@@ -1,5 +1,5 @@
 {
-  "name": "hello-world",
+  "name": "vitest",
   "version": "1.0.0",
   "description": "A bare-bones RedwoodSDK starter",
   "main": "index.js",
@@ -36,6 +36,7 @@
     "typescript": "5.9.3",
     "vite": "7.3.1",
     "vitest": "^4.0.0",
+    "@cloudflare/vitest-pool-workers": "1.2.22",
     "wrangler": "4.58.0"
   },
   "pnpm": {
