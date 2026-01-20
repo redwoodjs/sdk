@@ -49,3 +49,30 @@ To get the reproduction working with `vitest-pool-workers`, the following adjust
 The test now runs (`pnpm test` in the playground) and correctly reproduces the target error:
 `Error: RedwoodSDK: 'react-server' import condition needs to be used in this environment`
 
+
+## Investigated Vitest SSR vs RSC environment handling
+
+I've investigated why simply adding `resolve.conditions` failed and what this implies for our architecture.
+
+### Findings
+
+1.  **Vitest runs in "SSR" mode by default**: When running tests, Vitest (and `vitest-pool-workers`) treats the environment as "SSR" (Server-Side Rendering).
+2.  **Vite Config Resolution**: Vite's config resolution logic prioritizes `ssr.resolve.conditions` over top-level `resolve.conditions` when `ssr: true` (which is the case for Vitest). This explains why my initial `resolve.conditions` change did nothing. Adding it to `ssr.resolve.conditions` worked because that's where Vitest explicitly looks.
+3.  **Conflict with RSC Architecture**: This "SSR" default conflicts with our Hybrid RSC/SSR Architecture:
+    -   **Our `worker` environment**: Is configured for **RSC**. It explicitly includes `"react-server"`. It is the *primary* environment where user code (and tests) usually runs.
+    -   **Our `ssr` environment**: Is configured for **SSR**. It explicitly *excludes* `"react-server"` and uses standard React DOM server builds.
+    -   **The Problem**: Vitest forces us into a generic "SSR" bucket. By adding `"react-server"` to Vitest's `ssr.resolve`, we are effectively forcing Vitest's "SSR" environment to act like our "RSC" environment.
+
+### The `optimizeDeps` conflict
+
+Once we force the "SSR" environment to act like RSC (by adding conditions), Vite's `optimizeDeps` kicks in for `rwsdk` imports.
+-   The SDK's worker code imports platform specifics like `cloudflare:workers` and `async_hooks`.
+-   Our `worker` environment config (in `configPlugin.mts`) carefully handles these using `optimizeDeps.exclude` or `noExternal`.
+-   Vitest's default `optimizeDeps` config does *not* have these exclusions.
+-   This leads to the build errors we saw: `Could not resolve "cloudflare:workers"`.
+
+### Conclusion
+
+We cannot simply "patch" Vitest's SSR config. We need Vitest to run in an environment that mirrors our `worker` (RSC) environment, NOT our `ssr` environment. The `ssr` environment is strictly for the *second phase* of our rendering pipeline (hydrating the RSC payload to HTML), whereas unit tests for Worker components (like `defineApp`) fundamentally belong in the RSC domain.
+
+We need to investigate if we can tell Vitest to use the `worker` environment config directly, or if we must manually align Vitest's `test` config to match our `worker` config (react-server conditions, externalizing platform modules, etc).

@@ -8,4 +8,7 @@ export default defineWorkersConfig({
       },
     },
   },
+  resolve: {
+    conditions: ["react-server"],
+  },
 });
