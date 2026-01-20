@@ -92,6 +92,104 @@ export default function AddTodo() {
 }
 ```
 
+### `serverQuery` and `serverAction`
+
+To give you more control over the behavior of your server functions, use `serverQuery` and `serverAction` wrappers.
+
+#### `serverQuery`
+
+Use `serverQuery` for fetching data.
+
+- **Method**: GET (default).
+- **Behavior**: Returns data only. Does **not** rehydrate or re-render the page.
+- **Location**: Must be in a `"use server"` file. We recommend `queries.ts`.
+
+```tsx title="queries.ts"
+"use server";
+
+import { serverQuery } from "rwsdk/worker";
+import { isAuthenticated } from "@/lib/auth"; // Hypothetical auth utility
+
+// Simple query
+export const getTodos = serverQuery(async (userId: string) => {
+  return db.todo.findMany({ where: { userId } });
+});
+
+// Query with middleware (e.g. auth check)
+export const getSecretData = serverQuery([
+  async () => {
+     // Check auth
+     if (!isAuthenticated()) {
+      throw new Response("Unauthorized", { status: 401 });
+     }
+  },
+  async () => {
+    return "Secret Data";
+  }
+]);
+```
+
+#### `serverAction`
+
+Use `serverAction` for mutations.
+
+- **Method**: POST (default).
+- **Behavior**: Rehydrates and re-renders the page with the updated server state.
+- **Location**: Must be in a `"use server"` file. We recommend `actions.ts`.
+
+```tsx title="actions.ts"
+"use server";
+
+import { serverAction } from "rwsdk/worker";
+import { isAuthenticated } from "@/lib/auth"; // Hypothetical auth utility
+
+export const createTodo = serverAction(async (title: string) => {
+  await db.todo.create({ data: { title } });
+});
+
+// Action with middleware
+const requireAuth = async () => {
+    // Auth check
+    if (!isAuthenticated()) {
+      throw new Response("Unauthorized", { status: 401 });
+    }
+}
+
+export const deleteTodo = serverAction([
+  requireAuth,
+  async (id: string) => {
+    await db.todo.delete({ where: { id } });
+  }
+]);
+
+// You can also customize the HTTP method
+export const searchTodos = serverAction(
+  async (query: string) => {
+    // ...
+  },
+  { method: "GET" }
+);
+```
+
+### How it works
+
+Behind the scenes, `serverQuery` uses a specialized optimization of the RSC protocol to enable fast, data-only fetches without the overhead of a full page re-render.
+
+#### The `x-rsc-data-only` Header
+
+Standard React Server Action calls typically expect the server to return the entire updated UI tree so the client can rehydrate the page. For queries where you only need the returned data, this is unnecessary overhead.
+
+When you call a function wrapped in `serverQuery`, the client sends a special `x-rsc-data-only: true` header.
+
+#### Server-Side Optimization
+
+The RedwoodSDK server recognizes this header and skips the expensive process of rendering your Page components. Instead, it returns a minimal RSC payload:
+
+1.  **`node: null`**: Tells React there is no UI change required.
+2.  **`actionResult`**: Contains the actual data returned by your function.
+
+This allows RedwoodSDK to resolve the function call result directly in your client component while keeping the current UI state perfectly intact, avoiding any flickering or unnecessary hydration cycles.
+
 ### Context
 
 Context is a way to share data globally between server components on a per-request basis. The context is populated by middleware, and is available to all React Server Components Pages and Server Functions via the `ctx` prop or `requestInfo.ctx`.

@@ -50,6 +50,24 @@ function createServerFunction<TArgs extends any[] = any[], TResult = any>(
   return wrapped;
 }
 
+/**
+ * Wrap a function to be used as a server query.
+ *
+ * - **Method**: Defaults to `GET`. can be changed via `options`.
+ * - **Behavior**: When called from the client, it returns data-only and does **not** rehydrate or re-render the React page.
+ * - **Location**: Must be defined in a file with `"use server"`. We recommend `queries.ts` colocated with components.
+ * - **Middleware**: You can pass an array of functions as the first argument to act as interruptors (e.g. for auth).
+ *
+ * @example
+ * ```ts
+ * // getters.ts
+ * "use server"
+ *
+ * export const getUser = serverQuery(async (id: string) => {
+ *   return db.user.findUnique({ where: { id } })
+ * })
+ * ```
+ */
 export function serverQuery<TArgs extends any[] = any[], TResult = any>(
   fnsOrFn:
     | ServerFunction<TArgs, TResult>
@@ -72,6 +90,24 @@ export function serverQuery<TArgs extends any[] = any[], TResult = any>(
   return wrapped;
 }
 
+/**
+ * Wrap a function to be used as a server action.
+ *
+ * - **Method**: Defaults to `POST`. can be changed via `options`.
+ * - **Behavior**: When called from the client, it **will** rehydrate and re-render the React page with the new server state.
+ * - **Location**: Must be defined in a file with `"use server"`. We recommend `actions.ts` colocated with components.
+ * - **Middleware**: You can pass an array of functions as the first argument to act as interruptors (e.g. for auth).
+ *
+ * @example
+ * ```ts
+ * // actions.ts
+ * "use server"
+ *
+ * export const updateUser = serverAction(async (id: string, data: any) => {
+ *   return db.user.update({ where: { id }, data })
+ * })
+ * ```
+ */
 export function serverAction<TArgs extends any[] = any[], TResult = any>(
   fnsOrFn:
     | ServerFunction<TArgs, TResult>
