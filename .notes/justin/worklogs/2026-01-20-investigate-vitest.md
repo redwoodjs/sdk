@@ -120,18 +120,26 @@ We will wait for the `workers-sdk` overhaul to land.
 
 Our goal was to enable native Vitest support for RedwoodSDK, specifically targeting the `worker` environment to support our RSC architecture (which relies on the `react-server` condition).
 
-We started by setting up a basic `vitest-pool-workers` configuration. This immediately failed with an error indicating the `react-server` condition was missing. We initially attempted to patch this by forcing the condition into Vitest's default `ssr` environment. However, this proved to be a mistake: forcing RSC conditions into an SSR environment caused conflicts with platform built-ins like `cloudflare:workers`, as the default optimization settings didn't correctly externalize them.
+**Attempt 1: Basic Configuration**
+We started by setting up a basic `vitest-pool-workers` configuration in `playground/vitest`. This immediately failed with the error:
+> `Error: RedwoodSDK: 'react-server' import condition needs to be used in this environment`
 
-Recognizing that the `ssr` environment was the wrong target, we shifted our strategy to use the `worker` environment directly, mirroring how RedwoodSDK normally operates. We attempted to use the `@cloudflare/vite-plugin` to configure this environment. This exposed a **critical race condition**: the plugin is eager and executes worker code (to fetch export types) during the `configureServer` hook. This happens *before* Vitest has finished initializing, causing the runner to crash with "The config was not set".
+**Attempt 2: Patching SSR Environment**
+We initially attempted to patch this by forcing `resolve.conditions: ["react-server"]` into Vitest's default `ssr` environment. However, this proved to be a mistake: forcing RSC conditions into an SSR environment caused conflicts with platform built-ins. Specifically, use of `server-only` imports prevented the test runner from resolving `cloudflare:workers`, as the default `optimizeDeps` config didn't correctly externalize them, leading to:
+> `Could not resolve "cloudflare:workers"`
 
-### Ecosystem Status & Blocker
+**Attempt 3: Using Cloudflare Vite Plugin**
+Recognizing that the `ssr` environment was the wrong target, we shifted our strategy to use the `worker` environment directly, mirroring how RedwoodSDK normally operates. We attempted to use the `@cloudflare/vite-plugin` and `redwood` plugin in vitest config. This exposed a **critical race condition**.
 
-We found that the `@cloudflare/vite-plugin` is currently incompatible with `vitest-pool-workers` due to this early execution issue. Furthermore, the `workers-sdk` ecosystem is in a state of flux:
-*   `vitest-pool-workers` heavily relies on hardcoded `ssr` environment assumptions (e.g., in `src/config/index.ts`), which fights against our need for a `worker` entry environment.
+The `@cloudflare/vite-plugin` is "eager". In its `configureServer` hook, it calls `getCurrentWorkerNameToExportTypesMap`, which triggers `miniflare.dispatchFetch`. This executes the worker code *before* Vitest has finished initializing its global configuration. Any access to Vitest globals (like `vitest.config`) during this early execution crashes the runner with:
+> `Error: The config was not set`
+
+**Ecosystem Status & Blocker**
+We found that the `@cloudflare/vite-plugin` (which RedwoodSDK relies on) is currently incompatible with `vitest-pool-workers` due to this early execution issue. Furthermore, the `workers-sdk` ecosystem is in a state of flux:
+*   `vitest-pool-workers` code (e.g., `src/config/index.ts`) benchmarks heavily on hardcoded `ssr` environment assumptions, which fights against our need for a `worker` entry environment.
 *   A major overhaul is in progress (PR #11632) to support Vitest 4+ and re-architect environment handling.
 
-### Decision: Hold Off
-
+**Decision: Hold Off**
 We have decided to **hold off** on implementing native support. The workarounds required to make the current versions work would be fragile and high-maintenance. Given the imminent architecture changes in `workers-sdk`, investing in these workarounds would likely be wasted effort. We will wait for the overhaul to land before revisiting this.
 
 
