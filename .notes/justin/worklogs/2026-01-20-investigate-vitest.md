@@ -116,38 +116,22 @@ We will wait for the `workers-sdk` overhaul to land.
 
 ## Investigation Summary & Decision: Hold Off on Native Vitest Support
 
-### Summary of Attempts & Findings
-*   **Initial Goal**: Enable native Vitest support in RedwoodSDK, specifically targeting the `worker` environment to support RSC (`react-server` condition), without requiring third-party plugins.
-*   **Attempt 1: Basic Configuration**: We setup `vitest-pool-workers` and `vitest` in `playground/vitest` to mirror a user project.
-    *   *Result*: Failed with `Error: RedwoodSDK: 'react-server' import condition needs to be used`.
-    *   *Finding*: Vitest (and the pool) runs in an `ssr` environment by default. This environment lacks the `react-server` import condition required by our RSC architecture, causing runtime checks to fail.
-*   **Attempt 2: Patching SSR Environment**: We attempted to force `resolve.conditions: ["react-server"]` into the `ssr` configuration.
-    *   *Result*: Build errors (`Could not resolve "cloudflare:workers"`).
-    *   *Finding*: Forcing RSC conditions into Vitest's default SSR environment causes conflicts. Use of `server-only` imports prevents the test runner from resolving platform built-ins like `cloudflare:workers` because the default `optimizeDeps` config does not externalize them correctly.
-*   **Attempt 3: Using Cloudflare Vite Plugin**: We tried adding the `cloudflare()` vite plugin to `vitest.config.mts` to leverage its robust environment configuration.
-    *   *Result*: `Error: The config was not set`.
-    *   *Finding*: **Critical Race Condition**. The `@cloudflare/vite-plugin` is "eager". In its `configureServer` hook, it calls `getCurrentWorkerNameToExportTypesMap`, which triggers `miniflare.dispatchFetch`. This executes the worker code *before* Vitest has finished initializing its global configuration. Any access to Vitest globals (like `vitest.config`) during this early execution crashes the runner.
+### Investigation Narrative & Decision
+
+Our goal was to enable native Vitest support for RedwoodSDK, specifically targeting the `worker` environment to support our RSC architecture (which relies on the `react-server` condition).
+
+We started by setting up a basic `vitest-pool-workers` configuration. This immediately failed with an error indicating the `react-server` condition was missing. We initially attempted to patch this by forcing the condition into Vitest's default `ssr` environment. However, this proved to be a mistake: forcing RSC conditions into an SSR environment caused conflicts with platform built-ins like `cloudflare:workers`, as the default optimization settings didn't correctly externalize them.
+
+Recognizing that the `ssr` environment was the wrong target, we shifted our strategy to use the `worker` environment directly, mirroring how RedwoodSDK normally operates. We attempted to use the `@cloudflare/vite-plugin` to configure this environment. This exposed a **critical race condition**: the plugin is eager and executes worker code (to fetch export types) during the `configureServer` hook. This happens *before* Vitest has finished initializing, causing the runner to crash with "The config was not set".
 
 ### Ecosystem Status & Blocker
-*   **Incompatibility**: The `@cloudflare/vite-plugin` (which RedwoodSDK relies on for `pnpm dev`) is currently incompatible with `vitest-pool-workers` configuration due to the race condition described above.
-*   **State of Flux**: The `workers-sdk` ecosystem is undergoing major changes.
-    *   `vitest-pool-workers` currently only supports Vitest < 4.
-    *   A massive overhaul is in progress (PR #11632) to support Vitest 4+ and re-architect how environments are handled. This will likely remove the hard-coded "SSR" assumption that conflicts with our "Worker/RSC" model.
-*   **Conflicting Assumptions**: Current `vitest-pool-workers` code (e.g., `src/config/index.ts`) hardcodes assumptions about the environment being `ssr` (RedwoodSDK relies on "entry" env being `worker`), reinforcing the SSR-only path which we are fighting against.
+
+We found that the `@cloudflare/vite-plugin` is currently incompatible with `vitest-pool-workers` due to this early execution issue. Furthermore, the `workers-sdk` ecosystem is in a state of flux:
+*   `vitest-pool-workers` heavily relies on hardcoded `ssr` environment assumptions (e.g., in `src/config/index.ts`), which fights against our need for a `worker` entry environment.
+*   A major overhaul is in progress (PR #11632) to support Vitest 4+ and re-architect environment handling.
 
 ### Decision: Hold Off
-We have decided to **stop the current investigation and hold off** on implementing native support.
 
-**Why?**
-1.  **Imminent Obsolescence**: Implementing complex workarounds now (to fix version 3 compatibility) is high-risk and likely wasted effort. The incoming overhaul from Cloudflare will change the underlying architecture we are trying to patch.
-2.  **Fragility**: The workarounds required (delaying plugin execution, manually duplicating environment configs) are fragile and maintenance-heavy.
+We have decided to **hold off** on implementing native support. The workarounds required to make the current versions work would be fragile and high-maintenance. Given the imminent architecture changes in `workers-sdk`, investing in these workarounds would likely be wasted effort. We will wait for the overhaul to land before revisiting this.
 
-### Alternative Options Considered
-1.  **Workaround: Delaying Plugin Execution**: We considered wrapping the Cloudflare plugin in `redwoodPlugin` to artificially delay its `configureServer` hook (e.g., sleep 200ms) when running tests.
-    *   *Pros*: Mitigates the race condition.
-    *   *Cons*: Extremely fragile; relies on race condition timing; doesn't solve the deeper "SSR vs RSC" environment mismatch.
-2.  **Workaround: Manual Environment Injection**: We could modify `configPlugin` to manually inject all `worker` environment settings (defines, conditions, externalizations) into the `ssr` config when `process.env.VITEST` is active, bypassing the Cloudflare plugin.
-    *   *Pros*: Avoids the race condition entirely.
-    *   *Cons*: High maintenance burden; duplicates logic from the Cloudflare plugin; risky to keep in sync as the SDK evolves.
-3.  **Plan B**: Advise users to use `vitest-plugin-rsc` or wait for the official support to mature.
 
