@@ -6,7 +6,10 @@ import { env } from "cloudflare:workers";
  * A more complex server function that coordinates between D1 and KV.
  * It inserts an item into D1 and updates a counter in KV.
  */
-export async function trackAndSaveItem(name: string): Promise<{ id: number; totalCount: number }> {
+export async function trackAndSaveItem(data: FormData | string): Promise<{ id: number; totalCount: number }> {
+    const name = typeof data === "string" ? data : data.get("name") as string;
+    if (!name) throw new Error("Name is required");
+
     const DB = (env as any).DB;
     const KV = (env as any).KV;
 
