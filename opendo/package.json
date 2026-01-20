@@ -1,0 +1,17 @@
+{
+  "name": "@redwoodjs/open-do",
+  "version": "1.0.0",
+  "description": "Durable Objects implementation for Bun",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "bun-types": "latest",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "author": "Peter Pistorius",
+  "license": "MIT"
+}
