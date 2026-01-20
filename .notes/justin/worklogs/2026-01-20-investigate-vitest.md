@@ -136,8 +136,8 @@ The `@cloudflare/vite-plugin` is "eager". In its `configureServer` hook, it call
 
 **Ecosystem Status & Blocker**
 We found that the `@cloudflare/vite-plugin` (which RedwoodSDK relies on) is currently incompatible with `vitest-pool-workers` due to this early execution issue. Furthermore, the `workers-sdk` ecosystem is in a state of flux:
-*   `vitest-pool-workers` code (e.g., `src/config/index.ts`) benchmarks heavily on hardcoded `ssr` environment assumptions, which fights against our need for a `worker` entry environment.
-*   A major overhaul is in progress (PR #11632) to support Vitest 4+ and re-architect environment handling.
+*   `vitest-pool-workers` code (e.g., `src/config/index.ts`) benchmarks heavily on hardcoded `ssr` environment assumptions, which fights against our need for a `worker` entry environment
+*   A major overhaul is in progress (PR #11632) to support Vitest 4+ which indirectly also re-architects in a way that seems to avoid the environment assumptions that are currently blocking us.
 
 **Decision: Hold Off**
 We have decided to **hold off** on implementing native support. The workarounds required to make the current versions work would be fragile and high-maintenance. Given the imminent architecture changes in `workers-sdk`, investing in these workarounds would likely be wasted effort. We will wait for the overhaul to land before revisiting this.
