@@ -22,8 +22,9 @@ To reproduce the reported error ("'react-server' import condition needs to be us
 
 ### Defined Strategy
 - **Goal**: Achieve *native* RedwoodSDK support without requiring users to install third-party plugins like `vitest-plugin-rsc`.
-- **Constraint**: Users inheriting `vitest-pool-workers` is acceptable.
-- **Fallback**: `vitest-plugin-rsc` is considered **Plan B** if native support proves unfeasible in the short term.
+- **Constraints**:
+  - Users inheriting `vitest-pool-workers` is acceptable.
+  - `vitest-plugin-rsc` is considered a Plan B that is **out of the scope of this investigation** if native support proves unfeasible in the short term.
 
 ### Next Steps
 1.  **Reproduction Setup**:
