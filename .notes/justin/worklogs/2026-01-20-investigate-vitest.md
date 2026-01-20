@@ -76,3 +76,40 @@ Once we force the "SSR" environment to act like RSC (by adding conditions), Vite
 We cannot simply "patch" Vitest's SSR config. We need Vitest to run in an environment that mirrors our `worker` (RSC) environment, NOT our `ssr` environment. The `ssr` environment is strictly for the *second phase* of our rendering pipeline (hydrating the RSC payload to HTML), whereas unit tests for Worker components (like `defineApp`) fundamentally belong in the RSC domain.
 
 We need to investigate if we can tell Vitest to use the `worker` environment config directly, or if we must manually align Vitest's `test` config to match our `worker` config (react-server conditions, externalizing platform modules, etc).
+
+## Analyzed race condition and GitHub issues
+
+I have identified the root cause of the "config was not set" error: the `@cloudflare/vite-plugin` has a race condition with Vitest initialization.
+
+### Race Condition Analysis
+
+1.  **Early Execution**: The `@cloudflare/vite-plugin` eagerly executes worker code during its `configureServer` hook.
+2.  **Call Chain**: `configureServer` -> `getCurrentWorkerNameToExportTypesMap` -> `fetchWorkerExportTypes`.
+3.  **Trigger**: `fetchWorkerExportTypes` invokes `miniflare.dispatchFetch`, causing the worker environment to spin up and execute entry points *before* Vitest has finished initializing its global configuration.
+4.  **Result**: If the worker code (or its imports) attempts to access Vitest globals (like `vitest.config`), it crashes with "The config was not set".
+
+### GitHub Issue Context (#9381)
+
+User provided context from `workers-sdk` issue #9381, which confirms:
+-   Full integration between `vitest-pool-workers` and `@cloudflare/vite-plugin` is a known gap and a "big chunk of work" (Cloudflare team).
+-   Current workarounds involve separate build steps or overriding asset paths.
+-   RedwoodSDK relies on the Cloudflare plugin, so simply removing it is not a viable option.
+
+### Next Steps
+
+Since we cannot remove the plugin, we must mitigate the race condition while keeping the plugin active. I will investigate delaying the plugin initialization or making the SDK robust against this early execution.
+
+
+## Analyzed Ecosystem State and Decided to Hold Off
+
+### Findings
+- **Incompatibility**: `vitest-pool-workers` and `@cloudflare/vite-plugin` are currently incompatible when used together due to an early request/race condition in the plugin's `configureServer` hook. This forces worker execution before Vitest is ready.
+- **Version Support**: `vitest-pool-workers` only supports Vitest 2.x-3.2.x. Vitest 4+ is not supported yet (see https://github.com/cloudflare/workers-sdk/issues/9381).
+- **Imminent Overhaul**: A major PR is in progress (https://github.com/cloudflare/workers-sdk/pull/11632) to support Vitest 4 and overhaul the architecture, potentially removing the reliance on the "SSR" environment assumption.
+- **SSR Assumption**: Current `vitest-pool-workers` implementation heavily assumes an SSR environment (see `packages/vitest-pool-workers/src/config/index.ts`), which conflicts with our `worker` (RSC) environment needs. This is expected to change in the overhaul.
+
+### Decision
+Given the "flux" state of the Cloudflare testing ecosystem and the imminent major changes, we have decided to **hold off** on implementing native `vite-plugin-cloudflare` + `vitest-pool-workers` integration to avoid wasted effort on workarounds that will soon be obsolete.
+
+We will wait for the `workers-sdk` overhaul to land.
+
