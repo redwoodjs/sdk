@@ -28,6 +28,8 @@ describe("OpenDO Serial Execution", () => {
       storage,
       blockConcurrencyWhile: (cb) => cb(),
       waitUntil: () => {},
+      acceptWebSocket: () => {},
+      getWebSockets: () => [],
     };
     const counter = new CounterDO(state, {});
     
