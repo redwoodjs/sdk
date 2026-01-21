@@ -1,4 +1,4 @@
-import { encodeEnvelope, RpcEnvelope } from "./Envelope.js";
+import { encodeEnvelope, RpcEnvelope } from "./envelope.js";
 import { serialize, deserialize } from "capnweb";
 
 export interface Connection {

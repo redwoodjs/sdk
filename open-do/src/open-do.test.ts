@@ -1,15 +1,15 @@
-import { describe, it, expect, vi } from "vitest";
-import { OpenDO } from "./OpenDO.js";
-import { OpenDORegistry as Registry } from "./Registry.js";
-import { encodeEnvelope, decodeEnvelope, RpcEnvelope } from "./Envelope.js";
-import { createStub, Connection } from "./RPC.js";
+import { describe, it, expect } from "vitest";
+import { OpenDO, DurableObjectState } from "./open-do.js";
+import { OpenDORegistry as Registry } from "./registry.js";
+import { encodeEnvelope, decodeEnvelope, RpcEnvelope } from "./envelope.js";
+import { createStub, Connection } from "./rpc.js";
 
 class CounterDO extends OpenDO {
   count = 0;
-  constructor(id: string) {
-    super(id);
+  constructor(state: DurableObjectState, env: any) {
+    super(state, env);
   }
-  async handleRequest(request: Request) {
+  async fetch(request: Request) {
     const url = new URL(request.url);
     if (url.pathname === "/increment") {
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -21,11 +21,18 @@ class CounterDO extends OpenDO {
 }
 
 describe("OpenDO Serial Execution", () => {
-  it("should process requests serially", async () => {
-    const counter = new CounterDO("test");
+  it("should process requests serially via _internalFetch", async () => {
+    const storage: any = {};
+    const state: DurableObjectState = {
+      id: "test",
+      storage,
+      blockConcurrencyWhile: (cb) => cb(),
+      waitUntil: () => {},
+    };
+    const counter = new CounterDO(state, {});
     
     const requests = Array.from({ length: 5 }, () => 
-      counter.fetch(new Request("http://localhost/increment"))
+      counter._internalFetch(new Request("http://localhost/increment"))
     );
     
     const responses = await Promise.all(requests);
@@ -79,7 +86,8 @@ describe("RPC createStub", () => {
         sentMessages.push(msg);
       },
       receive: async () => {
-        // Return a mocked response: serialized result of "42"
+        // Return a mocked response: serialized "42"
+        // (Note: this is currently using JSON stringify in RPC.ts but wrapping in binary)
         const result = new TextEncoder().encode(JSON.stringify(42)); 
         return result;
       }

@@ -6,4 +6,4 @@ packages:
   - "playground/**"
   - "!playground/community/**"
   - "addons/*"
-  - "openDO"
+  - "open-do"
