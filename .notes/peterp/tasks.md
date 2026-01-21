@@ -27,7 +27,7 @@
 - [x] **Broadcast API**
       Support sending messages to all connected WebSockets.
       Importance: 2
-- [ ] **Feature Matrix Parity Check**
+- [x] **Feature Matrix Parity Check**
       Continue verifying and updating the feature matrix to ensure full alignment with Cloudflare's Durable Objects.
       Importance: 2
       Reference: `docs/matrix.md`
@@ -35,3 +35,6 @@
       Support extending the object lifetime for background work after a response is sent.
       Importance: 2
       Reference: [Durable Object State (waitUntil)](https://developers.cloudflare.com/durable-objects/api/state/#waituntil)
+- [ ] **Explore `list()` Optimizations**
+      Investigate performance improvements for large datasets, such as indexing or batching internals.
+      Importance: 2

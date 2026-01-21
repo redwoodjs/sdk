@@ -180,23 +180,25 @@ class SqliteStorage implements DurableObjectStorage {
     const params: any[] = [];
     const wheres: string[] = [];
 
+    const reverse = !!options?.reverse;
+
     if (options?.prefix) {
       wheres.push("key LIKE ?");
       params.push(`${options.prefix}%`);
     }
 
     if (options?.start) {
-      wheres.push("key >= ?");
+      wheres.push(reverse ? "key <= ?" : "key >= ?");
       params.push(options.start);
     }
 
     if (options?.startAfter) {
-      wheres.push("key > ?");
+      wheres.push(reverse ? "key < ?" : "key > ?");
       params.push(options.startAfter);
     }
 
     if (options?.end) {
-      wheres.push("key < ?");
+      wheres.push(reverse ? "key > ?" : "key < ?");
       params.push(options.end);
     }
 
@@ -307,23 +309,25 @@ class InMemoryStorage implements DurableObjectStorage {
   async list<T = unknown>(options?: any): Promise<Map<string, T>> {
     let entries = Array.from(this.#data.entries());
 
+    const reverse = !!options?.reverse;
+
     if (options?.prefix) {
       entries = entries.filter(([k]) => k.startsWith(options.prefix));
     }
 
     if (options?.start) {
-      entries = entries.filter(([k]) => k >= options.start);
+      entries = entries.filter(([k]) => reverse ? k <= options.start : k >= options.start);
     }
 
     if (options?.startAfter) {
-      entries = entries.filter(([k]) => k > options.startAfter);
+      entries = entries.filter(([k]) => reverse ? k < options.startAfter : k > options.startAfter);
     }
 
     if (options?.end) {
-      entries = entries.filter(([k]) => k < options.end);
+      entries = entries.filter(([k]) => reverse ? k > options.end : k < options.end);
     }
 
-    entries.sort((a, b) => (options?.reverse ? b[0].localeCompare(a[0]) : a[0].localeCompare(b[0])));
+    entries.sort((a, b) => (reverse ? b[0].localeCompare(a[0]) : a[0].localeCompare(b[0])));
 
     if (options?.limit) {
       entries = entries.slice(0, options.limit);

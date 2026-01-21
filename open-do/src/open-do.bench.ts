@@ -92,6 +92,24 @@ bench(
   { time: 1000 }
 );
 
+// Benchmark: list()
+const listId = "list-instance";
+const listInstance = await registry.get(listId, BenchmarkDO);
+// Populate with 100 items
+const listEntries: Record<string, string> = {};
+for (let i = 0; i < 100; i++) {
+    listEntries[`key-${i.toString().padStart(3, '0')}`] = `value-${i}`;
+}
+await listInstance.storage.put(listEntries);
+
+bench(
+    "Storage.list (100 items)",
+    async () => {
+        await listInstance.storage.list({ limit: 100 });
+    },
+    { time: 1000 }
+);
+
 // Benchmark: Router
 const router = createOpenDORouter(registry, BenchmarkDO, (req: Request) => {
     const url = new URL(req.url);
