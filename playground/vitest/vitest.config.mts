@@ -1,4 +1,5 @@
 import { defineWorkersConfig } from "@cloudflare/vitest-pool-workers/config";
+import { vitestPluginRSC } from "vitest-plugin-rsc";
 
 export default defineWorkersConfig({
   test: {
@@ -10,4 +11,5 @@ export default defineWorkersConfig({
       },
     },
   },
+  plugins: [vitestPluginRSC()],
 });
