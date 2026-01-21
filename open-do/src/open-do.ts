@@ -6,6 +6,19 @@ export interface DurableObjectStorage {
   delete(key: string): Promise<boolean>;
   delete(keys: string[]): Promise<number>;
   list<T = unknown>(options?: { start?: string; end?: string; prefix?: string; reverse?: boolean; limit?: number }): Promise<Map<string, T>>;
+  sql: DurableObjectSql;
+}
+
+export interface DurableObjectSql {
+  prepare(query: string): DurableObjectSqlStatement;
+  exec(query: string): void;
+}
+
+export interface DurableObjectSqlStatement {
+  bind(...params: any[]): DurableObjectSqlStatement;
+  first<T = unknown>(): T | null;
+  all<T = unknown>(): T[];
+  run(): { changes: number; lastInsertRowid: number | bigint };
 }
 
 export interface DurableObjectState {
