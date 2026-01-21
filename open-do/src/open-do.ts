@@ -115,4 +115,12 @@ export abstract class OpenDO {
   _addWaitUntil(promise: Promise<any>): void {
     this.#waitUntilPromises.push(promise);
   }
+
+  /**
+   * Called when a WebSocket (accepted via state.acceptWebSocket) receives a message.
+   * Enabling this allows the object to be hibernated while the socket remains open.
+   */
+  async webSocketMessage?(ws: WebSocket, message: string | ArrayBuffer): Promise<void>;
+  async webSocketClose?(ws: WebSocket, code: number, reason: string, wasClean: boolean): Promise<void>;
+  async webSocketError?(ws: WebSocket, error: any): Promise<void>;
 }

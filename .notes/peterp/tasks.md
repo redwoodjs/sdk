@@ -20,7 +20,7 @@
       Add `setAlarm()` and `alarm()` handler support. Enables Durable Objects to schedule future background work.
       Importance: 3
       Reference: [Durable Object Alarms](https://developers.cloudflare.com/durable-objects/api/storage-api/#setalarm)
-- [ ] **WebSocket Hibernation**
+- [x] **WebSocket Hibernation**
       Support transferring and managing WebSockets across process restarts. Reduces costs and improves resilience.
       Importance: 3
       Reference: [WebSocket Hibernation API](https://developers.cloudflare.com/durable-objects/api/websockets/)

@@ -20,11 +20,11 @@ Since `open-do` aims to maintain API compatibility with Cloudflare, the followin
 | :--- | :--- | :--- |
 | **Storage (KV)** | ✅ Full | Critical |
 | **Storage (SQL)** | ✅ Full | High |
-| **Lifecycle & State** | 🟡 Partial | Critical |
+| **Lifecycle & State** | ✅ Full | Critical |
 | **Concurrency Control** | ✅ Serial | Critical |
 | **RPC & Stubs** | ✅ Implemented | High |
 | **Alarms** | ✅ Implemented | Medium |
-| **WebSocket Hibernation** | 🟡 Partial | Medium |
+| **WebSocket Hibernation** | ✅ Implemented | Medium |
 | **Broadcast API** | ✅ Implemented | Medium |
 
 ---
@@ -151,7 +151,7 @@ Manage active WebSocket connections and broadcasting.
 | :--- | :--- | :--- |
 | `state.acceptWebSocket(ws, tags)` | Track a socket | ✅ |
 | `state.getWebSockets(tag)` | Get active sockets from memory | ✅ |
-| `Hibernation` | Auto-wake and sleep | 🟡 (Simulated via keep-alive) |
+| `Hibernation` | Auto-wake and sleep | ✅ |
 
 ### Code Sample
 ```typescript
@@ -173,11 +173,3 @@ export class MyObject extends OpenDO {
   }
 }
 ```
-
----
-
-## Future Roadmap
-
-These features are planned but not yet implemented in `open-do`:
-- **WebSocket Hibernation**: True platform-level hibernation without memory overhead.
-- **Improved Hibernation**: Better memory management for inactive objects.

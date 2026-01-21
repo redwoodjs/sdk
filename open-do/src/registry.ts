@@ -356,16 +356,248 @@ class InMemoryStorage implements DurableObjectStorage {
   }
 }
 
-class DurableObjectStateImpl implements DurableObjectState {
+class InstanceContainer {
   id: string;
   storage: DurableObjectStorage;
-  #queue = Promise.resolve<any>(undefined);
-  #instance: OpenDO | null = null;
-  #websockets = new Set<{ ws: WebSocket; tags: Set<string> }>();
+  env: any;
+  instance: OpenDO | null = null;
+  
+  #state: DurableObjectStateImpl | null = null;
+  #loadingPromise: Promise<OpenDO> | null = null;
+  #Ctor: OpenDOConstructor<any> | null = null;
+  #supportsHibernation = false;
 
-  constructor(id: string, storage: DurableObjectStorage) {
+  #activeRequests = 0;
+  #lastActive = Date.now();
+  #waitUntilPromises = new Set<Promise<any>>();
+  #webSockets = new Set<{ ws: WebSocket; tags: Set<string> }>();
+  
+  #alarmCheckTimer: any = null;
+  #registry: OpenDORegistry;
+
+  constructor(registry: OpenDORegistry, id: string, storage: DurableObjectStorage, env: any) {
+    this.#registry = registry;
     this.id = id;
     this.storage = storage;
+    this.env = env;
+  }
+
+  touch() {
+    this.#lastActive = Date.now();
+  }
+
+  async getInstance(Ctor?: OpenDOConstructor<any>): Promise<OpenDO> {
+    this.touch();
+    if (this.instance) return this.instance;
+    if (this.#loadingPromise) return this.#loadingPromise;
+    
+    // If we are waking up from hibernation/eviction without a direct Ctor call (e.g. WS message),
+    // we must have the Ctor cached.
+    if (!Ctor) {
+        if (this.#Ctor) Ctor = this.#Ctor;
+        else throw new Error(`Cannot wake up Durable Object ${this.id}: Constructor not found.`);
+    } else {
+        this.#Ctor = Ctor;
+    }
+
+    const FinalCtor = Ctor!;
+
+    this.#loadingPromise = (async () => {
+      await Promise.resolve(); // Ensure async execution so assignment happens first
+      try {
+        const state = new DurableObjectStateImpl(this, this.storage);
+        this.#state = state;
+        const instance = new FinalCtor(state, this.env);
+        this.instance = instance;
+        state._setInstance(instance);
+        
+        // Detect hibernation support
+        this.#supportsHibernation = typeof instance.webSocketMessage === 'function';
+        
+        this.#startAlarmCheck(instance);
+
+        return instance;
+      } catch (e) {
+        // If construction triggers error, we fail
+        throw e;
+      } finally {
+        this.#loadingPromise = null;
+      }
+    })();
+
+    return this.#loadingPromise;
+  }
+  
+  async executeFetch(request: Request, instance: OpenDO): Promise<Response> {
+    this.#activeRequests++;
+    this.touch();
+    try {
+      return await instance._internalFetch(request);
+    } finally {
+      this.#activeRequests--;
+      this.touch();
+    }
+  }
+
+  addWaitUntil(promise: Promise<any>) {
+    this.#waitUntilPromises.add(promise);
+    this.touch();
+    promise.catch(e => console.error("WaitUntil Error:", e)).finally(() => {
+        this.#waitUntilPromises.delete(promise);
+        this.touch();
+    });
+  }
+  
+  acceptWebSocket(ws: WebSocket, tags: string[]) {
+    this.touch();
+    const entry = { ws, tags: new Set(tags) };
+    this.#webSockets.add(entry);
+    
+    // Cleanup on close
+    const cleanup = () => {
+      this.#webSockets.delete(entry);
+      this.touch();
+    };
+    ws.addEventListener("close", cleanup);
+    ws.addEventListener("error", cleanup);
+    
+    // Setup Hibernation Handlers
+    // We attach these listeners ONCE. If we are hibernated, the listeners stay on the WS.
+    // When they fire, we wake up.
+    
+    ws.addEventListener("message", async (event) => {
+        this.touch();
+        // Only handle if hibernation is supported or if instance is active?
+        // If hibernation is NOT supported, the user handles the WS themselves, so we shouldn't interfere?
+        // ACTUALLY: The "Hibernation API" replaces the user's standard listeners.
+        // If `webSocketMessage` is defined, we use it.
+        // We can check `this.#supportsHibernation` but that might not be set if we haven't loaded yet?
+        // But `acceptWebSocket` is called FROM the instance, so we MUST have loaded.
+        
+        if (this.#supportsHibernation) {
+            const instance = await this.getInstance();
+            if (instance.webSocketMessage) {
+                 await instance.webSocketMessage(ws, event.data);
+            }
+        }
+    });
+
+    ws.addEventListener("close", async (event) => {
+        this.touch();
+        if (this.#supportsHibernation) {
+            // We might need to wake up just to handle close?
+             const instance = await this.getInstance();
+             if (instance.webSocketClose) {
+                 await instance.webSocketClose(ws, event.code, event.reason, event.wasClean);
+             }
+        }
+    });
+
+    ws.addEventListener("error", async (event) => {
+        this.touch();
+        if (this.#supportsHibernation) {
+             const instance = await this.getInstance();
+             if (instance.webSocketError) {
+                 // @ts-ignore
+                 await instance.webSocketError(ws, event);
+             }
+        }
+    });
+  }
+  
+  getWebSockets(tag?: string): WebSocket[] {
+    const sockets: WebSocket[] = [];
+    for (const entry of this.#webSockets) {
+      if (!tag || entry.tags.has(tag)) {
+        sockets.push(entry.ws);
+      }
+    }
+    return sockets;
+  }
+  
+  #startAlarmCheck(instance: OpenDO) {
+      if (this.#alarmCheckTimer) return; // Already running
+      
+      const check = async () => {
+          if (!this.instance) {
+              // If evicted, stop checking? 
+              // No, we technically need to check alarm to wake up.
+              // But for now, let's assume if we are evicted, the Registry handles waking us up?
+              // The Registry implementation had a loop inside `get()`.
+              // We should probably rely on the container to check alarms if it's active.
+              // If it's evicted, we need a way to check alarms WITHOUT loading.
+              // Storing 'nextAlarm' in memory?
+              // Optimization: When evicting, read next alarm time.
+              this.#alarmCheckTimer = null;
+              return; 
+          }
+          
+          try {
+            const alarmTime = await this.storage.getAlarm();
+            if (alarmTime && alarmTime <= Date.now()) {
+                await this.storage.deleteAlarm();
+                if (instance.alarm) {
+                    this.touch();
+                    await instance.alarm();
+                }
+            }
+          } catch (e) {
+              console.error("Alarm check error", e);
+          }
+          
+          this.#alarmCheckTimer = setTimeout(check, 1000);
+      };
+      
+      check();
+  }
+
+  canEvict(timeout: number): boolean {
+      const age = Date.now() - this.#lastActive;
+      if (age < timeout) return false;
+      if (this.#activeRequests > 0) return false;
+      if (this.#waitUntilPromises.size > 0) return false;
+      
+      if (this.#webSockets.size > 0) {
+          // Can only evict if hibernation is supported
+          if (!this.#supportsHibernation) return false;
+      }
+      
+      return true;
+  }
+  
+  async evict() {
+      // Clear instance reference
+      this.instance = null;
+      this.#state = null;
+      // Stop internal alarm loop (we'll restart it on wake)
+      if (this.#alarmCheckTimer) {
+          clearTimeout(this.#alarmCheckTimer);
+          this.#alarmCheckTimer = null;
+      }
+      // Note: We keeping the Container alive in the Registry if there are WebSockets?
+      // Or do we rely on the implementation?
+      // If we evict the container from the Registry map, we lose the WebSockets!
+      // So Registry should NOT delete the Container if activeWebSockets > 0, 
+      // but the Container can delete its `instance`.
+  }
+  
+  get isEmpty() {
+      // True if we have no state that needs to be kept in memory
+      // i.e. no instance, no websockets, no pending promises.
+      return !this.instance && this.#webSockets.size === 0 && this.#waitUntilPromises.size === 0 && this.#activeRequests === 0;
+  }
+}
+
+class DurableObjectStateImpl implements DurableObjectState {
+  #container: InstanceContainer;
+  #queue = Promise.resolve<any>(undefined);
+  #instance: OpenDO | null = null;
+  
+  // Proxy id to container
+  get id() { return this.#container.id; } 
+
+  constructor(container: InstanceContainer, public storage: DurableObjectStorage) {
+    this.#container = container;
   }
 
   _setInstance(instance: OpenDO) {
@@ -379,44 +611,16 @@ class DurableObjectStateImpl implements DurableObjectState {
   waitUntil(promise: Promise<any>): void {
     if (this.#instance) {
       this.#instance._addWaitUntil(promise);
+      this.#container.addWaitUntil(promise);
     }
   }
 
   acceptWebSocket(ws: WebSocket, tags: string[] = []): void {
-    // Cloudflare's API requires calling accept() on the server side
-    // We assume the user might have already called it, but safe to call again if needed?
-    // Actually, DOs call state.acceptWebSocket(ws). The doc says:
-    // "Accepts the WebSocket connection... If the WebSocket was not already accepted, it is accepted."
-    // In many envs (like Bun), strict accept() is needed.
-    // However, here we primarily track it.
-    
-    // Check if we need to call accept(). 
-    // If it's a standard WebSocket, it might already be open or in connecting state.
-    // We'll rely on the user or the framework having handled the upgrade, 
-    // but we ensure it's tracked.
-    
-    const entry = { ws, tags: new Set(tags) };
-    this.#websockets.add(entry);
-
-    // Auto-cleanup on close
-    ws.addEventListener("close", () => {
-      this.#websockets.delete(entry);
-    });
-    
-    // Handle error as close
-    ws.addEventListener("error", () => {
-       this.#websockets.delete(entry);
-    });
+      this.#container.acceptWebSocket(ws, tags);
   }
 
   getWebSockets(tag?: string): WebSocket[] {
-    const sockets: WebSocket[] = [];
-    for (const entry of this.#websockets) {
-      if (!tag || entry.tags.has(tag)) {
-        sockets.push(entry.ws);
-      }
-    }
-    return sockets;
+      return this.#container.getWebSockets(tag);
   }
 }
 
@@ -426,80 +630,84 @@ type OpenDOConstructor<T extends OpenDO> = new (
 ) => T;
 
 export class OpenDORegistry {
-  #instances = new Map<string, OpenDO | Promise<OpenDO>>();
-  #options: { hibernationTimeoutMs?: number; env?: any; storageDir?: string };
+  #containers = new Map<string, InstanceContainer>();
+  #options: { 
+      hibernationTimeoutMs?: number; 
+      hibernationCheckIntervalMs?: number;
+      env?: any; 
+      storageDir?: string 
+  };
+  #evictionInterval: any = null;
 
   constructor(
     options: {
       hibernationTimeoutMs?: number;
+      hibernationCheckIntervalMs?: number;
       env?: any;
       storageDir?: string;
     } = {}
   ) {
     this.#options = options;
+    
+    // Start eviction loop
+    const interval = this.#options.hibernationCheckIntervalMs || 10000;
+    if (typeof setInterval !== 'undefined') {
+        this.#evictionInterval = setInterval(() => this.#performEviction(), interval);
+        if (this.#evictionInterval.unref) this.#evictionInterval.unref();
+    }
   }
 
   async get<T extends OpenDO>(
     id: string,
     Ctor: OpenDOConstructor<T>
   ): Promise<T> {
-    const existing = this.#instances.get(id);
-    if (existing) {
-      const instance = await existing;
-      if (instance instanceof OpenDO) {
-        return instance as T;
-      }
-    }
-
-    const promise = (async () => {
-      try {
+    let container = this.#containers.get(id);
+    if (!container) {
+        // Create storage
         let storage: DurableObjectStorage;
-
         if (this.#options.storageDir) {
-          const resolvedDir = path.resolve(process.cwd(), this.#options.storageDir);
-          if (!fs.existsSync(resolvedDir)) {
-            fs.mkdirSync(resolvedDir, { recursive: true });
-          }
-          const dbPath = path.join(resolvedDir, `${id}.sqlite`);
-          const Driver = await getSqliteDriver();
-          const db = new Driver(dbPath);
-          storage = new SqliteStorage(db);
+           const resolvedDir = path.resolve(process.cwd(), this.#options.storageDir);
+           if (!fs.existsSync(resolvedDir)) {
+             fs.mkdirSync(resolvedDir, { recursive: true });
+           }
+           const dbPath = path.join(resolvedDir, `${id}.sqlite`);
+           const Driver = await getSqliteDriver();
+           const db = new Driver(dbPath);
+           storage = new SqliteStorage(db);
         } else {
-          storage = new InMemoryStorage();
+           storage = new InMemoryStorage();
         }
 
-        let instance: T;
-        const state = new DurableObjectStateImpl(id, storage);
-        const env = this.#options.env || {};
-        instance = new Ctor(state, env);
-        state._setInstance(instance);
-
-        // Check for alarms
-        const checkAlarm = async () => {
-          const alarmTime = await storage.getAlarm();
-          if (alarmTime && alarmTime <= Date.now()) {
-            await storage.deleteAlarm();
-            if (instance.alarm) {
-              await instance.alarm();
-            }
+        container = new InstanceContainer(this, id, storage, this.#options.env || {});
+        this.#containers.set(id, container);
+    }
+    
+    // Register Ctor in case we need it for wakeup
+    return (await container.getInstance(Ctor)) as T;
+  }
+  
+  #performEviction() {
+      const timeout = this.#options.hibernationTimeoutMs || 30000;
+      for (const [id, container] of this.#containers) {
+          if (container.canEvict(timeout)) {
+              if (container.instance) {
+                  container.evict(); // Unloads instance, keeps container if needed
+              }
+              
+              if (container.isEmpty) {
+                  // If container is truly empty (no websockets), remove it entirely
+                  this.#containers.delete(id);
+              }
           }
-          if (instance.alarm) {
-            // Re-check periodically or use a more sophisticated scheduler
-            setTimeout(checkAlarm, 1000);
-          }
-        };
-        checkAlarm();
-
-        return instance;
-      } catch (error) {
-        this.#instances.delete(id);
-        throw error;
       }
-    })();
+  }
 
-    this.#instances.set(id, promise);
-    const instance = await promise;
-    this.#instances.set(id, instance);
-    return instance as T;
+  close() {
+      if (this.#evictionInterval) {
+          clearInterval(this.#evictionInterval);
+          this.#evictionInterval = null;
+      }
+      this.#containers.clear();
   }
 }
+
