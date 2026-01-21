@@ -411,6 +411,46 @@ export async function runRelease(
     let lastError: Error | null = null;
     let result: ExpectResult | null = null;
 
+    const formatReleaseCommandFailure = (res: ExpectResult) => {
+      let message = `Release command failed with exit code ${res.code}`;
+
+      const stdout = res.stdout?.trim() ? res.stdout : "";
+      const stderr = res.stderr?.trim() ? res.stderr : "";
+
+      if (stderr) {
+        const errorLines = stderr
+          .split("\n")
+          .filter(
+            (line) =>
+              line.includes("ERROR") ||
+              line.includes("error:") ||
+              line.includes("failed"),
+          )
+          .slice(0, 3)
+          .join("\n");
+
+        if (errorLines) {
+          message += `\nError details: ${errorLines}`;
+        }
+      }
+
+      if (stdout) {
+        const stdoutTail = stdout.split("\n").slice(-40).join("\n").trim();
+        if (stdoutTail) {
+          message += `\n\nstdout (tail):\n${stdoutTail}`;
+        }
+      }
+
+      if (stderr) {
+        const stderrTail = stderr.split("\n").slice(-40).join("\n").trim();
+        if (stderrTail) {
+          message += `\n\nstderr (tail):\n${stderrTail}`;
+        }
+      }
+
+      return message;
+    };
+
     for (let i = 0; i < MAX_RETRIES; i++) {
       try {
         console.log(
@@ -443,9 +483,7 @@ export async function runRelease(
           lastError = null; // Clear last error on success
           break; // Exit the loop on success
         } else {
-          throw new Error(
-            `Release command failed with exit code ${result.code}`,
-          );
+          throw new Error(formatReleaseCommandFailure(result));
         }
       } catch (error) {
         lastError = error as Error;
@@ -465,27 +503,7 @@ export async function runRelease(
     // Check exit code to ensure command succeeded
     if (result.code !== 0) {
       // Add more contextual information about the error
-      let errorMessage = `Release command failed with exit code ${result.code}`;
-
-      // Add stderr output to the error message if available
-      if (result.stderr && result.stderr.trim().length > 0) {
-        // Extract the most relevant part of the error message
-        const errorLines = result.stderr
-          .split("\n")
-          .filter(
-            (line) =>
-              line.includes("ERROR") ||
-              line.includes("error:") ||
-              line.includes("failed"),
-          )
-          .slice(0, 3) // Take just the first few error lines
-          .join("\n");
-
-        if (errorLines) {
-          errorMessage += `\nError details: ${errorLines}`;
-        }
-      }
-
+      const errorMessage = formatReleaseCommandFailure(result);
       log("ERROR: %s", errorMessage);
       throw new Error(errorMessage);
     }

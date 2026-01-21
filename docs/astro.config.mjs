@@ -124,6 +124,7 @@ export default defineConfig({
             },
             { label: "Server Function Streams", slug: "guides/rsc-streams" },
             { label: "Debugging", slug: "guides/debugging" },
+            { label: "Vitest", slug: "guides/vitest" },
           ],
           collapsed: true,
         },

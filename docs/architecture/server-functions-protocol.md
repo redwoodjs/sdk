@@ -1,15 +1,24 @@
 # RSC Server Functions & Data-Only Requests
 
+## Why use `serverQuery` and `serverAction`?
+
+Standard React Server Action calls typically expect the server to return the entire updated UI tree so the client can rehydrate the page. For many interactions—especially queries where you only need the returned data—this is unnecessary overhead.
+
+`serverQuery` and `serverAction` allow you to call server-side functions and receive only the returned data, without triggering a full page re-render or transporting the entire UI tree back to the client.
+
 ## Overview
-When calling a Server Function (via `serverQuery` or `serverAction`) in `rwsdk`, the client often only needs the result of the function call, not a full re-render of the page UI. We use the **RSC protocol** with an optimization called `x-rsc-data-only`.
+
+When calling a Server Function (via `serverQuery` or `serverAction`) in `rwsdk`, we use the **RSC protocol** with an optimization called `x-rsc-data-only`.
 
 ## The Request
+
 The client sends a request (GET for queries, POST for actions) with:
 - `__rsc`: Triggers the RSC handler.
 - `__rsc_action_id`: Identifies the specific function to run.
 - `x-rsc-data-only: true`: A special header telling the server to skip rendering the full React component tree. **Note: This is only sent for `serverQuery` calls.**
 
 ## The Payload Structure
+
 The server returns a specialized RSC payload for data-only requests:
 ```json
 {
@@ -28,6 +37,7 @@ This is a required marker for `rwsdk`'s stream stitching logic.
 This is the actual data returned by your server function.
 
 ## Client-Side Handling
+
 On the client, `rwsdk` handles this based on the source of the request:
 
 1.  **Result Retrieval**: `createFromFetch` processes the stream and returns a promise that resolves to the `actionResult`.
