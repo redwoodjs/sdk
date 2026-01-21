@@ -40,6 +40,8 @@ export interface DurableObjectState {
   storage: DurableObjectStorage;
   blockConcurrencyWhile<T>(callback: () => Promise<T>): Promise<T>;
   waitUntil(promise: Promise<any>): void;
+  acceptWebSocket(ws: WebSocket, tags?: string[]): void;
+  getWebSockets(tag?: string): WebSocket[];
 }
 
 export abstract class OpenDO {

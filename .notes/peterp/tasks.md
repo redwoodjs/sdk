@@ -24,7 +24,7 @@
       Support transferring and managing WebSockets across process restarts. Reduces costs and improves resilience.
       Importance: 3
       Reference: [WebSocket Hibernation API](https://developers.cloudflare.com/durable-objects/api/websockets/)
-- [ ] **Broadcast API**
+- [x] **Broadcast API**
       Support sending messages to all connected WebSockets.
       Importance: 2
 - [ ] **Feature Matrix Parity Check**

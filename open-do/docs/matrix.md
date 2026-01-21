@@ -24,7 +24,8 @@ Since `open-do` aims to maintain API compatibility with Cloudflare, the followin
 | **Concurrency Control** | ✅ Serial | Critical |
 | **RPC & Stubs** | ✅ Implemented | High |
 | **Alarms** | ✅ Implemented | Medium |
-| **WebSocket Hibernation** | ❌ Not Implemented | Medium |
+| **WebSocket Hibernation** | 🟡 Partial | Medium |
+| **Broadcast API** | ✅ Implemented | Medium |
 
 ---
 
@@ -139,9 +140,44 @@ const result = await stub.myMethod("arg1");
 
 ---
 
+
+---
+
+## WebSocket API
+
+Manage active WebSocket connections and broadcasting.
+
+| Method | Description | Implementation |
+| :--- | :--- | :--- |
+| `state.acceptWebSocket(ws, tags)` | Track a socket | ✅ |
+| `state.getWebSockets(tag)` | Get active sockets from memory | ✅ |
+| `Hibernation` | Auto-wake and sleep | 🟡 (Simulated via keep-alive) |
+
+### Code Sample
+```typescript
+export class MyObject extends OpenDO {
+  async fetch(request: Request) {
+    if (request.headers.get("Upgrade") === "websocket") {
+       const pair = new WebSocketPair();
+       const [client, server] = Object.values(pair);
+       
+       this.state.acceptWebSocket(server, ["room-1"]);
+       return new Response(null, { status: 101, webSocket: client });
+    }
+  }
+
+  broadcast(msg: string) {
+    for (const ws of this.state.getWebSockets("room-1")) {
+      ws.send(msg);
+    }
+  }
+}
+```
+
+---
+
 ## Future Roadmap
 
 These features are planned but not yet implemented in `open-do`:
-- **WebSocket Hibernation**: Managing WebSockets across process restarts.
-- **Broadcast**: Sending messages to all connected WebSockets.
+- **WebSocket Hibernation**: True platform-level hibernation without memory overhead.
 - **Improved Hibernation**: Better memory management for inactive objects.

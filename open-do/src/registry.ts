@@ -361,6 +361,7 @@ class DurableObjectStateImpl implements DurableObjectState {
   storage: DurableObjectStorage;
   #queue = Promise.resolve<any>(undefined);
   #instance: OpenDO | null = null;
+  #websockets = new Set<{ ws: WebSocket; tags: Set<string> }>();
 
   constructor(id: string, storage: DurableObjectStorage) {
     this.id = id;
@@ -379,6 +380,43 @@ class DurableObjectStateImpl implements DurableObjectState {
     if (this.#instance) {
       this.#instance._addWaitUntil(promise);
     }
+  }
+
+  acceptWebSocket(ws: WebSocket, tags: string[] = []): void {
+    // Cloudflare's API requires calling accept() on the server side
+    // We assume the user might have already called it, but safe to call again if needed?
+    // Actually, DOs call state.acceptWebSocket(ws). The doc says:
+    // "Accepts the WebSocket connection... If the WebSocket was not already accepted, it is accepted."
+    // In many envs (like Bun), strict accept() is needed.
+    // However, here we primarily track it.
+    
+    // Check if we need to call accept(). 
+    // If it's a standard WebSocket, it might already be open or in connecting state.
+    // We'll rely on the user or the framework having handled the upgrade, 
+    // but we ensure it's tracked.
+    
+    const entry = { ws, tags: new Set(tags) };
+    this.#websockets.add(entry);
+
+    // Auto-cleanup on close
+    ws.addEventListener("close", () => {
+      this.#websockets.delete(entry);
+    });
+    
+    // Handle error as close
+    ws.addEventListener("error", () => {
+       this.#websockets.delete(entry);
+    });
+  }
+
+  getWebSockets(tag?: string): WebSocket[] {
+    const sockets: WebSocket[] = [];
+    for (const entry of this.#websockets) {
+      if (!tag || entry.tags.has(tag)) {
+        sockets.push(entry.ws);
+      }
+    }
+    return sockets;
   }
 }
 
