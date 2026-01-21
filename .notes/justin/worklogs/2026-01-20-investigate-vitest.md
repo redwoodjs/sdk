@@ -182,3 +182,95 @@ While both use the plugin for transformation/loading, they differ in the *Vitest
 | **Use Case** | Component/Unit tests. | Backend Integration tests. |
 
 **Decision**: We should pursue the **Test-Bridge Pattern** (Worker Pool). It provides the high-fidelity integration testing environment (real bindings) that users like `@grace charles` are requesting, while leveraging `vitest-plugin-rsc` to handle the build-time complexity of RSCs.
+## Clarification on MSW Usage
+
+The user noticed  importing  and asked why MSW is present if the "Test-Bridge" pattern supposedly doesn't need mocks.
+
+**Investigation Findings:**
+-    initializes .
+-   It is imported by .
+-    is **only** included in  (the Browser Mode configuration).
+-    (the Test-Bridge/Worker Pool configuration) **does not** include this setup file.
+
+**Conclusion:**
+MSW is used exclusively for the **Browser Mode** tests (likely to mock network requests for UI components running in the browser runner). The "Test-Bridge" tests running in the Worker Pool do **not** use this MSW instance and indeed run without these network mocks, relying on the real environment as claimed.
+
+
+## Clarification on MSW Usage
+
+The user noticed `src/test/msw.ts` importing `msw/browser` and asked why MSW is present if the "Test-Bridge" pattern supposedly doesn't need mocks.
+
+**Investigation Findings:**
+-   `src/test/msw.ts` initializes `msw/browser`.
+-   It is imported by `src/vitest.setup.ts`.
+-   `src/vitest.setup.ts` is **only** included in `vitest.config.ts` (the Browser Mode configuration).
+-   `vitest.workers.config.ts` (the Test-Bridge/Worker Pool configuration) **does not** include this setup file.
+
+**Conclusion:**
+MSW is used exclusively for the **Browser Mode** tests (likely to mock network requests for UI components running in the browser runner). The "Test-Bridge" tests running in the Worker Pool do **not** use this MSW instance and indeed run without these network mocks, relying on the real environment as claimed.
+
+
+## Component Architecture and Roles
+
+To clarify how these pieces fit together (and where overlap exists vs. distinct roles), I have broken down the architecture of the two approaches.
+
+### Does "Plan B" (Pure Plugin) use `vitest-pool-workers`?
+**No.** `vitest-plugin-rsc` is strictly designed for **Browser Mode** (via Playwright). It simulates the RSC environment within the browser test runner. It has no dependency on `vitest-pool-workers` or Miniflare.
+
+### Architecture Breakdown
+
+#### 1. "Pure Plugin" Architecture
+*   **The Runner**: `vitest` command -> launches **Playwright** (Chromium).
+*   **The Environment**:
+    *   **Browser (Client)**: Real browser environment (via Playwright).
+    *   **Server (RSC)**: **Simulated** environment running inside the test runner process (Node.js/JSDOM-like).
+    *   *Note*: This simulation is why bindings (D1/KV) fail; they aren't in a Cloudflare Worker environment.
+*   **Role of `vitest-plugin-rsc`**:
+    *   Sets up the dual environments (Browser + Simulated Server).
+    *   Handles the "flight" stream (serializing RSCs to Client).
+    *   Transforms code (`"use client"`, `"use server"`).
+
+#### 2. "Test-Bridge + Worker Pool" Architecture
+*   **The Runner**: `vitest` command -> launches **Miniflare** (via `vitest-pool-workers`).
+*   **The Environment**:
+    *   **Client**: N/A (Tests act as a fetch client).
+    *   **Server (RSC)**: **Real** Cloudflare Worker environment (powered by `workerd`/Miniflare).
+    *   *Note*: Real environment = Real bindings work.
+*   **Role of `vitest-plugin-rsc`**:
+    *   **Reduced Scope**: It is *only* used to compile/transform the code so Vitest understands RSC syntax.
+    *   It does **NOT** manage the environment or runner. We override the runner to be `vitest-pool-workers`.
+*   **The Bridge**:
+    *   Connects the Test Runner (running outside) to the Worker (running inside Miniflare) via HTTP.
+
+### Overlap Summary
+The only overlap is the **Plugin's Transformation Logic** (compiling RSC syntax).
+-   **Pure Plugin** uses the plugin for *everything* (Environment + Runner + Transform).
+-   **Test-Bridge** uses the plugin *only* for Transform, swapping out the Environment and Runner for Cloudflare's native tools.
+
+
+## Deep Dive: `vitest-plugin-rsc` Internals
+
+I analyzed the source code of `vitest-plugin-rsc` (specifically `src/index.ts` and `src/testing-library.tsx`) to validate the "Simulated Environment" claim.
+
+### Findings
+
+1.  **Environment Configuration** (`src/index.ts`):
+    -   The plugin defines two Vitest environments:
+        -   `client` (used for the RSC "Server" context): configured with `resolve.conditions: ["browser", "react-server"]`.
+        -   `react_client` (used for the Browser "Client" context): configured with `resolve.conditions: ["browser"]`.
+    -   **Crucially**, both environments include the `browser` condition. This confirms that even the "RSC Server" code is being resolved and run as if it were in a browser-like environment (likely to support the Playwright runner).
+
+2.  **Execution Model** (`src/testing-library.tsx`):
+    -   The `renderServer` function orchestrates the RSC rendering.
+    -   It calls `ReactServer.renderToReadableStream` **directly** within the test process.
+    -   There is no network boundary or separate process for the "Server". The "Server" is simply a function call (`fetchRsc`) that executes the server-side logic (rendering, action execution) right there in the same Javascript context.
+
+### Conclusion
+
+The "Server (RSC)" in the Pure Plugin approach is indeed validly described as a **Simulated Environment** running inside the test runner process.
+-   It is **not** a separate Cloudflare Worker.
+-   It is **not** a Node.js process (since it resolves with `browser` conditions).
+-   It is effectively the RSC library running in-memory within the test runner.
+
+This explains why bindings (D1/KV) fail without mocking: global objects like `env.DB` do not exist in this simulated in-browser environment.
+
