@@ -2,7 +2,7 @@
 description: Generate a worklog
 ---
 
-Generate a technical worklog for this session, place this in @/.notes/<username>/worklogs/<date>-<slug>.md
+Generate a technical worklog for this session, place this in @/.notes/<username>/worklogs/<YYYY-MM-dd-HHMM>-<slug>.md
 
 Be concise. Use simple language.
 
@@ -10,8 +10,8 @@ Use the following Markdown structure:
 
 ---
 title: [Short descriptive title]
-date: 2026-01-20
-author: [Your Name]
+date: 2026-01-20 15:38
+author: <username>
 ---
 
 # [Title]
