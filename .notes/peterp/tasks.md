@@ -1,6 +1,6 @@
 ## Next Steps
 
-- [ ] **Improved Hibernation**
+- [x] **Improved Hibernation**
       Better memory management for inactive objects. Dynamically unload inactive objects from memory after inactivity.
       Importance: 5
       Reference: [Cloudflare Hibernation API](https://developers.cloudflare.com/durable-objects/api/hibernation-api/)
