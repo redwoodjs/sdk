@@ -13,7 +13,7 @@ RedwoodSDK supports integration testing using **Vitest** and **Cloudflare Worker
 
 Since tests run in an isolated worker process (powered by `vitest-pool-workers`), they cannot directly access your running application's state or database bindings in the same way a unit test might.
 
-To bridge this gap, we use a pattern where the test runner communicates with your worker via a special HTTP route (`/_test`).
+To bridge this gap, this guide uses a pattern where the test runner communicates with your worker via a special HTTP route (`/_test`).
 1.  **Test Side**: Uses an `invoke` helper to send a POST request with the action name and arguments.
 2.  **Worker Side**: A `handleTestRequest` handler receives the request, executes the actual Server Action within the worker's context (with full access to `ctx`, D1, KV, etc.), and returns the result.
 
