@@ -102,6 +102,41 @@ export { default as multiply } from './multiply';
 export * from './utils';
 `;
 
+  let SERVER_QUERY_GET_CODE = `
+"use server";
+export const getProject = serverQuery(async (id) => {
+  return { id, name: "Project X" };
+});
+`;
+
+  let SERVER_QUERY_POST_CODE = `
+"use server";
+export const getProject = serverQuery(async (id) => {
+  return { id, name: "Project X" };
+}, { method: "POST" });
+`;
+
+  let SERVER_ACTION_CODE = `
+"use server";
+export const upvote = serverAction(async (id) => {
+  return { id, count: 1 };
+});
+`;
+
+  let SERVER_QUERY_DEFAULT_CODE = `
+"use server";
+export default serverQuery(async (id) => {
+  return { id, name: "Project X" };
+});
+`;
+
+  let SERVER_ACTION_DEFAULT_CODE = `
+"use server";
+export default serverAction(async (id) => {
+  return { id, name: "Project X" };
+});
+`;
+
   const TEST_CASES = {
     COMMENT_CODE,
     MULTI_LINE_COMMENT_CODE,
@@ -114,6 +149,11 @@ export * from './utils';
     RE_EXPORT_CODE,
     PREDEFINED_DEFAULT_EXPORT_CODE,
     EXPORT_DEFAULT_FUNCTION_CODE,
+    SERVER_QUERY_GET_CODE,
+    SERVER_QUERY_POST_CODE,
+    SERVER_ACTION_CODE,
+    SERVER_QUERY_DEFAULT_CODE,
+    SERVER_ACTION_DEFAULT_CODE,
   };
 
   describe("TRANSFORMS", () => {

@@ -1,7 +1,14 @@
-import type { CallServerCallback } from "react-server-dom-webpack/client.browser";
+// import type { CallServerCallback } from "react-server-dom-webpack/client.browser";
 
 export type { HydrationOptions } from "react-dom/client";
-export type { CallServerCallback } from "react-server-dom-webpack/client.browser";
+// export type { CallServerCallback } from "react-server-dom-webpack/client.browser";
+
+export type CallServerCallback = <Result>(
+  id: null | string,
+  args: null | unknown[],
+  source?: "action" | "navigation" | "query",
+  method?: "GET" | "POST",
+) => Promise<Result | undefined>;
 
 export type RscActionResponse<Result> = {
   node: React.ReactNode;
@@ -53,5 +60,6 @@ export type CreateCallServer = (
 ) => <Result>(
   id: null | string,
   args: null | unknown[],
-  source?: "action" | "navigation",
-) => Promise<Result>;
+  source?: "action" | "navigation" | "query",
+  method?: "GET" | "POST",
+) => Promise<Result | undefined>;

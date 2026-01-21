@@ -1,7 +1,7 @@
 {
-  "name": "hello-world",
+  "name": "server-functions",
   "version": "1.0.0",
-  "description": "A bare-bones RedwoodSDK starter",
+  "description": "A playground for RedwoodSDK server functions",
   "main": "index.js",
   "type": "module",
   "keywords": [],
@@ -11,7 +11,7 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite dev",
-    "test:e2e": "pnpm -w test:e2e hello-world",
+    "test:e2e": "pnpm -w test:e2e server-functions",
     "test:e2e:dev": "RWSDK_SKIP_DEPLOY=1 pnpm test:e2e",
     "dev:init": "rw-scripts dev-init",
     "preview": "vite preview",
@@ -25,20 +25,20 @@
   },
   "dependencies": {
     "rwsdk": "workspace:*",
-    "react": "19.3.0-canary-d6cae440-20260106",
-    "react-dom": "19.3.0-canary-d6cae440-20260106",
-    "react-server-dom-webpack": "19.3.0-canary-d6cae440-20260106"
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-server-dom-webpack": "19.2.3"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.21.1",
-    "@cloudflare/workers-types": "4.20260120.0",
-    "@types/node": "24.10.4",
-    "@types/react": "19.2.7",
-    "@types/react-dom": "19.2.3",
+    "@cloudflare/vite-plugin": "1.17.1",
+    "@cloudflare/workers-types": "4.20260103.0",
+    "@types/node": "22.18.8",
+    "@types/react": "19.1.2",
+    "@types/react-dom": "19.1.2",
     "typescript": "5.9.3",
-    "vite": "7.3.1",
-    "vitest": "^4.0.0",
-    "wrangler": "4.59.3"
+    "vite": "7.3.0",
+    "vitest": "^3.1.1",
+    "wrangler": "4.54.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

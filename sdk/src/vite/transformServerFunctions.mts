@@ -178,14 +178,52 @@ export const transformServerFunctions = (
       s.append('import { createServerReference } from "rwsdk/client";\n\n');
     }
 
+    const ext = path.extname(normalizedId).toLowerCase();
+    const lang = ext === ".tsx" || ext === ".jsx" ? Lang.Tsx : SgLang.TypeScript;
+    const root = sgParse(lang, code);
+
     for (const name of allExports) {
       if (name !== "default" && name !== defaultFunctionName) {
+        let method: string | undefined;
+        let source: "action" | "query" = "action";
+
+        // Try to find if this export is a serverQuery or serverAction call to extract the method
+        const patterns = [
+          `export const ${name} = serverQuery($$$, { method: "$METHOD" })`,
+          `export const ${name} = serverQuery($$$)`,
+          `export const ${name} = serverAction($$$)`,
+        ];
+
+        for (const pattern of patterns) {
+          const matches = root.root().findAll(pattern);
+          if (matches.length > 0) {
+            if (pattern.includes("serverQuery")) {
+              const methodMatch = matches[0].getMatch("METHOD");
+              method = methodMatch ? methodMatch.text() : "GET";
+              source = "query";
+            } else if (pattern.includes("serverAction")) {
+              method = "POST";
+              source = "action";
+            }
+            break;
+          }
+        }
+
+        let extraArgs = "";
+        if (source === "query") {
+          extraArgs = `, ${JSON.stringify(method ?? "GET")}, "query"`;
+        } else if (method !== undefined) {
+          extraArgs = `, ${JSON.stringify(method)}`;
+        }
+
         s.append(
-          `export let ${name} = createServerReference(${JSON.stringify(normalizedId)}, ${JSON.stringify(name)});\n`,
+          `export let ${name} = createServerReference(${JSON.stringify(normalizedId)}, ${JSON.stringify(name)}${extraArgs});\n`,
         );
         log(
-          `Added ${environment} server reference for function: %s in normalizedId=%s`,
+          `Added ${environment} server reference for function: %s (method: %s, source: %s) in normalizedId=%s`,
           name,
+          method || "default",
+          source,
           normalizedId,
         );
       }
@@ -193,11 +231,43 @@ export const transformServerFunctions = (
 
     // Check for default export in the actual module (not re-exports)
     if (hasDefaultExport(code, normalizedId)) {
+      let method: string | undefined;
+      let source: "action" | "query" = "action";
+      const patterns = [
+        `export default serverQuery($$$, { method: "$METHOD" })`,
+        `export default serverQuery($$$)`,
+        `export default serverAction($$$)`,
+      ];
+
+      for (const pattern of patterns) {
+        const matches = root.root().findAll(pattern);
+        if (matches.length > 0) {
+          if (pattern.includes("serverQuery")) {
+            const methodMatch = matches[0].getMatch("METHOD");
+            method = methodMatch ? methodMatch.text() : "GET";
+            source = "query";
+          } else if (pattern.includes("serverAction")) {
+            method = "POST";
+            source = "action";
+          }
+          break;
+        }
+      }
+
+      let extraArgs = "";
+      if (source === "query") {
+        extraArgs = `, ${JSON.stringify(method ?? "GET")}, "query"`;
+      } else if (method !== undefined) {
+        extraArgs = `, ${JSON.stringify(method)}`;
+      }
+
       s.append(
-        `\nexport default createServerReference(${JSON.stringify(normalizedId)}, "default");\n`,
+        `\nexport default createServerReference(${JSON.stringify(normalizedId)}, "default"${extraArgs});\n`,
       );
       log(
-        `Added ${environment} server reference for default export in normalizedId=%s`,
+        `Added ${environment} server reference for default export (method: %s, source: %s) in normalizedId=%s`,
+        method || "default",
+        source,
         normalizedId,
       );
     }
