@@ -188,3 +188,15 @@ Added `docs/src/content/docs/guides/testing.mdx`:
 *   Explains the "Test-Bridge Pattern" and "Built Worker" requirement.
 *   Provides a step-by-step recipe for setting up the bridge (`worker.tsx`, `vitest.config.ts`).
 *   Updated `astro.config.mjs` to add "Testing" to the Guides sidebar.
+
+## Technical Context: Why "Built Worker" is required (Vitest Limitations)
+
+We currently require tests to run against the built worker (integration style) rather than source (dev mode). This is due to deep architectural conflicts between `rwsdk/vite`, `vitest`, and `@cloudflare/vitest-pool-workers`:
+
+1.  **Plugin Environment Dependencies**: The `redwood()` Vite plugin has specific expectations about the environment it runs in (specifically relying on `cloudflare-vite-plugin` and its "worker" environment). When running `vitest` in dev mode, these plugins may not be correctly initialized or may lack the necessary context that the build process guarantees.
+2.  **Environment Mismatch**: `@cloudflare/vitest-pool-workers` currently assumes it is running in a standard Vite `ssr` environment. RedwoodSDK's architecture, however, heavily utilizes a custom `worker` environment distinct from `ssr` (plus an SSR bridge for delegation).
+    *   Mapping these custom environments to what the pool expects is non-trivial.
+    *   We need to configure Vitest to understand and "allow" multiple distinct environments (Worker vs SSR).
+3.  **Entry Point Configuration**: Even if environments are defined, correctly configuring the main entry point for each environment within the pool's constraints is a challenge. The pool expects to control the entry, but Redwood needs to manage the `worker` -> `ssr` bridge.
+
+**Conclusion**: Until we can reconcile `vitest-pool-workers`'s single-SSR-environment assumption with Redwood's multi-environment architecture, running against the *built* worker (where these environments are collapsed into a final artifact) is the reliable path forward.
