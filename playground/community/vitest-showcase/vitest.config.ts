@@ -1,20 +1,16 @@
-import { defineConfig } from "vitest/config";
-import { vitestPluginRSC } from "vitest-plugin-rsc";
+import { defineWorkersConfig } from "@cloudflare/vitest-pool-workers/config";
 
-export default defineConfig({
-  plugins: [vitestPluginRSC()],
+export default defineWorkersConfig({
   test: {
-    restoreMocks: true,
-    // Only run this project's tests in browser mode.
-    include: ["src/**/*.{test,spec}.{ts,tsx}"],
-    // Keep worker-pool tests separate from browser-mode tests.
-    exclude: ["src/**/*.worker.test.{ts,tsx}"],
-    browser: {
-      enabled: true,
-      provider: "playwright" as any,
-      screenshotFailures: false,
-      instances: [{ browser: "chromium" }],
+    include: ["src/**/*.test.{ts,tsx}"],
+    poolOptions: {
+      workers: {
+        wrangler: {
+          // Use the built worker output (and its generated wrangler.json) so
+          // conditional exports like `rwsdk/worker` resolve correctly.
+          configPath: "./dist/worker/wrangler.json",
+        },
+      },
     },
-    setupFiles: ["./src/vitest.setup.ts"],
   },
 });

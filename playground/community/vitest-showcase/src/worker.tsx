@@ -5,8 +5,6 @@ import { Document } from "@/app/Document";
 import { setCommonHeaders } from "@/app/headers";
 import { Home } from "@/app/pages/Home";
 import { handleTestRequest } from "./lib/test-bridge";
-import * as actions from "./tests/action/action";
-import * as bindingActions from "./tests/action/bindings";
 import * as appActions from "./app/actions";
 import * as testUtils from "./app/test-utils";
 
@@ -19,7 +17,7 @@ export default defineApp([
     ctx;
   },
   route("/_test", {
-    post: ({ request }) => handleTestRequest(request, { ...actions, ...bindingActions, ...appActions, ...testUtils }),
+    post: ({ request }) => handleTestRequest(request, { ...appActions, ...testUtils }),
   }),
   render(Document, [route("/", Home)]),
 ]);

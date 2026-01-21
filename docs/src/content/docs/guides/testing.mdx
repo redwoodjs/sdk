@@ -1,0 +1,104 @@
+---
+title: Testing
+description: Learn how to write integration tests for your RedwoodSDK application.
+---
+
+RedwoodSDK supports integration testing using **Vitest** and **Cloudflare Workers Pool**.
+
+Due to the unique architecture of React Server Components (RSC) and Cloudflare Workers, we use a **Test-Bridge Pattern** to run tests. This ensures your tests run with full access to bindings (D1, KV) and Request Context.
+
+## Quick Start
+
+### 1. Configure Vitest
+
+> [!NOTE]
+> Currently, tests must run against the **built worker** to handle RSC transforms correctly.
+
+You will need two things in your `vitest.config.ts`:
+1.  Use `defineWorkersConfig` from `@cloudflare/vitest-pool-workers/config`.
+2.  Point the pool to your **built** `wrangler.json`.
+
+```ts
+// vitest.config.ts
+import { defineWorkersConfig } from "@cloudflare/vitest-pool-workers/config";
+
+export default defineWorkersConfig({
+  test: {
+    include: ["src/**/*.test.{ts,tsx}"],
+    poolOptions: {
+      workers: {
+        wrangler: {
+          // Use the built worker output so `rwsdk/worker` and RSCs resolve correctly.
+          configPath: "./dist/worker/wrangler.json",
+        },
+      },
+    },
+  },
+});
+```
+
+### 2. Setup the Test Bridge
+
+Since tests run in an isolated worker process, they need a way to "enter" your application to execute Server Actions with the correct context. We do this by exposing a `/_test` route.
+
+In your `src/worker.tsx`:
+
+```tsx
+import { render, route } from "rwsdk/router";
+import { defineApp } from "rwsdk/worker";
+import { handleTestRequest } from "./lib/test-bridge";
+import * as appActions from "./app/actions";
+
+// ... other imports
+
+export default defineApp([
+  // ... other middleware
+  
+  // 1. Expose the test bridge route
+  route("/_test", {
+    post: ({ request }) => handleTestRequest(request, { 
+      ...appActions, // Expose actions you want to call from tests
+    }),
+  }),
+  
+  // ... your application routes
+  render(Document, [route("/", Home)]),
+]);
+```
+
+### 3. Write a Test
+
+Use the `invoke` helper (client-side) to call your exposed actions.
+
+```ts
+// src/tests/example.test.ts
+import { expect, it, describe, beforeAll } from "vitest";
+import { invoke } from "./helpers"; // Client-side helper
+
+describe("Integration Test", () => {
+  it("should create an item", async () => {
+    // 1. Call a server action via the bridge
+    const id = await invoke<number>("createItem", "Test Item");
+    
+    // 2. Verify result
+    expect(id).toBeGreaterThan(0);
+    
+    // 3. Verify side effects (e.g. ask DB for count)
+    const count = await invoke<number>("getItemCount");
+    expect(count).toBe(1);
+  });
+});
+```
+
+## Limitations
+
+### Requires Build Step
+Because RedwoodSDK relies on complex build-time transformations for React Server Components, Vitest cannot currently run directly against source files in "Dev Mode".
+
+You must run `npm run build` (or `pnpm build`) before running your tests.
+
+### Black Box Testing
+The test runner and the worker are in separate isolates. This means:
+*   **No Mocks**: You cannot use `vi.mock()` to mock internal modules inside the worker.
+*   **No Shared State**: You cannot share variables between your test file and the worker code.
+*   **Integration Only**: You should focus on testing public behavior (Server Actions, UI output) rather than internal implementation details.

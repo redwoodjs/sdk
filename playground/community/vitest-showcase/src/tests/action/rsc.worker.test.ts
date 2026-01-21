@@ -27,6 +27,6 @@ describe("Full RSC Lifecycle (Component + Action + DB)", () => {
     expect(updatedNames).toContain(newItemName);
     expect(updatedNames).toContain("Item Manager");
     
-    console.log("Verified full cycle! Component tree updated with:", newItemName);
+
   });
 });
