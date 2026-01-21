@@ -46,6 +46,7 @@ export abstract class OpenDO {
   #queue = Promise.resolve<any>(undefined);
   #state: DurableObjectState;
   #env: any;
+  #waitUntilPromises: Promise<any>[] = [];
 
   constructor(state: DurableObjectState, env: any) {
     this.#state = state;
@@ -94,4 +95,23 @@ export abstract class OpenDO {
    * Optional alarm handler.
    */
   async alarm?(): Promise<void>;
+
+  /**
+   * Internal method to wait for all background tasks.
+   * Useful for testing or ensuring graceful shutdown.
+   */
+  async _waitForWaitUntil(): Promise<void> {
+    while (this.#waitUntilPromises.length > 0) {
+      const promises = [...this.#waitUntilPromises];
+      this.#waitUntilPromises = [];
+      await Promise.all(promises);
+    }
+  }
+
+  /**
+   * @internal
+   */
+  _addWaitUntil(promise: Promise<any>): void {
+    this.#waitUntilPromises.push(promise);
+  }
 }

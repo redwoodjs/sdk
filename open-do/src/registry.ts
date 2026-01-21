@@ -404,14 +404,17 @@ export class OpenDORegistry {
           storage = new InMemoryStorage();
         }
 
+        let instance: T;
         const state: DurableObjectState = {
           id,
           storage,
           blockConcurrencyWhile: async (cb) => cb(),
-          waitUntil: () => {},
+          waitUntil: (promise: Promise<any>) => {
+            instance?._addWaitUntil(promise);
+          },
         };
         const env = this.#options.env || {};
-        const instance = new Ctor(state, env);
+        instance = new Ctor(state, env);
 
         // Check for alarms
         const checkAlarm = async () => {
