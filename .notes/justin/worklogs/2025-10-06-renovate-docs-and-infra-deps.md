@@ -66,3 +66,29 @@ This is a packaging bug in the dependency. When our ESM-based Astro build tries 
 After reviewing the dependency's repository and observing an unstable versioning history (`1.0.0` then `0.1.0`), the decision was made to revert to the last known stable version to ensure stability and avoid further issues. The `pnpm patch` solution was considered but ultimately rejected in favor of using a stable version.
 
 The `@fujocoded/expressive-code-output` package has been downgraded to `0.0.1`.
+
+## Attempt: Playground E2E failure - content-collections schema
+
+After the CI workflow fixes, the `Playground E2E Tests` workflow was still failing.
+
+The failing project was `playground/content-collections`. The dev server failed to start with:
+
+- RetiredFeatureError: The use of a function as a schema is retired.
+
+The config in `playground/content-collections/content-collections.ts` used the retired `schema: (z) => ({ ... })` form. I updated it to use a direct schema object via zod, and added `zod` as a dependency for that playground project.
+
+## Attempt: Playground deploy failure - release command exit code 1
+
+After fixing the content-collections schema issue, `Playground E2E Tests (Dev)` passed, but `Playground E2E Tests (Deploy)` still failed.
+
+The failure is reported as `Release command failed with exit code 1`, but the CI logs do not include the underlying output from the deploy command.
+
+I updated the test harness release helper so that when the release command exits non-zero it includes a tail of stdout and stderr in the thrown error. This should make the next CI run show the actual reason the deploy failed (for example an interactive prompt mismatch or a wrangler error).
+
+The next CI run showed the underlying error for content-collections (npm install in the tarball env):
+
+- [plugin: external-packages] __dirname is not defined
+
+This appears to be coming from `@content-collections/core` as resolved by npm for the `^0.13.0` range. Since the playground E2E suite intentionally runs installs with npm (not pnpm-lock.yaml), the exact version matters.
+
+I pinned `@content-collections/core` and `@content-collections/vite` to exact versions in the content-collections playground to avoid pulling a newer version that triggers this failure under npm.

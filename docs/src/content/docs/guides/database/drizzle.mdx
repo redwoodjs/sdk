@@ -1,26 +1,160 @@
 ---
 title: Drizzle ORM
-description: Integrating Drizzle ORM with Cloudflare Durable Objects in RedwoodSDK.
+description: Integrating Drizzle ORM with Cloudflare D1 in RedwoodSDK.
 ---
 
-import { LinkCard } from "@astrojs/starlight/components";
+**Steps for integrating Drizzle/D1 into RWSDK**
 
-[Drizzle ORM](https://orm.drizzle.team/) works with Cloudflare Durable Objects in RedwoodSDK.
+Create a Cloudflare D1 database:
 
-<LinkCard
-  title="Drizzle Cloudflare Durable Objects Guide"
-  description="Official guide on connecting to Cloudflare Durable Objects."
-  href="https://orm.drizzle.team/docs/connect-cloudflare-do"
-/>
+```bash
+npx wrangler d1 create your_prod_database_name
+```
 
-<LinkCard
-  title="Drizzle DO Playground Example"
-  description="Complete working example of Drizzle ORM with Cloudflare Durable Objects in RedwoodSDK."
-  href="https://github.com/redwoodjs/sdk/tree/main/playground/drizzle-do"
-/>
+---
 
-<LinkCard
-  title="Drizzle ORM Documentation"
-  description="Complete documentation for Drizzle ORM."
-  href="https://orm.drizzle.team/"
-/>
+Add database binding to wrangler:
+
+```jsonc
+// wrangler.jsonc
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "your_prod_database_name",
+      "database_id": "prod_database_id",
+	  "migrations_dir": "drizzle"
+    }
+  ],
+```
+
+---
+
+Install Drizzle packages:
+
+```bash
+npm i drizzle-orm
+npm i -D drizzle-kit
+```
+
+---
+
+Create a `drizzle.config.ts` file and fill in like below. Note that in the example below, you only need the `dbCredentials` object IFF you want to access your dev database using Drizzle Studio. Some developers do not use Drizzle Studio and instead use TablePlus, which can access not only your dev database but also your production D1 on Cloudflare. If you won't be using Drizzle Studio then remove the `dbCredentials` object from the example below.
+
+```ts
+
+// drizzle.config.ts
+
+import { defineConfig } from "drizzle-kit";
+
+export default defineConfig({
+  schema: "./src/db/schema.ts",
+  out: "drizzle",
+  dialect: "sqlite",
+  dbCredentials: {
+    url: "./path_to_your_dev_database",
+  },
+});
+
+```
+
+---
+
+Update your `package.json` to add in these scripts:
+
+```json
+"migrate:new": "drizzle-kit generate",
+"migrate:dev": "wrangler d1 migrations apply DB --local",
+"migrate:prod": "wrangler d1 migrations apply DB --remote",
+```
+
+---
+
+Update your worker entry file:
+
+```ts
+// src/worker.tsx
+
+export interface Env {
+  DB: D1Database;
+}
+```
+
+Run `npx wrangler types` to update your `worker-configuration.d.ts` configuration.
+
+---
+
+Create a schema at `/src/db/schema.ts`. Here's a basic one, which includes an implementation for CUIDs
+
+```ts
+// src/db/schema.ts
+
+import { sqliteTable, text, integer, real, AnySQLiteColumn, index } from "drizzle-orm/sqlite-core";
+import { relations, sql } from 'drizzle-orm';
+
+let counter = 0;
+
+function createId(): string {
+  const timestamp = Date.now().toString(36);
+  counter = (counter + 1) % 1296;
+  const count = counter.toString(36).padStart(2, '0');
+  
+  const array = new Uint8Array(8);
+  crypto.getRandomValues(array);
+  const random = Array.from(array).map(b => b.toString(36)).join('').slice(0, 14);
+  
+  return `c${timestamp}${count}${random}`.slice(0, 25);
+}
+
+export const users = sqliteTable('users', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  name: text('name').notNull(),
+  email: text('slug').notNull().unique(),
+  createdAt: text('created_at').notNull().default(sql`(datetime('now', 'localtime'))`),
+  updatedAt: text('updated_at').notNull().default(sql`(datetime('now', 'localtime'))`),
+});
+
+export type User = typeof users.$inferSelect;
+export type UserInsert = typeof users.$inferInsert;
+```
+
+---
+
+Configure app for database usage by creating `src/db/db.ts` as such:
+
+```ts
+// src/db/db.ts
+
+import { drizzle } from "drizzle-orm/d1";
+import { env } from "cloudflare:workers";
+import * as schema from "./schema";
+
+export const db = drizzle(env.DB, { schema });
+```
+
+---
+
+And here's an example for accessing the database:
+
+```ts
+// src/app/pages/dashboard.tsx
+
+import { db } from "@/db/db";
+import { users, type User } from "@/db/schema";
+
+export const Dashboard = async ({ ctx }: { ctx: any }) => {
+  const allUsers: User[] = await db.select().from(users);
+}
+```
+
+---
+
+Before running the app and accessing your local database, you'll need to generate and apply a migration based on your schema:
+
+```bash
+npm run migrate:new
+npm run migrate:dev
+```
+
+Now you should be able to start the dev server (`npm run dev`) and access the database per your schema.
+
