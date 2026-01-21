@@ -13,5 +13,8 @@
     "vitest": "^1.0.0"
   },
   "author": "Peter Pistorius",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "capnweb": "^0.4.0"
+  }
 }

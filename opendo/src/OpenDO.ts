@@ -1,11 +1,20 @@
 export abstract class OpenDO {
-  private queue = Promise.resolve<any>(undefined);
+  #queue = Promise.resolve<any>(undefined);
+  #id: string;
+
+  constructor(id: string) {
+    this.#id = id;
+  }
+
+  get id() {
+    return this.#id;
+  }
 
   /**
    * Chaps requests into a serial queue to ensure they are processed one by one.
    */
   async fetch(request: Request): Promise<Response> {
-    return (this.queue = this.queue.then(async () => {
+    return (this.#queue = this.#queue.then(async () => {
       try {
         return await this.handleRequest(request);
       } catch (error) {

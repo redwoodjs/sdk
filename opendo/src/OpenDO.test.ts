@@ -1,13 +1,17 @@
 import { describe, it, expect, vi } from "vitest";
 import { OpenDO } from "./OpenDO.js";
-import { OpenDORegistry } from "./OpenDORegistry.js";
+import { OpenDORegistry as Registry } from "./Registry.js";
+import { encodeEnvelope, decodeEnvelope, RpcEnvelope } from "./Envelope.js";
+import { createStub, Connection } from "./RPC.js";
 
 class CounterDO extends OpenDO {
   count = 0;
+  constructor(id: string) {
+    super(id);
+  }
   async handleRequest(request: Request) {
     const url = new URL(request.url);
     if (url.pathname === "/increment") {
-      // Simulate some async work
       await new Promise((resolve) => setTimeout(resolve, 10));
       this.count++;
       return new Response(this.count.toString());
@@ -18,9 +22,8 @@ class CounterDO extends OpenDO {
 
 describe("OpenDO Serial Execution", () => {
   it("should process requests serially", async () => {
-    const counter = new CounterDO();
+    const counter = new CounterDO("test");
     
-    // Fire 5 requests at once
     const requests = Array.from({ length: 5 }, () => 
       counter.fetch(new Request("http://localhost/increment"))
     );
@@ -28,40 +31,73 @@ describe("OpenDO Serial Execution", () => {
     const responses = await Promise.all(requests);
     const results = await Promise.all(responses.map(r => r.text()));
     
-    // If they were parallel without race condition protection, 
-    // we might get multiple "1"s or "2"s depending on timing.
-    // With serial execution, we expect 1, 2, 3, 4, 5.
     expect(results).toEqual(["1", "2", "3", "4", "5"]);
     expect(counter.count).toBe(5);
   });
 });
 
-describe("OpenDORegistry", () => {
-  it("should reuse instances for the same ID", () => {
-    const registry = new OpenDORegistry();
+describe("Registry Singleton Lock", () => {
+  it("should reuse instances for the same ID even when requested simultaneously", async () => {
+    const registry = new Registry();
     const id = "room-1";
     
-    const instance1 = registry.getOrCreateInstance(id, CounterDO);
-    const instance2 = registry.getOrCreateInstance(id, CounterDO);
+    // Fire two requests simultaneously
+    const [p1, p2] = await Promise.all([
+      registry.get(id, CounterDO),
+      registry.get(id, CounterDO)
+    ]);
     
-    expect(instance1).toBe(instance2);
-    registry.stop();
+    expect(p1).toBe(p2);
+    expect(p1.id).toBe(id);
   });
+});
 
-  it("should hibernate idle instances", async () => {
-    vi.useFakeTimers();
-    const registry = new OpenDORegistry({ hibernationTimeoutMs: 100 });
-    const id = "room-idle";
+describe("RpcEnvelope Binary Encoding", () => {
+  it("should encode and decode correctly", () => {
+    const envelope: RpcEnvelope = {
+      uniqueId: "test-uuid",
+      methodName: "testMethod",
+      params: new Uint8Array([1, 2, 3]),
+      timestamp: 123456789n
+    };
     
-    const instance = registry.getOrCreateInstance(id, CounterDO);
+    const encoded = encodeEnvelope(envelope);
+    const decoded = decodeEnvelope(encoded);
     
-    // Advance time beyond timeout
-    vi.advanceTimersByTime(1000 * 60); // Registry checks every 30s by default
+    expect(decoded.uniqueId).toBe(envelope.uniqueId);
+    expect(decoded.methodName).toBe(envelope.methodName);
+    expect(decoded.params).toEqual(envelope.params);
+    expect(decoded.timestamp).toBe(envelope.timestamp);
+  });
+});
+
+describe("RPC createStub", () => {
+  it("should intercept method calls and send binary envelope", async () => {
+    const sentMessages: Uint8Array[] = [];
+    const mockConnection: Connection = {
+      send: async (msg) => {
+        sentMessages.push(msg);
+      },
+      receive: async () => {
+        // Return a mocked response: serialized result of "42"
+        const result = new TextEncoder().encode(JSON.stringify(42)); 
+        return result;
+      }
+    };
     
-    const newInstance = registry.getOrCreateInstance(id, CounterDO);
-    expect(newInstance).not.toBe(instance);
+    interface ICounter {
+      getValue(a: number): Promise<number>;
+    }
     
-    registry.stop();
-    vi.useRealTimers();
+    const stub = createStub<ICounter>("test-id", mockConnection);
+    const result = await stub.getValue(10);
+    
+    expect(result).toBe(42);
+    expect(sentMessages.length).toBe(1);
+    
+    const decoded = decodeEnvelope(sentMessages[0]);
+    expect(decoded.methodName).toBe("getValue");
+    // Params should decode back to [[10]] via capnweb/JSON in this version
+    expect(JSON.parse(new TextDecoder().decode(decoded.params))).toEqual([[10]]);
   });
 });

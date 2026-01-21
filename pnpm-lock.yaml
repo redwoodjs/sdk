@@ -141,6 +141,22 @@ importers:
         specifier: ^1.0.0
         version: 1.6.1(@types/node@24.10.1)(lightningcss@1.30.1)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)
 
+  opendo:
+    dependencies:
+      capnweb:
+        specifier: ^0.4.0
+        version: 0.4.0
+    devDependencies:
+      bun-types:
+        specifier: latest
+        version: 1.3.6
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+      vitest:
+        specifier: ^1.0.0
+        version: 1.6.1(@types/node@24.10.1)(lightningcss@1.30.1)(sugarss@5.0.1(postcss@8.5.6))(terser@5.44.1)
+
   playground:
     devDependencies:
       '@types/fs-extra':
@@ -6609,6 +6625,9 @@ packages:
 
   capnweb@0.2.0:
     resolution: {integrity: sha512-fQSW5h6HIefRM4rHZMyAsWcu/qE/6Qr2OC8B99whifjDJatI5KLFcODSykKmpyCCKF50N3HvZ5lB26YBdh0fRg==}
+
+  capnweb@0.4.0:
+    resolution: {integrity: sha512-OgqPQcxnrAIqjrkAuwI4N9MP/mzseM5w9oLWb/oU63KveBJl1c8p41etLSVQUlYFiAYZu+h6/LJxKaDJd93xFw==}
 
   ccount@2.0.1:
     resolution: {integrity: sha512-eyrF0jiFpY+3drT6383f1qhkbGsLSifNAjA61IUjZjmLCWjItY6LB9ft9YhoDgwfmclB2zhu51Lc7+95b8NRAg==}
@@ -16673,7 +16692,7 @@ snapshots:
 
   bun-types@1.3.6:
     dependencies:
-      '@types/node': 22.18.8
+      '@types/node': 24.10.1
 
   bundle-name@4.1.0:
     dependencies:
@@ -16713,6 +16732,8 @@ snapshots:
   caniuse-lite@1.0.30001762: {}
 
   capnweb@0.2.0: {}
+
+  capnweb@0.4.0: {}
 
   ccount@2.0.1: {}
 
