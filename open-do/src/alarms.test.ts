@@ -3,7 +3,7 @@ import { OpenDO, Registry } from "./index.js";
 import fs from "node:fs";
 import path from "node:path";
 
-const STORAGE_DIR = path.join(process.cwd(), ".test-storage-alarms");
+const STORAGE_DIR = path.join(process.cwd(), ".test-storage");
 
 class AlarmDO extends OpenDO {
   async fetch(request: Request) {
