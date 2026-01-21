@@ -1,0 +1,6 @@
+node_modules
+*.sqlite
+.test-storage
+.bench-storage
+dist
+test_output.txt
