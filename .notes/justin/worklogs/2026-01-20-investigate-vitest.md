@@ -124,3 +124,33 @@ The **Test-Bridge with Built Worker** is the only stable path today.
 *   It respects the Architectural constraint (Need Request Context).
 *   It accepts the limitation (No internal mocking).
 
+## Final Investigation Findings & "State of the Union"
+
+Following deep experimentation, we have arrived at the definitive "State of the Union" for Vitest support in RedwoodSDK (Pre-Overhaul).
+
+### 1. The "Dev Server" Approach is a Dead End (For Now)
+We attempted to run tests against the source code (using `vitest-pool-workers`' dev mode). This failed repeatedly due to conflicting environment requirements:
+1.  **Initial Error**: `RedwoodSDK: 'react-server' import condition needs to be used`.
+2.  **The Fix (Hack)**: We patched Vitest's `ssr.resolve.conditions` to include `react-server`.
+3.  **The New Error**: `RedwoodSDK: A client-only module was incorrectly resolved with the 'react-server' condition`.
+    *   *Analysis*: By forcing `react-server` into the generic "SSR" environment, we broke client-side imports that *shouldn't* have that condition. It is a game of whack-a-mole because `vitest-pool-workers` (currently) forces everything into a single "SSR" bucket.
+    *   *Conclusion*: We cannot get native source-based testing working until the `workers-sdk` overhaul (Vitest 4+) enables proper custom environments.
+
+### 2. The "Built Worker" Requirement
+To bypass the environment/transform issues, we **must** point the pool to the **built worker**:
+*   **Config**: `poolOptions.workers.wrangler.configPath = "./dist/worker/wrangler.json"`
+*   **Why**: The build process (Vite/Rollup) correctly handles all RSC transforms and conditions *before* Vitest enters the picture. Vitest simply treats the result as a black-box script.
+*   **Verdict**: This is the only stable configuration for now.
+
+### 3. The Bridge Pattern is Permanent Architecture
+We realized that the Bridge Pattern (`invoke` -> `SELF.fetch` -> `/_test`) is not just a workaround—it is likely the correct long-term architecture for RSC integration testing.
+*   **Reason**: **Context**. We cannot simply import a Component or Action into a test file and run it. It requires `AsyncLocalStorage` (Storage, Router, Request Context) that is only initialized during the Request Pipeline.
+*   **The Bridge**: Entering via `SELF.fetch` forces the application to run the full entry pipeline, setting up the necessary context before executing the code.
+*   **Redundancy**: In this "Built Worker" mode, `vitest-plugin-rsc` is technically redundant for the test runner itself (since transforms are already done), though we might keep it for type consistency.
+
+### 4. Summary of the Path Forward
+1.  **Architecture**: **Test-Bridge Pattern** (running against **Built Worker**).
+2.  **API**: We will eventually expose the `invoke` / `handleTestRequest` helpers as part of the SDK (e.g., `rwsdk/testing`).
+3.  **Limitation**: No mocking of internal modules (Black Box testing).
+4.  **Future**: When "First Class" support lands (Vitest 4), we may switch the backend from "Built Worker" to "Dev Server," but the **Bridge Architecture** (using `invoke` to trigger methods in-context) will likely remain the primary way to test backend logic.
+
