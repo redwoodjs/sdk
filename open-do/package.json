@@ -1,7 +1,7 @@
 {
   "name": "@redwoodjs/sourdough",
   "version": "0.1.0",
-  "description": "Open Durable Objects for NodeJS & Bun",
+  "description": "Open Durable Objects for Bun (& NodeJS)",
   "main": "src/index.ts",
   "scripts": {
     "test": "vitest run",
