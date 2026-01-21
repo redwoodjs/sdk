@@ -11,6 +11,7 @@ export default defineConfig({
         __dirname,
         "src/runtime/imports/__mocks__/use-client-lookup.ts",
       ),
+      "cloudflare:workers": "@cloudflare/workers-types",
     },
   },
   test: {
