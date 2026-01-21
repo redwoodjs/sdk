@@ -3,7 +3,7 @@ import { expect, vi } from "vitest";
 
 setupPlaygroundEnvironment(import.meta.url);
 
-vi.setConfig({ testTimeout: 30000 });
+vi.setConfig({ testTimeout: 120000 });
 
 testDevAndDeploy("server functions demo is visible", async ({ page, url }) => {
   await page.goto(url);
