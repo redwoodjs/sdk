@@ -23,7 +23,7 @@ Since `open-do` aims to maintain API compatibility with Cloudflare, the followin
 | **Lifecycle & State** | 🟡 Partial | Critical |
 | **Concurrency Control** | ✅ Serial | Critical |
 | **RPC & Stubs** | ✅ Implemented | High |
-| **Alarms** | ❌ Not Implemented | Medium |
+| **Alarms** | ✅ Implemented | Medium |
 | **WebSocket Hibernation** | ❌ Not Implemented | Medium |
 
 ---
@@ -37,7 +37,9 @@ The Key-Value API provides transactional, strongly consistent storage for persis
 | `get<T>(key: string \| string[])` | Get values for keys | ✅ |
 | `put<T>(key: string \| entries)` | Store keys/values | ✅ |
 | `delete(key: string \| string[])` | Delete keys | ✅ |
-| `list<T>(options)` | List keys with prefix/limit | ✅ |
+| `deleteAll()` | Delete all keys | ✅ |
+| `list<T>(options)` | List keys with prefix/limit/startAfter | ✅ |
+| `transaction<T>(callback)` | Run atomic transactions | ✅ |
 
 ### Code Sample
 ```typescript
@@ -55,6 +57,7 @@ The SQL API uses a private, co-located SQLite database for each object.
 | :--- | :--- | :--- |
 | `sql.prepare(query)` | Prepare a statement | ✅ |
 | `sql.exec(query)` | Execute raw SQL | ✅ |
+| `sql.databaseSize` | Current size on disk | ✅ |
 | `stmt.bind(...params)` | Bind parameters | ✅ |
 | `stmt.first<T>()` | Get first row | ✅ |
 | `stmt.all<T>()` | Get all rows | ✅ |
@@ -76,14 +79,42 @@ Management of the Durable Object's unique identity and internal state.
 | :--- | :--- | :--- |
 | `id` | Unique identifier for the object | ✅ |
 | `blockConcurrencyWhile` | Block requests during setup | 🟡 (Stubbed) |
-| `waitUntil` | Extend lifetime for background work | 🟡 (Stubbed) |
+| `waitUntil` | Extend lifetime for background work | ✅ |
 | `fetch` | The main entry point for requests | ✅ |
 
 ### Code Sample
 ```typescript
 export class MyObject extends OpenDO {
   async fetch(request: Request) {
+    this.ctx.waitUntil(this.doBackgroundWork());
     return new Response("Hello");
+  }
+}
+```
+
+---
+
+## Alarms API
+
+Allows Durable Objects to schedule future work.
+
+| Method | Description | Implementation |
+| :--- | :--- | :--- |
+| `getAlarm()` | Get scheduled time | ✅ |
+| `setAlarm(time)` | Schedule new alarm | ✅ |
+| `deleteAlarm()` | Cancel alarm | ✅ |
+| `alarm()` | The handler method | ✅ |
+
+### Code Sample
+```typescript
+export class MyObject extends OpenDO {
+  async fetch(request: Request) {
+    await this.storage.setAlarm(Date.now() + 1000);
+    return new Response("Scheduled");
+  }
+
+  async alarm() {
+    console.log("Alarm triggered!");
   }
 }
 ```
@@ -111,7 +142,6 @@ const result = await stub.myMethod("arg1");
 ## Future Roadmap
 
 These features are planned but not yet implemented in `open-do`:
-- **Alarms API**: `setAlarm`, `getAlarm`, and the `alarm()` handler.
 - **WebSocket Hibernation**: Managing WebSockets across process restarts.
-- **Storage Transactions**: `storage.transaction(callback)`.
 - **Broadcast**: Sending messages to all connected WebSockets.
+- **Improved Hibernation**: Better memory management for inactive objects.

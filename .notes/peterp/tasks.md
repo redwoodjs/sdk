@@ -1,7 +1,7 @@
 ## Next Steps
 
-- [ ] **Implement Hibernate Logic**
-      Dynamically unload inactive objects from memory after inactivity. Matches Cloudflare's lifecycle management.
+- [ ] **Improved Hibernation**
+      Better memory management for inactive objects. Dynamically unload inactive objects from memory after inactivity.
       Importance: 5
       Reference: [Cloudflare Hibernation API](https://developers.cloudflare.com/durable-objects/api/hibernation-api/)
 - [x] **Implement `storage.transaction()`**
@@ -24,6 +24,9 @@
       Support transferring and managing WebSockets across process restarts. Reduces costs and improves resilience.
       Importance: 3
       Reference: [WebSocket Hibernation API](https://developers.cloudflare.com/durable-objects/api/websockets/)
+- [ ] **Broadcast API**
+      Support sending messages to all connected WebSockets.
+      Importance: 2
 - [x] **Initialize `waitUntil` Support**
       Support extending the object lifetime for background work after a response is sent.
       Importance: 2
