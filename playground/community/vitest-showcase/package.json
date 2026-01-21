@@ -38,7 +38,7 @@
     "vite": "7.3.1",
     "wrangler": "4.59.3",
     "@cloudflare/vitest-pool-workers": "^0.12.1",
-    "vitest": "3.2.4",
+    "vitest": "3.2.4"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
