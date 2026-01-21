@@ -43,7 +43,6 @@ export interface DurableObjectState {
 }
 
 export abstract class OpenDO {
-  #queue = Promise.resolve<any>(undefined);
   #state: DurableObjectState;
   #env: any;
   #waitUntilPromises: Promise<any>[] = [];
@@ -74,7 +73,7 @@ export abstract class OpenDO {
    * In a real CF worker, the system handles lifecycle, but here we wrap 'fetch'.
    */
   async _internalFetch(request: Request): Promise<Response> {
-    return (this.#queue = this.#queue.then(async () => {
+    return this.#state.blockConcurrencyWhile(async () => {
       try {
         return await this.fetch(request);
       } catch (error) {
@@ -83,7 +82,7 @@ export abstract class OpenDO {
           { status: 500 }
         );
       }
-    }));
+    });
   }
 
   /**

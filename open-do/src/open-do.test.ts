@@ -109,3 +109,50 @@ describe("RPC createStub", () => {
     expect(JSON.parse(new TextDecoder().decode(decoded.params))).toEqual([[10]]);
   });
 });
+
+class BlockingDO extends OpenDO {
+  initialized = false;
+  constructor(state: DurableObjectState, env: any) {
+    super(state, env);
+    // This should block any fetch() until the promise resolves
+    state.blockConcurrencyWhile(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      this.initialized = true;
+    });
+  }
+
+  async fetch(_request: Request) {
+    return new Response(this.initialized ? "initialized" : "not initialized");
+  }
+}
+
+describe("blockConcurrencyWhile", () => {
+  it("should block fetch until initialization is complete", async () => {
+    const registry = new Registry();
+    const id = "test-blocking";
+    
+    const instance = await registry.get(id, BlockingDO);
+    
+    // If blockConcurrencyWhile works, this fetch should wait for the 100ms timeout
+    const response = await instance._internalFetch(new Request("http://localhost/"));
+    const text = await response.text();
+    
+    expect(text).toBe("initialized");
+  });
+
+  it("should block multiple subsequent fetches", async () => {
+    const registry = new Registry();
+    const id = "test-blocking-multiple";
+    
+    const instance = await registry.get(id, BlockingDO);
+    
+    const responses = await Promise.all([
+      instance._internalFetch(new Request("http://localhost/1")),
+      instance._internalFetch(new Request("http://localhost/2")),
+      instance._internalFetch(new Request("http://localhost/3")),
+    ]);
+    
+    const texts = await Promise.all(responses.map(r => r.text()));
+    expect(texts).toEqual(["initialized", "initialized", "initialized"]);
+  });
+});

@@ -78,7 +78,7 @@ Management of the Durable Object's unique identity and internal state.
 | Feature | Description | Implementation |
 | :--- | :--- | :--- |
 | `id` | Unique identifier for the object | ✅ |
-| `blockConcurrencyWhile` | Block requests during setup | 🟡 (Stubbed) |
+| `blockConcurrencyWhile` | Block requests during setup | ✅ |
 | `waitUntil` | Extend lifetime for background work | ✅ |
 | `fetch` | The main entry point for requests | ✅ |
 

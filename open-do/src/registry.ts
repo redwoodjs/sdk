@@ -356,6 +356,32 @@ class InMemoryStorage implements DurableObjectStorage {
   }
 }
 
+class DurableObjectStateImpl implements DurableObjectState {
+  id: string;
+  storage: DurableObjectStorage;
+  #queue = Promise.resolve<any>(undefined);
+  #instance: OpenDO | null = null;
+
+  constructor(id: string, storage: DurableObjectStorage) {
+    this.id = id;
+    this.storage = storage;
+  }
+
+  _setInstance(instance: OpenDO) {
+    this.#instance = instance;
+  }
+
+  async blockConcurrencyWhile<T>(callback: () => Promise<T>): Promise<T> {
+    return (this.#queue = this.#queue.then(callback));
+  }
+
+  waitUntil(promise: Promise<any>): void {
+    if (this.#instance) {
+      this.#instance._addWaitUntil(promise);
+    }
+  }
+}
+
 type OpenDOConstructor<T extends OpenDO> = new (
   state: DurableObjectState,
   env: any
@@ -405,16 +431,10 @@ export class OpenDORegistry {
         }
 
         let instance: T;
-        const state: DurableObjectState = {
-          id,
-          storage,
-          blockConcurrencyWhile: async (cb) => cb(),
-          waitUntil: (promise: Promise<any>) => {
-            instance?._addWaitUntil(promise);
-          },
-        };
+        const state = new DurableObjectStateImpl(id, storage);
         const env = this.#options.env || {};
         instance = new Ctor(state, env);
+        state._setInstance(instance);
 
         // Check for alarms
         const checkAlarm = async () => {

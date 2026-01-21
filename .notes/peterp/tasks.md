@@ -8,7 +8,7 @@
       Provide a transactional API wrapper for KV operations to ensure atomicity. Essential for consistency across multiple keys.
       Importance: 4
       Reference: [Durable Object Storage API (transaction)](https://developers.cloudflare.com/durable-objects/api/storage-api/#transaction)
-- [ ] **Fully Implement `blockConcurrencyWhile`**
+- [x] **Fully Implement `blockConcurrencyWhile`**
       Move from a stub to a working queue blocker during initialization or migrations. Ensures requests wait for critical setup.
       Importance: 4
       Reference: [Durable Object Storage API](https://developers.cloudflare.com/durable-objects/api/storage-api/#blockconcurrencywhile)
@@ -27,6 +27,10 @@
 - [ ] **Broadcast API**
       Support sending messages to all connected WebSockets.
       Importance: 2
+- [ ] **Feature Matrix Parity Check**
+      Continue verifying and updating the feature matrix to ensure full alignment with Cloudflare's Durable Objects.
+      Importance: 2
+      Reference: `docs/matrix.md`
 - [x] **Initialize `waitUntil` Support**
       Support extending the object lifetime for background work after a response is sent.
       Importance: 2
