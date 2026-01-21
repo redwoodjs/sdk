@@ -144,65 +144,41 @@ We have decided to **hold off** on implementing native support. The workarounds 
 
 
 
-## Investigated Plan B and Community Experiments
+## Investigated Alternative Approaches: `vitest-plugin-rsc` and Test-Bridge
 
-I investigated two alternative approaches for testing RedwoodSDK apps with Vitest: "Plan B" (using `vitest-plugin-rsc`) and a "Test-Bridge Pattern" experiment developed by a community member.
+I investigated two community-driven approaches for testing RedwoodSDK apps with Vitest. Contrary to my initial assumption that these were mutually exclusive alternatives, I found that they are complementary strategies that **both** rely on `vitest-plugin-rsc` as a foundation, but targeting different Vitest modes.
 
-### 1. "Plan B": `vitest-plugin-rsc`
+### Shared Foundation: `vitest-plugin-rsc`
 
-**How it works**
-This approach attempts to make Vitest native environment "RSC-aware". It is a Vitest plugin that wraps `@vitejs/plugin-rsc` to provide the necessary transpilation and environment configurations.
-- **Environment Splitting**: It defines custom Vitest environments (`client` and `react_client`) to simulate the RSC/Client boundary.
-- **Import Conditions**: It explicitly configures the `client` environment to use `react-server` conditions (mirroring where RSCs run) and `react_client` to use `browser` conditions.
-- **Role**: It acts as a configuration layer that forces Vitest (which defaults to SSR) to behave like a split RSC/Client environment.
+Both approaches use `vitest-plugin-rsc` to solve the fundamental problem: teaching Vitest how to handle React Server Components (RSC) syntax, directives (`"use client"`, `"use server"`), and import conditions (`react-server`) during the test run. Without this plugin, Vitest chokes on RSC-specific code before tests can even start.
 
-**Key Components**
-- `packages/vitest-plugin-rsc`: The core plugin.
-- `@vitejs/plugin-rsc`: Used under the hood for code transformation (stripping types, handling directives).
+### The Two Execution Patterns
 
-**Pros/Cons**
-- **Pros**: Aims for a "native" feel where you just run `vitest` and it "just works" (in theory). No need for special backdoor routes in your app.
-- **Cons**: Extremely complex implementation that fights against Vitest's default assumptions (SSR-centric). High maintenance burden to keep aligned with Vite/Vitest internal changes.
+While both use the plugin for transformation/loading, they differ in the *Vitest mode* they run in.
 
-### 2. Community Experiment: Test-Bridge Pattern
+#### 1. The "Pure Plugin" Approach (Browser Mode)
+*   **Target**: **Vitest Browser Mode** (via Playwright).
+*   **Concept**: This is the intended usage of `vitest-plugin-rsc`. It runs tests in a browser environment (controlled by Playwright) where the plugin manages a split environment to simulate RSCs.
+*   **Mechanism**: The plugin spins up two environments: a `react-server` environment (acting as the "server") and a `react_client` environment (the browser). It bridges calls between them automatically.
+*   **Limitations**: It effectively requires mocking platform specifics (D1, KV, R2) because the "server" part is running in the Vitest runner's simulated environment, not inside a real Cloudflare Worker runtime.
 
-**How it works**
-This approach, found in the `sdk_hs-vitest-playground` worktree, takes a radically different "black box" approach. It does not try to teach Vitest about RSCs. Instead, it uses Vitest as a remote control for the actual Workers runtime.
-- **The Bridge**: The Worker exposes a secure endpoint (`/_test`) that accepts a function name and arguments.
-- **Execution**: When a test runs, it sends an HTTP request to this endpoint. The running Worker (managed by `vitest-pool-workers`) receives the request, finds the corresponding internal function (Server Action), executes it *within the real Cloudflare Worker environment*, and returns the result.
-- **No Mocking Needed**: Because the code runs inside the actual Worker, all bindings (D1, KV, R2) and platform globals work exactly as they do in production.
+#### 2. The "Test-Bridge" Pattern (Worker Pool Mode)
+*   **Target**: **Vitest Pool Workers** (`@cloudflare/vitest-pool-workers`).
+*   **Concept**: Uses the plugin *strictly* for its syntax/import handling, but runs the tests in the standard Cloudflare Worker pool.
+*   **Mechanism**:
+    *   **The Bridge**: Since the pool doesn't natively support RSC splitting, this pattern effectively ignores the plugin's runtime features and instead uses a manual HTTP "bridge" (a `/_test` route) to execute code inside the real Worker.
+    *   **Runtime**: The code executes inside `miniflare` (via the pool), with real bindings and platform globals.
+*   **Pros**: High-fidelity integration tests. Bindings work out-of-the-box.
+*   **Cons**: Requires a "backdoor" route in the application (`worker.tsx`).
 
-**Key Components**
-- `src/lib/test-bridge.ts`: The dispatcher that runs inside the worker, unmarshals args (including FormData), and executes the requested action.
-- `src/worker.tsx`: Mounts the bridge at `/_test`.
-- `src/tests/helpers.ts`: Client-side helper that Vitest uses to "call" these remote functions.
+### Comparison & Conclusion
 
-### Comparison
-
-| Feature | `vitest-plugin-rsc` (Plan B) | Test-Bridge Pattern (Experiment) |
+| Feature | Pure Plugin (Browser Mode) | Test-Bridge (Worker Pool) |
 | :--- | :--- | :--- |
-| **Core Mechanism** | **Simulation**: Configures Vitest environments to mimic RSC. | **Remote Execution**: Runs code inside the actual Worker via HTTP. |
-| **RSC Support** | Via build-time transforms and environment config. | Native (code runs in the real RSC runtime). |
-| **Bindings (D1/KV)** | Requires mocking or complex environment mapping. | Works out-of-the-box (uses real bindings). |
-| **Simplicity** | complex plugin logic; fragile. | Simple "backdoor" logic; robust. |
-| **Role of `vitest-plugin-rsc`** | The core driver. | **Not used**. This approach relies on standard `vitest-pool-workers`. |
+| **Vitest Mode** | **Browser Mode** (Playwright) | **Pool Workers** (`vitest-pool-workers`) |
+| **Role of Plugin** | **Driver**: Manages split env & runtime. | **Utility**: Handles syntax/compilation only. |
+| **Execution Context** | Browser + Simulated Server Env. | Real Cloudflare Worker (Miniflare). |
+| **Bindings (D1/KV)** | Requires mocks. | **Native support** (Real bindings). |
+| **Use Case** | Component/Unit tests. | Backend Integration tests. |
 
-**Conclusion**
-The **Test-Bridge Pattern** is significantly more robust for the specific user need (integration testing auth/middleware with bindings) because it avoids the complexity of simulating the RSC environment. It runs the code *in* the environment. "Plan B" is conceptually cleaner (no backdoors) but practically much harder to stabilize given the current toolchain (Vite/Vitest) limitations.
-
-## Corrections: Both Approaches Utilize `vitest-plugin-rsc`
-
-I have re-investigated the `sdk_hs-vitest-playground` and confirmed that my previous analysis was incorrect. Both the "Plan B" approach and the "Test-Bridge Pattern" showcase actively use `vitest-plugin-rsc`.
-
-### Findings
-
-1.  **Usage in Showcase**: The showcase project (`playground/community/vitest-showcase`) depends on `vitest-plugin-rsc`.
-    -   `vitest.config.ts` (for Browser Mode tests): Uses `vitestPluginRSC()`.
-    -   `vitest.workers.config.ts` (for Worker Pool tests): Also uses `vitestPluginRSC()`.
-
-2.  **Role of the Plugin**: The plugin is not just an alternative; it is a foundational piece for enabling RSC-compatible transformations even when using the Test-Bridge.
-    -   It likely handles the necessary import rewriting and environment splitting that allows the test files (even those that bridge to the worker) to parse and run without choking on RSC syntax or imports.
-
-3.  **Refined Understanding**:
-    -   **Plan B (Plugin only)**: Relies on the plugin to *simulate* the environment.
-    -   **Test-Bridge (Showcase)**: Uses the plugin to *configure* the test runner to understand RSC code, BUT uses the "bridge" pattern (remote execution) to run the actual logic inside the real worker environment. The plugin facilitates the test file execution, while the bridge ensures fidelity of the backend logic.
+**Decision**: We should pursue the **Test-Bridge Pattern** (Worker Pool). It provides the high-fidelity integration testing environment (real bindings) that users like `@grace charles` are requesting, while leveraging `vitest-plugin-rsc` to handle the build-time complexity of RSCs.
