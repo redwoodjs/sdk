@@ -93,3 +93,34 @@ RedwoodSDK (and RSCs in general) relies heavily on **AsyncLocalStorage** and **R
     *   Test File B -> Isolate B (Miniflare Instance B) -> `SELF` refers to Instance B.
 *   **Safety**: Since `SELF.fetch` stays within the isolate, Test A triggers the pipeline in Isolate A. It never crosses over to Isolate B. Parallelism is perfectly safe.
 
+
+## User Realizations & Architecture Synthesis ("The State of the Union")
+
+You (the user) led a walkthrough of the architecture and landed on several critical realizations. Here is the synthesis of those thoughts, along with my validation.
+
+### 1. The "Built Worker" Requirement
+**Realization**: To get this working *now* (without the Cloudflare/Vite race condition), we rely on pointing `vitest-pool-workers` to the **built worker** (`./dist/worker/wrangler.json`).
+*   **Why**: This bypasses the need for the `vite-plugin-cloudflare` to run in the test process. We just hand the pool a "cooked" script.
+*   **Implication**: This effectively bifurcates the workflow. `build` -> `test`. It's not a true "dev" cycle.
+
+### 2. The Bridge Pattern is Permanent
+**Realization**: Even after the `workers-sdk` overhaul lands and we get "native" support, we will *still* need the Bridge Pattern (or something very similar).
+*   **Why**: **Context**. Merely importing `defineApp` in a test isn't enough. We need the `AsyncLocalStorage`, Router Context, and Storage Context that are only initialized during the REQUEST pipeline.
+*   **Conclusion**: Integration tests for RWSDK will always need to "Enter via the Front Door" (a request) to ensure the environment is valid.
+
+### 3. Mocking is the Main Casualty
+**Realization**: Because we are hitting a "Built Worker" via a bridge, it is a **Black Box**.
+*   **Problem**: You cannot use `vi.mock()` in your test file to mock a module *inside* the worker. They are different bundles running in different scopes.
+*   **Result**: This confirms the Bridge Pattern is strictly for **Integration Testing** (Real inputs -> Real DB effects). It is not for unit testing with mocks.
+
+### 4. Is `vitest-plugin-rsc` redundant here?
+**Realization**: If we are testing a *built worker* where transforms are already done, and our test files just call `fetch`, why do we need `vitest-plugin-rsc` in the config?
+*   **Analysis**: You are likely correct. If the test files (`*.worker.test.ts`) do NOT import any source code that uses `"use server"` or RSC syntax (and only import helpers/types), the plugin is technically superfluous for *those specific tests*.
+*   **Why it's there**: Probably for mixed repos where some tests might share utils, or just to keep the config consistent. But strictly speaking, the Bridge Driver (Test) doesn't need to know about RSCs if it's just sending JSON over HTTP.
+
+### Final Verdict: The "Pragmatic Path"
+The **Test-Bridge with Built Worker** is the only stable path today.
+*   It bypasses the tooling incompatibility (Race Condition).
+*   It respects the Architectural constraint (Need Request Context).
+*   It accepts the limitation (No internal mocking).
+

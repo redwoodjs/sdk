@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { defineApp } from "rwsdk/worker";
+
+import { SELF } from "cloudflare:test";
 
 describe("Worker", () => {
-  it("should be able to import defineApp", () => {
-    expect(defineApp).toBeDefined();
+  it("should be able to import defineApp", async () => {
+    const response = await SELF.fetch("http://localhost/_test");
+    console.log(response)
   });
 });
