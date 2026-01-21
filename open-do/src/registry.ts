@@ -77,7 +77,10 @@ class SqliteStorage implements DurableObjectStorage {
       CREATE TABLE IF NOT EXISTS _kv (
         key TEXT PRIMARY KEY,
         value BLOB
-      )
+      );
+      CREATE TABLE IF NOT EXISTS _alarms (
+        scheduledTime INTEGER PRIMARY KEY
+      );
     `);
 
     const dbInstance = this.#db;
@@ -109,6 +112,14 @@ class SqliteStorage implements DurableObjectStorage {
       },
       exec(query: string) {
         dbInstance.exec(query);
+      },
+      get databaseSize(): number {
+        const pageCount = dbInstance.prepare("PRAGMA page_count").get() as any;
+        const pageSize = dbInstance.prepare("PRAGMA page_size").get() as any;
+        // The return structure differs slightly between Bun and Node
+        const count = typeof pageCount === "number" ? pageCount : Object.values(pageCount)[0] as number;
+        const size = typeof pageSize === "number" ? pageSize : Object.values(pageSize)[0] as number;
+        return count * size;
       },
     };
   }
@@ -159,26 +170,38 @@ class SqliteStorage implements DurableObjectStorage {
     return result.changes > 0;
   }
 
+  async deleteAll(): Promise<void> {
+    this.#db.exec("DELETE FROM _kv");
+  }
+
   async list<T = unknown>(options?: any): Promise<Map<string, T>> {
     const results = new Map<string, T>();
     let query = "SELECT key, value FROM _kv";
     const params: any[] = [];
+    const wheres: string[] = [];
 
     if (options?.prefix) {
-      query += " WHERE key LIKE ?";
+      wheres.push("key LIKE ?");
       params.push(`${options.prefix}%`);
     }
 
     if (options?.start) {
-      query += options.prefix ? " AND" : " WHERE";
-      query += " key >= ?";
+      wheres.push("key >= ?");
       params.push(options.start);
     }
 
+    if (options?.startAfter) {
+      wheres.push("key > ?");
+      params.push(options.startAfter);
+    }
+
     if (options?.end) {
-      query += (options.prefix || options.start) ? " AND" : " WHERE";
-      query += " key < ?";
+      wheres.push("key < ?");
       params.push(options.end);
+    }
+
+    if (wheres.length > 0) {
+      query += " WHERE " + wheres.join(" AND ");
     }
 
     query += " ORDER BY key " + (options?.reverse ? "DESC" : "ASC");
@@ -194,6 +217,37 @@ class SqliteStorage implements DurableObjectStorage {
     }
     return results;
   }
+
+  async getAlarm(): Promise<number | null> {
+    const row = this.#db.prepare("SELECT scheduledTime FROM _alarms LIMIT 1").get();
+    return row ? Number(row.scheduledTime) : null;
+  }
+
+  async setAlarm(scheduledTime: number | Date): Promise<void> {
+    const time = scheduledTime instanceof Date ? scheduledTime.getTime() : scheduledTime;
+    this.#db.exec("DELETE FROM _alarms");
+    this.#db.prepare("INSERT INTO _alarms (scheduledTime) VALUES (?)").run(BigInt(time));
+  }
+
+  async deleteAlarm(): Promise<void> {
+    this.#db.exec("DELETE FROM _alarms");
+  }
+
+  async sync(): Promise<void> {
+    // No-op for local SQLite
+  }
+
+  async transaction<T>(callback: () => Promise<T>): Promise<T> {
+    this.#db.exec("BEGIN");
+    try {
+      const result = await callback();
+      this.#db.exec("COMMIT");
+      return result;
+    } catch (error) {
+      this.#db.exec("ROLLBACK");
+      throw error;
+    }
+  }
 }
 
 class InMemoryStorage implements DurableObjectStorage {
@@ -205,6 +259,9 @@ class InMemoryStorage implements DurableObjectStorage {
     },
     exec: () => {
       throw new Error("SQL API is not supported in InMemoryStorage");
+    },
+    get databaseSize(): number {
+      return 0;
     },
   };
 
@@ -243,9 +300,59 @@ class InMemoryStorage implements DurableObjectStorage {
     return this.#data.delete(key);
   }
 
+  async deleteAll(): Promise<void> {
+    this.#data.clear();
+  }
+
   async list<T = unknown>(options?: any): Promise<Map<string, T>> {
-    // Simplified list for memory
-    return new Map(this.#data) as Map<string, T>;
+    let entries = Array.from(this.#data.entries());
+
+    if (options?.prefix) {
+      entries = entries.filter(([k]) => k.startsWith(options.prefix));
+    }
+
+    if (options?.start) {
+      entries = entries.filter(([k]) => k >= options.start);
+    }
+
+    if (options?.startAfter) {
+      entries = entries.filter(([k]) => k > options.startAfter);
+    }
+
+    if (options?.end) {
+      entries = entries.filter(([k]) => k < options.end);
+    }
+
+    entries.sort((a, b) => (options?.reverse ? b[0].localeCompare(a[0]) : a[0].localeCompare(b[0])));
+
+    if (options?.limit) {
+      entries = entries.slice(0, options.limit);
+    }
+
+    return new Map(entries as any);
+  }
+
+  #alarmTime: number | null = null;
+
+  async getAlarm(): Promise<number | null> {
+    return this.#alarmTime;
+  }
+
+  async setAlarm(scheduledTime: number | Date): Promise<void> {
+    this.#alarmTime = scheduledTime instanceof Date ? scheduledTime.getTime() : scheduledTime;
+  }
+
+  async deleteAlarm(): Promise<void> {
+    this.#alarmTime = null;
+  }
+
+  async sync(): Promise<void> {}
+
+  async transaction<T>(callback: () => Promise<T>): Promise<T> {
+    // InMemoryStorage doesn't easily support rollbacks without snapshots.
+    // Given the single-threaded nature of DOs, we just run it.
+    // If it fails, some state might have been changed before failure.
+    return await callback();
   }
 }
 
@@ -305,6 +412,23 @@ export class OpenDORegistry {
         };
         const env = this.#options.env || {};
         const instance = new Ctor(state, env);
+
+        // Check for alarms
+        const checkAlarm = async () => {
+          const alarmTime = await storage.getAlarm();
+          if (alarmTime && alarmTime <= Date.now()) {
+            await storage.deleteAlarm();
+            if (instance.alarm) {
+              await instance.alarm();
+            }
+          }
+          if (instance.alarm) {
+            // Re-check periodically or use a more sophisticated scheduler
+            setTimeout(checkAlarm, 1000);
+          }
+        };
+        checkAlarm();
+
         return instance;
       } catch (error) {
         this.#instances.delete(id);

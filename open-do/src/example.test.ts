@@ -4,16 +4,12 @@ import { OpenDO, DurableObjectState } from "./open-do.js";
 
 // This looks exactly like a Cloudflare Durable Object
 class CloudflareStyleDO extends OpenDO {
-  constructor(state: DurableObjectState, env: any) {
-    super(state, env);
-  }
-
   async fetch(request: Request) {
     const { pathname } = new URL(request.url);
     
     if (pathname === "/storage-test") {
-      await this.state.storage.put("hello", "world");
-      const val = await this.state.storage.get("hello");
+      await this.storage.put("hello", "world");
+      const val = await this.storage.get("hello");
       return new Response(val as string);
     }
 
@@ -42,12 +38,12 @@ describe("Cloudflare API Compatibility", () => {
     const registry = new Registry();
     const instance = await registry.get("test-2", CloudflareStyleDO);
     
-    await instance.state.storage.put({
+    await instance.storage.put({
       "key1": "val1",
       "key2": "val2"
     });
     
-    const map = await instance.state.storage.get(["key1", "key2"]);
+    const map = await instance.storage.get(["key1", "key2"]);
     expect(map.get("key1")).toBe("val1");
     expect(map.get("key2")).toBe("val2");
   });

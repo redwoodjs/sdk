@@ -5,13 +5,27 @@ export interface DurableObjectStorage {
   put<T = unknown>(entries: Record<string, T>): Promise<void>;
   delete(key: string): Promise<boolean>;
   delete(keys: string[]): Promise<number>;
-  list<T = unknown>(options?: { start?: string; end?: string; prefix?: string; reverse?: boolean; limit?: number }): Promise<Map<string, T>>;
+  deleteAll(): Promise<void>;
+  list<T = unknown>(options?: {
+    start?: string;
+    startAfter?: string;
+    end?: string;
+    prefix?: string;
+    reverse?: boolean;
+    limit?: number;
+  }): Promise<Map<string, T>>;
+  getAlarm(options?: any): Promise<number | null>;
+  setAlarm(scheduledTime: number | Date, options?: any): Promise<void>;
+  deleteAlarm(options?: any): Promise<void>;
+  sync(): Promise<void>;
+  transaction<T>(callback: () => Promise<T>): Promise<T>;
   sql: DurableObjectSql;
 }
 
 export interface DurableObjectSql {
   prepare(query: string): DurableObjectSqlStatement;
   exec(query: string): void;
+  readonly databaseSize: number;
 }
 
 export interface DurableObjectSqlStatement {
@@ -46,6 +60,14 @@ export abstract class OpenDO {
     return this.#state;
   }
 
+  get ctx() {
+    return this.#state;
+  }
+
+  get storage() {
+    return this.#state.storage;
+  }
+
   /**
    * Internal wrapper to ensure serial execution.
    * In a real CF worker, the system handles lifecycle, but here we wrap 'fetch'.
@@ -67,4 +89,9 @@ export abstract class OpenDO {
    * The actual method implemented by the user, matching Cloudflare's API.
    */
   abstract fetch(request: Request): Response | Promise<Response>;
+
+  /**
+   * Optional alarm handler.
+   */
+  async alarm?(): Promise<void>;
 }
