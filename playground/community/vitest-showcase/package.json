@@ -1,5 +1,5 @@
 {
-  "name": "@redwoodjs/starter",
+  "name": "example-vitest-showcase",
   "version": "1.0.0",
   "description": "A bare-bones RedwoodSDK starter",
   "main": "index.js",
