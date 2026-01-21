@@ -7,9 +7,7 @@ import { Aside } from "@astrojs/starlight/components";
 
 RedwoodSDK supports integration testing using **Vitest** and **Cloudflare Workers Pool**.
 
-## Quick Start
-
-### The "Test Bridge" Pattern
+## The "Test Bridge" Pattern
 
 Since tests run in an isolated worker process (powered by `vitest-pool-workers`), they cannot directly access your running application's state or database bindings in the same way a unit test might.
 
@@ -19,7 +17,7 @@ To bridge this gap, this guide uses a pattern where the test runner communicates
 
 You can interpret this as "RPC from Test Runner to Worker".
 
-### 1. Configure Vitest
+## 1. Configure Vitest
 
 <Aside type="note">
   Currently, tests must run against the **built worker** to handle RSC transforms correctly.
@@ -48,7 +46,7 @@ export default defineWorkersConfig({
 });
 ```
 
-### 2. Setup the Test Bridge
+## 2. Setup the Test Bridge
 
 Expose a `/_test` route in your `src/worker.tsx` to handle incoming test requests.
 
@@ -78,7 +76,7 @@ export default defineApp([
 ]);
 ```
 
-### 3. Implement the Bridge Handler
+## 3. Implement the Bridge Handler
 
 Create the `test-bridge.ts` handler. 
 
@@ -128,7 +126,7 @@ export async function handleTestRequest(request: Request, actions: Record<string
 }
 ```
 
-### 4. Implement the Client Helper
+## 4. Implement the Client Helper
 
 Create a `helpers.ts` file to act as the client-side proxy for your actions. This uses `SELF.fetch` to talk to your worker.
 
@@ -164,7 +162,7 @@ export async function invoke<T>(actionName: string, ...args: any[]): Promise<T> 
 }
 ```
 
-### 5. Write a Test
+## 5. Write a Test
 
 Use the `invoke` helper to call your exposed actions.
 
