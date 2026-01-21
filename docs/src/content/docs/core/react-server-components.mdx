@@ -94,7 +94,8 @@ export default function AddTodo() {
 
 ### `serverQuery` and `serverAction`
 
-To give you more control over the behavior of your server functions, use `serverQuery` and `serverAction` wrappers.
+Standard React Server Action calls typically expect the server to return the entire updated UI tree so the client can rehydrate the page. For many interactions—especially queries where you only need the returned data—this is unnecessary overhead. 
+To give you more control over this behavior, RedwoodSDK provides `serverQuery` and `serverAction` wrappers.
 
 #### `serverQuery`
 
