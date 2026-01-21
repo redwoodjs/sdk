@@ -1,8 +1,8 @@
 export async function handleTestRequest(request: Request, actions: Record<string, Function>) {
   // Security Guard: Strictly block execution in non-test environments
-  // Note: Cloudflare Workers environment might use different ways to detect test env, 
-  // but we'll stick to the recommended pattern or check for specific headers/vars if needed.
-  // For Vitest Cloudflare Pool, it usually sets NODE_ENV or we can check a custom var.
+  if (import.meta.env.PROD) {
+    return new Response("Test bridge disabled in production", { status: 403 });
+  }
   
   const { name, args } = (await request.json()) as {
     name: string;

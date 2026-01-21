@@ -20,7 +20,7 @@
     "generate": "rw-scripts ensure-env && wrangler types --include-runtime false",
     "check": "npm run generate && npm run types",
     "types": "tsc",
-    "test": "npm run build && vitest"
+    "test": "NODE_ENV=development npm run build && vitest"
   },
   "dependencies": {
     "react": "19.3.0-canary-d6cae440-20260106",
