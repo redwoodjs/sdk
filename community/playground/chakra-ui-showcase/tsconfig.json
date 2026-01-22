@@ -15,13 +15,14 @@
     "moduleResolution": "bundler",
     /* Specify type package names to be included without being referenced in a source file. */
     "types": [
+      "@cloudflare/workers-types",
       "./worker-configuration.d.ts",
       "./types/rw.d.ts",
-      "./types/vite.d.ts"
+      "./types/vite.d.ts",
+      "vite/client"
     ],
     "paths": {
-      "@/*": ["./src/*"],
-      "rwsdk/*": ["../../sdk/src/*"]
+      "@/*": ["./src/*"]
     },
     /* Enable importing .json files */
     "resolveJsonModule": true,

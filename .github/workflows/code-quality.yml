@@ -71,6 +71,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Build SDK
+        run: pnpm build
+        working-directory: sdk
+
       - name: Build Community
         run: pnpm build
         working-directory: community
