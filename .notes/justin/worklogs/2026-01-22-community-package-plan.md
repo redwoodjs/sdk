@@ -121,3 +121,6 @@ Verified that `pnpm test` in `community/` now only runs the smoke test and not t
 ## E2E Script Enhancement
 Updated `community/scripts/test-e2e.mjs` to build the core SDK before building the community package. This ensures that community tests always run against the latest SDK build.
 
+
+## TypeScript Configuration
+Updated `community/tsconfig.json` to exclude `src/__tests__` from compilation. This prevents unit/smoke tests from causing build failures while allowing them to be run via Vitest.
