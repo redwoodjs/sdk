@@ -132,3 +132,6 @@ Re-implemented `.github/workflows/community-ci.yml` to strictly follow the stand
 - Updated Node.js to version 24.
 - Added comprehensive environment variables for E2E stability.
 - Added artifact uploading for failed tests.
+
+## CI Trigger Adjustment
+Switched from `pull_request_target` to `pull_request` to allow the workflow to be tested before it is merged into main. Added the workflow path itself to the trigger paths.

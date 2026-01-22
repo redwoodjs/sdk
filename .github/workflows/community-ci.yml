@@ -6,10 +6,10 @@ on:
       - main
     paths:
       - 'community/**'
-  pull_request_target:
-    types: [opened, synchronize, reopened]
+  pull_request:
     paths:
       - 'community/**'
+      - '.github/workflows/community-ci.yml'
   workflow_dispatch:
 
 concurrency:
