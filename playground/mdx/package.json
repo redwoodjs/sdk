@@ -28,7 +28,7 @@
     "react-server-dom-webpack": "19.3.0-canary-d6cae440-20260106"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.21.1",
+    "@cloudflare/vite-plugin": "1.21.2",
     "@cloudflare/workers-types": "4.20260122.0",
     "@mdx-js/rollup": "^3.0.1",
     "@types/node": "24.10.4",
@@ -37,7 +37,7 @@
     "typescript": "5.9.3",
     "vite": "7.3.1",
     "vitest": "^4.0.0",
-    "wrangler": "4.59.3"
+    "wrangler": "4.60.0"
   },
   "pnpm": {
   }
