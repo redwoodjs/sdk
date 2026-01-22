@@ -135,3 +135,10 @@ Re-implemented `.github/workflows/community-ci.yml` to strictly follow the stand
 
 ## CI Trigger Adjustment
 Switched from `pull_request_target` to `pull_request` to allow the workflow to be tested before it is merged into main. Added the workflow path itself to the trigger paths.
+
+## CI Modularization
+Split `community-ci.yml` into three parallel jobs:
+1. `unit-tests`: Runs the Vitest smoke tests.
+2. `community-e2e-dev`: Runs E2E tests with `RWSDK_SKIP_DEPLOY=1`.
+3. `community-e2e-deploy`: Runs E2E tests with `RWSDK_SKIP_DEV=1`.
+This matches the architecture of the core SDK CI and allows for parallel execution and isolated failures.

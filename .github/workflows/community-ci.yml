@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'community/**'
+      - '.github/workflows/community-ci.yml'
   pull_request:
     paths:
       - 'community/**'
@@ -21,6 +22,29 @@ env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
 jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm install
+      - name: Build SDK
+        run: |
+          cd sdk
+          pnpm build
+      - name: Run Unit Tests
+        run: |
+          cd community
+          pnpm test
+
   setup-matrix:
     runs-on: ubuntu-latest
     outputs:
@@ -28,11 +52,7 @@ jobs:
     steps:
       - id: set-matrix
         run: |
-          if [[ "${{ github.event_name }}" == "pull_request" || "${{ github.event_name }}" == "push" ]]; then
-            echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"}]}' >> $GITHUB_OUTPUT
-          else
-            echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"}]}' >> $GITHUB_OUTPUT
-          fi
+          echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"}]}' >> $GITHUB_OUTPUT
 
   community-e2e-dev:
     needs: setup-matrix
@@ -89,10 +109,10 @@ jobs:
           cd sdk
           pnpm build
 
-      - name: Run Unit Tests
+      - name: Build Community Pkg
         run: |
           cd community
-          pnpm test
+          pnpm build
 
       - name: Run Community E2E Tests (Dev)
         run: |
@@ -103,7 +123,82 @@ jobs:
         uses: actions/upload-artifact@v6
         if: always()
         with:
-          name: community-e2e-artifacts-${{ matrix.os }}-${{ matrix.package-manager }}
+          name: community-e2e-dev-artifacts-${{ matrix.os }}-${{ matrix.package-manager }}
+          path: |
+            /tmp/*-e2e-test-*
+            community/playground/**/node_modules/.cache/wrangler
+          retention-days: 7
+
+  community-e2e-deploy:
+    needs: setup-matrix
+    name: Community E2E Tests (Deploy)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
+    timeout-minutes: 60
+    env:
+      DEBUG: rwsdk:e2e:*
+      MAX_RETRIES: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '10' || '1' }}
+      RWSDK_SKIP_DEV: "1"
+      RWSDK_SEQUENTIAL: "1"
+
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'pull_request' ||
+      github.event_name == 'pull_request_target'
+
+    steps:
+      - name: Require approval for external contributors
+        if: |
+          github.event_name == 'pull_request_target' &&
+          github.event.pull_request.user.login != 'renovate[bot]' &&
+          github.event.pull_request.author_association != 'OWNER' &&
+          github.event.pull_request.author_association != 'MEMBER' &&
+          github.event.pull_request.author_association != 'COLLABORATOR' &&
+          !contains(github.event.pull_request.labels.*.name, 'run-secure-tests')
+        run: |
+          echo "ERROR: This PR is from an external contributor and requires the 'run-secure-tests' label."
+          exit 1
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.event.inputs.ref || github.ref }}
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build SDK
+        run: |
+          cd sdk
+          pnpm build
+
+      - name: Build Community Pkg
+        run: |
+          cd community
+          pnpm build
+
+      - name: Run Community E2E Tests (Deploy)
+        run: |
+          cd community
+          pnpm test:e2e
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: community-e2e-deploy-artifacts-${{ matrix.os }}-${{ matrix.package-manager }}
           path: |
             /tmp/*-e2e-test-*
             community/playground/**/node_modules/.cache/wrangler
