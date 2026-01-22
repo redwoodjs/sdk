@@ -8,7 +8,7 @@
     "rwsdk": "workspace:*"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "4.20260120.0",
+    "@cloudflare/workers-types": "4.20260122.0",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3"
   }
