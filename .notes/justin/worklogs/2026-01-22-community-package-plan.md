@@ -148,3 +148,6 @@ Updated root `package.json` with `typecheck:community` and `build:community` scr
 Updated `.github/workflows/code-quality.yml` to:
 - Trigger on `community/**` changes.
 - Added a `Community Checks` job that builds, tests, and typechecks the community library and its playgrounds.
+
+## CI Security Restoration
+Reverted `community-ci.yml` to use `pull_request_target`. This restores the secure pattern where PRs from forks are gated by an approval label before secrets are exposed.

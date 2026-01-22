@@ -7,7 +7,8 @@ on:
     paths:
       - 'community/**'
       - '.github/workflows/community-ci.yml'
-  pull_request:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
     paths:
       - 'community/**'
       - '.github/workflows/community-ci.yml'
@@ -25,6 +26,11 @@ jobs:
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
+
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'pull_request_target'
     steps:
       - uses: actions/checkout@v6
       - name: Enable Corepack
@@ -71,7 +77,6 @@ jobs:
     if: |
       github.event_name == 'push' ||
       github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'pull_request' ||
       github.event_name == 'pull_request_target'
 
     steps:
@@ -146,7 +151,6 @@ jobs:
     if: |
       github.event_name == 'push' ||
       github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'pull_request' ||
       github.event_name == 'pull_request_target'
 
     steps:
