@@ -4,7 +4,7 @@ import { defineApp } from "rwsdk/worker";
 import { Document } from "@/app/Document";
 import { setCommonHeaders } from "@/app/headers";
 import { Home } from "@/app/pages/Home";
-import { handleTestRequest } from "./lib/test-bridge";
+import { handleVitestRequest } from "rwsdk-community/worker";
 import * as appActions from "./app/actions";
 import * as testUtils from "./app/test-utils";
 
@@ -17,7 +17,7 @@ export default defineApp([
     ctx;
   },
   route("/_test", {
-    post: ({ request }) => handleTestRequest(request, { ...appActions, ...testUtils }),
+    post: ({ request }) => handleVitestRequest(request, { ...appActions, ...testUtils }),
   }),
   render(Document, [route("/", Home)]),
 ]);

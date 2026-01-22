@@ -159,3 +159,12 @@ Created `community/README.md` with a basic overview and stability warnings.
 ## Resolved Wrangler Peer Dependency Conflict
 We encountered a peer dependency error where `@cloudflare/vite-plugin` required `wrangler ^4.60.0`, but the monorepo was pinned to `^4.35.0`. We upgraded `wrangler` to `^4.60.0` in the root `package.json`, `sdk/package.json`, and added it as a peer dependency to `community/package.json`. We verified the fix by updating the lockfile and ensuring `pnpm build:community` and `pnpm typecheck:community` pass.
 
+
+## Adapted Vitest Showcase to Community Library
+We migrated the `vitest-showcase` playground to use the standardized "Test Bridge" helpers from `rwsdk-community`. This involved:
+1. Adding `rwsdk-community` as a workspace dependency.
+2. Replacing local `handleTestRequest` usage with `handleVitestRequest` in `src/worker.tsx`.
+3. Replacing local `invoke` helper with `vitestInvoke` from `rwsdk-community/test` in tests.
+4. Deleting the redundant `src/lib/test-bridge.ts` and `src/tests/helpers.ts` files.
+
+Verified that we can still build and run tests successfully using the community library.
