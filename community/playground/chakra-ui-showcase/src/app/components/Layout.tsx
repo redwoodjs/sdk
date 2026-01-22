@@ -46,7 +46,7 @@ export const SectionContent = (props: any) => {
 interface DemoListProps {
   items: Array<{
     label: string;
-    component: JSX.Element;
+    component: React.ReactElement;
   }>;
 }
 

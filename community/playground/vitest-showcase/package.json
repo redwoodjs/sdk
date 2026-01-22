@@ -39,12 +39,5 @@
     "wrangler": "4.59.3",
     "@cloudflare/vitest-pool-workers": "^0.12.1",
     "vitest": "3.2.4"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "sharp",
-      "workerd"
-    ]
   }
 }

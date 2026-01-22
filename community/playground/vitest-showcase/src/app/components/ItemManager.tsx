@@ -16,7 +16,7 @@ export async function ItemManager() {
     <div id="item-manager">
       <h1>Item Manager</h1>
       
-      <form action={trackAndSaveItem}>
+      <form action={(formData) => { void trackAndSaveItem(formData) }}>
         <input type="text" name="name" placeholder="Item name" required />
         <button type="submit">Add Item</button>
       </form>

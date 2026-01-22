@@ -16,6 +16,7 @@
     /* Specify type package names to be included without being referenced in a source file. */
     "types": [
       "@cloudflare/workers-types",
+      "@cloudflare/vitest-pool-workers",
       "./worker-configuration.d.ts",
       "./types/rw.d.ts",
       "./types/vite.d.ts",

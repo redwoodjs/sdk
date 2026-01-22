@@ -41,11 +41,6 @@
     "wrangler": "4.59.3"
   },
   "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "sharp",
-      "workerd"
-    ]
   }
 }
 

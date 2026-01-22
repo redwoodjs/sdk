@@ -40,20 +40,5 @@
     "vite": "7.3.1",
     "vitest": "^4.0.0",
     "wrangler": "4.59.3"
-  },
-  "overrides": {
-    "react": "19.3.0-canary-d6cae440-20260106",
-    "react-dom": "19.3.0-canary-d6cae440-20260106"
-  },
-  "resolutions": {
-    "react": "19.3.0-canary-d6cae440-20260106",
-    "react-dom": "19.3.0-canary-d6cae440-20260106"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "sharp",
-      "workerd"
-    ]
   }
 }

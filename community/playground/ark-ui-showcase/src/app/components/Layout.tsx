@@ -29,7 +29,7 @@ export const SectionContent = ({ children }: SectionContentProps) => (
 
 interface DemoItem {
   label: string;
-  component: JSX.Element;
+  component: React.ReactElement;
 }
 
 interface DemoListProps {
