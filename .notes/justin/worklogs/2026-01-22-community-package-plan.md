@@ -168,4 +168,4 @@ We migrated the `vitest-showcase` playground to use the standardized "Test Bridg
 4. Deleting the redundant `src/lib/test-bridge.ts` and `src/tests/helpers.ts` files.
 
 ## Documenting Community Release Process
-We are adding instructions for releasing the `rwsdk-community` package to `CONTRIBUTING.md`. This process is manual and triggered via GitHub Actions.
+We added instructions for releasing the `rwsdk-community` package to `CONTRIBUTING.md`. Initially, we used token-based auth, but we switched to **Trusted Publishers (OIDC)** to align with the core SDK's security model.

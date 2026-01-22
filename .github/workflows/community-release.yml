@@ -33,15 +33,16 @@ jobs:
         with:
           node-version: 22
           cache: 'pnpm'
-          registry-url: 'https://registry.npmjs.org'
+
+      - name: Setup .npmrc for publishing
+        run: |
+          echo "registry=https://registry.npmjs.org/" >> community/.npmrc
 
       - name: Install dependencies
         run: pnpm install
 
       - name: Build
-        run: |
-          cd community
-          pnpm build
+        run: pnpm build:community
 
       - name: Set git user
         run: |
@@ -53,8 +54,6 @@ jobs:
           cd community
           npm version ${{ inputs.type }}
           npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Push changes
         run: git push --follow-tags
