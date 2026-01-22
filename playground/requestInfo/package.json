@@ -42,8 +42,5 @@
     "wrangler": "4.60.0"
   },
   "pnpm": {
-    "onlyBuiltDependencies": [
-      "@cloudflare/vite-plugin"
-    ]
   }
 }

@@ -10,6 +10,12 @@ For context on how the system works, check out the [architecture documents](./do
 
 You are responsible for validating the correctness of your code. Run relevant tests locally before opening a pull request. This applies to all contributions, including those assisted by AI.
 
+- **SDK Core**: Strict requirement for End-to-End (E2E) test coverage for all new features and bug fixes.
+- **Community Package**: Ideally, include unit and/or integration tests. We are more lenient with coverage here, but tests are strongly encouraged.
+- **Playground Examples**:
+    - `playground/`: Must have E2E tests.
+    - `community/playground/`: E2E tests are encouraged but not mandatory for contributions.
+
 In the pull request description, specify the commands you ran to verify your changes (for example: `pnpm test:e2e -- playground/hello-world/__tests__/e2e.test.mts`).
 
 ### Playground examples
@@ -19,7 +25,7 @@ When adding or modifying playground examples, choose the right location based on
 - **Use `playground/` for official SDK tests.**
   These projects verify specific SDK features in isolation and serve as our primary E2E test suite. Keep them minimal. If you add or change behaviour here, you **must** include E2E tests covering the change. CI runs these tests on every commit.
  
-- **Use `playground/community/` for showcases and demos.**
+- **Use `community/playground/` for showcases and demos.**
   These projects demonstrate how the SDK works with other libraries or in larger applications. They can be extensive and do not require E2E tests. Note that these are excluded from CI and may not be actively maintained by the core team.
 
 ## Getting Started

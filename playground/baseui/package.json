@@ -44,10 +44,5 @@
     "react-server-dom-webpack": "19.3.0-canary-d6cae440-20260106"
   },
   "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "sharp",
-      "workerd"
-    ]
   }
 }

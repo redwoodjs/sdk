@@ -12,8 +12,8 @@ RedwoodSDK supports integration testing using **Vitest** and **Cloudflare Worker
 Since tests run in an isolated worker process (powered by `vitest-pool-workers`), they cannot directly access your running application's state or database bindings in the same way a unit test might.
 
 To bridge this gap, this guide uses a pattern where the test runner communicates with your worker via a special HTTP route (`/_test`).
-1.  **Test Side**: Uses an `invoke` helper to send a POST request with the action name and arguments.
-2.  **Worker Side**: A `handleTestRequest` handler receives the request, executes the actual Server Action within the worker's context (with full access to `ctx`, D1, KV, etc.), and returns the result.
+1.  **Test Side**: Uses an `vitestInvoke` helper to send a POST request with the action name and arguments.
+2.  **Worker Side**: A `handleVitestRequest` handler receives the request, executes the actual Server Action within the worker's context (with full access to `ctx`, D1, KV, etc.), and returns the result.
 
 You can interpret this as "RPC from Test Runner to Worker".
 
@@ -48,7 +48,7 @@ export default defineWorkersConfig({
 
 ## 2. Setup the Test Bridge
 
-Expose a `/_test` route in your `src/worker.tsx` to handle incoming test requests.
+Expose a `/_test` route in your `src/worker.tsx` to handle incoming test requests using `rwsdk-community`.
 
 You can find a complete working example in our [Vitest Playground](https://github.com/redwoodjs/redwood/tree/main/packages/sdk/playground/community/vitest-showcase).
 
@@ -56,7 +56,7 @@ You can find a complete working example in our [Vitest Playground](https://githu
 // src/worker.tsx
 import { render, route } from "rwsdk/router";
 import { defineApp } from "rwsdk/worker";
-import { handleTestRequest } from "./lib/test-bridge";
+import { handleVitestRequest } from "rwsdk-community/worker";
 import * as appActions from "./app/actions";
 import * as testUtils from "./app/test-utils";
 
@@ -65,7 +65,7 @@ export default defineApp([
   
   // 1. Expose the test bridge route
   route("/_test", {
-    post: ({ request }) => handleTestRequest(request, { 
+    post: ({ request }) => handleVitestRequest(request, { 
       ...appActions, 
       ...testUtils // Optional: expose specific test utilities
     }),
@@ -76,111 +76,25 @@ export default defineApp([
 ]);
 ```
 
-## 3. Implement the Bridge Handler
+## 3. Write a Test
 
-Create the `test-bridge.ts` handler. 
-
-<Aside type="caution">
-**Security Warning**: The handler explicitly checks `import.meta.env.PROD` to prevent exposing this route in production. You must ensure your test build runs in **development mode** (e.g. `NODE_ENV=development npm run build`) for this to work.
-</Aside>
-
-```ts
-// src/lib/test-bridge.ts
-export async function handleTestRequest(request: Request, actions: Record<string, Function>) {
-  // Security Guard: Strictly block execution in non-test environments
-  if (import.meta.env.PROD) {
-    return new Response("Test bridge disabled in production", { status: 403 });
-  }
-
-  const { name, args } = (await request.json()) as {
-    name: string;
-    args: any[];
-  };
-
-  const actionArgs = args.map((arg) => {
-    // Deserialize FormData if needed
-    if (arg && typeof arg === "object" && arg.__type === "FormData") {
-      const fd = new FormData();
-      (arg.entries as [string, string][]).forEach(([k, v]) => fd.append(k, v));
-      return fd;
-    }
-    return arg;
-  });
-
-  const action = actions[name];
-
-  if (!action) {
-    return Response.json({ error: `Action ${name} not found` }, { status: 404 });
-  }
-
-  try {
-    const result = await action(...actionArgs);
-    return Response.json({ result });
-  } catch (e: any) {
-    // Return original error and stack trace so Vitest identifies the line of failure
-    return Response.json({ 
-      error: e.message, 
-      stack: e.stack 
-    }, { status: 500 });
-  }
-}
-```
-
-## 4. Implement the Client Helper
-
-Create a `helpers.ts` file to act as the client-side proxy for your actions. This uses `SELF.fetch` to talk to your worker.
-
-```ts
-// src/tests/helpers.ts
-import { SELF } from "cloudflare:test";
-
-export async function invoke<T>(actionName: string, ...args: any[]): Promise<T> {
-  const serializedArgs = args.map(arg => {
-    // Handle special types like FormData if needed
-    if (arg instanceof FormData) {
-      return { __type: "FormData", entries: Array.from(arg.entries()) };
-    }
-    return arg;
-  });
-
-  // Call the bridge route
-  const response = await SELF.fetch("http://localhost/_test", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name: actionName, args: serializedArgs }),
-  });
-
-  if (!response.ok) {
-    const data = await response.json() as { error: string, stack?: string };
-    const err = new Error(data.error);
-    err.stack = data.stack;
-    throw err;
-  }
-
-  const data = await response.json() as { result: T };
-  return data.result;
-}
-```
-
-## 5. Write a Test
-
-Use the `invoke` helper to call your exposed actions.
+Use the `vitestInvoke` helper from `rwsdk-community/test` to call your exposed actions.
 
 ```ts
 // src/tests/example.test.ts
 import { expect, it, describe, beforeAll } from "vitest";
-import { invoke } from "./helpers"; // Client-side helper
+import { vitestInvoke } from "rwsdk-community/test";
 
 describe("Integration Test", () => {
   it("should create an item", async () => {
     // 1. Call a server action via the bridge
-    const id = await invoke<number>("createItem", "Test Item");
+    const id = await vitestInvoke<number>("createItem", "Test Item");
     
     // 2. Verify result
     expect(id).toBeGreaterThan(0);
     
     // 3. Verify side effects (e.g. ask DB for count)
-    const count = await invoke<number>("getItemCount");
+    const count = await vitestInvoke<number>("getItemCount");
     expect(count).toBe(1);
   });
 });
