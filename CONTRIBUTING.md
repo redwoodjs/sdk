@@ -10,6 +10,12 @@ For context on how the system works, check out the [architecture documents](./do
 
 You are responsible for validating the correctness of your code. Run relevant tests locally before opening a pull request. This applies to all contributions, including those assisted by AI.
 
+- **SDK Core**: Strict requirement for End-to-End (E2E) test coverage for all new features and bug fixes.
+- **Community Package**: Ideally, include unit and/or integration tests. We are more lenient with coverage here, but tests are strongly encouraged.
+- **Playground Examples**:
+    - `playground/`: Must have E2E tests.
+    - `community/playground/`: E2E tests are encouraged but not mandatory for contributions.
+
 In the pull request description, specify the commands you ran to verify your changes (for example: `pnpm test:e2e -- playground/hello-world/__tests__/e2e.test.mts`).
 
 ### Playground examples
@@ -19,7 +25,7 @@ When adding or modifying playground examples, choose the right location based on
 - **Use `playground/` for official SDK tests.**
   These projects verify specific SDK features in isolation and serve as our primary E2E test suite. Keep them minimal. If you add or change behaviour here, you **must** include E2E tests covering the change. CI runs these tests on every commit.
  
-- **Use `playground/community/` for showcases and demos.**
+- **Use `community/playground/` for showcases and demos.**
   These projects demonstrate how the SDK works with other libraries or in larger applications. They can be extensive and do not require E2E tests. Note that these are excluded from CI and may not be actively maintained by the core team.
 
 ## Getting Started
@@ -132,6 +138,7 @@ This repository is a monorepo containing several key parts:
 -   `starter/`: This directory holds the template project that users can create with `create-rwsdk`. It is used for testing and demonstrating features.
 -   `docs/`: Contains the user-facing documentation for the SDK, which is published as a website.
 -   `docs/architecture/`: A special section within the docs that contains in-depth architecture documents. These explain the "why" behind key design decisions and provide context on how the system works under the hood. If you're making a significant change, you should read these. If you're changing the system in a significant way, check whether these docs need revising to account for the update.
+-   `community/`: Contains the `rwsdk-community` package and its specific playgrounds. This is for community-contributed extensions and showcases. It follows a more lenient testing policy than the core SDK.
 
 ## Building
 
@@ -604,6 +611,18 @@ To release a major version after a pre-release, use the `explicit` version type 
 2. Enter `1.0.0` as the version
 
 The release script will validate that patch/minor cannot be used when in a pre-release and will provide a clear error message directing you to use `explicit` instead.
+
+### Releasing Community Package
+
+Releases for the `rwsdk-community` package are performed manually via GitHub Actions. Unlike the core SDK, this package uses independent versioning and does not follow the same release schedule.
+
+To trigger a release:
+1. Go to the [Release Community Package workflow](https://github.com/redwoodjs/sdk/actions/workflows/community-release.yml).
+2. Click "Run workflow".
+3. Select the release type (`patch`, `minor`, or `major`).
+4. Click "Run workflow".
+
+The workflow will build the package, update its version, publish it to npm, and push the version tag to the repository.
 
 ## Unreleasing a Version
 

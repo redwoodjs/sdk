@@ -582,7 +582,7 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
                     requestInfo,
                   );
 
-                  if (!isClientReference(componentHandler)) {
+                  if (!isClientReference(componentHandler) && !requestInfo.rw.pageRouteResolved) {
                     requestInfo.rw.pageRouteResolved = Promise.withResolvers();
                   }
 

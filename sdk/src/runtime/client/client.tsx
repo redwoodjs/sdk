@@ -37,7 +37,8 @@ export const fetchTransport: Transport = (transportContext) => {
   const fetchCallServer = async <Result,>(
     id: null | string,
     args: null | unknown[],
-    source: "action" | "navigation" = "action",
+    source: "action" | "navigation" | "query" = "action",
+    method: "GET" | "POST" = "POST",
   ): Promise<Result | undefined> => {
     const url = new URL(window.location.href);
     url.searchParams.set("__rsc", "");
@@ -46,6 +47,11 @@ export const fetchTransport: Transport = (transportContext) => {
 
     if (isAction) {
       url.searchParams.set("__rsc_action_id", id);
+      
+      // If args are provided and method is GET, serialize them into the query string
+      if (args != null && method === "GET") {
+        url.searchParams.set("args", JSON.stringify(args));
+      }
     }
 
     let fetchPromise: Promise<Response>;
@@ -63,11 +69,26 @@ export const fetchTransport: Transport = (transportContext) => {
         });
       }
     } else {
-      fetchPromise = fetch(url, {
-        method: "POST",
-        redirect: "manual",
-        body: args != null ? await encodeReply(args) : null,
-      });
+      const headers = new Headers();
+      // Add x-rsc-data-only header if we want to skip the React tree render on the server
+      if (source === "query") {
+        headers.set("x-rsc-data-only", "true");
+      }
+
+      if (method === "GET") {
+        fetchPromise = fetch(url, {
+          method: "GET",
+          headers,
+          redirect: "manual",
+        });
+      } else {
+        fetchPromise = fetch(url, {
+          method: "POST",
+          headers,
+          redirect: "manual",
+          body: args != null ? await encodeReply(args) : null,
+        });
+      }
     }
 
     // If there's a response handler, check the response first
@@ -83,7 +104,9 @@ export const fetchTransport: Transport = (transportContext) => {
         callServer: fetchCallServer,
       }) as Promise<RscActionResponse<Result>>;
 
-      transportContext.setRscPayload(streamData);
+      if (source === "navigation" || source === "action") {
+        transportContext.setRscPayload(streamData);
+      }
       const result = await streamData;
       const rawActionResult = (result as { actionResult: Result }).actionResult;
 
@@ -114,7 +137,9 @@ export const fetchTransport: Transport = (transportContext) => {
       callServer: fetchCallServer,
     }) as Promise<RscActionResponse<Result>>;
 
-    transportContext.setRscPayload(streamData);
+    if (source === "navigation" || source === "action") {
+      transportContext.setRscPayload(streamData);
+    }
     const result = await streamData;
     const rawActionResult = (result as { actionResult: Result }).actionResult;
 
@@ -223,8 +248,13 @@ export const initClient = async ({
 
   let transportCallServer = transport(transportContext);
 
-  const callServer = (id: any, args: any, source?: "action" | "navigation") => {
-    return transportCallServer(id, args, source);
+  const callServer = (
+    id: any,
+    args: any,
+    source?: "action" | "navigation" | "query",
+    method?: "GET" | "POST",
+  ) => {
+    return transportCallServer(id, args, source, method);
   };
 
   const upgradeToRealtime = async ({ key }: { key?: string } = {}) => {

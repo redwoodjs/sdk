@@ -98,8 +98,10 @@ export const realtimeTransport =
 
     const realtimeCallServer = async <T>(
       id: string | null,
-      args: unknown[],
-    ): Promise<T | null> => {
+      args: unknown[] | null,
+      _source?: "action" | "navigation" | "query",
+      _method?: "GET" | "POST",
+    ): Promise<T | undefined> => {
       try {
         const socket = ensureWs();
         const { encodeReply } = await import(
@@ -129,13 +131,13 @@ export const realtimeTransport =
         return await processResponse(await promisedResponse);
       } catch (e) {
         console.error("[Realtime] Error calling server", e);
-        return null;
+        return undefined;
       }
     };
 
     const processResponse = async <T>(
       response: Response,
-    ): Promise<T | null> => {
+    ): Promise<T | undefined> => {
       try {
         let streamForRsc: ReadableStream<Uint8Array>;
         let shouldContinue = true;
@@ -150,7 +152,7 @@ export const realtimeTransport =
         }
 
         if (!shouldContinue) {
-          return null;
+          return undefined;
         }
 
         const rscPayload = createFromReadableStream(streamForRsc!, {
@@ -172,14 +174,14 @@ export const realtimeTransport =
 
             if (location && isRedirect) {
               window.location.href = location;
-              return null;
+              return undefined;
             }
           }
 
-          return rawActionResult as T | null;
+          return rawActionResult as T | undefined;
         }
 
-        return rawActionResult as T | null;
+        return rawActionResult as T | undefined;
       } catch (err) {
         throw err;
       }

@@ -4,5 +4,6 @@ packages:
   - "examples/*"
   - "docs"
   - "playground/**"
-  - "!playground/community/**"
+  - "community"
+  - "community/playground/**"
   - "addons/*"

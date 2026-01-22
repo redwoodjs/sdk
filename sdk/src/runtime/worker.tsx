@@ -180,7 +180,15 @@ export const defineApp = <
             requestInfo.rw.actionResult,
           );
 
-          const pageElement = createPageElement(requestInfo, Page);
+          const isDataOnly = request.headers.get("x-rsc-data-only") === "true";
+          const pageElement =
+            isDataOnly && actionResult !== undefined
+              ? null
+              : createPageElement(requestInfo, Page);
+
+          if (pageElement === null) {
+            rw.pageRouteResolved?.resolve();
+          }
 
           const { rscPayload: shouldInjectRSCPayload } = rw;
 

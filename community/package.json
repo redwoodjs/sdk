@@ -1,0 +1,56 @@
+{
+  "name": "rwsdk-community",
+  "version": "0.1.1",
+  "description": "Community extensions and utilities for RedwoodSDK",
+  "type": "module",
+  "keywords": [
+    "rwsdk",
+    "redwoodsdk",
+    "redwoodjs",
+    "react",
+    "community",
+    "vitest"
+  ],
+  "author": "RedwoodSDK <peter@redwoodjs.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/redwoodjs/sdk/tree/main/community",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/redwoodjs/sdk",
+    "directory": "community"
+  },
+  "bugs": {
+    "url": "https://github.com/redwoodjs/sdk/issues"
+  },
+  "exports": {
+    "./worker": "./src/entries/worker.ts",
+    "./client": "./src/entries/client.ts",
+    "./test": "./src/entries/test.ts"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "peerDependencies": {
+    "react": ">=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0",
+    "react-dom": ">=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0",
+    "rwsdk": "workspace:*",
+    "wrangler": "^4.60.0"
+  },
+  "devDependencies": {
+    "fs-extra": "~11.3.0",
+    "@types/fs-extra": "~11.0.4",
+    "@types/react": "~19.2.7",
+    "@types/react-dom": "~19.2.3",
+    "typescript": "~5.9.0",
+    "vite": "~7.3.0",
+    "vitest": "~3.2.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run -c vitest.config.ts",
+    "test:e2e": "node scripts/test-e2e.mjs",
+    "setup:e2e": "pnpm setup:wrangler",
+    "setup:wrangler": "../../scripts/setup-wrangler-auth.sh"
+  }
+}
