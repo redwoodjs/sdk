@@ -13,6 +13,8 @@
     "typecheck:starter": "pnpm exec tsc --project starter/tsconfig.json",
     "typecheck:community": "pnpm exec tsc --project community/tsconfig.json && for d in community/playground/*/; do if [ -f \"$d/tsconfig.json\" ]; then (cd \"$d\" && npx wrangler types --include-runtime false && pnpm exec tsc); fi; done",
     "setup:wrangler": "./scripts/setup-wrangler-auth.sh",
+    "test:e2e": "cd sdk && pnpm test:e2e",
+    "setup:e2e": "cd sdk && pnpm setup:e2e",
     "unrelease": "node scripts/unrelease.mjs"
   },
   "engines": {
