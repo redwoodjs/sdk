@@ -22,14 +22,7 @@
       "ignoreUnstable": true
     },
     {
-      "description": "Group 2: rwsdk-community dependencies",
-      "groupName": "community-deps",
-      "matchFileNames": ["community/package.json"],
-      "matchPackageNames": ["*"],
-      "schedule": ["every weekend"]
-    },
-    {
-      "description": "Group 3: Everything else - Internal tools, dev dependencies, infra, docs, etc.",
+      "description": "Group 2: Everything else - Internal tools, dev dependencies, infra, docs, etc.",
       "groupName": "regular-deps",
       "schedule": ["every weekend"],
       "matchPackageNames": ["*"],
