@@ -4,8 +4,15 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pkgDir = path.resolve(__dirname, "..");
+const rootDir = path.resolve(pkgDir, "..");
 
 try {
+  console.log("Building Core SDK for E2E tests...");
+  execSync("pnpm build", {
+    cwd: path.join(rootDir, "sdk"),
+    stdio: "inherit",
+  });
+
   console.log("Building Community Package for E2E tests...");
   execSync("pnpm build", {
     cwd: pkgDir,

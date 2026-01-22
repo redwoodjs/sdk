@@ -1,2 +1,0 @@
-// Client helpers placeholder
-export {};

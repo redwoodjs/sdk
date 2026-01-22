@@ -1,4 +1,4 @@
-export async function invoke<T>(actionName: string, ...args: any[]): Promise<T> {
+export async function vitestInvoke<T>(actionName: string, ...args: any[]): Promise<T> {
   // @ts-ignore
   const { SELF } = await import("cloudflare:test");
   const serializedArgs = args.map(arg => {

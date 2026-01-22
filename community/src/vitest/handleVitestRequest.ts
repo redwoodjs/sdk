@@ -4,7 +4,7 @@
  * @param request The incoming request
  * @param actions A map of action names to action functions
  */
-export async function handleTestRequest(request: Request, actions: Record<string, Function>) {
+export async function handleVitestRequest(request: Request, actions: Record<string, Function>) {
   // Security Guard: Strictly block execution in non-test environments
   // Note: We rely on the user to ensure this is only callable in test/dev
   // via their own route definitions, but this adds an extra layer if 

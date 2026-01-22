@@ -100,3 +100,24 @@ User requested a specific 4-group configuration for `renovate.json`:
 2.  **Core Regular**: Standard regular deps, excluding `community/**`.
 3.  **Community Library**: All deps for `community/package.json`.
 4.  **Community Playground**: All deps for `community/playground/**`.
+
+## Refactoring Community Structure
+Modularized package structure:
+- `src/entries/`: Contains entry points (`worker`, `test`, `client`).
+- `src/vitest/`: Contains implementation logic.
+- Renamed `handleTestRequest` -> `handleVitestRequest`.
+- Renamed `invoke` -> `vitestInvoke`.
+Exports remain the same (`rwsdk-community/worker`, etc.), but internal implementation and function names have changed.
+
+## Refactoring Verification
+Verified new structure with `npx vitest run community/src/__tests__/smoke.test.ts`.
+Tests passed. Exports are correctly accessible under the new structure.
+
+## Vitest Configuration Separation
+Created `community/vitest.config.ts` to handle unit/smoke tests, explicitly excluding the `playground/` directory.
+Updated `community/package.json`'s `test` script to use this config.
+Verified that `pnpm test` in `community/` now only runs the smoke test and not the E2E tests.
+
+## E2E Script Enhancement
+Updated `community/scripts/test-e2e.mjs` to build the core SDK before building the community package. This ensures that community tests always run against the latest SDK build.
+

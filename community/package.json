@@ -3,9 +3,9 @@
   "version": "0.0.1",
   "type": "module",
   "exports": {
-    "./worker": "./src/worker.ts",
-    "./client": "./src/client.ts",
-    "./test": "./src/test.ts"
+    "./worker": "./src/entries/worker.ts",
+    "./client": "./src/entries/client.ts",
+    "./test": "./src/entries/test.ts"
   },
   "files": [
     "dist",
@@ -27,7 +27,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "vitest run",
+    "test": "vitest run -c vitest.config.ts",
     "test:e2e": "node scripts/test-e2e.mjs",
     "setup:e2e": "pnpm setup:wrangler",
     "setup:wrangler": "../../scripts/setup-wrangler-auth.sh"
