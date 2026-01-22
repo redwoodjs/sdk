@@ -1,0 +1,30 @@
+{
+  "name": "rwsdk-community",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    "./worker": "./src/worker.ts",
+    "./client": "./src/client.ts",
+    "./test": "./src/test.ts"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "peerDependencies": {
+    "react": ">=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0",
+    "react-dom": ">=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0",
+    "rwsdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.7",
+    "@types/react-dom": "~19.2.3",
+    "typescript": "~5.9.0",
+    "vite": "~7.3.0",
+    "vitest": "~3.2.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  }
+}

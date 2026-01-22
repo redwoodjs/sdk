@@ -51,3 +51,14 @@ We want to add a `rwsdk-community` package to the monorepo to house community ex
 ### 6. Dependencies
 - Add Peer Dependencies: `rwsdk`, `react`, `vite`, `wrangler`.
 - Ensure standard versions match core SDK policies.
+
+## Refined Plan
+Added CI workflow for community package changes () to ensure PRs are tested. User will handle the manual release verification.
+
+
+## Refactored Playground
+Renamed `playground/hello-world` to `playground/kitchen-sink`.
+Created a new minimal `playground/hello-world` from the starter.
+Added a basic E2E test `playground/hello-world/__tests__/e2e.test.mts`.
+
+Note: E2E tests hung on Chrome installation in the CI environment.

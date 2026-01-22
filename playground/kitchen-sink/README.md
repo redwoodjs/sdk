@@ -1,6 +1,6 @@
 # RedwoodSDK Minimal Starter
 
-This is the starter project for RedwoodSDK. It's a template designed to get you up and running as quickly as possible.
+This starter gives you a bare-bones RedwoodSDK project.
 
 Create your new project:
 
@@ -16,7 +16,7 @@ npm install
 npm run dev
 ```
 
-Point your browser to the URL displayed in the terminal (e.g. `http://localhost:5173/`). You should see the RedwoodSDK welcome page in your browser.
+Point your browser to the URL displayed in the terminal (e.g. `http://localhost:5173/`). You should see a "Hello World" message in your browser.
 
 ## Further Reading
 
