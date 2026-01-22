@@ -151,7 +151,7 @@
   "license": "MIT",
   "dependencies": {
     "@ast-grep/napi": "~0.39.0",
-    "@cloudflare/workers-types": "~4.20260120.0",
+    "@cloudflare/workers-types": "~4.20260122.0",
     "@mdx-js/mdx": "~3.1.1",
     "@puppeteer/browsers": "~2.10.0",
     "@types/decompress": "~4.2.7",
