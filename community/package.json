@@ -1,6 +1,6 @@
 {
   "name": "rwsdk-community",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Community extensions and utilities for RedwoodSDK",
   "type": "module",
   "keywords": [
