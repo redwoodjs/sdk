@@ -168,4 +168,4 @@ We migrated the `vitest-showcase` playground to use the standardized "Test Bridg
 4. Deleting the redundant `src/lib/test-bridge.ts` and `src/tests/helpers.ts` files.
 
 ## Documenting Community Release Process
-We added instructions for releasing the `rwsdk-community` package to `CONTRIBUTING.md`. We encountered `ENEEDAUTH` issues, which we resolved by aligning the `community-release.yml` workflow with the core SDK's configuration: using global `id-token` permissions, Node 24, and the latest npm.
+We added instructions for releasing the `rwsdk-community` package to `CONTRIBUTING.md`. We resolved `ENEEDAUTH` by aligning the workflow with the core SDK configuration. We also fixed an issue where `npm version` failed to commit/tag in CI by implementing explicit `git commit` and `git tag` steps in the workflow, using the `community-v[VERSION]` tag format.
