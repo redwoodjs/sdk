@@ -1,6 +1,6 @@
-import { SELF } from "cloudflare:test";
-
 export async function invoke<T>(actionName: string, ...args: any[]): Promise<T> {
+  // @ts-ignore
+  const { SELF } = await import("cloudflare:test");
   const serializedArgs = args.map(arg => {
     // Handle special types like FormData if needed
     if (arg instanceof FormData) {
