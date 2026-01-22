@@ -167,4 +167,5 @@ We migrated the `vitest-showcase` playground to use the standardized "Test Bridg
 3. Replacing local `invoke` helper with `vitestInvoke` from `rwsdk-community/test` in tests.
 4. Deleting the redundant `src/lib/test-bridge.ts` and `src/tests/helpers.ts` files.
 
-Verified that we can still build and run tests successfully using the community library.
+## Documenting Community Release Process
+We are adding instructions for releasing the `rwsdk-community` package to `CONTRIBUTING.md`. This process is manual and triggered via GitHub Actions.

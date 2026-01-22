@@ -138,6 +138,7 @@ This repository is a monorepo containing several key parts:
 -   `starter/`: This directory holds the template project that users can create with `create-rwsdk`. It is used for testing and demonstrating features.
 -   `docs/`: Contains the user-facing documentation for the SDK, which is published as a website.
 -   `docs/architecture/`: A special section within the docs that contains in-depth architecture documents. These explain the "why" behind key design decisions and provide context on how the system works under the hood. If you're making a significant change, you should read these. If you're changing the system in a significant way, check whether these docs need revising to account for the update.
+-   `community/`: Contains the `rwsdk-community` package and its specific playgrounds. This is for community-contributed extensions and showcases. It follows a more lenient testing policy than the core SDK.
 
 ## Building
 
@@ -610,6 +611,18 @@ To release a major version after a pre-release, use the `explicit` version type 
 2. Enter `1.0.0` as the version
 
 The release script will validate that patch/minor cannot be used when in a pre-release and will provide a clear error message directing you to use `explicit` instead.
+
+### Releasing Community Package
+
+Releases for the `rwsdk-community` package are performed manually via GitHub Actions. Unlike the core SDK, this package uses independent versioning and does not follow the same release schedule.
+
+To trigger a release:
+1. Go to the [Release Community Package workflow](https://github.com/redwoodjs/sdk/actions/workflows/community-release.yml).
+2. Click "Run workflow".
+3. Select the release type (`patch`, `minor`, or `major`).
+4. Click "Run workflow".
+
+The workflow will build the package, update its version, publish it to npm, and push the version tag to the repository.
 
 ## Unreleasing a Version
 

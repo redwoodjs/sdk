@@ -39,7 +39,9 @@ jobs:
         run: pnpm install
 
       - name: Build
-        run: pnpm build
+        run: |
+          cd community
+          pnpm build
 
       - name: Set git user
         run: |
