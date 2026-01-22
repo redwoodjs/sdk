@@ -119,10 +119,6 @@
     "./use-synced-state/worker": {
       "types": "./dist/use-synced-state/worker.d.mts",
       "workerd": "./dist/use-synced-state/worker.mjs"
-    },
-    "./durable-object": {
-      "types": "./dist/durable-object/index.d.ts",
-      "import": "./dist/durable-object/index.js"
     }
   },
   "keywords": [

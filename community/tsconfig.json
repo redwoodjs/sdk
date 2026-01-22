@@ -10,7 +10,8 @@
     "rootDir": "./src",
     "strict": true,
     "skipLibCheck": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "types": ["@cloudflare/workers-types"]
   },
   "include": ["src"],
   "exclude": ["src/__tests__"]

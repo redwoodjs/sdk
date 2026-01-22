@@ -8,7 +8,7 @@ vi.mock('@cloudflare/workers-types', () => ({
   }
 }));
 
-import { defineDO } from '../index';
+import { defineDO } from '../durableObject.js';
 
 describe('defineDO', () => {
   let mockState: DurableObjectState;
