@@ -29,14 +29,14 @@
     "react-server-dom-webpack": "19.3.0-canary-d6cae440-20260106"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.21.1",
+    "@cloudflare/vite-plugin": "1.21.2",
     "@cloudflare/workers-types": "4.20260122.0",
     "@types/node": "24.10.4",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
     "typescript": "5.9.3",
     "vite": "7.3.1",
-    "wrangler": "4.59.3",
+    "wrangler": "4.60.0",
     "@cloudflare/vitest-pool-workers": "^0.12.1",
     "vitest": "3.2.4"
   },
