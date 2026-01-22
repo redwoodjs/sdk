@@ -142,3 +142,9 @@ Split `community-ci.yml` into three parallel jobs:
 2. `community-e2e-dev`: Runs E2E tests with `RWSDK_SKIP_DEPLOY=1`.
 3. `community-e2e-deploy`: Runs E2E tests with `RWSDK_SKIP_DEV=1`.
 This matches the architecture of the core SDK CI and allows for parallel execution and isolated failures.
+
+## Code Quality Enhancement
+Updated root `package.json` with `typecheck:community` and `build:community` scripts.
+Updated `.github/workflows/code-quality.yml` to:
+- Trigger on `community/**` changes.
+- Added a `Community Checks` job that builds, tests, and typechecks the community library and its playgrounds.
