@@ -124,3 +124,11 @@ Updated `community/scripts/test-e2e.mjs` to build the core SDK before building t
 
 ## TypeScript Configuration
 Updated `community/tsconfig.json` to exclude `src/__tests__` from compilation. This prevents unit/smoke tests from causing build failures while allowing them to be run via Vitest.
+
+## CI Standardization
+Re-implemented `.github/workflows/community-ci.yml` to strictly follow the standards set in `playground-e2e-tests.yml`:
+- Switched to `pull_request_target` for secure secret access.
+- Added matrix setup and external contributor approval checks.
+- Updated Node.js to version 24.
+- Added comprehensive environment variables for E2E stability.
+- Added artifact uploading for failed tests.
