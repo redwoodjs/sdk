@@ -13,15 +13,16 @@ on:
           - minor
           - major
 
+permissions:
+  contents: write
+  id-token: write
+
 jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -29,20 +30,25 @@ jobs:
         uses: pnpm/action-setup@v2
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
           cache: 'pnpm'
 
+      - name: Update npm
+        run: npm install -g npm@latest
+
       - name: Setup .npmrc for publishing
+        working-directory: community
         run: |
-          echo "registry=https://registry.npmjs.org/" >> community/.npmrc
+          echo "registry=https://registry.npmjs.org/" >> .npmrc
 
       - name: Install dependencies
         run: pnpm install
 
       - name: Build
-        run: pnpm build:community
+        working-directory: community
+        run: pnpm build
 
       - name: Set git user
         run: |
@@ -50,8 +56,8 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Version and Publish
+        working-directory: community
         run: |
-          cd community
           npm version ${{ inputs.type }}
           npm publish
 
