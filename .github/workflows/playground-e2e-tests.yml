@@ -166,6 +166,7 @@ jobs:
         id: tests
         run: |
           pnpm install
+          cd sdk
           pnpm test:e2e
 
       - name: Upload playground artifacts
@@ -255,6 +256,7 @@ jobs:
         id: tests
         run: |
           pnpm install
+          cd sdk
           pnpm test:e2e
 
       - name: Upload playground artifacts

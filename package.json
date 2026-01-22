@@ -12,8 +12,6 @@
     "typecheck:addons": "for d in addons/*/; do if [ -f \"$d/tsconfig.json\" ]; then pnpm exec tsc --project \"$d/tsconfig.json\"; fi; done",
     "typecheck:starter": "pnpm exec tsc --project starter/tsconfig.json",
     "typecheck:community": "pnpm exec tsc --project community/tsconfig.json && for d in community/playground/*/; do if [ -f \"$d/tsconfig.json\" ]; then (cd \"$d\" && npx wrangler types --include-runtime false && pnpm exec tsc); fi; done",
-    "test:e2e": "pnpm -r test:e2e",
-    "setup:e2e": "pnpm -r setup:e2e",
     "setup:wrangler": "./scripts/setup-wrangler-auth.sh",
     "unrelease": "node scripts/unrelease.mjs"
   },
