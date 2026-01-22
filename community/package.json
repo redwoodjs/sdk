@@ -1,7 +1,27 @@
 {
   "name": "rwsdk-community",
   "version": "0.1.0",
+  "description": "Community extensions and utilities for RedwoodSDK",
   "type": "module",
+  "keywords": [
+    "rwsdk",
+    "redwoodsdk",
+    "redwoodjs",
+    "react",
+    "community",
+    "vitest"
+  ],
+  "author": "RedwoodSDK <peter@redwoodjs.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/redwoodjs/sdk/tree/main/community",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/redwoodjs/sdk",
+    "directory": "community"
+  },
+  "bugs": {
+    "url": "https://github.com/redwoodjs/sdk/issues"
+  },
   "exports": {
     "./worker": "./src/entries/worker.ts",
     "./client": "./src/entries/client.ts",

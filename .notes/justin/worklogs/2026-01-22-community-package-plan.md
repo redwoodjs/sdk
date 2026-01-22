@@ -151,3 +151,7 @@ Updated `.github/workflows/code-quality.yml` to:
 
 ## CI Security Restoration
 Reverted `community-ci.yml` to use `pull_request_target`. This restores the secure pattern where PRs from forks are gated by an approval label before secrets are exposed.
+
+## Final NPM Decoration
+Updated `community/package.json` with full NPM metadata (description, keywords, repository, author, etc.).
+Created `community/README.md` with a basic overview and stability warnings.
