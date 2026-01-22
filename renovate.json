@@ -19,7 +19,8 @@
         "wrangler",
         "vite"
       ],
-      "ignoreUnstable": true
+      "ignoreUnstable": true,
+      "matchFileNames": ["!community/**"]
     },
     {
       "description": "Group 2: Everything else - Internal tools, dev dependencies, infra, docs, etc.",
@@ -34,7 +35,22 @@
         "@cloudflare/workers-types",
         "wrangler",
         "vite"
-      ]
+      ],
+      "matchFileNames": ["!community/**"]
+    },
+    {
+      "description": "Group 3: Community Library dependencies",
+      "groupName": "community-lib-deps",
+      "matchFileNames": ["community/package.json"],
+      "matchPackageNames": ["*"],
+      "schedule": ["every weekend"]
+    },
+    {
+      "description": "Group 4: Community Playground dependencies",
+      "groupName": "community-playground-deps",
+      "matchFileNames": ["community/playground/**"],
+      "matchPackageNames": ["*"],
+      "schedule": ["every weekend"]
     },
     {
       "description": "Specific rule for React to ensure we track the 'next' tag for canary releases, as per existing policy.",

@@ -93,3 +93,10 @@ The plan is now fully executed.
 - Playgrounds refactored.
 - Library features implemented.
 - Documentation and Infra updated.
+
+## Renovate Config Correction
+User requested a specific 4-group configuration for `renovate.json`:
+1.  **Core Critical**: Standard critical deps, excluding `community/**`.
+2.  **Core Regular**: Standard regular deps, excluding `community/**`.
+3.  **Community Library**: All deps for `community/package.json`.
+4.  **Community Playground**: All deps for `community/playground/**`.
