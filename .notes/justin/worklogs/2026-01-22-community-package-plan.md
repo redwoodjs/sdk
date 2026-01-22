@@ -155,3 +155,7 @@ Reverted `community-ci.yml` to use `pull_request_target`. This restores the secu
 ## Final NPM Decoration
 Updated `community/package.json` with full NPM metadata (description, keywords, repository, author, etc.).
 Created `community/README.md` with a basic overview and stability warnings.
+
+## Resolved Wrangler Peer Dependency Conflict
+We encountered a peer dependency error where `@cloudflare/vite-plugin` required `wrangler ^4.60.0`, but the monorepo was pinned to `^4.35.0`. We upgraded `wrangler` to `^4.60.0` in the root `package.json`, `sdk/package.json`, and added it as a peer dependency to `community/package.json`. We verified the fix by updating the lockfile and ensuring `pnpm build:community` and `pnpm typecheck:community` pass.
+
