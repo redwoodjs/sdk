@@ -100,12 +100,18 @@ importers:
         specifier: workspace:*
         version: link:../sdk
     devDependencies:
+      '@types/fs-extra':
+        specifier: ~11.0.4
+        version: 11.0.4
       '@types/react':
         specifier: ~19.2.7
         version: 19.2.7
       '@types/react-dom':
         specifier: ~19.2.3
         version: 19.2.3(@types/react@19.2.7)
+      fs-extra:
+        specifier: ~11.3.0
+        version: 11.3.2
       typescript:
         specifier: ~5.9.0
         version: 5.9.3
