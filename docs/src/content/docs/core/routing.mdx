@@ -257,6 +257,28 @@ The context object:
 
 ---
 
+### Extending App Context Types
+
+To get full type safety for your custom context data (like `ctx.user`), you can extend the `DefaultAppContext` interface in a `global.d.ts` file in your project's root.
+
+```typescript title="global.d.ts"
+import { User } from "@db/index";
+import { DefaultAppContext } from "rwsdk/worker";
+
+interface AppContext {
+  user?: User;
+  session?: { userId: string | null };
+}
+
+declare module "rwsdk/worker" {
+  interface DefaultAppContext extends AppContext {}
+}
+```
+
+Now, whenever you access `ctx` in your handlers or via `getRequestInfo().ctx`, TypeScript will know about the `user` and `session` properties without needing manual casting.
+
+---
+
 ## Documents
 
 Documents are how you define the "shell" of your application's html: the `<html>`, `<head>`, `<meta>` tags, scripts, stylesheets, `<body>`, and where in the `<body>` your actual page content is rendered. In RedwoodSDK, you tell it which document to use with the `render()` function in `defineApp`. In other words, you're asking RedwoodSDK to "render" the document.
@@ -303,16 +325,24 @@ export const Document = ({ children }) => (
 
 ## Request Info
 
-The `requestInfo` object is available in server functions and provides access to the current request's context. Import it from `rwsdk/worker`:
+The `requestInfo` object and `getRequestInfo()` function are available in server functions and provide access to the current request's context. Import them from `rwsdk/worker`:
 
 ```tsx
-import { requestInfo } from "rwsdk/worker";
+import { requestInfo, getRequestInfo } from "rwsdk/worker";
 
 export async function myServerFunction() {
+  // Option 1: Using the requestInfo object
   const { request, response, ctx } = requestInfo;
-  // Use request, response, or ctx as needed
+
+  // Option 2: Using the getRequestInfo() function (recommended for actions)
+  const info = getRequestInfo();
+  // info.request, info.response, info.ctx.user
 }
 ```
+
+<Aside type="note">
+  `getRequestInfo()` will throw an error if called outside of a request lifecycle, whereas `requestInfo` will return `undefined` for its properties.
+</Aside>
 
 ---
 

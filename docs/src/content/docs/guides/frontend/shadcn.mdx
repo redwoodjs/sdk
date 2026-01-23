@@ -69,6 +69,40 @@ import { PackageManagers } from "starlight-package-managers";
     </FileTree>
 </Steps>
 
+## Toaster (sonner)
+
+By default, the shadcn `Toaster` (from `sonner`) might not work if added directly to the `Document` because it needs to be client-side and properly encapsulated within the route tree where toasts are triggered.
+
+To make it work:
+
+1. Create a "Client Component" for the Toaster.
+2. Create a Layout that encapsulates your routes.
+3. Render the Toaster within that Layout.
+
+```tsx title="src/app/components/Toaster.tsx"
+"use client";
+
+import { Toaster as Sonner } from "@/app/components/ui/sonner";
+
+export function Toaster() {
+  return <Sonner />;
+}
+```
+
+```tsx title="src/app/layouts/MainLayout.tsx"
+import { Toaster } from "@/app/components/Toaster";
+
+export function MainLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      {children}
+      <Toaster />
+    </>
+  );
+}
+```
+
+
 <Aside type="caution" title="React Server Components">
 By default, all pages and components within Redwood are server components. However, most of the ShadCN components require reactivity. Therefore, you may need to add `use client` to the top of your component file.
 </Aside>
