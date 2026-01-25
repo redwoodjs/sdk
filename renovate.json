@@ -14,13 +14,14 @@
         "react",
         "react-dom",
         "react-server-dom-webpack",
+        "@types/react",
+        "@types/react-dom",
         "@cloudflare/vite-plugin",
         "@cloudflare/workers-types",
         "wrangler",
         "vite"
       ],
-      "ignoreUnstable": true,
-      "matchFileNames": ["!community/**"]
+      "ignoreUnstable": true
     },
     {
       "description": "Group 2: Everything else - Internal tools, dev dependencies, infra, docs, etc.",
