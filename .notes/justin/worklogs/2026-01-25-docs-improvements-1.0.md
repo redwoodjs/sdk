@@ -41,3 +41,17 @@ We have agreed on the following structure:
     -   Top-level groups ("Guides", "Reference") will be **Uncollapsed** (Visible).
     -   Nested groups ("Frontend", etc.) will be **Collapsed** (Tidy).
     -   "Legacy" group will be **Collapsed** (User requested).
+
+## PR Draft [2026-01-25]
+
+### Sidebar Discoverability
+The documentation sidebar was previously heavily collapsed, which hid essential guides and reference material from immediate view. We uncollapsed the top-level **Guides** and **Reference** sections to improve discoverability. To maintain a clean interface, we moved complexity into nested sub-groups (e.g., **Frontend Development**, **Optimize**), which are now collapsed by default.
+
+### Experimental Previews
+We introduced an **Experimental** section to host features that are functional but subject to API refinement. This separates them from the stable core while keeping them discoverable.
+- **Realtime**: Relocated and renamed `useSyncedState` to `Realtime`, establishing it as the primary realtime solution.
+- **Database**: Moved the Durable Objects database documentation here.
+- **Authentication**: Split the `Authentication` documentation to isolate the experimental **Passkey Addon** from the core **Session Management** API.
+
+### Legacy Support
+To avoid confusing new users with outdated implementations, we moved the original WebSocket/Durable Object realtime implementation to a dedicated **Legacy** section at the bottom of the sidebar. We added a deprecation notice pointing users toward the new `Realtime` hook.
