@@ -1,6 +1,8 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
+  "prConcurrentLimit": 10,
+  "prHourlyLimit": 2,
   "separateMajorMinor": false,
   "vulnerabilityAlerts": {
     "enabled": false
@@ -44,14 +46,16 @@
       "groupName": "community-lib-deps",
       "matchFileNames": ["community/package.json"],
       "matchPackageNames": ["*"],
-      "schedule": ["every weekend"]
+      "schedule": ["every weekend"],
+      "prBodyNotes": "NOTE: This update belongs to the Community Library group. {{{description}}}"
     },
     {
       "description": "Group 4: Community Playground dependencies",
       "groupName": "community-playground-deps",
       "matchFileNames": ["community/playground/**"],
       "matchPackageNames": ["*"],
-      "schedule": ["every weekend"]
+      "schedule": ["every weekend"],
+      "prBodyNotes": "NOTE: This update belongs to the Community Playground group. {{{description}}}"
     },
     {
       "description": "Specific rule for React to ensure we track the 'next' tag for canary releases, as per existing policy.",
