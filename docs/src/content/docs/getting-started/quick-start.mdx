@@ -73,8 +73,8 @@ Here you'll see the `defineApp` function, this is the main function that "define
 import { defineApp } from "rwsdk/worker";
 import { route, render } from "rwsdk/router";
 
-import { Document } from "@/app/Document";
-import { Home } from "@/app/pages/Home";
+import { Document } from "@/app/document";
+import { Home } from "@/app/pages/home";
 
 export default defineApp([
   render(Document, [route("/", () => new Response("Hello, World!"))]),
