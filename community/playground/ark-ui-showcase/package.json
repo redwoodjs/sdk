@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@ark-ui/react": "^5.29.1",
-    "lucide-react": "^0.562.0",
+    "lucide-react": "^0.563.0",
     "react": "19.3.0-canary-d6cae440-20260106",
     "react-dom": "19.3.0-canary-d6cae440-20260106",
     "react-server-dom-webpack": "19.3.0-canary-d6cae440-20260106",
@@ -31,9 +31,9 @@
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.21.2",
-    "@cloudflare/workers-types": "4.20260122.0",
-    "@types/node": "24.10.4",
-    "@types/react": "19.2.7",
+    "@cloudflare/workers-types": "4.20260124.0",
+    "@types/node": "24.10.9",
+    "@types/react": "19.2.9",
     "@types/react-dom": "19.2.3",
     "typescript": "5.9.3",
     "vite": "7.3.1",
