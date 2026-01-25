@@ -21,6 +21,50 @@ export interface DOConfig<TState, TActions, TAlarms = {}> {
   };
 }
 
+/**
+ * A lightweight, opinionated wrapper for Cloudflare Durable Objects.
+ * 
+ * This abstraction turns a Durable Object into a synchronized state store with remote actions.
+ * It handles the boilerplate of:
+ * - **State Management**: `setState` atomically updates memory, storage, and broadcasts to WebSockets.
+ * - **RPC Routing**: Automatically routes HTTP requests like `/action/increment` to your `actions` object.
+ * - **WebSocket Sessions**: Manages connections and broadcasting automatically.
+ * 
+ * @example
+ * ```typescript
+ * export const Counter = defineDO({
+ *   state: { count: 0 },
+ *   actions: {
+ *     increment() {
+ *       this.setState({ count: this.state.count + 1 });
+ *       return this.state.count;
+ *     }
+ *   }
+ * });
+ * ```
+ * 
+ * @example
+ * **Using WebSockets and Alarms**
+ * ```typescript
+ * export const ChatRoom = defineDO({
+ *   state: { messages: [] as string[] },
+ *   actions: {
+ *     post(msg: string) {
+ *       this.setState({ messages: [...this.state.messages, msg] });
+ *       // Schedule cleanup in 1 hour
+ *       this.ctx.storage.setAlarm(Date.now() + 3600000);
+ *       this.ctx.storage.put('currentAlarm', 'cleanup');
+ *     }
+ *   },
+ *   alarms: {
+ *     cleanup() {
+ *       this.setState({ messages: [] });
+ *     }
+ *   }
+ * });
+ * // Clients connecting via WebSocket automatically receive state updates
+ * ```
+ */
 export function defineDO<
   TState extends Record<string, any>,
   TActions extends Record<string, any>,
