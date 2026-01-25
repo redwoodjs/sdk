@@ -6,7 +6,9 @@ experimental: true
 
 import { Aside, Badge } from "@astrojs/starlight/components";
 
-`useSyncedState` looks exactly like `useState`, except it has bidirectional syncing with the server.
+RedwoodSDK provides built-in support for real-time applications through shared state synchronization. The primary way to implement this is via the `useSyncedState` hook.
+
+`useSyncedState` looks exactly like React's native `useState`, except it has bidirectional syncing with the server and all other connected clients.
 
 ## What is it?
 
