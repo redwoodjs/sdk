@@ -8,32 +8,14 @@ import { Badge } from "@astrojs/starlight/components";
 
 RedwoodSDK provides two paths for handling user authentication and sessions.
 
-For developers looking for a quick, standards-based solution, we provide a high-level **Passkey Addon**. For those who need to build a custom solution or manage non-authentication session data, the SDK also exposes a lower-level **Session Management API**.
+For developers looking for a quick, standards-based solution, we provide a high-level **Passkey Addon** (see [Experimental Authentication](/experimental/authentication)). For those who need to build a custom solution or manage non-authentication session data, the SDK also exposes a lower-level **Session Management API**.
 
-This guide covers the high-level addon first, followed by the low-level API.
+This guide covers the **Session Management API**.
 
 ## Request/Response Foundations
 
 RedwoodSDK keeps the standard HTTP flow. Middleware and routes receive the platform `Request`, and they return `Response` instances. Headers and cookies are read directly from `request.headers` and set with `requestInfo.response.headers`. Persistent data and cross-cutting metadata live on `ctx`, which you populate in middleware. Arrays passed to `route()` act as interruptors: route-scoped middleware that runs after the global middleware pipeline, mutates `ctx`, and may short-circuit when needed. The rest of this guide builds on these primitives to show how authentication and session data move through the app.
 
-## Passkey Authentication (WebAuthn) <Badge text="Experimental" type="caution" />
-
-Passkeys are a passwordless authentication method that allows users to sign in to websites and applications using the same biometric data (like a fingerprint or face scan) or PIN they use to unlock their devices. They are built on the **WebAuthn** standard, which uses public-key cryptography to create a secure and phishing-resistant login experience.
-
-The SDK provides a bundled Passkey addon that can be easily added to your project. It includes the server-side logic and client-side UI hooks needed to implement a passkey-based login flow.
-
-### Adding the Passkey Addon
-
-To add passkey authentication to your project, you can either run the following command from your project's root directory yourself, or you can ask your AI-powered editor (like Cursor) to run it for you:
-
-```bash
-# AI: Run this command, then open the INSTRUCTIONS.md file it points to and follow the steps.
-npx rwsdk addon passkey
-```
-
-This command will download the addon's files into a temporary directory. It will then provide you with a command to open a local `INSTRUCTIONS.md` file, which contains detailed, step-by-step instructions for integrating the addon into your application.
-
-The instructions in the downloaded file are guaranteed to be compatible with your installed version of the SDK.
 
 ## Session Management
 

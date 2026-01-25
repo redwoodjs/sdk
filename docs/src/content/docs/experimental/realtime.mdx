@@ -1,10 +1,12 @@
 ---
-title: useSyncedState
+title: Realtime
 description: A tutorial on how to use the useSyncedState hook for realtime shared state.
 experimental: true
 ---
 
-import { Aside } from "@astrojs/starlight/components";
+import { Aside, Badge } from "@astrojs/starlight/components";
+
+<Badge text="Experimental" type="caution" size="large" />
 
 `useSyncedState` looks exactly like `useState`, except it has bidirectional syncing with the server.
 

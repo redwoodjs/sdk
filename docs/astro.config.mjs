@@ -52,9 +52,7 @@ export default defineConfig({
             { slug: "core/overview" },
             { label: "Request Handling & Routing", slug: "core/routing" },
             { slug: "core/react-server-components" },
-            { label: "Database", slug: "core/database-do" },
             { slug: "core/storage" },
-            { slug: "core/realtime" },
             { slug: "core/queues" },
             { slug: "core/cron" },
             { slug: "core/email" },
@@ -65,11 +63,19 @@ export default defineConfig({
           ],
         },
         {
+          label: "Experimental",
+          items: [
+            { label: "Realtime", slug: "experimental/realtime" },
+            { label: "Database", slug: "experimental/database" },
+            { label: "Authentication", slug: "experimental/authentication" },
+          ],
+        },
+        {
           label: "Guides",
           items: [
             {
               label: "Frontend Development",
-              collapsed: false,
+              collapsed: true,
               items: [
                 { label: "Tailwind CSS", slug: "guides/frontend/tailwind" },
                 { label: "Storybook", slug: "guides/frontend/storybook" },
@@ -103,7 +109,7 @@ export default defineConfig({
             },
             {
               label: "Email",
-              collapsed: false,
+              collapsed: true,
               items: [
                 { label: "Sending Email", slug: "guides/email/sending-email" },
                 {
@@ -114,7 +120,7 @@ export default defineConfig({
             },
             {
               label: "Optimize",
-              collapsed: false,
+              collapsed: true,
               items: [
                 {
                   label: "React Compiler",
@@ -126,7 +132,6 @@ export default defineConfig({
             { label: "Debugging", slug: "guides/debugging" },
             { label: "Vitest", slug: "guides/vitest" },
           ],
-          collapsed: true,
         },
         {
           label: "Reference",
@@ -136,7 +141,13 @@ export default defineConfig({
             { slug: "reference/sdk-router" },
             { slug: "reference/sdk-client" },
           ],
+        },
+        {
+          label: "Legacy",
           collapsed: true,
+          items: [
+            { label: "Realtime", slug: "legacy/realtime" },
+          ],
         },
       ],
       head: [

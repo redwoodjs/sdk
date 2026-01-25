@@ -1,10 +1,14 @@
 ---
-title: Realtime
-description: Add realtime updates to your app using WebSockets and Cloudflare Durable Objects.
+title: Realtime (Legacy)
+description: Legacy realtime updates using WebSockets and Cloudflare Durable Objects.
 experimental: true
 ---
 
 import { Aside, Code, LinkCard, Badge } from "@astrojs/starlight/components";
+
+<Aside type="caution" title="Deprecated">
+  This API is deprecated and will be removed in a future version. Please use the new [useSyncedState](/experimental/realtime) hook instead.
+</Aside>
 
 The SDK includes built-in support for **realtime updates** using **Cloudflare Durable Objects** and **WebSockets**. With just a few lines of setup, you can enable bidirectional communication between clients and the server — without polling.
 
