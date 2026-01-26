@@ -32,13 +32,13 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.21.2",
     "@cloudflare/workers-types": "4.20260124.0",
-    "@types/node": "24.10.4",
+    "@types/node": "24.10.9",
     "@types/react": "19.2.9",
     "@types/react-dom": "19.2.3",
     "typescript": "5.9.3",
     "vite": "7.3.1",
     "wrangler": "4.60.0",
-    "@cloudflare/vitest-pool-workers": "^0.12.1",
-    "vitest": "3.2.4"
+    "@cloudflare/vitest-pool-workers": "^0.12.6",
+    "vitest": "4.0.18"
   }
 }
