@@ -32,7 +32,7 @@ importers:
         specifier: ^6.0.0
         version: 6.7.3(@vue/compiler-sfc@3.5.21)(eslint@9.37.0(jiti@2.6.1))(typescript@5.9.3)(vitest@4.0.16(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.1)(msw@2.11.3(@types/node@24.10.4)(typescript@5.9.3))(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.20.6)(yaml@2.8.2))
       '@manypkg/cli':
-        specifier: ^0.25.0
+        specifier: ^0.25.1
         version: 0.25.1
       '@types/node':
         specifier: ~24.10.0
@@ -103,7 +103,7 @@ importers:
         version: link:../sdk
       wrangler:
         specifier: ^4.60.0
-        version: 4.60.0(@cloudflare/workers-types@4.20260124.0)
+        version: 4.60.0(@cloudflare/workers-types@4.20260122.0)
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ~4.20260122.0
@@ -10440,9 +10440,6 @@ packages:
   tinyexec@0.3.2:
     resolution: {integrity: sha512-KQQR9yN7R5+OSwaK0XQoj22pwHoTlgYqmUscPYoknOoWCWfj/5/ABTMRi69FrKU5ffPVh5QcFikpWJI/P1ocHA==}
 
-  tinyexec@1.0.1:
-    resolution: {integrity: sha512-5uC6DDlmeqiOwCPmK9jMSdOuZTh8bU39Ys6yidB+UTt5hfZUPGAypSgFRiEp+jbi9qH40BLDvy85jIU88wKSqw==}
-
   tinyexec@1.0.2:
     resolution: {integrity: sha512-W/KYk+NFhkmsYpuHq5JykngiOCnxeVL8v8dFnqxSD8qEEdRfXk1SDM6JzNqcERbcGYj9tMrDQBYV9cjgnunFIg==}
     engines: {node: '>=18'}
@@ -13163,8 +13160,8 @@ snapshots:
       parse-github-url: 1.0.3
       picocolors: 1.1.1
       sembear: 0.7.0
-      semver: 7.7.2
-      tinyexec: 1.0.1
+      semver: 7.7.3
+      tinyexec: 1.0.2
       validate-npm-package-name: 6.0.2
 
   '@manypkg/find-root@3.1.0':
@@ -17073,7 +17070,7 @@ snapshots:
       '@one-ini/wasm': 0.1.1
       commander: 10.0.1
       minimatch: 9.0.1
-      semver: 7.7.2
+      semver: 7.7.3
 
   ee-first@1.1.1: {}
 
@@ -19703,7 +19700,7 @@ snapshots:
       ky: 1.11.0
       registry-auth-token: 5.1.0
       registry-url: 6.0.1
-      semver: 7.7.2
+      semver: 7.7.3
 
   package-manager-detector@1.5.0: {}
 
@@ -20594,7 +20591,7 @@ snapshots:
 
   sembear@0.7.0:
     dependencies:
-      semver: 7.7.2
+      semver: 7.7.3
 
   semver@6.3.1: {}
 
@@ -21152,8 +21149,6 @@ snapshots:
   tinybench@2.9.0: {}
 
   tinyexec@0.3.2: {}
-
-  tinyexec@1.0.1: {}
 
   tinyexec@1.0.2: {}
 
