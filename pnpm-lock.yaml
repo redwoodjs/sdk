@@ -8,7 +8,7 @@ overrides:
   react: 19.3.0-canary-d6cae440-20260106
   react-dom: 19.3.0-canary-d6cae440-20260106
   '@modelcontextprotocol/sdk': 1.25.2
-  body-parser@2.2.0: 2.2.1
+  body-parser@2.2.0: 2.2.2
   devalue: 5.6.2
   diff: 5.2.2
   esbuild@0.18.20: 0.27.2
@@ -6562,8 +6562,8 @@ packages:
   blake3-wasm@2.1.5:
     resolution: {integrity: sha512-F1+K8EbfOZE49dtoPtmxUQrpXaBIl3ICvasLh+nJta0xkz+9kF/7uet9fLnwKqhDrmj6g+6K3Tw9yQPUg2ka5g==}
 
-  body-parser@2.2.1:
-    resolution: {integrity: sha512-nfDwkulwiZYQIGwxdy0RUmowMhKcFVcYXUU7m4QlKYim1rUtg83xm2yjZ40QjDuc291AJjjeSc9b++AWHSgSHw==}
+  body-parser@2.2.2:
+    resolution: {integrity: sha512-oP5VkATKlNwcgvxi0vM0p/D3n2C3EReYVX+DNYs5TjZFn/oQt2j+4sVJtSMr18pdRr8wjTcBl6LoV+FUwzPmNA==}
     engines: {node: '>=18'}
 
   boolbase@1.0.0:
@@ -16434,7 +16434,7 @@ snapshots:
 
   blake3-wasm@2.1.5: {}
 
-  body-parser@2.2.1:
+  body-parser@2.2.2:
     dependencies:
       bytes: 3.1.2
       content-type: 1.0.5
@@ -17671,7 +17671,7 @@ snapshots:
   express@5.1.0:
     dependencies:
       accepts: 2.0.0
-      body-parser: 2.2.1
+      body-parser: 2.2.2
       content-disposition: 1.0.0
       content-type: 1.0.5
       cookie: 0.7.2
