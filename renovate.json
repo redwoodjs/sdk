@@ -27,7 +27,7 @@
     {
       "description": "Vertical 1: SDK",
       "groupName": "sdk-deps",
-      "matchFileNames": ["sdk/package.json"],
+      "matchFileNames": ["sdk/package.json", "addons/**"],
       "matchPackageNames": ["*"],
       "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"],
       "schedule": ["every weekend"]
@@ -49,16 +49,17 @@
       "schedule": ["every weekend"]
     },
     {
-      "description": "Vertical 4: Infrastructure & Generic Tooling",
+      "description": "Vertical 4: Infrastructure & Generic Tooling (Root & Docs)",
       "groupName": "infra-deps",
-      "matchFileNames": ["package.json"],
-      "matchPackageNames": ["typescript", "vitest", "eslint", "prettier", "@types/node"],
+      "matchFileNames": ["package.json", "docs/package.json"],
+      "matchPackageNames": ["*"],
+      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"],
       "schedule": ["every weekend"]
     },
     {
-      "description": "Vertical 5: SDK Playgrounds",
+      "description": "Vertical 5: SDK Playgrounds & Examples",
       "groupName": "sdk-playground-deps",
-      "matchFileNames": ["playground/**"],
+      "matchFileNames": ["playground/**", "examples/**"],
       "matchPackageNames": ["*"],
       "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"],
       "schedule": ["every weekend"]

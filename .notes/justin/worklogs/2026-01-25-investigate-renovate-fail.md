@@ -18,59 +18,6 @@ We identified the following priority tiers for the monorepo:
 3. **Infrastructure/Tooling**: External deps like TS/Vitest. Should not force product releases.
 4. **Playgrounds/Showcase**: Lower priority examples.
 
-### Plan
-- Inspect root and subpackage `package.json` files for `@types/react` and `react` version constraints.
-- Examine `pnpm-lock.yaml` to identify why the importer resolution is broken.
-- Attempt to reproduce the error locally using `pnpm install`.
-- Check `renovate.json` for any relevant grouping or constraints.
-
-### Tasks
-- [x] Inspect `@types/react` constraints
-- [x] Reproduce pnpm resolution error
-- [/] Propose fix (likely widening range or updating constraints)
-- [ ] Align vitest version across workspace [ ]
-
-## Identified root cause of resolution failure
-We found that many `package.json` files in the monorepo (starters, playgrounds, and addons) have `@types/react` pinned to exactly `19.2.7`. This conflicts with the root and SDK which use `~19.2.7` or are moving to `19.2.9`. 
-
-Additionally, we found Vitest version mismatches:
-- Root: `^4.0.0`
-- SDK: `~3.2.0`
-- Community: `~4.0.0`
-- Several playgrounds: `^4.0.0`
-
-We decided to align `@types/react` to `~19.2.7` everywhere and bump all Vitest instances to `~4.0.0` to ensure workspace consistency.
-
-## Analyzed Renovate configuration flaws
-We identified several issues in `renovate.json` that contributed to this failure:
-1. **Types drift**: `@types/react` was not in the `critical-deps` group, so it was being updated on the weekend schedule, while `react` updates immediately. This creates a window of time where they are out of sync.
-2. **Pinned Version "Anchors"**: Many playgrounds pin `@types/react` to an exact version. When root/SDK moves forward, these pinned versions cause pnpm to fail resolution rather than allowing a shared dependency.
-3. **Inconsistent Vitest**: Vitest was being updated in the root and community but missing the SDK and some playgrounds due to version range mismatches.
-
-We will fix this by:
-- Adding `@types/react`, `@types/react-dom` to the `critical-deps` group.
-- Creating a new `repo-tooling` group for `typescript`, `vitest`, `@types/node` (excluding community).
-- Converting pinned types to ranges in subpackages.
-
-## Refined "Common Deps" Strategy
-The user correctly pointed out that separating groups might lead back to the "same problem" (drift -> conflict).
-
-We refined the strategy to distinguish between **Runtime Compatibility** and **Tooling Autonomy**:
-1. **Critical Group (React)**: MUST include `community/**`.
-   - Since `community` depends on `sdk`, and both rely on `react`, they must version-match to avoid type errors.
-   - We will remove the `!community/**` exclusion for this group.
-
-## Final Strategy
-The user pointed out that "Group 2: Regular Deps" already serves the purpose of "Repo Tooling" for the main workspace. Adding a new group is unnecessary.
-
-**Plan**:
-1. **Critical Group (Group 1)**: Add `@types/react` & `@types/react-dom`. Remove `!community/**` exclusion.
-   - Ensures React + Types stay synced everywhere.
-2. **Regular Deps (Group 2)**: Handles `vitest`, `typescript` etc. for SDK/Starters.
-3. **Community Deps (Group 3)**: Handles `vitest`, `typescript` for Community.
-
-This achieves the goal with minimal configuration changes.
-
 ## Final Resolution: Manifest-First Strategy
 We concluded that the `pnpm` resolution failure was caused by Renovate's "Minimal Noise" policy. 
 
@@ -80,11 +27,17 @@ We concluded that the `pnpm` resolution failure was caused by Renovate's "Minima
 - **The Fix**: Setting **`rangeStrategy: bump`** forces Renovate to always update the `package.json`. Once both manifests have explicit, distinct requirements, `pnpm` can correctly branch the resolution without conflict.
 
 ### Semantic Architecture Plan
-We are implementing a 7-group model to balance release control and repo stability:
+We are implementing a 7-vertical model to balance release control and repo stability:
 1. **Horizontal: Critical Dependencies** (`ASAP`): Repo-wide sync for React, Vite, and Cloudflare tools.
-2. **Vertical: SDK**: Unique SDK dependencies.
-3. **Vertical: Starter**: Unique Starter dependencies.
-4. **Vertical: Community Lib**: Unique Community library dependencies.
-5. **Vertical: Infrastructure**: Shared tooling (TS, Vitest, ESLint).
-6. **Vertical: SDK Playgrounds**: Example-specific dependencies.
-7. **Vertical: Community Playgrounds**: Community example dependencies.
+2. **Vertical 1: SDK & Addons**: Core SDK logic and official extensions.
+3. **Vertical 2: Starter**: Unique Starter dependencies.
+4. **Vertical 3: Community Lib**: Community-led evolution.
+5. **Vertical 4: Infrastructure**: Shared tooling (TS, Vitest, ESLint) + Root Overrides + Docs.
+6. **Vertical 5: SDK Playgrounds & Examples**: Official demonstration environments.
+7. **Vertical 6: Community Playgrounds**: Community showcases.
+
+## Fixing Fine-Grained PR Leakage (2026-01-26)
+We observed that incidental dependencies in the root `package.json` (e.g., `body-parser`, `@manypkg/cli`) were being updated in individual PRs.
+- **Diagnosis**: The `infra-deps` rule was too restrictive (explicitly listing TS/Vitest/etc.).
+- **Fix**: Broadened `infra-deps` to use `matchPackageNames: ["*"]` for the root `package.json`.
+- **Exhaustiveness**: Ensured all monorepo directories (`addons/`, `docs/`, `examples/`) are explicitly mapped to a vertical to prevent them from defaulting to individual PRs.
