@@ -287,8 +287,8 @@ Documents are how you define the "shell" of your application's html: the `<html>
 import { defineApp } from "rwsdk/worker";
 import { route, render } from "rwsdk/router";
 
-import { Document } from "@/pages/Document";
-import { HomePage } from "@/pages/HomePage";
+import { Document } from "@/pages/document";
+import { HomePage } from "@/pages/home-page";
 
 export default defineApp([render(Document, [route("/", HomePage)])]);
 ```
@@ -304,7 +304,7 @@ This component will be rendered on the server side when the page loads. When def
 
 ---
 
-```tsx title="src/pages/Document.tsx" mark={7}
+```tsx title="src/pages/document.tsx" mark={7}
 export const Document = ({ children }) => (
   <html lang="en">
     <head>

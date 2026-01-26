@@ -79,7 +79,7 @@ To make it work:
 2. Create a Layout that encapsulates your routes.
 3. Render the Toaster within that Layout.
 
-```tsx title="src/app/components/Toaster.tsx"
+```tsx title="src/app/components/toaster.tsx"
 "use client";
 
 import { Toaster as Sonner } from "@/app/components/ui/sonner";
@@ -89,7 +89,7 @@ export function Toaster() {
 }
 ```
 
-```tsx title="src/app/layouts/MainLayout.tsx"
+```tsx title="src/app/layouts/main-layout.tsx"
 import { Toaster } from "@/app/components/Toaster";
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
