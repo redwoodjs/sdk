@@ -1,17 +1,16 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
-  "prConcurrentLimit": 10,
-  "prHourlyLimit": 2,
   "separateMajorMinor": false,
   "vulnerabilityAlerts": {
     "enabled": false
   },
+  "rangeStrategy": "bump",
   "packageRules": [
     {
-      "description": "Group 1: Peer Dependencies (React, Cloudflare, Vite) - Critical updates that impact users.",
+      "description": "Horizontal: Critical Dependencies (Repo-wide, ASAP)",
       "groupName": "critical-deps",
-      "prPriority": 1,
+      "prPriority": 10,
       "matchPackageNames": [
         "react",
         "react-dom",
@@ -26,39 +25,54 @@
       "ignoreUnstable": true
     },
     {
-      "description": "Group 2: Everything else - Internal tools, dev dependencies, infra, docs, etc.",
-      "groupName": "regular-deps",
-      "schedule": ["every weekend"],
+      "description": "Vertical 1: SDK",
+      "groupName": "sdk-deps",
+      "matchFileNames": ["sdk/package.json"],
       "matchPackageNames": ["*"],
-      "excludePackageNames": [
-        "react",
-        "react-dom",
-        "react-server-dom-webpack",
-        "@cloudflare/vite-plugin",
-        "@cloudflare/workers-types",
-        "wrangler",
-        "vite"
-      ],
-      "matchFileNames": ["!community/**"]
+      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"],
+      "schedule": ["every weekend"]
     },
     {
-      "description": "Group 3: Community Library dependencies",
+      "description": "Vertical 2: Starter",
+      "groupName": "starter-deps",
+      "matchFileNames": ["starter/package.json"],
+      "matchPackageNames": ["*"],
+      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"],
+      "schedule": ["every weekend"]
+    },
+    {
+      "description": "Vertical 3: Community Library",
       "groupName": "community-lib-deps",
       "matchFileNames": ["community/package.json"],
       "matchPackageNames": ["*"],
-      "schedule": ["every weekend"],
-      "prBodyNotes": "NOTE: This update belongs to the Community Library group. {{{description}}}"
+      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"],
+      "schedule": ["every weekend"]
     },
     {
-      "description": "Group 4: Community Playground dependencies",
+      "description": "Vertical 4: Infrastructure & Generic Tooling",
+      "groupName": "infra-deps",
+      "matchFileNames": ["package.json"],
+      "matchPackageNames": ["typescript", "vitest", "eslint", "prettier", "@types/node"],
+      "schedule": ["every weekend"]
+    },
+    {
+      "description": "Vertical 5: SDK Playgrounds",
+      "groupName": "sdk-playground-deps",
+      "matchFileNames": ["playground/**"],
+      "matchPackageNames": ["*"],
+      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"],
+      "schedule": ["every weekend"]
+    },
+    {
+      "description": "Vertical 6: Community Playgrounds",
       "groupName": "community-playground-deps",
       "matchFileNames": ["community/playground/**"],
       "matchPackageNames": ["*"],
-      "schedule": ["every weekend"],
-      "prBodyNotes": "NOTE: This update belongs to the Community Playground group. {{{description}}}"
+      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"],
+      "schedule": ["every weekend"]
     },
     {
-      "description": "Specific rule for React to ensure we track the 'next' tag for canary releases, as per existing policy.",
+      "description": "Specific rule for React to ensure we track the 'next' tag for canary releases.",
       "matchPackageNames": ["react", "react-dom", "react-server-dom-webpack"],
       "followTag": "next"
     }

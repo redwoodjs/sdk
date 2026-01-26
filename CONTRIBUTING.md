@@ -534,22 +534,29 @@ This section outlines the strategy for managing dependencies to maintain stabili
 
 ### Dependency Categories and Update Cadence
 
-#### 1. Critical Dependencies (`critical-deps`)
+We organize dependencies into a **7-Group Model** to balance release control with monorepo stability. This structure uses a "Manifest-First" update strategy (`rangeStrategy: bump`), which forces Renovate to always update `package.json` files. This ensures `pnpm` can correctly branch version resolutions across different workspace verticals without lockfile contradictions.
 
--   **What**: The most critical dependencies (`wrangler`, `react`, `vite`, etc.) that are defined as `peerDependencies` in the SDK and tested in the `starters/*`, `playground/*`, and `addons/*` projects.
--   **When**: As Soon As Possible (ASAP). Renovate creates a PR immediately when a new version is available.
--   **Why**: To provide an immediate early-warning signal if a new peer dependency version introduces a regression that could affect users. Since users may upgrade to new versions that are within the allowed peer dependency ranges, we need CI to fail immediately if such an update causes breakage. The playground E2E tests provide an additional validation layer beyond the starter smoke tests.
+#### 1. Horizontal Layer: Critical Dependencies (`critical-deps`)
+
+-   **What**: The most critical shared infrastructure (`wrangler`, `react`, `vite`, etc.) that are defined as `peerDependencies` in the SDK and used across the entire monorepo.
+-   **When**: As Soon As Possible (ASAP).
+-   **Why**: These are the "Glue" of the repo. By moving them repo-wide in a single PR, we ensure that the manifests and the lockfile change simultaneously in every folder, preventing pnpm resolution failures.
 
 ##### A Note on React Canary Versions
 The starters intentionally use `canary` versions of React. This is the official channel recommended by the React team for frameworks that implement React Server Components. Using canaries gives us access to the latest features and ensures our implementation remains compatible with the direction of React.
 
 To manage these potentially unstable versions, Renovate is specifically configured to track React's `next` distribution tag on npm. This provides a more reliable signal for the latest available canary version than tracking the `canary` tag directly, which can be more volatile.
 
-#### 2. Regular Dependencies (`regular-deps`)
+#### 2. Semantic Verticals (Weekly)
 
--   **What**: All other dependencies, including the SDK's internal dependencies, starter application dependencies, documentation, and infrastructure tools (pnpm, GitHub Actions, etc.).
--   **When**: Weekly, in a single grouped pull request.
--   **Why**: To reduce noise and bundle routine maintenance updates into a single, manageable PR.
+We divide the product and tooling into six semantic verticals. These groups only update dependencies **unique** to their respective folders, excluding the horizontal critical layer.
+
+1.  **SDK**: Updates unique to the core `sdk/` package.
+2.  **Starter**: Updates unique to the template starter project.
+3.  **Community Lib**: Updates unique to the `rwsdk-community` library.
+4.  **Infrastructure**: Shared internal tools like `typescript`, `vitest`, `eslint`, and `prettier`.
+5.  **SDK Playgrounds**: Official SDK example and test projects.
+6.  **Community Playgrounds**: Community-contributed showcases and demos.
 
 ### Using the Dependency Dashboard
 
