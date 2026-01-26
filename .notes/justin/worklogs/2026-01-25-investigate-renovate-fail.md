@@ -41,3 +41,9 @@ We observed that incidental dependencies in the root `package.json` (e.g., `body
 - **Diagnosis**: The `infra-deps` rule was too restrictive (explicitly listing TS/Vitest/etc.).
 - **Fix**: Broadened `infra-deps` to use `matchPackageNames: ["*"]` for the root `package.json`.
 - **Exhaustiveness**: Ensured all monorepo directories (`addons/`, `docs/`, `examples/`) are explicitly mapped to a vertical to prevent them from defaulting to individual PRs.
+
+## Resolved Weekday Ungrouping and Broadened Coverage
+We identified that the "Weekday Ungrouping" bug was caused by combining `schedule` with `groupName` in the same rule, leading Renovate to ignore the group assignment on weekdays when the schedule was inactive. We decoupled the logic:
+- **Grouping**: Assigned in "Always Active" rules to ensure stability.
+- **Scheduling**: Applied in a final catch-all rule that matches by `groupName` and restricts updates to weekends.
+We also broadened the `infra-deps` group to cover root `package.json` and `docs/package.json` with a wildcard match, capturing previously "leaked" separate PRs (Astro, Hono, etc.). Verified the fix by observing Renovate autoclosing individual PRs on GitHub.

@@ -29,55 +29,56 @@
       "groupName": "sdk-deps",
       "matchFileNames": ["sdk/package.json", "addons/**"],
       "matchPackageNames": ["*"],
-      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"],
-      "schedule": ["every weekend"]
+      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"]
     },
     {
       "description": "Vertical 2: Starter",
       "groupName": "starter-deps",
       "matchFileNames": ["starter/package.json"],
       "matchPackageNames": ["*"],
-      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"],
-      "schedule": ["every weekend"]
+      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"]
     },
     {
       "description": "Vertical 3: Community Library",
       "groupName": "community-lib-deps",
       "matchFileNames": ["community/package.json"],
       "matchPackageNames": ["*"],
-      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"],
-      "schedule": ["every weekend"]
+      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"]
     },
     {
-      "description": "Vertical 4a: Infrastructure - GitHub Actions",
+      "description": "Vertical 4: Infrastructure & Root (Tools, Versions, Docs)",
+      "groupName": "infra-deps",
       "matchManagers": ["github-actions"],
-      "groupName": "infra-deps",
-      "schedule": ["every weekend"]
-    },
-    {
-      "description": "Vertical 4b: Infrastructure - Version Files (node, pnpm, etc)",
-      "matchFileNames": [".node-version", ".nvmrc", "docs/.node-version", ".tool-versions", "pnpm-workspace.yaml", "renovate.json"],
-      "groupName": "infra-deps",
-      "schedule": ["every weekend"]
-    },
-    {
-      "description": "Vertical 4c: Infrastructure - Core Tools in manifests",
-      "matchPackageNames": ["node", "pnpm", "typescript", "vitest", "eslint", "prettier", "@types/node", "@manypkg/cli", "renovatebot/github-action"],
-      "groupName": "infra-deps",
-      "schedule": ["every weekend"]
+      "matchFileNames": [
+        "package.json",
+        "docs/package.json",
+        ".node-version",
+        ".nvmrc",
+        "docs/.node-version",
+        ".tool-versions",
+        "pnpm-workspace.yaml",
+        "renovate.json"
+      ],
+      "matchPackageNames": ["*"],
+      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"]
     },
     {
       "description": "Vertical 5: SDK Playgrounds & Examples",
       "groupName": "sdk-playground-deps",
       "matchFileNames": ["playground/**", "examples/**"],
       "matchPackageNames": ["*"],
-      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"],
-      "schedule": ["every weekend"]
+      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"]
     },
     {
       "description": "Vertical 6: Community Playgrounds",
       "groupName": "community-playground-deps",
       "matchFileNames": ["community/playground/**"],
+      "matchPackageNames": ["*"],
+      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"]
+    },
+    {
+      "description": "Schedule: All standard verticals on weekends",
+      "matchUpdateTypes": ["patch", "minor", "major"],
       "matchPackageNames": ["*"],
       "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"],
       "schedule": ["every weekend"]
