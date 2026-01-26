@@ -15,7 +15,7 @@ overrides:
   esbuild@0.19.12: 0.27.2
   glob@10.4.5: 13.0.0
   h3: 1.15.5
-  hono@4.11.3: 4.11.4
+  hono@4.11.3: 4.11.6
   js-yaml@4.1.0: 4.1.1
   mdast-util-to-hast@13.2.0: 13.2.1
   qs@6.14.0: 6.14.1
@@ -3495,7 +3495,7 @@ packages:
     resolution: {integrity: sha512-vUcD0uauS7EU2caukW8z5lJKtoGMokxNbJtBiwHgpqxEXokaHCBkQUmCHhjFB1VUTWdqj25QoMkMKzgjq+uhrw==}
     engines: {node: '>=18.14.1'}
     peerDependencies:
-      hono: 4.11.4
+      hono: 4.11.6
 
   '@hookform/resolvers@5.2.2':
     resolution: {integrity: sha512-A/IxlMLShx3KjV/HeTcTfaMxdwy690+L/ZADoeaTltLx+CVuzkeVIPuybK3jrRfw7YZnmdKsVVHAlEPIAEUNlA==}
