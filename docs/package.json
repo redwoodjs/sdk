@@ -13,7 +13,7 @@
   "dependencies": {
     "@astrojs/mdx": "^4.3.5",
     "@astrojs/partytown": "^2.1.4",
-    "@astrojs/starlight": "^0.37.0",
+    "@astrojs/starlight": "^0.37.4",
     "@expressive-code/plugin-collapsible-sections": "^0.41.3",
     "@expressive-code/plugin-line-numbers": "^0.41.3",
     "@fujocoded/expressive-code-caption": "^0.0.3",
