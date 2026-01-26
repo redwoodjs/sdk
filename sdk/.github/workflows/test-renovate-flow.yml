@@ -13,7 +13,7 @@ jobs:
           fetch-depth: 0
 
       - name: Run Renovate
-        uses: renovatebot/github-action@v44.2.3
+        uses: renovatebot/github-action@v44.2.6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           configurationFile: renovate.json
