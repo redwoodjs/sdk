@@ -49,11 +49,21 @@
       "schedule": ["every weekend"]
     },
     {
-      "description": "Vertical 4: Infrastructure & Generic Tooling (Root, Docs, Workflows, Tools)",
+      "description": "Vertical 4a: Infrastructure - GitHub Actions",
+      "matchManagers": ["github-actions"],
       "groupName": "infra-deps",
-      "matchFileNames": ["package.json", "docs/package.json", ".github/workflows/**", ".node-version", ".nvmrc", "docs/.node-version"],
-      "matchPackageNames": ["node", "pnpm", "typescript", "vitest", "eslint", "prettier", "@types/node", "renovatebot/github-action", "@manypkg/cli"],
-      "matchManagers": ["npm", "nodenv", "nvm", "github-actions", "bun"],
+      "schedule": ["every weekend"]
+    },
+    {
+      "description": "Vertical 4b: Infrastructure - Version Files (node, pnpm, etc)",
+      "matchFileNames": [".node-version", ".nvmrc", "docs/.node-version", ".tool-versions", "pnpm-workspace.yaml", "renovate.json"],
+      "groupName": "infra-deps",
+      "schedule": ["every weekend"]
+    },
+    {
+      "description": "Vertical 4c: Infrastructure - Core Tools in manifests",
+      "matchPackageNames": ["node", "pnpm", "typescript", "vitest", "eslint", "prettier", "@types/node", "@manypkg/cli", "renovatebot/github-action"],
+      "groupName": "infra-deps",
       "schedule": ["every weekend"]
     },
     {
