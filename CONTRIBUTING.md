@@ -551,10 +551,12 @@ To manage these potentially unstable versions, Renovate is specifically configur
 
 We divide the product and tooling into six semantic verticals. These groups only update dependencies **unique** to their respective folders, excluding the horizontal critical layer.
 
-1.  **SDK**: Updates unique to the core `sdk/` package.
+To ensure stability, dependencies are **always grouped** by their vertical, preventing them from falling back to individual "noise" PRs. The update window for these groups is restricted to **every weekend** using a collective schedule rule that matches on the active group names.
+
+1.  **SDK**: Updates unique to the core `sdk/` package and `addons/`.
 2.  **Starter**: Updates unique to the template starter project.
 3.  **Community Lib**: Updates unique to the `rwsdk-community` library.
-4.  **Infrastructure**: Shared internal tools like `typescript`, `vitest`, `eslint`, and `prettier`.
+4.  **Infrastructure**: Shared internal tools, GitHub Actions, and environment files (`.node-version`, etc.), plus all root and documentation dependencies.
 5.  **SDK Playgrounds**: Official SDK example and test projects.
 6.  **Community Playgrounds**: Community-contributed showcases and demos.
 
