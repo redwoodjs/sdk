@@ -33,7 +33,7 @@
     "@cloudflare/vite-plugin": "1.21.2",
     "@cloudflare/workers-types": "4.20260124.0",
     "@types/node": "~24.10.0",
-    "@types/react": "19.2.7",
+    "@types/react": "19.2.9",
     "@types/react-dom": "19.2.3",
     "storybook": "^10.0.3",
     "@storybook/react": "^10.0.3",
