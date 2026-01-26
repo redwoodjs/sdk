@@ -39,13 +39,13 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "~4.20260122.0",
-    "fs-extra": "~11.3.0",
+    "fs-extra": "~11.3.3",
     "@types/fs-extra": "~11.0.4",
     "@types/react": "~19.2.7",
     "@types/react-dom": "~19.2.3",
-    "typescript": "~5.9.0",
+    "typescript": "~5.9.3",
     "vite": "~7.3.0",
-    "vitest": "~3.2.0"
+    "vitest": "~4.0.18"
   },
   "scripts": {
     "build": "tsc",
