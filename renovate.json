@@ -49,10 +49,10 @@
       "schedule": ["every weekend"]
     },
     {
-      "description": "Vertical 4: Infrastructure & Generic Tooling (Root & Docs)",
+      "description": "Vertical 4: Infrastructure & Generic Tooling (Root, Docs, Workflows)",
       "groupName": "infra-deps",
-      "matchFileNames": ["package.json", "docs/package.json"],
-      "matchPackageNames": ["*"],
+      "matchFileNames": ["package.json", "docs/package.json", ".github/workflows/**"],
+      "matchPackageNames": ["*", "node", "pnpm"],
       "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"],
       "schedule": ["every weekend"]
     },
