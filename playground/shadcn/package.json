@@ -68,9 +68,9 @@
     "vaul": "^1.1.2",
     "zod": "^4.1.11",
     "rwsdk": "workspace:*",
-    "react": "19.3.0-canary-d6cae440-20260106",
-    "react-dom": "19.3.0-canary-d6cae440-20260106",
-    "react-server-dom-webpack": "19.3.0-canary-d6cae440-20260106"
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-server-dom-webpack": "19.2.4"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.6",
@@ -88,12 +88,12 @@
     "wrangler": "4.60.0"
   },
   "overrides": {
-    "react": "19.3.0-canary-d6cae440-20260106",
-    "react-dom": "19.3.0-canary-d6cae440-20260106"
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
   },
   "resolutions": {
-    "react": "19.3.0-canary-d6cae440-20260106",
-    "react-dom": "19.3.0-canary-d6cae440-20260106"
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

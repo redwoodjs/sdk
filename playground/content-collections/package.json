@@ -23,9 +23,9 @@
   },
   "dependencies": {
     "rwsdk": "workspace:*",
-    "react": "19.3.0-canary-d6cae440-20260106",
-    "react-dom": "19.3.0-canary-d6cae440-20260106",
-    "react-server-dom-webpack": "19.3.0-canary-d6cae440-20260106",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-server-dom-webpack": "19.2.4",
     "@content-collections/core": "0.9.1",
     "@content-collections/markdown": "^0.1.4",
     "@content-collections/vite": "0.2.7",

@@ -23,9 +23,9 @@
   },
   "dependencies": {
     "rwsdk": "workspace:*",
-    "react": "19.3.0-canary-d6cae440-20260106",
-    "react-dom": "19.3.0-canary-d6cae440-20260106",
-    "react-server-dom-webpack": "19.3.0-canary-d6cae440-20260106"
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-server-dom-webpack": "19.2.4"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.21.2",

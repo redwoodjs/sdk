@@ -81,11 +81,6 @@
       "matchPackageNames": ["*"],
       "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"],
       "schedule": ["every weekend"]
-    },
-    {
-      "description": "Specific rule for React to ensure we track the 'next' tag for canary releases.",
-      "matchPackageNames": ["react", "react-dom", "react-server-dom-webpack"],
-      "followTag": "next"
     }
   ],
   "prHeader": " chore(deps): {{{prTitle}}}",
