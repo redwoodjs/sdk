@@ -46,9 +46,8 @@
       "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"]
     },
     {
-      "description": "Vertical 4: Infrastructure & Root (Tools, Versions, Docs)",
+      "description": "Vertical 4a: Infrastructure (Files & Tools)",
       "groupName": "infra-deps",
-      "matchManagers": ["github-actions"],
       "matchFileNames": [
         "package.json",
         "docs/package.json",
@@ -61,6 +60,12 @@
       ],
       "matchPackageNames": ["*"],
       "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"]
+    },
+    {
+      "description": "Vertical 4b: Infrastructure (GitHub Actions)",
+      "groupName": "infra-deps",
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": ["*"]
     },
     {
       "description": "Vertical 5: SDK Playgrounds & Examples",
