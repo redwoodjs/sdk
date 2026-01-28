@@ -6,7 +6,7 @@ import type { Todo as TodoType } from "@/db"
 
 type OptimisticTodo = TodoType & { sending?: boolean };
 
-export function Todo({ todo }: { todo: TodoType }) {
+export function Todo({ todo, onDelete }: { todo: TodoType, onDelete?: () => void }) {
     const [isEditing, setIsEditing] = useState(false)
     const [editText, setEditText] = useState(todo.text)
     const inputRef = useRef<HTMLInputElement>(null)
@@ -98,7 +98,13 @@ export function Todo({ todo }: { todo: TodoType }) {
                 )}
             </div>
             <button
-                onClick={() => deleteTodo(optimisticTodo.id)}
+                onClick={() => {
+                    if (onDelete) {
+                        onDelete()
+                    } else {
+                        deleteTodo(optimisticTodo.id)
+                    }
+                }}
                 className="opacity-0 group-hover:opacity-100 p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all disabled:opacity-30"
                 title="Delete task"
                 disabled={optimisticTodo.sending}
