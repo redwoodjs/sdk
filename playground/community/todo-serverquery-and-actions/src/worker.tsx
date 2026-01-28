@@ -6,6 +6,8 @@ import { setCommonHeaders } from "@/app/headers";
 import { Home } from "@/app/pages/home";
 
 export type AppContext = {};
+export { Database } from "@/db/durableObjects";
+
 
 export default defineApp([
   setCommonHeaders(),
