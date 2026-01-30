@@ -1,0 +1,74 @@
+name: Release Community Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      type:
+        description: 'Release type'
+        required: true
+        type: choice
+        default: 'patch'
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Update npm
+        run: npm install -g npm@latest
+
+      - name: Setup .npmrc for publishing
+        working-directory: community
+        run: |
+          echo "registry=https://registry.npmjs.org/" >> .npmrc
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build
+        working-directory: community
+        run: pnpm build
+
+      - name: Set git user
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Version and Publish
+        working-directory: community
+        run: |
+          NEW_VERSION=$(npm version ${{ inputs.type }} --no-git-tag-version)
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          npm publish
+
+      - name: Commit and Tag
+        run: |
+          git add community/package.json
+          git commit -m "chore(release): community ${{ env.NEW_VERSION }}"
+          git tag community-${{ env.NEW_VERSION }}
+
+      - name: Push changes
+        run: |
+          git push origin main
+          git push origin community-${{ env.NEW_VERSION }}

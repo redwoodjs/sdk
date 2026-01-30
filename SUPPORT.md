@@ -8,6 +8,7 @@
 ## Versioning
 - Pre-1.0 (`1.0.0-beta.x`): may ship breaking changes.
 - Post-1.0: breaking changes only in major versions.
+- **`rwsdk-community`**: No stability guarantees. This package is for community-driven extensions and may change at any time.
 
 ## Reaching out
 

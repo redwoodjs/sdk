@@ -8,14 +8,17 @@ on:
       - "sdk/**"
       - "starter/**"
       - "addons/**"
+      - "community/**"
   pull_request:
     paths:
       - "sdk/**"
       - "starter/**"
       - "addons/**"
+      - "community/**"
 
 jobs:
   check-sdk:
+    name: Core Checks
     runs-on: ubuntu-latest
 
     steps:
@@ -47,3 +50,38 @@ jobs:
 
       - name: Typecheck Starter
         run: pnpm typecheck:starter
+
+  check-community:
+    name: Community Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build SDK
+        run: pnpm build
+        working-directory: sdk
+
+      - name: Build Community
+        run: pnpm build
+        working-directory: community
+
+      - name: Run tests
+        run: pnpm test
+        working-directory: community
+
+      - name: Typecheck Community
+        run: pnpm typecheck:community

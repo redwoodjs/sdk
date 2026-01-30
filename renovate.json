@@ -5,15 +5,18 @@
   "vulnerabilityAlerts": {
     "enabled": false
   },
+  "rangeStrategy": "bump",
   "packageRules": [
     {
-      "description": "Group 1: Peer Dependencies (React, Cloudflare, Vite) - Critical updates that impact users.",
+      "description": "Horizontal: Critical Dependencies (Repo-wide, ASAP)",
       "groupName": "critical-deps",
-      "prPriority": 1,
+      "prPriority": 10,
       "matchPackageNames": [
         "react",
         "react-dom",
         "react-server-dom-webpack",
+        "@types/react",
+        "@types/react-dom",
         "@cloudflare/vite-plugin",
         "@cloudflare/workers-types",
         "wrangler",
@@ -22,24 +25,63 @@
       "ignoreUnstable": true
     },
     {
-      "description": "Group 2: Everything else - Internal tools, dev dependencies, infra, docs, etc.",
-      "groupName": "regular-deps",
-      "schedule": ["every weekend"],
+      "description": "Vertical 1: SDK",
+      "groupName": "sdk-deps",
+      "matchFileNames": ["sdk/package.json", "addons/**"],
       "matchPackageNames": ["*"],
-      "excludePackageNames": [
-        "react",
-        "react-dom",
-        "react-server-dom-webpack",
-        "@cloudflare/vite-plugin",
-        "@cloudflare/workers-types",
-        "wrangler",
-        "vite"
-      ]
+      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"]
     },
     {
-      "description": "Specific rule for React to ensure we track the 'next' tag for canary releases, as per existing policy.",
-      "matchPackageNames": ["react", "react-dom", "react-server-dom-webpack"],
-      "followTag": "next"
+      "description": "Vertical 2: Starter",
+      "groupName": "starter-deps",
+      "matchFileNames": ["starter/package.json"],
+      "matchPackageNames": ["*"],
+      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"]
+    },
+    {
+      "description": "Vertical 3: Community Library",
+      "groupName": "community-lib-deps",
+      "matchFileNames": ["community/package.json"],
+      "matchPackageNames": ["*"],
+      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"]
+    },
+    {
+      "description": "Vertical 4: Infrastructure & Root (Tools, Versions, Docs)",
+      "groupName": "infra-deps",
+      "matchManagers": ["github-actions"],
+      "matchFileNames": [
+        "package.json",
+        "docs/package.json",
+        ".node-version",
+        ".nvmrc",
+        "docs/.node-version",
+        ".tool-versions",
+        "pnpm-workspace.yaml",
+        "renovate.json"
+      ],
+      "matchPackageNames": ["*"],
+      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"]
+    },
+    {
+      "description": "Vertical 5: SDK Playgrounds & Examples",
+      "groupName": "sdk-playground-deps",
+      "matchFileNames": ["playground/**", "examples/**"],
+      "matchPackageNames": ["*"],
+      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"]
+    },
+    {
+      "description": "Vertical 6: Community Playgrounds",
+      "groupName": "community-playground-deps",
+      "matchFileNames": ["community/playground/**"],
+      "matchPackageNames": ["*"],
+      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"]
+    },
+    {
+      "description": "Schedule: All standard verticals on weekends",
+      "matchUpdateTypes": ["patch", "minor", "major"],
+      "matchPackageNames": ["*"],
+      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"],
+      "schedule": ["every weekend"]
     }
   ],
   "prHeader": " chore(deps): {{{prTitle}}}",

@@ -10,6 +10,12 @@ For context on how the system works, check out the [architecture documents](./do
 
 You are responsible for validating the correctness of your code. Run relevant tests locally before opening a pull request. This applies to all contributions, including those assisted by AI.
 
+- **SDK Core**: Strict requirement for End-to-End (E2E) test coverage for all new features and bug fixes.
+- **Community Package**: Ideally, include unit and/or integration tests. We are more lenient with coverage here, but tests are strongly encouraged.
+- **Playground Examples**:
+    - `playground/`: Must have E2E tests.
+    - `community/playground/`: E2E tests are encouraged but not mandatory for contributions.
+
 In the pull request description, specify the commands you ran to verify your changes (for example: `pnpm test:e2e -- playground/hello-world/__tests__/e2e.test.mts`).
 
 ### Playground examples
@@ -19,7 +25,7 @@ When adding or modifying playground examples, choose the right location based on
 - **Use `playground/` for official SDK tests.**
   These projects verify specific SDK features in isolation and serve as our primary E2E test suite. Keep them minimal. If you add or change behaviour here, you **must** include E2E tests covering the change. CI runs these tests on every commit.
  
-- **Use `playground/community/` for showcases and demos.**
+- **Use `community/playground/` for showcases and demos.**
   These projects demonstrate how the SDK works with other libraries or in larger applications. They can be extensive and do not require E2E tests. Note that these are excluded from CI and may not be actively maintained by the core team.
 
 ## Getting Started
@@ -132,6 +138,7 @@ This repository is a monorepo containing several key parts:
 -   `starter/`: This directory holds the template project that users can create with `create-rwsdk`. It is used for testing and demonstrating features.
 -   `docs/`: Contains the user-facing documentation for the SDK, which is published as a website.
 -   `docs/architecture/`: A special section within the docs that contains in-depth architecture documents. These explain the "why" behind key design decisions and provide context on how the system works under the hood. If you're making a significant change, you should read these. If you're changing the system in a significant way, check whether these docs need revising to account for the update.
+-   `community/`: Contains the `rwsdk-community` package and its specific playgrounds. This is for community-contributed extensions and showcases. It follows a more lenient testing policy than the core SDK.
 
 ## Building
 
@@ -527,22 +534,31 @@ This section outlines the strategy for managing dependencies to maintain stabili
 
 ### Dependency Categories and Update Cadence
 
-#### 1. Critical Dependencies (`critical-deps`)
+We organize dependencies into a **7-Group Model** to balance release control with monorepo stability. This structure uses a "Manifest-First" update strategy (`rangeStrategy: bump`), which forces Renovate to always update `package.json` files. This ensures `pnpm` can correctly branch version resolutions across different workspace verticals without lockfile contradictions.
 
--   **What**: The most critical dependencies (`wrangler`, `react`, `vite`, etc.) that are defined as `peerDependencies` in the SDK and tested in the `starters/*`, `playground/*`, and `addons/*` projects.
--   **When**: As Soon As Possible (ASAP). Renovate creates a PR immediately when a new version is available.
--   **Why**: To provide an immediate early-warning signal if a new peer dependency version introduces a regression that could affect users. Since users may upgrade to new versions that are within the allowed peer dependency ranges, we need CI to fail immediately if such an update causes breakage. The playground E2E tests provide an additional validation layer beyond the starter smoke tests.
+#### 1. Horizontal Layer: Critical Dependencies (`critical-deps`)
+
+-   **What**: The most critical shared infrastructure (`wrangler`, `react`, `vite`, etc.) that are defined as `peerDependencies` in the SDK and used across the entire monorepo.
+-   **When**: As Soon As Possible (ASAP).
+-   **Why**: These are the "Glue" of the repo. By moving them repo-wide in a single PR, we ensure that the manifests and the lockfile change simultaneously in every folder, preventing pnpm resolution failures.
 
 ##### A Note on React Canary Versions
 The starters intentionally use `canary` versions of React. This is the official channel recommended by the React team for frameworks that implement React Server Components. Using canaries gives us access to the latest features and ensures our implementation remains compatible with the direction of React.
 
 To manage these potentially unstable versions, Renovate is specifically configured to track React's `next` distribution tag on npm. This provides a more reliable signal for the latest available canary version than tracking the `canary` tag directly, which can be more volatile.
 
-#### 2. Regular Dependencies (`regular-deps`)
+#### 2. Semantic Verticals (Weekly)
 
--   **What**: All other dependencies, including the SDK's internal dependencies, starter application dependencies, documentation, and infrastructure tools (pnpm, GitHub Actions, etc.).
--   **When**: Weekly, in a single grouped pull request.
--   **Why**: To reduce noise and bundle routine maintenance updates into a single, manageable PR.
+We divide the product and tooling into six semantic verticals. These groups only update dependencies **unique** to their respective folders, excluding the horizontal critical layer.
+
+To ensure stability, dependencies are **always grouped** by their vertical, preventing them from falling back to individual "noise" PRs. The update window for these groups is restricted to **every weekend** using a collective schedule rule that matches on the active group names.
+
+1.  **SDK**: Updates unique to the core `sdk/` package and `addons/`.
+2.  **Starter**: Updates unique to the template starter project.
+3.  **Community Lib**: Updates unique to the `rwsdk-community` library.
+4.  **Infrastructure**: Shared internal tools, GitHub Actions, and environment files (`.node-version`, etc.), plus all root and documentation dependencies.
+5.  **SDK Playgrounds**: Official SDK example and test projects.
+6.  **Community Playgrounds**: Community-contributed showcases and demos.
 
 ### Using the Dependency Dashboard
 
@@ -604,6 +620,18 @@ To release a major version after a pre-release, use the `explicit` version type 
 2. Enter `1.0.0` as the version
 
 The release script will validate that patch/minor cannot be used when in a pre-release and will provide a clear error message directing you to use `explicit` instead.
+
+### Releasing Community Package
+
+Releases for the `rwsdk-community` package are performed manually via GitHub Actions. Unlike the core SDK, this package uses independent versioning and does not follow the same release schedule.
+
+To trigger a release:
+1. Go to the [Release Community Package workflow](https://github.com/redwoodjs/sdk/actions/workflows/community-release.yml).
+2. Click "Run workflow".
+3. Select the release type (`patch`, `minor`, or `major`).
+4. Click "Run workflow".
+
+The workflow will build the package, update its version, publish it to npm, and push the version tag to the repository.
 
 ## Unreleasing a Version
 
