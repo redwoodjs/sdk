@@ -33,7 +33,7 @@
     "prettier": "^3.3.2",
     "prettier-plugin-organize-imports": "^4.3.0",
     "tsx": "^4.15.7",
-    "typescript": "^5.4.5",
+    "typescript": "^5.9.3",
     "vitest": "^4.0.0",
     "wrangler": "^4.61.0"
   },
