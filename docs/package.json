@@ -11,14 +11,14 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/mdx": "^4.3.5",
+    "@astrojs/mdx": "^4.3.13",
     "@astrojs/partytown": "^2.1.4",
     "@astrojs/starlight": "^0.37.0",
     "@expressive-code/plugin-collapsible-sections": "^0.41.3",
     "@expressive-code/plugin-line-numbers": "^0.41.3",
     "@fujocoded/expressive-code-caption": "^0.0.3",
     "@fujocoded/expressive-code-output": "^0.1.0",
-    "astro": "^5.13.7",
+    "astro": "^5.17.1",
     "astro-embed": "^0.11.0",
     "expressive-code-color-chips": "^0.1.2",
     "lite-youtube-embed": "^0.3.3",
