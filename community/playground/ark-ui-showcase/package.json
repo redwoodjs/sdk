@@ -22,8 +22,8 @@
     "types": "tsc"
   },
   "dependencies": {
-    "@ark-ui/react": "^5.29.1",
-    "lucide-react": "^0.562.0",
+    "@ark-ui/react": "^5.30.0",
+    "lucide-react": "^0.563.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-server-dom-webpack": "19.2.4",
@@ -32,12 +32,12 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.22.0",
     "@cloudflare/workers-types": "4.20260127.0",
-    "@types/node": "24.10.4",
+    "@types/node": "24.10.9",
     "@types/react": "19.2.10",
     "@types/react-dom": "19.2.3",
     "typescript": "5.9.3",
     "vite": "7.3.1",
-    "vitest": "^4.0.0",
+    "vitest": "^4.0.18",
     "wrangler": "4.61.0"
   },
   "pnpm": {
