@@ -24,7 +24,7 @@
   "packageManager": "pnpm@10.27.0",
   "devDependencies": {
     "@antfu/eslint-config": "^6.0.0",
-    "@manypkg/cli": "^0.25.0",
+    "@manypkg/cli": "^0.25.1",
     "@types/node": "~24.10.0",
     "eslint": "^9.5.0",
     "expect-type": "^1.2.2",
