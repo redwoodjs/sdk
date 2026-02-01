@@ -48,7 +48,6 @@
     {
       "description": "Vertical 4: Infrastructure & Root (Tools, Versions, Docs)",
       "groupName": "infra-deps",
-      "matchManagers": ["github-actions"],
       "matchFileNames": [
         "package.json",
         "docs/package.json",
