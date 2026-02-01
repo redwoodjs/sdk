@@ -154,7 +154,7 @@
   "license": "MIT",
   "dependencies": {
     "@ast-grep/napi": "~0.39.0",
-    "@cloudflare/workers-types": "~4.20260127.0",
+    "@cloudflare/workers-types": "~4.20260131.0",
     "@mdx-js/mdx": "~3.1.1",
     "@puppeteer/browsers": "~2.10.0",
     "@types/decompress": "~4.2.7",
@@ -193,17 +193,17 @@
     "vite-tsconfig-paths": "~5.1.4"
   },
   "peerDependencies": {
-    "@cloudflare/vite-plugin": "^1.22.0",
+    "@cloudflare/vite-plugin": "^1.22.1",
     "capnweb": "~0.2.0",
     "react": ">=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0",
     "react-dom": ">=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0",
     "react-server-dom-webpack": ">=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0",
     "vite": "^6.2.6 || 7.x",
-    "wrangler": "^4.61.0"
+    "wrangler": "^4.61.1"
   },
   "packageManager": "pnpm@10.0.0+sha512.b8fef5494bd3fe4cbd4edabd0745df2ee5be3e4b0b8b08fa643aa3e4c6702ccc0f00d68fa8a8c9858a735a0032485a44990ed2810526c875e416f001b17df12b",
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.22.0",
+    "@cloudflare/vite-plugin": "1.22.1",
     "capnweb": "~0.2.0",
     "@types/debug": "~4.1.12",
     "@types/js-beautify": "~1.14.3",
