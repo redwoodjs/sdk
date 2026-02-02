@@ -1,6 +1,7 @@
 "use server";
 
 import { serverAction, serverQuery } from "rwsdk/worker";
+import { requireAuth } from "./auth";
 
 const logger = async ({ request, args }: { request: Request; args: any[] }) => {
   console.log(`[server-function] ${request.method} ${request.url} with args:`, args);
@@ -10,6 +11,13 @@ export const getGreeting = serverQuery([
   logger,
   async (name: string) => {
     return `Hello, ${name}! (from serverQuery GET)`;
+  },
+]);
+
+export const getSecretData = serverQuery([
+  requireAuth,
+  async () => {
+    return "This is top secret data only visible with 'x-demo-auth: secret-token' header!";
   },
 ]);
 

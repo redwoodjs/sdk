@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import defaultAction, { getGreeting, getGreetingPost, updateName } from "../actions";
+import defaultAction, { getGreeting, getGreetingPost, updateName, getSecretData } from "../actions";
 
 export function ServerFunctionsDemo() {
   const [result, setResult] = useState<string>("");
@@ -24,6 +24,16 @@ export function ServerFunctionsDemo() {
         </button>
         <button id="run-default-action" onClick={async () => setResult(await defaultAction())}>
           Run Default Action
+        </button>
+        <button id="run-get-secret-data" onClick={async () => {
+          try {
+            const data = await getSecretData();
+            setResult(data ?? "No data returned");
+          } catch (e: any) {
+            setResult(`Error: ${e.message || 'Unauthorized'}`);
+          }
+        }}>
+          Run getSecretData (Auth required)
         </button>
       </div>
       <div>
