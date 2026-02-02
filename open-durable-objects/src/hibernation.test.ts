@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { OpenDurableObjectRegistry } from "./registry.js";
-import { OpenDurableObject, DurableObjectState } from "./open-durable-object.js";
+import { OpenDurableObject, DurableObjectState } from "./durable-object/index.js";
 
 class MockWebSocket {
   listeners = new Map<string, Set<Function>>();

@@ -1,4 +1,4 @@
-import { OpenDurableObject } from "./open-durable-object.js";
+import { OpenDurableObject } from "./durable-object/index.js";
 import { OpenDurableObjectRegistry } from "./registry.js";
 
 export function createOpenDurableObjectRouter<T extends OpenDurableObject>(

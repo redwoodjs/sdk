@@ -1,645 +1,201 @@
 import {
   OpenDurableObject,
-  DurableObjectState,
-  DurableObjectStorage,
-  DurableObjectSql,
-  DurableObjectSqlStatement,
-} from "./open-durable-object.js";
+} from "./durable-object/index.js";
 import path from "node:path";
 import fs from "node:fs";
-import { serialize, deserialize } from "node:v8";
+import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
+import {
+  InstanceContainer,
+  OpenDOConstructor
+} from "./worker/runtime.js";
+import {
+  SqliteStorage,
+  InMemoryStorage,
+  getSqliteDriver
+} from "./worker/storage.js";
+import { connectUds, UdsSocket } from "./transport.js";
 
-const require = createRequire(import.meta.url);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const isBun = typeof Bun !== "undefined";
 
 /**
- * Cross-runtime serialization
+ * Remote Stub for interacting with a DO in another process
  */
-function fastSerialize(value: any): Buffer | Uint8Array {
-  if (isBun) {
-    // @ts-ignore
-    return Bun.serialize(value);
-  }
-  return serialize(value);
-}
-
-function fastDeserialize(value: Buffer | Uint8Array): any {
-  if (isBun) {
-    // @ts-ignore
-    return Bun.deserialize(value);
-  }
-  return deserialize(value);
-}
-
-/**
- * Native SQLite Driver Discovery
- */
-async function getSqliteDriver(): Promise<any> {
-  if (isBun) {
-    // @ts-ignore
-    return (await import("bun:sqlite")).Database;
+class RemoteStub {
+  #id: string;
+  #socketPath: string;
+  #module: string;
+  #className: string;
+  
+  constructor(id: string, socketPath: string, module: string, className: string) {
+    this.#id = id;
+    this.#socketPath = socketPath;
+    this.#module = module;
+    this.#className = className;
   }
 
-  try {
-    const sqlite = require("node:sqlite");
-    if (sqlite.DatabaseSync) {
-      return sqlite.DatabaseSync;
-    }
-    throw new Error("node:sqlite found, but DatabaseSync is missing.");
-  } catch (e: any) {
-    const isNode = typeof process !== "undefined" && process.versions?.node;
-    if (isNode) {
-      const nodeVersion = process.versions.node;
-      const [major, minor] = nodeVersion.split(".").map(Number);
-      if (major < 22 || (major === 22 && minor < 5)) {
-        throw new Error(
-          `OpenDurableObject Persistence Error: node:sqlite is not available in Node.js ${nodeVersion}. Please upgrade to v22.5.0 or later.`
-        );
-      }
-      throw new Error(
-        `OpenDurableObject Persistence Error: node:sqlite is missing (Error: ${e.message}). If you are using Node.js, ensure you run with the '--experimental-sqlite' flag.`
-      );
-    }
-    throw new Error(
-      "OpenDurableObject Persistence Error: Persistent storage is not supported in this runtime. Currently only Bun and Node.js (v22.5+) are supported."
-    );
-  }
-}
-
-class SqliteStorage implements DurableObjectStorage {
-  #db: any;
-  sql: DurableObjectSql;
-
-  constructor(db: any) {
-    this.#db = db;
-    this.#db.exec(`
-      CREATE TABLE IF NOT EXISTS _kv (
-        key TEXT PRIMARY KEY,
-        value BLOB
-      );
-      CREATE TABLE IF NOT EXISTS _alarms (
-        scheduledTime INTEGER PRIMARY KEY
-      );
-    `);
-
-    const dbInstance = this.#db;
-
-    this.sql = {
-      prepare(query: string): DurableObjectSqlStatement {
-        const stmt = dbInstance.prepare(query);
-        let _bindings: any[] = [];
-
-        return {
-          bind(...params: any[]) {
-            _bindings = params;
-            return this;
-          },
-          first<T = unknown>() {
-            return stmt.get(..._bindings) as T;
-          },
-          all<T = unknown>() {
-            return stmt.all(..._bindings) as T[];
-          },
-          run() {
-            const result = stmt.run(..._bindings);
-            return {
-              changes: result.changes,
-              lastInsertRowid: result.lastInsertRowid,
-            };
-          },
-        };
-      },
-      exec(query: string) {
-        dbInstance.exec(query);
-      },
-      get databaseSize(): number {
-        const pageCount = dbInstance.prepare("PRAGMA page_count").get() as any;
-        const pageSize = dbInstance.prepare("PRAGMA page_size").get() as any;
-        // The return structure differs slightly between Bun and Node
-        const count = typeof pageCount === "number" ? pageCount : Object.values(pageCount)[0] as number;
-        const size = typeof pageSize === "number" ? pageSize : Object.values(pageSize)[0] as number;
-        return count * size;
-      },
-    };
+  async fetch(request: Request): Promise<Response> {
+      return this._internalFetch(request);
   }
 
-  async get<T = unknown>(key: string | string[]): Promise<any> {
-    if (Array.isArray(key)) {
-      const results = new Map<string, T>();
-      const stmt = this.#db.prepare("SELECT key, value FROM _kv WHERE key = ?");
-      for (const k of key) {
-        const row = stmt.get(k);
-        if (row) results.set(k, fastDeserialize(row.value));
-      }
-      return results;
-    }
-
-    const row = this.#db.prepare("SELECT value FROM _kv WHERE key = ?").get(key);
-    return row ? fastDeserialize(row.value) : undefined;
-  }
-
-  async put<T = unknown>(
-    key: string | Record<string, T>,
-    value?: T
-  ): Promise<void> {
-    const stmt = this.#db.prepare(
-      "INSERT OR REPLACE INTO _kv (key, value) VALUES (?, ?)"
-    );
-    if (typeof key === "string") {
-      stmt.run(key, fastSerialize(value));
-    } else {
-      for (const [k, v] of Object.entries(key)) {
-        stmt.run(k, fastSerialize(v));
-      }
-    }
-  }
-
-  async delete(key: string | string[]): Promise<any> {
-    if (Array.isArray(key)) {
-      const stmt = this.#db.prepare("DELETE FROM _kv WHERE key = ?");
-      let count = 0;
-      for (const k of key) {
-        const result = stmt.run(k);
-        if (result.changes > 0) count++;
-      }
-      return count;
-    }
-
-    const result = this.#db.prepare("DELETE FROM _kv WHERE key = ?").run(key);
-    return result.changes > 0;
-  }
-
-  async deleteAll(): Promise<void> {
-    this.#db.exec("DELETE FROM _kv");
-  }
-
-  async list<T = unknown>(options?: any): Promise<Map<string, T>> {
-    const results = new Map<string, T>();
-    let query = "SELECT key, value FROM _kv";
-    const params: any[] = [];
-    const wheres: string[] = [];
-
-    const reverse = !!options?.reverse;
-
-    if (options?.prefix) {
-      wheres.push("key LIKE ?");
-      params.push(`${options.prefix}%`);
-    }
-
-    if (options?.start) {
-      wheres.push(reverse ? "key <= ?" : "key >= ?");
-      params.push(options.start);
-    }
-
-    if (options?.startAfter) {
-      wheres.push(reverse ? "key < ?" : "key > ?");
-      params.push(options.startAfter);
-    }
-
-    if (options?.end) {
-      wheres.push(reverse ? "key > ?" : "key < ?");
-      params.push(options.end);
-    }
-
-    if (wheres.length > 0) {
-      query += " WHERE " + wheres.join(" AND ");
-    }
-
-    query += " ORDER BY key " + (options?.reverse ? "DESC" : "ASC");
-
-    if (options?.limit) {
-      query += " LIMIT ?";
-      params.push(options.limit);
-    }
-
-    const rows = this.#db.prepare(query).all(...params);
-    for (const row of rows) {
-      results.set(row.key, fastDeserialize(row.value));
-    }
-    return results;
-  }
-
-  async getAlarm(): Promise<number | null> {
-    const row = this.#db.prepare("SELECT scheduledTime FROM _alarms LIMIT 1").get();
-    return row ? Number(row.scheduledTime) : null;
-  }
-
-  async setAlarm(scheduledTime: number | Date): Promise<void> {
-    const time = scheduledTime instanceof Date ? scheduledTime.getTime() : scheduledTime;
-    this.#db.exec("DELETE FROM _alarms");
-    this.#db.prepare("INSERT INTO _alarms (scheduledTime) VALUES (?)").run(BigInt(time));
-  }
-
-  async deleteAlarm(): Promise<void> {
-    this.#db.exec("DELETE FROM _alarms");
-  }
-
-  async sync(): Promise<void> {
-    // No-op for local SQLite
-  }
-
-  async transaction<T>(callback: () => Promise<T>): Promise<T> {
-    this.#db.exec("BEGIN");
+  async _internalFetch(request: Request): Promise<Response> {
+    // 1. Connect to Worker UDS
+    let socket: UdsSocket;
     try {
-      const result = await callback();
-      this.#db.exec("COMMIT");
-      return result;
-    } catch (error) {
-      this.#db.exec("ROLLBACK");
-      throw error;
+        socket = await connectUds(this.#socketPath);
+    } catch (e) {
+        throw new Error(`Failed to connect to worker at ${this.#socketPath}: ${e}`);
     }
-  }
-}
 
-class InMemoryStorage implements DurableObjectStorage {
-  #data = new Map<string, any>();
+    // 2. Serialize Request
+    // We need to send ID, Module, Class, and the Request itself.
+    // Simplifying: We constructs a URL that encodes the metadata, 
+    // and rely on the Worker to parse it.
+    // The Worker implements an HTTP server over UDS.
+    
+    // Original URL might be `http://do/foo` or similar.
+    // usage: `router.ts` creates a request.
+    // Worker expects: `/?id=...&module=...&class=...`
+    
+    // We need to preserve the original path/method/headers/body.
+    const originalUrl = new URL(request.url);
+    
+    // We modify the search params to include control metadata
+    // Note: This might conflict if user uses these params.
+    // Ideally we use headers.
+    
+    // Let's use Headers for metadata to be cleaner.
+    // Worker `process.ts` needs to be updated to check headers too?
+    // I implemented `process.ts` to check URL params.
+    // Let's stick to URL params for now as per my `process.ts` implementation.
+    
+    const workerUrl = new URL(`http://localhost${originalUrl.pathname}`);
+    workerUrl.searchParams.set("id", this.#id);
+    workerUrl.searchParams.set("module", this.#module);
+    workerUrl.searchParams.set("class", this.#className);
+    
+    // Copy original search params?
+    originalUrl.searchParams.forEach((v, k) => {
+        workerUrl.searchParams.append(k, v);
+    });
 
-  sql: DurableObjectSql = {
-    prepare: () => {
-      throw new Error("SQL API is not supported in InMemoryStorage");
-    },
-    exec: () => {
-      throw new Error("SQL API is not supported in InMemoryStorage");
-    },
-    get databaseSize(): number {
-      return 0;
-    },
-  };
-
-  async get<T = unknown>(key: string | string[]): Promise<any> {
-    if (Array.isArray(key)) {
-      const results = new Map<string, T>();
-      for (const k of key) {
-        if (this.#data.has(k)) results.set(k, this.#data.get(k));
-      }
-      return results;
-    }
-    return this.#data.get(key);
-  }
-
-  async put<T = unknown>(
-    key: string | Record<string, T>,
-    value?: T
-  ): Promise<void> {
-    if (typeof key === "string") {
-      this.#data.set(key, value);
+    // 3. Send Request via `fetch`?
+    // Run `fetch` over UDS?
+    // Bun supports `fetch(url, { unix: socketPath })`.
+    // Node.js doesn't natively support `fetch` over UDS easily without an agent.
+    // Creating a custom agent is complex.
+    
+    // Alternative: We manually write HTTP 1.1 packet to the socket.
+    // Or we use the `transport.ts` abstraction.
+    
+    // Since `transport.ts` returns a raw socket (stream), we have to write raw HTTP.
+    
+    // Implementing a full HTTP client is hard.
+    // BUT we are only sending one request.
+    
+    // Let's see if we can use `fetch` with a custom dispatcher in Node (undici)?
+    // Or `http.request`.
+    
+    if (isBun) {
+       // @ts-ignore
+       return fetch(workerUrl.toString(), {
+           method: request.method,
+           headers: request.headers,
+           body: request.body,
+           unix: this.#socketPath
+       });
     } else {
-      for (const [k, v] of Object.entries(key)) {
-        this.#data.set(k, v);
-      }
+       // Node.js implementation using 'http' module and 'socketPath' option
+       const http = await import("node:http");
+       
+       return new Promise((resolve, reject) => {
+           const headersObj: Record<string, string> = {};
+           request.headers.forEach((v, k) => {
+               headersObj[k] = v;
+           });
+
+           const options = {
+               socketPath: this.#socketPath,
+               method: request.method,
+               path: workerUrl.pathname + workerUrl.search,
+               headers: headersObj
+           };
+           
+           const req = http.request(options, (res) => {
+               // Convert IncomingMessage to Response
+               const headers = new Headers();
+               for (const [k, v] of Object.entries(res.headers)) {
+                   if (Array.isArray(v)) v.forEach(val => headers.append(k, val));
+                   else if (v) headers.set(k, v);
+               }
+               
+               // Read body
+               // We function as a proxy, so we can return a stream?
+               // Response takes a ReadableStream.
+               // Node stream is an AsyncIterable.
+               
+               // @ts-ignore
+               const response = new Response(res as any, {
+                   status: res.statusCode,
+                   statusText: res.statusMessage,
+                   headers: headers
+               });
+               
+               resolve(response);
+           });
+           
+           req.on('error', reject);
+           
+           if (request.body) {
+                // Pipe request body to req
+                // request.body is ReadableStream
+                // req is Writable
+                // We need to read from ReadableStream and write to req.
+                const reader = request.body.getReader();
+                const pump = async () => {
+                    const { done, value } = await reader.read();
+                    if (done) {
+                        req.end();
+                        return;
+                    }
+                    req.write(value);
+                    pump();
+                };
+                pump().catch(reject);
+           } else {
+               req.end();
+           }
+       });
     }
-  }
-
-  async delete(key: string | string[]): Promise<any> {
-    if (Array.isArray(key)) {
-      let count = 0;
-      for (const k of key) {
-        if (this.#data.delete(k)) count++;
-      }
-      return count;
-    }
-    return this.#data.delete(key);
-  }
-
-  async deleteAll(): Promise<void> {
-    this.#data.clear();
-  }
-
-  async list<T = unknown>(options?: any): Promise<Map<string, T>> {
-    let entries = Array.from(this.#data.entries());
-
-    const reverse = !!options?.reverse;
-
-    if (options?.prefix) {
-      entries = entries.filter(([k]) => k.startsWith(options.prefix));
-    }
-
-    if (options?.start) {
-      entries = entries.filter(([k]) => reverse ? k <= options.start : k >= options.start);
-    }
-
-    if (options?.startAfter) {
-      entries = entries.filter(([k]) => reverse ? k < options.startAfter : k > options.startAfter);
-    }
-
-    if (options?.end) {
-      entries = entries.filter(([k]) => reverse ? k > options.end : k < options.end);
-    }
-
-    entries.sort((a, b) => (reverse ? b[0].localeCompare(a[0]) : a[0].localeCompare(b[0])));
-
-    if (options?.limit) {
-      entries = entries.slice(0, options.limit);
-    }
-
-    return new Map(entries as any);
-  }
-
-  #alarmTime: number | null = null;
-
-  async getAlarm(): Promise<number | null> {
-    return this.#alarmTime;
-  }
-
-  async setAlarm(scheduledTime: number | Date): Promise<void> {
-    this.#alarmTime = scheduledTime instanceof Date ? scheduledTime.getTime() : scheduledTime;
-  }
-
-  async deleteAlarm(): Promise<void> {
-    this.#alarmTime = null;
-  }
-
-  async sync(): Promise<void> {}
-
-  async transaction<T>(callback: () => Promise<T>): Promise<T> {
-    // InMemoryStorage doesn't easily support rollbacks without snapshots.
-    // Given the single-threaded nature of DOs, we just run it.
-    // If it fails, some state might have been changed before failure.
-    return await callback();
   }
 }
 
-class InstanceContainer {
-  id: string;
-  storage: DurableObjectStorage;
-  env: any;
-  instance: OpenDurableObject | null = null;
-  
-  #state: DurableObjectStateImpl | null = null;
-  #loadingPromise: Promise<OpenDurableObject> | null = null;
-  #Ctor: OpenDOConstructor<any> | null = null;
-  #supportsHibernation = false;
-
-  #activeRequests = 0;
-  #lastActive = Date.now();
-  #waitUntilPromises = new Set<Promise<any>>();
-  #webSockets = new Set<{ ws: WebSocket; tags: Set<string> }>();
-  
-  #alarmCheckTimer: any = null;
-  #registry: OpenDurableObjectRegistry;
-
-  constructor(registry: OpenDurableObjectRegistry, id: string, storage: DurableObjectStorage, env: any) {
-    this.#registry = registry;
-    this.id = id;
-    this.storage = storage;
-    this.env = env;
-  }
-
-  touch() {
-    this.#lastActive = Date.now();
-  }
-
-  async getInstance(Ctor?: OpenDOConstructor<any>): Promise<OpenDurableObject> {
-    this.touch();
-    if (this.instance) return this.instance;
-    if (this.#loadingPromise) return this.#loadingPromise;
+class WorkerHandle {
+    socketPath: string;
+    process: any;
     
-    // If we are waking up from hibernation/eviction without a direct Ctor call (e.g. WS message),
-    // we must have the Ctor cached.
-    if (!Ctor) {
-        if (this.#Ctor) Ctor = this.#Ctor;
-        else throw new Error(`Cannot wake up Durable Object ${this.id}: Constructor not found.`);
-    } else {
-        this.#Ctor = Ctor;
+    constructor(socketPath: string, proc: any) {
+        this.socketPath = socketPath;
+        this.process = proc;
     }
-
-    const FinalCtor = Ctor!;
-
-    this.#loadingPromise = (async () => {
-      await Promise.resolve(); // Ensure async execution so assignment happens first
-      try {
-        const state = new DurableObjectStateImpl(this, this.storage);
-        this.#state = state;
-        const instance = new FinalCtor(state, this.env);
-        this.instance = instance;
-        state._setInstance(instance);
-        
-        // Detect hibernation support
-        this.#supportsHibernation = typeof instance.webSocketMessage === 'function';
-        
-        this.#startAlarmCheck(instance);
-
-        return instance;
-      } catch (e) {
-        // If construction triggers error, we fail
-        throw e;
-      } finally {
-        this.#loadingPromise = null;
-      }
-    })();
-
-    return this.#loadingPromise;
-  }
-  
-  async executeFetch(request: Request, instance: OpenDurableObject): Promise<Response> {
-    this.#activeRequests++;
-    this.touch();
-    try {
-      return await instance._internalFetch(request);
-    } finally {
-      this.#activeRequests--;
-      this.touch();
+    
+    async checkCoordinates() {
+        // TODO: Ping worker to ensure it's alive?
     }
-  }
-
-  addWaitUntil(promise: Promise<any>) {
-    this.#waitUntilPromises.add(promise);
-    this.touch();
-    promise.catch(e => console.error("WaitUntil Error:", e)).finally(() => {
-        this.#waitUntilPromises.delete(promise);
-        this.touch();
-    });
-  }
-  
-  acceptWebSocket(ws: WebSocket, tags: string[]) {
-    this.touch();
-    const entry = { ws, tags: new Set(tags) };
-    this.#webSockets.add(entry);
-    
-    // Cleanup on close
-    const cleanup = () => {
-      this.#webSockets.delete(entry);
-      this.touch();
-    };
-    ws.addEventListener("close", cleanup);
-    ws.addEventListener("error", cleanup);
-    
-    // Setup Hibernation Handlers
-    // We attach these listeners ONCE. If we are hibernated, the listeners stay on the WS.
-    // When they fire, we wake up.
-    
-    ws.addEventListener("message", async (event) => {
-        this.touch();
-        // Only handle if hibernation is supported or if instance is active?
-        // If hibernation is NOT supported, the user handles the WS themselves, so we shouldn't interfere?
-        // ACTUALLY: The "Hibernation API" replaces the user's standard listeners.
-        // If `webSocketMessage` is defined, we use it.
-        // We can check `this.#supportsHibernation` but that might not be set if we haven't loaded yet?
-        // But `acceptWebSocket` is called FROM the instance, so we MUST have loaded.
-        
-        if (this.#supportsHibernation) {
-            const instance = await this.getInstance();
-            if (instance.webSocketMessage) {
-                 await instance.webSocketMessage(ws, event.data);
-            }
-        }
-    });
-
-    ws.addEventListener("close", async (event) => {
-        this.touch();
-        if (this.#supportsHibernation) {
-            // We might need to wake up just to handle close?
-             const instance = await this.getInstance();
-             if (instance.webSocketClose) {
-                 await instance.webSocketClose(ws, event.code, event.reason, event.wasClean);
-             }
-        }
-    });
-
-    ws.addEventListener("error", async (event) => {
-        this.touch();
-        if (this.#supportsHibernation) {
-             const instance = await this.getInstance();
-             if (instance.webSocketError) {
-                 // @ts-ignore
-                 await instance.webSocketError(ws, event);
-             }
-        }
-    });
-  }
-  
-  getWebSockets(tag?: string): WebSocket[] {
-    const sockets: WebSocket[] = [];
-    for (const entry of this.#webSockets) {
-      if (!tag || entry.tags.has(tag)) {
-        sockets.push(entry.ws);
-      }
-    }
-    return sockets;
-  }
-  
-  #startAlarmCheck(instance: OpenDurableObject) {
-      if (this.#alarmCheckTimer) return; // Already running
-      
-      const check = async () => {
-          if (!this.instance) {
-              // If evicted, stop checking? 
-              // No, we technically need to check alarm to wake up.
-              // But for now, let's assume if we are evicted, the Registry handles waking us up?
-              // The Registry implementation had a loop inside `get()`.
-              // We should probably rely on the container to check alarms if it's active.
-              // If it's evicted, we need a way to check alarms WITHOUT loading.
-              // Storing 'nextAlarm' in memory?
-              // Optimization: When evicting, read next alarm time.
-              this.#alarmCheckTimer = null;
-              return; 
-          }
-          
-          try {
-            const alarmTime = await this.storage.getAlarm();
-            if (alarmTime && alarmTime <= Date.now()) {
-                await this.storage.deleteAlarm();
-                if (instance.alarm) {
-                    this.touch();
-                    await instance.alarm();
-                }
-            }
-          } catch (e) {
-              console.error("Alarm check error", e);
-          }
-          
-          this.#alarmCheckTimer = setTimeout(check, 1000);
-      };
-      
-      check();
-  }
-
-  canEvict(timeout: number): boolean {
-      const age = Date.now() - this.#lastActive;
-      if (age < timeout) return false;
-      if (this.#activeRequests > 0) return false;
-      if (this.#waitUntilPromises.size > 0) return false;
-      
-      if (this.#webSockets.size > 0) {
-          // Can only evict if hibernation is supported
-          if (!this.#supportsHibernation) return false;
-      }
-      
-      return true;
-  }
-  
-  async evict() {
-      // Clear instance reference
-      this.instance = null;
-      this.#state = null;
-      // Stop internal alarm loop (we'll restart it on wake)
-      if (this.#alarmCheckTimer) {
-          clearTimeout(this.#alarmCheckTimer);
-          this.#alarmCheckTimer = null;
-      }
-      // Note: We keeping the Container alive in the Registry if there are WebSockets?
-      // Or do we rely on the implementation?
-      // If we evict the container from the Registry map, we lose the WebSockets!
-      // So Registry should NOT delete the Container if activeWebSockets > 0, 
-      // but the Container can delete its `instance`.
-  }
-  
-  get isEmpty() {
-      // True if we have no state that needs to be kept in memory
-      // i.e. no instance, no websockets, no pending promises.
-      return !this.instance && this.#webSockets.size === 0 && this.#waitUntilPromises.size === 0 && this.#activeRequests === 0;
-  }
 }
-
-class DurableObjectStateImpl implements DurableObjectState {
-  #container: InstanceContainer;
-  #queue = Promise.resolve<any>(undefined);
-  #instance: OpenDurableObject | null = null;
-  
-  // Proxy id to container
-  get id() { return this.#container.id; } 
-
-  constructor(container: InstanceContainer, public storage: DurableObjectStorage) {
-    this.#container = container;
-  }
-
-  _setInstance(instance: OpenDurableObject) {
-    this.#instance = instance;
-  }
-
-  async blockConcurrencyWhile<T>(callback: () => Promise<T>): Promise<T> {
-    return (this.#queue = this.#queue.then(callback));
-  }
-
-  waitUntil(promise: Promise<any>): void {
-    if (this.#instance) {
-      this.#instance._addWaitUntil(promise);
-      this.#container.addWaitUntil(promise);
-    }
-  }
-
-  acceptWebSocket(ws: WebSocket, tags: string[] = []): void {
-      this.#container.acceptWebSocket(ws, tags);
-  }
-
-  getWebSockets(tag?: string): WebSocket[] {
-      return this.#container.getWebSockets(tag);
-  }
-}
-
-type OpenDOConstructor<T extends OpenDurableObject> = new (
-  state: DurableObjectState,
-  env: any
-) => T;
 
 export class OpenDurableObjectRegistry {
-  #containers = new Map<string, InstanceContainer>();
+  #containers = new Map<string, InstanceContainer>(); // Local fallback
+  #workers: WorkerHandle[] = [];
   #options: { 
       hibernationTimeoutMs?: number; 
       hibernationCheckIntervalMs?: number;
       env?: any; 
-      storageDir?: string 
+      storageDir?: string;
+      workerCount?: number;
+      workerScriptPath?: string; // Optional override
   };
   #evictionInterval: any = null;
 
@@ -649,26 +205,114 @@ export class OpenDurableObjectRegistry {
       hibernationCheckIntervalMs?: number;
       env?: any;
       storageDir?: string;
+      workerCount?: number;
+      workerScriptPath?: string;
     } = {}
   ) {
     this.#options = options;
     
-    // Start eviction loop
+    // Start eviction loop (for LOCAL containers)
     const interval = this.#options.hibernationCheckIntervalMs || 10000;
     if (typeof setInterval !== 'undefined') {
         this.#evictionInterval = setInterval(() => this.#performEviction(), interval);
         if (this.#evictionInterval.unref) this.#evictionInterval.unref();
     }
+    
+    // Initialize workers if requested
+    if (this.#options.workerCount && this.#options.workerCount > 0) {
+        this.#spawnWorkers(this.#options.workerCount);
+    }
+  }
+  
+  #spawnWorkers(count: number) {
+      const workerScript = this.#options.workerScriptPath || path.join(__dirname, "worker", "process.js");
+      
+      for (let i = 0; i < count; i++) {
+          const socketPath = path.resolve(process.cwd(), `.do-worker-${i}.sock`);
+          const storageDir = this.#options.storageDir || process.cwd();
+          
+          let proc: any;
+          if (isBun) {
+              // @ts-ignore
+             proc = Bun.spawn(["bun", "run", workerScript, "--socket", socketPath, "--storage", storageDir], {
+                 stdout: "inherit",
+                 stderr: "inherit"
+             });
+          } else {
+              const cp = require("child_process"); // use require inside valid scope or import
+              // we can use imported 'spawn' if we import it? 
+              // dynamic import for node child_process to be safe in Bun?
+              // Just use createRequire to be safe cross-runtime code in one file
+              const { spawn } = createRequire(import.meta.url)("child_process");
+              // Use npx tsx to execute the TypeScript worker in Node environment
+              proc = spawn("npx", ["tsx", workerScript, "--socket", socketPath, "--storage", storageDir], {
+                  stdio: "inherit"
+              });
+          }
+          
+          this.#workers.push(new WorkerHandle(socketPath, proc));
+      }
   }
 
   async get<T extends OpenDurableObject>(
     id: string,
     Ctor: OpenDOConstructor<T>
   ): Promise<T> {
+    // 1. Check if we should run locally (no workers configured)
+    if (this.#workers.length === 0) {
+        return this.#getLocal(id, Ctor);
+    }
+    
+    // 2. Placement Logic (Hash ID to worker)
+    // Simple hash
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) hash = (hash << 5) - hash + id.charCodeAt(i) | 0;
+    const index = Math.abs(hash) % this.#workers.length;
+    const worker = this.#workers[index];
+    
+    // 3. Resolve Module and Class Name
+    // This is the tricky part. We need the FILE PATH of Ctor.
+    // We assume the Ctor is exported from a file.
+    // If we can't find it, we might fail or default to local?
+    // "Single machine" typically implies we are running the SAME codebase.
+    // We need to pass the file path relative to CWD.
+    
+    // Hack: We can't easily get the file path of a class in JS.
+    // Workaround: We require `Ctor` to have a static `modulePath` or we assume it's in a known location?
+    // OR: We check if `Ctor.name` is sufficient if the Worker loads the 'entry point'.
+    
+    // Let's assume for now that we just pass `Ctor.name` and a placeholder module,
+    // AND we assume the User has configured the `WorkerProcess` (via args or build) to have that class available.
+    // BUT my `process.ts` implementation specifically asks for `module` param to dynamic import.
+    
+    // Let's rely on a convention: 
+    // If Ctor has `filename` or `__filename` or similar? No.
+    
+    // Let's default to LOCAL if we can't resolve remote?
+    // No, we want to test remote.
+    
+    // Let's use a dummy module path for now and hope the test setup handles it?
+    // In our tests, we define the class in the test file.
+    // If the test file is `entry param`, `process.ts` can import it.
+    
+    // We'll pass `Ctor.name`.
+    // We'll try to pass `module`.
+    // If `(Ctor as any).modulePath` exists, use it.
+    
+    const modulePath = (Ctor as any).modulePath || ""; 
+    // If empty, remote worker might fail if it relies on it.
+    
+    return new RemoteStub(id, worker.socketPath, modulePath, Ctor.name) as unknown as T;
+  }
+  
+  async #getLocal<T extends OpenDurableObject>(
+    id: string,
+    Ctor: OpenDOConstructor<T>
+  ): Promise<T> {
     let container = this.#containers.get(id);
     if (!container) {
         // Create storage
-        let storage: DurableObjectStorage;
+        let storage: any; // Type inference or explicit import
         if (this.#options.storageDir) {
            const resolvedDir = path.resolve(process.cwd(), this.#options.storageDir);
            if (!fs.existsSync(resolvedDir)) {
@@ -682,7 +326,8 @@ export class OpenDurableObjectRegistry {
            storage = new InMemoryStorage();
         }
 
-        container = new InstanceContainer(this, id, storage, this.#options.env || {});
+        // Updated signature: no 'this' passed
+        container = new InstanceContainer(id, storage, this.#options.env || {});
         this.#containers.set(id, container);
     }
     
@@ -695,11 +340,10 @@ export class OpenDurableObjectRegistry {
       for (const [id, container] of this.#containers) {
           if (container.canEvict(timeout)) {
               if (container.instance) {
-                  container.evict(); // Unloads instance, keeps container if needed
+                  container.evict(); 
               }
               
               if (container.isEmpty) {
-                  // If container is truly empty (no websockets), remove it entirely
                   this.#containers.delete(id);
               }
           }
@@ -712,6 +356,19 @@ export class OpenDurableObjectRegistry {
           this.#evictionInterval = null;
       }
       this.#containers.clear();
+      
+      // Kill workers
+      for (const worker of this.#workers) {
+          // graceful kill?
+          try {
+              if (isBun) {
+                 worker.process.kill();
+              } else {
+                 worker.process.kill();
+              }
+          } catch {}
+      }
+      this.#workers = [];
   }
 }
 

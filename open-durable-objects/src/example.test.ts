@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { OpenDurableObjectRegistry as Registry } from "./registry.js";
-import { OpenDurableObject, DurableObjectState } from "./open-durable-object.js";
+import { OpenDurableObject, DurableObjectState } from "./durable-object/index.js";
 
 // This looks exactly like a Cloudflare Durable Object
 class CloudflareStyleDO extends OpenDurableObject {

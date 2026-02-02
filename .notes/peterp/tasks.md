@@ -1,4 +1,27 @@
-## Next Steps
+- [ ] **Production-Ready "Loader" System**
+      The current `simple-do.ts` fixture uses a manual `modulePath` assignment. We need a robust mechanism (manifest or rigorous convention) to allow Worker processes to resolve User Code paths reliably in production.
+      Importance: 5
+      Reference: `worklogs/2026-02-02-2307-single-machine-process-model-refactor.md`
+- [ ] **Supervisor & Error Recovery**
+      Implement logic to restart Worker Processes if they crash (e.g., OOM). The Registry should monitor child processes and re-spawn them, healing the cluster.
+      Importance: 4
+      Reference: `worklogs/2026-02-02-2307-single-machine-process-model-refactor.md`
+
+
+
+- [x] **Implement Placement Logic**
+      Implemented basic modulo-based hashing to route Object IDs to specific workers.
+      Importance: 5
+      Reference: `worklogs/2026-02-02-2307-single-machine-process-model-refactor.md`
+- [x] **Wire up Router via UDS**
+      Updated Router to use `createOpenDurableObjectRouter` which proxies requests via `RemoteStub` and UDS.
+      Importance: 5
+      Reference: `worklogs/2026-02-02-2307-single-machine-process-model-refactor.md`
+- [x] **Add multi-process tests**
+      Verified spawning and UDS communication in `src/single-machine.test.ts`.
+      Importance: 5
+      Reference: `worklogs/2026-02-02-2307-single-machine-process-model-refactor.md`
+
 
 - [x] **Improved Hibernation**
       Better memory management for inactive objects. Dynamically unload inactive objects from memory after inactivity.

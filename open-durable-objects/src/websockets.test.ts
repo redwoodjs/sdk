@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { OpenDurableObject } from "./open-durable-object.js";
+import { OpenDurableObject } from "./durable-object/index.js";
 import { OpenDurableObjectRegistry } from "./registry.js";
 
 // Mock WebSocket

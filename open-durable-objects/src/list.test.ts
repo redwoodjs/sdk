@@ -1,6 +1,6 @@
 import { expect, test, describe } from "vitest";
 import { OpenDurableObjectRegistry as Registry } from "./registry.js";
-import { OpenDurableObject, DurableObjectState } from "./open-durable-object.js";
+import { OpenDurableObject, DurableObjectState } from "./durable-object/index.js";
 
 class ListDO extends OpenDurableObject {
   async fetch(request: Request) {

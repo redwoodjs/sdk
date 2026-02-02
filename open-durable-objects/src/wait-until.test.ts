@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { OpenDurableObject, DurableObjectState } from "./open-durable-object.js";
+import { OpenDurableObject, DurableObjectState } from "./durable-object/index.js";
 import { OpenDurableObjectRegistry } from "./registry.js";
 
 class WaitUntilDO extends OpenDurableObject {

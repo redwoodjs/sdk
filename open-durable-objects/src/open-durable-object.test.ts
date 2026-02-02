@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { OpenDurableObject, DurableObjectState } from "./open-durable-object.js";
+import { OpenDurableObject, DurableObjectState } from "./durable-object/index.js";
 import { OpenDurableObjectRegistry as Registry } from "./registry.js";
-import { encodeEnvelope, decodeEnvelope, RpcEnvelope } from "./envelope.js";
-import { createStub, Connection } from "./rpc.js";
+import { encodeEnvelope, decodeEnvelope, RpcEnvelope } from "./durable-object/envelope.js";
+import { createStub, Connection } from "./durable-object/rpc.js";
 
 class CounterDO extends OpenDurableObject {
   count = 0;
