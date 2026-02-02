@@ -77,7 +77,7 @@ export async function navigate(
 
   saveScrollPosition(window.scrollX, window.scrollY);
 
-  const url = window.location.origin + href;
+  const url = new URL(href, window.location.href);
 
   if (options.history === "push") {
     window.history.pushState({ path: href }, "", url);
