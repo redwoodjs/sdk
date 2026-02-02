@@ -1,10 +1,10 @@
 import {
-  OpenDO,
+  OpenDurableObject,
   DurableObjectState,
   DurableObjectStorage,
   DurableObjectSql,
   DurableObjectSqlStatement,
-} from "./open-do.js";
+} from "./open-durable-object.js";
 import path from "node:path";
 import fs from "node:fs";
 import { serialize, deserialize } from "node:v8";
@@ -54,15 +54,15 @@ async function getSqliteDriver(): Promise<any> {
       const [major, minor] = nodeVersion.split(".").map(Number);
       if (major < 22 || (major === 22 && minor < 5)) {
         throw new Error(
-          `OpenDO Persistence Error: node:sqlite is not available in Node.js ${nodeVersion}. Please upgrade to v22.5.0 or later.`
+          `OpenDurableObject Persistence Error: node:sqlite is not available in Node.js ${nodeVersion}. Please upgrade to v22.5.0 or later.`
         );
       }
       throw new Error(
-        `OpenDO Persistence Error: node:sqlite is missing (Error: ${e.message}). If you are using Node.js, ensure you run with the '--experimental-sqlite' flag.`
+        `OpenDurableObject Persistence Error: node:sqlite is missing (Error: ${e.message}). If you are using Node.js, ensure you run with the '--experimental-sqlite' flag.`
       );
     }
     throw new Error(
-      "OpenDO Persistence Error: Persistent storage is not supported in this runtime. Currently only Bun and Node.js (v22.5+) are supported."
+      "OpenDurableObject Persistence Error: Persistent storage is not supported in this runtime. Currently only Bun and Node.js (v22.5+) are supported."
     );
   }
 }
@@ -364,10 +364,10 @@ class InstanceContainer {
   id: string;
   storage: DurableObjectStorage;
   env: any;
-  instance: OpenDO | null = null;
+  instance: OpenDurableObject | null = null;
   
   #state: DurableObjectStateImpl | null = null;
-  #loadingPromise: Promise<OpenDO> | null = null;
+  #loadingPromise: Promise<OpenDurableObject> | null = null;
   #Ctor: OpenDOConstructor<any> | null = null;
   #supportsHibernation = false;
 
@@ -377,9 +377,9 @@ class InstanceContainer {
   #webSockets = new Set<{ ws: WebSocket; tags: Set<string> }>();
   
   #alarmCheckTimer: any = null;
-  #registry: OpenDORegistry;
+  #registry: OpenDurableObjectRegistry;
 
-  constructor(registry: OpenDORegistry, id: string, storage: DurableObjectStorage, env: any) {
+  constructor(registry: OpenDurableObjectRegistry, id: string, storage: DurableObjectStorage, env: any) {
     this.#registry = registry;
     this.id = id;
     this.storage = storage;
@@ -390,7 +390,7 @@ class InstanceContainer {
     this.#lastActive = Date.now();
   }
 
-  async getInstance(Ctor?: OpenDOConstructor<any>): Promise<OpenDO> {
+  async getInstance(Ctor?: OpenDOConstructor<any>): Promise<OpenDurableObject> {
     this.touch();
     if (this.instance) return this.instance;
     if (this.#loadingPromise) return this.#loadingPromise;
@@ -432,7 +432,7 @@ class InstanceContainer {
     return this.#loadingPromise;
   }
   
-  async executeFetch(request: Request, instance: OpenDO): Promise<Response> {
+  async executeFetch(request: Request, instance: OpenDurableObject): Promise<Response> {
     this.#activeRequests++;
     this.touch();
     try {
@@ -519,7 +519,7 @@ class InstanceContainer {
     return sockets;
   }
   
-  #startAlarmCheck(instance: OpenDO) {
+  #startAlarmCheck(instance: OpenDurableObject) {
       if (this.#alarmCheckTimer) return; // Already running
       
       const check = async () => {
@@ -595,7 +595,7 @@ class InstanceContainer {
 class DurableObjectStateImpl implements DurableObjectState {
   #container: InstanceContainer;
   #queue = Promise.resolve<any>(undefined);
-  #instance: OpenDO | null = null;
+  #instance: OpenDurableObject | null = null;
   
   // Proxy id to container
   get id() { return this.#container.id; } 
@@ -604,7 +604,7 @@ class DurableObjectStateImpl implements DurableObjectState {
     this.#container = container;
   }
 
-  _setInstance(instance: OpenDO) {
+  _setInstance(instance: OpenDurableObject) {
     this.#instance = instance;
   }
 
@@ -628,12 +628,12 @@ class DurableObjectStateImpl implements DurableObjectState {
   }
 }
 
-type OpenDOConstructor<T extends OpenDO> = new (
+type OpenDOConstructor<T extends OpenDurableObject> = new (
   state: DurableObjectState,
   env: any
 ) => T;
 
-export class OpenDORegistry {
+export class OpenDurableObjectRegistry {
   #containers = new Map<string, InstanceContainer>();
   #options: { 
       hibernationTimeoutMs?: number; 
@@ -661,7 +661,7 @@ export class OpenDORegistry {
     }
   }
 
-  async get<T extends OpenDO>(
+  async get<T extends OpenDurableObject>(
     id: string,
     Ctor: OpenDOConstructor<T>
   ): Promise<T> {

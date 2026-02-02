@@ -6,7 +6,8 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "bench": "vitest bench"
+    "bench": "vitest bench",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "bun-types": "latest",

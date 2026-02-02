@@ -1,11 +1,11 @@
 import { expect, test, describe, beforeAll, afterAll } from "vitest";
-import { OpenDO, DurableObjectState, Registry } from "./index.js";
+import { OpenDurableObject, DurableObjectState, Registry } from "./index.js";
 import fs from "node:fs";
 import path from "node:path";
 
-const STORAGE_DIR = path.join(process.cwd(), ".test-storage");
+const STORAGE_DIR = path.join(process.cwd(), ".test-storage-persistence");
 
-class PersistenceDO extends OpenDO {
+class PersistenceDO extends OpenDurableObject {
   async fetch(request: Request) {
     const url = new URL(request.url);
     const key = url.searchParams.get("key");
@@ -43,12 +43,12 @@ class PersistenceDO extends OpenDO {
 describe("SQLite Persistence", () => {
   beforeAll(async () => {
     if (fs.existsSync(STORAGE_DIR)) {
-      // fs.rmSync(STORAGE_DIR, { recursive: true });
+      fs.rmSync(STORAGE_DIR, { recursive: true });
     }
   });
 
   afterAll(async () => {
-    // fs.rmSync(STORAGE_DIR, { recursive: true });
+    fs.rmSync(STORAGE_DIR, { recursive: true });
   });
 
   test("should persist KV data across registry re-instantiation", async () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { OpenDORegistry } from "./registry.js";
-import { OpenDO, DurableObjectState } from "./open-do.js";
+import { OpenDurableObjectRegistry } from "./registry.js";
+import { OpenDurableObject, DurableObjectState } from "./open-durable-object.js";
 
 class MockWebSocket {
   listeners = new Map<string, Set<Function>>();
@@ -48,12 +48,12 @@ global.Event = class Event {
 } as any;
 
 describe("Improved Hibernation", () => {
-  let registry: OpenDORegistry;
+  let registry: OpenDurableObjectRegistry;
   
   // Helper to wait
   const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  class SimpleDO extends OpenDO {
+  class SimpleDO extends OpenDurableObject {
     constructor(state: DurableObjectState, env: any) {
       super(state, env);
     }
@@ -63,7 +63,7 @@ describe("Improved Hibernation", () => {
     }
   }
 
-  class HibernatingDO extends OpenDO {
+  class HibernatingDO extends OpenDurableObject {
     lastMessage: string = "";
     constructor(state: DurableObjectState, env: any) {
       super(state, env);
@@ -80,7 +80,7 @@ describe("Improved Hibernation", () => {
     }
   }
 
-  class BlockingDO extends OpenDO {
+  class BlockingDO extends OpenDurableObject {
       constructor(state: DurableObjectState, env: any) {
         super(state, env);
       }
@@ -97,7 +97,7 @@ describe("Improved Hibernation", () => {
 
   beforeEach(() => {
     // 100ms timeout, 50ms check interval
-    registry = new OpenDORegistry({
+    registry = new OpenDurableObjectRegistry({
       hibernationTimeoutMs: 100,
       hibernationCheckIntervalMs: 50,
     });

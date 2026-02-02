@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { OpenDORegistry as Registry } from "./registry.js";
-import { OpenDO, DurableObjectState } from "./open-do.js";
+import { OpenDurableObjectRegistry as Registry } from "./registry.js";
+import { OpenDurableObject, DurableObjectState } from "./open-durable-object.js";
 
 // This looks exactly like a Cloudflare Durable Object
-class CloudflareStyleDO extends OpenDO {
+class CloudflareStyleDO extends OpenDurableObject {
   async fetch(request: Request) {
     const { pathname } = new URL(request.url);
     

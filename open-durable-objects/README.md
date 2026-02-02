@@ -19,9 +19,9 @@ It provides a compatible API for building stateful, distributed applications usi
 Define your Durable Object class just like you would for Cloudflare Workers:
 
 ```typescript
-import { OpenDO } from "@redwoodjs/open-do";
+import { OpenDurableObject } from "@redwoodjs/open-durable-objects";
 
-export class MyObject extends OpenDO {
+export class MyObject extends OpenDurableObject {
   async fetch(request: Request) {
     // URL routing
     const url = new URL(request.url);
@@ -46,7 +46,7 @@ export class MyObject extends OpenDO {
 ### Instantiating and using the object
 
 ```typescript
-import { Registry } from "@redwoodjs/open-do";
+import { Registry } from "@redwoodjs/open-durable-objects";
 import { MyObject } from "./MyObject";
 
 const registry = new Registry();

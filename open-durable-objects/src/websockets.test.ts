@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import { OpenDO } from "./open-do.js";
-import { OpenDORegistry } from "./registry.js";
+import { OpenDurableObject } from "./open-durable-object.js";
+import { OpenDurableObjectRegistry } from "./registry.js";
 
 // Mock WebSocket
 class MockWebSocket extends EventTarget {
@@ -16,7 +16,7 @@ class MockWebSocket extends EventTarget {
 // @ts-ignore
 globalThis.WebSocket = MockWebSocket;
 
-class WebSocketDO extends OpenDO {
+class WebSocketDO extends OpenDurableObject {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname === "/connect") {
@@ -36,7 +36,7 @@ class WebSocketDO extends OpenDO {
 
 describe("WebSocket Support", () => {
   it("tracks connected websockets", async () => {
-    const registry = new OpenDORegistry();
+    const registry = new OpenDurableObjectRegistry();
     const doInstance = await registry.get("ws-test-1", WebSocketDO);
 
     await doInstance.fetch(new Request("https://do/connect"));
@@ -49,7 +49,7 @@ describe("WebSocket Support", () => {
   });
 
   it("filters websockets by tag", async () => {
-    const registry = new OpenDORegistry();
+    const registry = new OpenDurableObjectRegistry();
     const doInstance = await registry.get("ws-test-2", WebSocketDO);
 
     // Connect with tags
@@ -75,7 +75,7 @@ describe("WebSocket Support", () => {
   });
   
   it("automatically removes closed sockets", async () => {
-    const registry = new OpenDORegistry();
+    const registry = new OpenDurableObjectRegistry();
     const doInstance = await registry.get("ws-test-3", WebSocketDO);
 
     // Add a socket manually to access it for closing

@@ -1,13 +1,13 @@
 import { bench } from "vitest";
-import { OpenDO, Registry as OpenDORegistry, createOpenDORouter } from "./index.js";
+import { OpenDurableObject, Registry as OpenDurableObjectRegistry, createOpenDurableObjectRouter } from "./index.js";
 import path from "node:path";
 import fs from "node:fs";
 
 // Setup
 const STORAGE_DIR = path.join(process.cwd(), ".bench-storage");
-const registry = new OpenDORegistry({ storageDir: STORAGE_DIR });
+const registry = new OpenDurableObjectRegistry({ storageDir: STORAGE_DIR });
 
-class BenchmarkDO extends OpenDO {
+class BenchmarkDO extends OpenDurableObject {
   async fetch(request: Request) {
     const url = new URL(request.url);
     if (url.pathname === "/kv") {
@@ -111,7 +111,7 @@ bench(
 );
 
 // Benchmark: Router
-const router = createOpenDORouter(registry, BenchmarkDO, (req: Request) => {
+const router = createOpenDurableObjectRouter(registry, BenchmarkDO, (req: Request) => {
     const url = new URL(req.url);
     // Simple extraction
     return url.searchParams.get("id");

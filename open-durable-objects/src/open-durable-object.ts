@@ -44,7 +44,7 @@ export interface DurableObjectState {
   getWebSockets(tag?: string): WebSocket[];
 }
 
-export abstract class OpenDO {
+export abstract class OpenDurableObject {
   #state: DurableObjectState;
   #env: any;
   #waitUntilPromises: Promise<any>[] = [];

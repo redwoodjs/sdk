@@ -1,10 +1,10 @@
 # Supported Feature Matrix
 
-This document tracks the supported features of `open-do` compared to the official Cloudflare Durable Objects API.
+This document tracks the supported features of `open-durable-objects` compared to the official Cloudflare Durable Objects API.
 
 ## API Reference
 
-Since `open-do` aims to maintain API compatibility with Cloudflare, the following official documentation serves as the primary reference:
+Since `open-durable-objects` aims to maintain API compatibility with Cloudflare, the following official documentation serves as the primary reference:
 
 - [**Durable Object State**](https://developers.cloudflare.com/durable-objects/api/state/) - `id`, `storage`, `blockConcurrencyWhile`, `waitUntil`.
 - [**Storage API (KV)**](https://developers.cloudflare.com/durable-objects/api/kv-storage/) - `get`, `put`, `delete`, `list`.
@@ -85,7 +85,7 @@ Management of the Durable Object's unique identity and internal state.
 
 ### Code Sample
 ```typescript
-export class MyObject extends OpenDO {
+export class MyObject extends OpenDurableObject {
   async fetch(request: Request) {
     this.ctx.waitUntil(this.doBackgroundWork());
     return new Response("Hello");
@@ -108,7 +108,7 @@ Allows Durable Objects to schedule future work.
 
 ### Code Sample
 ```typescript
-export class MyObject extends OpenDO {
+export class MyObject extends OpenDurableObject {
   async fetch(request: Request) {
     await this.storage.setAlarm(Date.now() + 1000);
     return new Response("Scheduled");
@@ -155,7 +155,7 @@ Manage active WebSocket connections and broadcasting.
 
 ### Code Sample
 ```typescript
-export class MyObject extends OpenDO {
+export class MyObject extends OpenDurableObject {
   async fetch(request: Request) {
     if (request.headers.get("Upgrade") === "websocket") {
        const pair = new WebSocketPair();

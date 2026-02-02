@@ -1,11 +1,11 @@
 import { expect, test, describe, beforeAll, afterAll } from "vitest";
-import { OpenDO, Registry } from "./index.js";
+import { OpenDurableObject, Registry } from "./index.js";
 import fs from "node:fs";
 import path from "node:path";
 
-const STORAGE_DIR = path.join(process.cwd(), ".test-storage");
+const STORAGE_DIR = path.join(process.cwd(), ".test-storage-alarms");
 
-class AlarmDO extends OpenDO {
+class AlarmDO extends OpenDurableObject {
   async fetch(request: Request) {
     const url = new URL(request.url);
     if (url.pathname === "/set") {
@@ -40,42 +40,54 @@ describe("Durable Object Alarms", () => {
 
   test("should trigger alarm and persist results", async () => {
     const registry = new Registry({ storageDir: STORAGE_DIR });
-    const id = "alarm-test";
-    const myDo = await registry.get(id, AlarmDO);
+    try {
+      const id = "alarm-test";
+      const myDo = await registry.get(id, AlarmDO);
 
-    await myDo.fetch(new Request("http://localhost/set?delay=100"));
-    
-    // Check alarm is set
-    const resGet = await myDo.fetch(new Request("http://localhost/get"));
-    expect(await resGet.text()).not.toBe("null");
+      await myDo.fetch(new Request("http://localhost/set?delay=100"));
+      
+      // Check alarm is set
+      const resGet = await myDo.fetch(new Request("http://localhost/get"));
+      expect(await resGet.text()).not.toBe("null");
 
-    // Wait for alarm to trigger (plus buffer)
-    await new Promise(resolve => setTimeout(resolve, 1500));
+      // Wait for alarm to trigger (plus buffer)
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
-    // Check alarm count
-    const resCount = await myDo.fetch(new Request("http://localhost/count"));
-    expect(await resCount.text()).toBe("1");
+      // Check alarm count
+      const resCount = await myDo.fetch(new Request("http://localhost/count"));
+      expect(await resCount.text()).toBe("1");
 
-    // Check alarm is deleted
-    const resGetAfter = await myDo.fetch(new Request("http://localhost/get"));
-    expect(await resGetAfter.text()).toBe("null");
+      // Check alarm is deleted
+      const resGetAfter = await myDo.fetch(new Request("http://localhost/get"));
+      expect(await resGetAfter.text()).toBe("null");
+    } finally {
+      registry.close();
+    }
   });
 
-  test("should persist alarm across process restarts", async () => {
+    test("should persist alarm across process restarts", async () => {
     const id = "alarm-persist";
     
     {
       const registry = new Registry({ storageDir: STORAGE_DIR });
-      const myDo = await registry.get(id, AlarmDO);
-      await myDo.fetch(new Request("http://localhost/set?delay=5000")); // Set in future
+      try {
+        const myDo = await registry.get(id, AlarmDO);
+        await myDo.fetch(new Request("http://localhost/set?delay=5000")); // Set in future
+      } finally {
+        registry.close();
+      }
     }
 
     // "Restart" registry
     {
       const registry = new Registry({ storageDir: STORAGE_DIR });
-      const myDo = await registry.get(id, AlarmDO);
-      const resGet = await myDo.fetch(new Request("http://localhost/get"));
-      expect(await resGet.text()).not.toBe("null");
+      try {
+        const myDo = await registry.get(id, AlarmDO);
+        const resGet = await myDo.fetch(new Request("http://localhost/get"));
+        expect(await resGet.text()).not.toBe("null");
+      } finally {
+        registry.close();
+      }
     }
   });
 });

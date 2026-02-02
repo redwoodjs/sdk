@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { OpenDO, DurableObjectState } from "./open-do.js";
-import { OpenDORegistry as Registry } from "./registry.js";
+import { OpenDurableObject, DurableObjectState } from "./open-durable-object.js";
+import { OpenDurableObjectRegistry as Registry } from "./registry.js";
 import { encodeEnvelope, decodeEnvelope, RpcEnvelope } from "./envelope.js";
 import { createStub, Connection } from "./rpc.js";
 
-class CounterDO extends OpenDO {
+class CounterDO extends OpenDurableObject {
   count = 0;
   constructor(state: DurableObjectState, env: any) {
     super(state, env);
@@ -20,7 +20,7 @@ class CounterDO extends OpenDO {
   }
 }
 
-describe("OpenDO Serial Execution", () => {
+describe("OpenDurableObject Serial Execution", () => {
   it("should process requests serially via _internalFetch", async () => {
     const storage: any = {};
     const state: DurableObjectState = {
@@ -112,7 +112,7 @@ describe("RPC createStub", () => {
   });
 });
 
-class BlockingDO extends OpenDO {
+class BlockingDO extends OpenDurableObject {
   initialized = false;
   constructor(state: DurableObjectState, env: any) {
     super(state, env);

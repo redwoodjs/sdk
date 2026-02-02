@@ -7,4 +7,4 @@ packages:
   - "community"
   - "community/playground/**"
   - "addons/*"
-  - "open-do"
+  - "open-durable-objects"

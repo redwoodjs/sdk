@@ -1,8 +1,8 @@
-import { OpenDO } from "./open-do.js";
-import { OpenDORegistry } from "./registry.js";
+import { OpenDurableObject } from "./open-durable-object.js";
+import { OpenDurableObjectRegistry } from "./registry.js";
 
-export function createOpenDORouter<T extends OpenDO>(
-  registry: OpenDORegistry,
+export function createOpenDurableObjectRouter<T extends OpenDurableObject>(
+  registry: OpenDurableObjectRegistry,
   Ctor: new (state: any, env: any) => T,
   idExtractor: (req: Request) => string | null = (req) =>
     new URL(req.url).searchParams.get("id")
