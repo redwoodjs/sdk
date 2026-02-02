@@ -47,7 +47,7 @@ export const fetchTransport: Transport = (transportContext) => {
 
     if (isAction) {
       url.searchParams.set("__rsc_action_id", id);
-      
+
       // If args are provided and method is GET, serialize them into the query string
       if (args != null && method === "GET") {
         url.searchParams.set("args", JSON.stringify(args));
@@ -188,16 +188,12 @@ export const fetchTransport: Transport = (transportContext) => {
  *
  * @example
  * // Basic usage
- * import { initClient } from "rwsdk/client";
- *
- * initClient();
- *
- * @example
- * // With client-side navigation
  * import { initClient, initClientNavigation } from "rwsdk/client";
  *
- * const { handleResponse } = initClientNavigation();
- * initClient({ handleResponse });
+ * // RedwoodSDK uses RSC RPC to emulate client side navigation.
+ * // https://docs.rwsdk.com/guides/frontend/client-side-nav/
+ * const { handleResponse, onHydrated } = initClientNavigation();
+ * initClient({ handleResponse, onHydrated });
  *
  * @example
  * // With error handling
@@ -240,7 +236,7 @@ export const initClient = async ({
   onActionResponse?: (actionResponse: ActionResponseData) => boolean | void;
 } = {}) => {
   const transportContext: TransportContext = {
-    setRscPayload: () => {},
+    setRscPayload: () => { },
     handleResponse,
     onHydrated,
     onActionResponse,
