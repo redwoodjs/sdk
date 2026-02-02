@@ -1,8 +1,8 @@
+import { requestInfo as requestInfoBase } from "./requestInfo/worker";
+import { RequestInfo } from "./requestInfo/types";
 
-import { requestInfo } from "./requestInfo/worker";
-
-type Interruptor<TArgs extends any[] = any[], TResult = any> = (
-  context: { request: Request; ctx: Record<string, any>; args: TArgs },
+export type Interruptor<TArgs extends any[] = any[], TResult = any> = (
+  context: RequestInfo & { args: TArgs },
 ) => Promise<Response | void | TResult> | Response | void | TResult;
 
 type ServerFunction<TArgs extends any[] = any[], TResult = any> = (
@@ -26,11 +26,11 @@ function createServerFunction<TArgs extends any[] = any[], TResult = any>(
   const wrapped: WrappedServerFunction<TArgs, TResult> = async (
     ...args: TArgs
   ) => {
-    const { request, ctx } = requestInfo;
+    const { request, ctx } = requestInfoBase;
 
     // Execute interruptors
     for (const fn of fns) {
-      const result = await fn({ request, ctx, args });
+      const result = await fn({ ...requestInfoBase, args } as any);
       if (result instanceof Response) {
         // We can't easily return a Response from a server action function
         // because the return type is expected to be TResult.
@@ -69,9 +69,17 @@ function createServerFunction<TArgs extends any[] = any[], TResult = any>(
  * ```
  */
 export function serverQuery<TArgs extends any[] = any[], TResult = any>(
+  fns: [...Interruptor<TArgs, TResult>[], ServerFunction<TArgs, TResult>],
+  options?: ServerFunctionOptions,
+): WrappedServerFunction<TArgs, TResult>;
+export function serverQuery<TArgs extends any[] = any[], TResult = any>(
+  mainFn: ServerFunction<TArgs, TResult>,
+  options?: ServerFunctionOptions,
+): WrappedServerFunction<TArgs, TResult>;
+export function serverQuery<TArgs extends any[] = any[], TResult = any>(
   fnsOrFn:
-    | ServerFunction<TArgs, TResult>
-    | [...Interruptor<TArgs, TResult>[], ServerFunction<TArgs, TResult>],
+    | [...Interruptor<TArgs, TResult>[], ServerFunction<TArgs, TResult>]
+    | ServerFunction<TArgs, TResult>,
   options?: ServerFunctionOptions,
 ): WrappedServerFunction<TArgs, TResult> {
   let fns: Interruptor<TArgs, TResult>[] = [];
@@ -109,9 +117,17 @@ export function serverQuery<TArgs extends any[] = any[], TResult = any>(
  * ```
  */
 export function serverAction<TArgs extends any[] = any[], TResult = any>(
+  fns: [...Interruptor<TArgs, TResult>[], ServerFunction<TArgs, TResult>],
+  options?: ServerFunctionOptions,
+): WrappedServerFunction<TArgs, TResult>;
+export function serverAction<TArgs extends any[] = any[], TResult = any>(
+  mainFn: ServerFunction<TArgs, TResult>,
+  options?: ServerFunctionOptions,
+): WrappedServerFunction<TArgs, TResult>;
+export function serverAction<TArgs extends any[] = any[], TResult = any>(
   fnsOrFn:
-    | ServerFunction<TArgs, TResult>
-    | [...Interruptor<TArgs, TResult>[], ServerFunction<TArgs, TResult>],
+    | [...Interruptor<TArgs, TResult>[], ServerFunction<TArgs, TResult>]
+    | ServerFunction<TArgs, TResult>,
   options?: ServerFunctionOptions,
 ): WrappedServerFunction<TArgs, TResult> {
   let fns: Interruptor<TArgs, TResult>[] = [];
