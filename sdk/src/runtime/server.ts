@@ -1,9 +1,14 @@
-
 import { requestInfo } from "./requestInfo/worker";
+import { RequestInfo } from "./requestInfo/types";
 
-type Interruptor<TArgs extends any[] = any[], TResult = any> = (
+export type Interruptor<TArgs extends any[]> = (
+  info: RequestInfo,
+  ...args: TArgs
+) => Promise<Response | void> | Response | void;
+
+export type LegacyInterruptor<TArgs extends any[] = any[]> = (
   context: { request: Request; ctx: Record<string, any>; args: TArgs },
-) => Promise<Response | void | TResult> | Response | void | TResult;
+) => Promise<Response | void> | Response | void;
 
 type ServerFunction<TArgs extends any[] = any[], TResult = any> = (
   ...args: TArgs
@@ -19,9 +24,9 @@ type WrappedServerFunction<TArgs extends any[] = any[], TResult = any> = {
 };
 
 function createServerFunction<TArgs extends any[] = any[], TResult = any>(
-  fns: Interruptor<TArgs, TResult>[],
+  fns: (Interruptor<TArgs> | LegacyInterruptor<TArgs>)[],
   mainFn: ServerFunction<TArgs, TResult>,
-  options?: ServerFunctionOptions,
+  options?: ServerFunctionOptions & { type?: "query" | "action" },
 ): WrappedServerFunction<TArgs, TResult> {
   const wrapped: WrappedServerFunction<TArgs, TResult> = async (
     ...args: TArgs
@@ -30,7 +35,14 @@ function createServerFunction<TArgs extends any[] = any[], TResult = any>(
 
     // Execute interruptors
     for (const fn of fns) {
-      const result = await fn({ request, ctx, args });
+      let result;
+      if (options?.type === "query") {
+        const info = (await import("./requestInfo/worker")).getRequestInfo();
+        result = await (fn as Interruptor<TArgs>)(info, ...args);
+      } else {
+        result = await (fn as LegacyInterruptor<TArgs>)({ request, ctx, args });
+      }
+
       if (result instanceof Response) {
         // We can't easily return a Response from a server action function
         // because the return type is expected to be TResult.
@@ -71,21 +83,25 @@ function createServerFunction<TArgs extends any[] = any[], TResult = any>(
 export function serverQuery<TArgs extends any[] = any[], TResult = any>(
   fnsOrFn:
     | ServerFunction<TArgs, TResult>
-    | [...Interruptor<TArgs, TResult>[], ServerFunction<TArgs, TResult>],
+    | [...Interruptor<TArgs>[], ServerFunction<TArgs, TResult>],
   options?: ServerFunctionOptions,
 ): WrappedServerFunction<TArgs, TResult> {
-  let fns: Interruptor<TArgs, TResult>[] = [];
+  let fns: Interruptor<TArgs>[] = [];
   let mainFn: ServerFunction<TArgs, TResult>;
 
   if (Array.isArray(fnsOrFn)) {
-    fns = fnsOrFn.slice(0, -1) as Interruptor<TArgs, TResult>[];
+    fns = fnsOrFn.slice(0, -1) as Interruptor<TArgs>[];
     mainFn = fnsOrFn[fnsOrFn.length - 1] as ServerFunction<TArgs, TResult>;
   } else {
     mainFn = fnsOrFn;
   }
 
   const method = options?.method ?? "GET"; // Default to GET for query
-  const wrapped = createServerFunction(fns, mainFn, { ...options, method });
+  const wrapped = createServerFunction(fns, mainFn, {
+    ...options,
+    method,
+    type: "query",
+  });
   wrapped.method = method;
   return wrapped;
 }
@@ -111,21 +127,25 @@ export function serverQuery<TArgs extends any[] = any[], TResult = any>(
 export function serverAction<TArgs extends any[] = any[], TResult = any>(
   fnsOrFn:
     | ServerFunction<TArgs, TResult>
-    | [...Interruptor<TArgs, TResult>[], ServerFunction<TArgs, TResult>],
+    | [...LegacyInterruptor<TArgs>[], ServerFunction<TArgs, TResult>],
   options?: ServerFunctionOptions,
 ): WrappedServerFunction<TArgs, TResult> {
-  let fns: Interruptor<TArgs, TResult>[] = [];
+  let fns: LegacyInterruptor<TArgs>[] = [];
   let mainFn: ServerFunction<TArgs, TResult>;
 
   if (Array.isArray(fnsOrFn)) {
-    fns = fnsOrFn.slice(0, -1) as Interruptor<TArgs, TResult>[];
+    fns = fnsOrFn.slice(0, -1) as LegacyInterruptor<TArgs>[];
     mainFn = fnsOrFn[fnsOrFn.length - 1] as ServerFunction<TArgs, TResult>;
   } else {
     mainFn = fnsOrFn;
   }
 
   const method = options?.method ?? "POST"; // Default to POST for action
-  const wrapped = createServerFunction(fns, mainFn, { ...options, method });
+  const wrapped = createServerFunction(fns, mainFn, {
+    ...options,
+    method,
+    type: "action",
+  });
   wrapped.method = method;
   return wrapped;
 }
