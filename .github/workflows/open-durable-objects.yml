@@ -1,0 +1,44 @@
+name: Open Durable Objects
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "open-durable-objects/**"
+  pull_request:
+    paths:
+      - "open-durable-objects/**"
+
+jobs:
+  check:
+    name: Typecheck & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build SDK
+        run: pnpm build
+        working-directory: sdk
+
+      - name: Typecheck
+        run: pnpm typecheck
+        working-directory: open-durable-objects
+
+      - name: Run tests
+        run: pnpm test
+        working-directory: open-durable-objects
