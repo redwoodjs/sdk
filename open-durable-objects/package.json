@@ -1,0 +1,22 @@
+{
+  "name": "@redwoodjs/sourdough",
+  "version": "0.1.0",
+  "description": "Open Durable Objects for Bun (& NodeJS)",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "bench": "vitest bench",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "bun-types": "latest",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.17"
+  },
+  "author": "Peter Pistorius",
+  "license": "MIT",
+  "dependencies": {
+    "capnweb": "^0.4.0"
+  }
+}
