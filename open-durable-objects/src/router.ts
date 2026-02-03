@@ -1,8 +1,8 @@
 import { OpenDurableObject } from "./durable-object/index.js";
-import { OpenDurableObjectRegistry } from "./registry.js";
+import { ClusterCoordinator } from "./coordinator.js";
 
-export function createOpenDurableObjectRouter<T extends OpenDurableObject>(
-  registry: OpenDurableObjectRegistry,
+export function route<T extends OpenDurableObject>(
+  registry: ClusterCoordinator,
   Ctor: new (state: any, env: any) => T,
   idExtractor: (req: Request) => string | null = (req) =>
     new URL(req.url).searchParams.get("id")

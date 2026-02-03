@@ -8,12 +8,12 @@ import { createRequire } from "node:module";
 import {
   InstanceContainer,
   OpenDOConstructor
-} from "./worker/runtime.js";
+} from "./host/runtime.js";
 import {
   SqliteStorage,
   InMemoryStorage,
   getSqliteDriver
-} from "./worker/storage.js";
+} from "./host/storage.js";
 import { connectUds, UdsSocket } from "./transport.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -21,7 +21,7 @@ const __dirname = path.dirname(__filename);
 const isBun = typeof Bun !== "undefined";
 
 /**
- * Remote Stub for interacting with a DO in another process
+ * Remote Stub for interacting with a DO in another host process
  */
 class RemoteStub {
   #id: string;
@@ -41,12 +41,12 @@ class RemoteStub {
   }
 
   async _internalFetch(request: Request): Promise<Response> {
-    // 1. Connect to Worker UDS
+    // 1. Connect to Host UDS
     let socket: UdsSocket;
     try {
         socket = await connectUds(this.#socketPath);
     } catch (e) {
-        throw new Error(`Failed to connect to worker at ${this.#socketPath}: ${e}`);
+        throw new Error(`Failed to connect to host process at ${this.#socketPath}: ${e}`);
     }
 
     // 2. Serialize Request
@@ -57,7 +57,7 @@ class RemoteStub {
     
     // Original URL might be `http://do/foo` or similar.
     // usage: `router.ts` creates a request.
-    // Worker expects: `/?id=...&module=...&class=...`
+    // Worker/Host expects: `/?id=...&module=...&class=...`
     
     // We need to preserve the original path/method/headers/body.
     const originalUrl = new URL(request.url);
@@ -71,14 +71,14 @@ class RemoteStub {
     // I implemented `process.ts` to check URL params.
     // Let's stick to URL params for now as per my `process.ts` implementation.
     
-    const workerUrl = new URL(`http://localhost${originalUrl.pathname}`);
-    workerUrl.searchParams.set("id", this.#id);
-    workerUrl.searchParams.set("module", this.#module);
-    workerUrl.searchParams.set("class", this.#className);
+    const hostUrl = new URL(`http://localhost${originalUrl.pathname}`);
+    hostUrl.searchParams.set("id", this.#id);
+    hostUrl.searchParams.set("module", this.#module);
+    hostUrl.searchParams.set("class", this.#className);
     
     // Copy original search params?
     originalUrl.searchParams.forEach((v, k) => {
-        workerUrl.searchParams.append(k, v);
+        hostUrl.searchParams.append(k, v);
     });
 
     // 3. Send Request via `fetch`?
@@ -100,7 +100,7 @@ class RemoteStub {
     
     if (isBun) {
        // @ts-ignore
-       return fetch(workerUrl.toString(), {
+       return fetch(hostUrl.toString(), {
            method: request.method,
            headers: request.headers,
            body: request.body,
@@ -119,7 +119,7 @@ class RemoteStub {
            const options = {
                socketPath: this.#socketPath,
                method: request.method,
-               path: workerUrl.pathname + workerUrl.search,
+               path: hostUrl.pathname + hostUrl.search,
                headers: headersObj
            };
            
@@ -172,7 +172,7 @@ class RemoteStub {
   }
 }
 
-class WorkerHandle {
+class HostProcessHandle {
     socketPath: string;
     process: any;
     
@@ -182,20 +182,20 @@ class WorkerHandle {
     }
     
     async checkCoordinates() {
-        // TODO: Ping worker to ensure it's alive?
+        // TODO: Ping host process to ensure it's alive?
     }
 }
 
-export class OpenDurableObjectRegistry {
+export class ClusterCoordinator {
   #containers = new Map<string, InstanceContainer>(); // Local fallback
-  #workers: WorkerHandle[] = [];
+  #hosts: HostProcessHandle[] = [];
   #options: { 
       hibernationTimeoutMs?: number; 
       hibernationCheckIntervalMs?: number;
       env?: any; 
       storageDir?: string;
-      workerCount?: number;
-      workerScriptPath?: string; // Optional override
+      hostCount?: number;
+      hostScriptPath?: string; // Optional override
   };
   #evictionInterval: any = null;
 
@@ -205,8 +205,8 @@ export class OpenDurableObjectRegistry {
       hibernationCheckIntervalMs?: number;
       env?: any;
       storageDir?: string;
-      workerCount?: number;
-      workerScriptPath?: string;
+      hostCount?: number;
+      hostScriptPath?: string;
     } = {}
   ) {
     this.#options = options;
@@ -218,23 +218,23 @@ export class OpenDurableObjectRegistry {
         if (this.#evictionInterval.unref) this.#evictionInterval.unref();
     }
     
-    // Initialize workers if requested
-    if (this.#options.workerCount && this.#options.workerCount > 0) {
-        this.#spawnWorkers(this.#options.workerCount);
+    // Initialize host processes if requested
+    if (this.#options.hostCount && this.#options.hostCount > 0) {
+        this.#spawnHosts(this.#options.hostCount);
     }
   }
   
-  #spawnWorkers(count: number) {
-      const workerScript = this.#options.workerScriptPath || path.join(__dirname, "worker", "process.js");
+  #spawnHosts(count: number) {
+      const hostScript = this.#options.hostScriptPath || path.join(__dirname, "host", "process.js");
       
       for (let i = 0; i < count; i++) {
-          const socketPath = path.resolve(process.cwd(), `.do-worker-${i}.sock`);
+          const socketPath = path.resolve(process.cwd(), `.do-host-${i}.sock`);
           const storageDir = this.#options.storageDir || process.cwd();
           
           let proc: any;
           if (isBun) {
               // @ts-ignore
-             proc = Bun.spawn(["bun", "run", workerScript, "--socket", socketPath, "--storage", storageDir], {
+             proc = Bun.spawn(["bun", "run", hostScript, "--socket", socketPath, "--storage", storageDir], {
                  stdout: "inherit",
                  stderr: "inherit"
              });
@@ -245,12 +245,12 @@ export class OpenDurableObjectRegistry {
               // Just use createRequire to be safe cross-runtime code in one file
               const { spawn } = createRequire(import.meta.url)("child_process");
               // Use npx tsx to execute the TypeScript worker in Node environment
-              proc = spawn("npx", ["tsx", workerScript, "--socket", socketPath, "--storage", storageDir], {
+              proc = spawn("npx", ["tsx", hostScript, "--socket", socketPath, "--storage", storageDir], {
                   stdio: "inherit"
               });
           }
           
-          this.#workers.push(new WorkerHandle(socketPath, proc));
+          this.#hosts.push(new HostProcessHandle(socketPath, proc));
       }
   }
 
@@ -258,17 +258,17 @@ export class OpenDurableObjectRegistry {
     id: string,
     Ctor: OpenDOConstructor<T>
   ): Promise<T> {
-    // 1. Check if we should run locally (no workers configured)
-    if (this.#workers.length === 0) {
+    // 1. Check if we should run locally (no host processes configured)
+    if (this.#hosts.length === 0) {
         return this.#getLocal(id, Ctor);
     }
     
-    // 2. Placement Logic (Hash ID to worker)
+    // 2. Placement Logic (Hash ID to host)
     // Simple hash
     let hash = 0;
     for (let i = 0; i < id.length; i++) hash = (hash << 5) - hash + id.charCodeAt(i) | 0;
-    const index = Math.abs(hash) % this.#workers.length;
-    const worker = this.#workers[index];
+    const index = Math.abs(hash) % this.#hosts.length;
+    const host = this.#hosts[index];
     
     // 3. Resolve Module and Class Name
     // This is the tricky part. We need the FILE PATH of Ctor.
@@ -279,10 +279,10 @@ export class OpenDurableObjectRegistry {
     
     // Hack: We can't easily get the file path of a class in JS.
     // Workaround: We require `Ctor` to have a static `modulePath` or we assume it's in a known location?
-    // OR: We check if `Ctor.name` is sufficient if the Worker loads the 'entry point'.
+    // OR: We check if `Ctor.name` is sufficient if the Host loads the 'entry point'.
     
     // Let's assume for now that we just pass `Ctor.name` and a placeholder module,
-    // AND we assume the User has configured the `WorkerProcess` (via args or build) to have that class available.
+    // AND we assume the HostProcess (via args or build) to have that class available.
     // BUT my `process.ts` implementation specifically asks for `module` param to dynamic import.
     
     // Let's rely on a convention: 
@@ -300,9 +300,9 @@ export class OpenDurableObjectRegistry {
     // If `(Ctor as any).modulePath` exists, use it.
     
     const modulePath = (Ctor as any).modulePath || ""; 
-    // If empty, remote worker might fail if it relies on it.
+    // If empty, remote host process might fail if it relies on it.
     
-    return new RemoteStub(id, worker.socketPath, modulePath, Ctor.name) as unknown as T;
+    return new RemoteStub(id, host.socketPath, modulePath, Ctor.name) as unknown as T;
   }
   
   async #getLocal<T extends OpenDurableObject>(
@@ -357,18 +357,18 @@ export class OpenDurableObjectRegistry {
       }
       this.#containers.clear();
       
-      // Kill workers
-      for (const worker of this.#workers) {
+      // Kill host processes
+      for (const host of this.#hosts) {
           // graceful kill?
           try {
               if (isBun) {
-                 worker.process.kill();
+                 host.process.kill();
               } else {
-                 worker.process.kill();
+                 host.process.kill();
               }
           } catch {}
       }
-      this.#workers = [];
+      this.#hosts = [];
   }
 }
 

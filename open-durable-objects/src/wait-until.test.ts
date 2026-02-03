@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { OpenDurableObject, DurableObjectState } from "./durable-object/index.js";
-import { OpenDurableObjectRegistry } from "./registry.js";
+import { ClusterCoordinator } from "./coordinator.js";
 
 class WaitUntilDO extends OpenDurableObject {
   processed = false;
@@ -24,7 +24,7 @@ class WaitUntilDO extends OpenDurableObject {
 
 describe("Durable Object waitUntil", () => {
   it("should not block fetch response and allow waiting for background work", async () => {
-    const registry = new OpenDurableObjectRegistry();
+    const registry = new ClusterCoordinator();
     const id = "test-do";
     const instance = await registry.get(id, WaitUntilDO);
 
@@ -45,7 +45,7 @@ describe("Durable Object waitUntil", () => {
   });
 
   it("should handle multiple waitUntil calls", async () => {
-    const registry = new OpenDurableObjectRegistry();
+    const registry = new ClusterCoordinator();
     const id = "test-multi-do";
     const instance = await registry.get(id, WaitUntilDO);
 
@@ -66,7 +66,7 @@ describe("Durable Object waitUntil", () => {
   });
 
   it("should handle nested waitUntil calls (waitUntil adding more waitUntil)", async () => {
-    const registry = new OpenDurableObjectRegistry();
+    const registry = new ClusterCoordinator();
     const id = "test-nested-do";
     const instance = await registry.get(id, WaitUntilDO);
 

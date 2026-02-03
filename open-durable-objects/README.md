@@ -19,7 +19,7 @@ It provides a compatible API for building stateful, distributed applications usi
 Define your Durable Object class just like you would for Cloudflare Workers:
 
 ```typescript
-import { OpenDurableObject } from "@redwoodjs/open-durable-objects";
+import { OpenDurableObject } from "@redwoodjs/sourdough";
 
 export class MyObject extends OpenDurableObject {
   async fetch(request: Request) {
@@ -46,14 +46,14 @@ export class MyObject extends OpenDurableObject {
 ### Instantiating and using the object
 
 ```typescript
-import { Registry } from "@redwoodjs/open-durable-objects";
+import { ClusterCoordinator } from "@redwoodjs/sourdough";
 import { MyObject } from "./MyObject";
 
-const registry = new Registry();
+const coordinator = new ClusterCoordinator();
 const id = "unique-instance-id";
 
 // Get a stub to interact with the object
-const stub = await registry.get(id, MyObject);
+const stub = await coordinator.get(id, MyObject);
 
 // Send a request
 const response = await stub.fetch(new Request("http://localhost/increment"));
@@ -62,7 +62,8 @@ console.log(await response.text()); // "1"
 
 ## Documentation
 
-For a detailed breakdown of supported features and API compatibility, please see the [Feature Matrix](docs/matrix.md).
+- [**Feature Matrix**](docs/matrix.md): Detailed breakdown of supported features and API compatibility.
+- [**Host Process Model**](docs/host-process-model.md): Learn about the multi-process architecture and how to scale Durable Objects on a single machine.
 
 ## License
 

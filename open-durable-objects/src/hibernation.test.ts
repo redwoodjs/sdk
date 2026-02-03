@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { OpenDurableObjectRegistry } from "./registry.js";
+import { ClusterCoordinator } from "./coordinator.js";
 import { OpenDurableObject, DurableObjectState } from "./durable-object/index.js";
 
 class MockWebSocket {
@@ -48,7 +48,7 @@ global.Event = class Event {
 } as any;
 
 describe("Improved Hibernation", () => {
-  let registry: OpenDurableObjectRegistry;
+  let registry: ClusterCoordinator;
   
   // Helper to wait
   const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -97,7 +97,7 @@ describe("Improved Hibernation", () => {
 
   beforeEach(() => {
     // 100ms timeout, 50ms check interval
-    registry = new OpenDurableObjectRegistry({
+    registry = new ClusterCoordinator({
       hibernationTimeoutMs: 100,
       hibernationCheckIntervalMs: 50,
     });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { OpenDurableObjectRegistry as Registry } from "./registry.js";
+import { ClusterCoordinator as Registry } from "./coordinator.js";
 import { OpenDurableObject, DurableObjectState } from "./durable-object/index.js";
 
 // This looks exactly like a Cloudflare Durable Object

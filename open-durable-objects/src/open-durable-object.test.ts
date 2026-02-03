@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { OpenDurableObject, DurableObjectState } from "./durable-object/index.js";
-import { OpenDurableObjectRegistry as Registry } from "./registry.js";
+import { ClusterCoordinator } from "./coordinator.js";
 import { encodeEnvelope, decodeEnvelope, RpcEnvelope } from "./durable-object/envelope.js";
 import { createStub, Connection } from "./durable-object/rpc.js";
 
@@ -47,7 +47,7 @@ describe("OpenDurableObject Serial Execution", () => {
 
 describe("Registry Singleton Lock", () => {
   it("should reuse instances for the same ID even when requested simultaneously", async () => {
-    const registry = new Registry();
+    const registry = new ClusterCoordinator();
     const id = "room-1";
     
     // Fire two requests simultaneously
@@ -130,7 +130,7 @@ class BlockingDO extends OpenDurableObject {
 
 describe("blockConcurrencyWhile", () => {
   it("should block fetch until initialization is complete", async () => {
-    const registry = new Registry();
+    const registry = new ClusterCoordinator();
     const id = "test-blocking";
     
     const instance = await registry.get(id, BlockingDO);
@@ -143,7 +143,7 @@ describe("blockConcurrencyWhile", () => {
   });
 
   it("should block multiple subsequent fetches", async () => {
-    const registry = new Registry();
+    const registry = new ClusterCoordinator();
     const id = "test-blocking-multiple";
     
     const instance = await registry.get(id, BlockingDO);

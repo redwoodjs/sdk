@@ -1,5 +1,5 @@
 import { bench } from "vitest";
-import { OpenDurableObject, Registry as OpenDurableObjectRegistry, createOpenDurableObjectRouter } from "./index.js";
+import { OpenDurableObject, ClusterCoordinator as OpenDurableObjectRegistry, route } from "./index.js";
 import path from "node:path";
 import fs from "node:fs";
 
@@ -111,7 +111,7 @@ bench(
 );
 
 // Benchmark: Router
-const router = createOpenDurableObjectRouter(registry, BenchmarkDO, (req: Request) => {
+const router = route(registry, BenchmarkDO, (req: Request) => {
     const url = new URL(req.url);
     // Simple extraction
     return url.searchParams.get("id");

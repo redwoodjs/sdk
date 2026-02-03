@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { OpenDurableObject } from "./durable-object/index.js";
-import { OpenDurableObjectRegistry } from "./registry.js";
+import { ClusterCoordinator } from "./coordinator.js";
 
 // Mock WebSocket
 class MockWebSocket extends EventTarget {
@@ -36,7 +36,7 @@ class WebSocketDO extends OpenDurableObject {
 
 describe("WebSocket Support", () => {
   it("tracks connected websockets", async () => {
-    const registry = new OpenDurableObjectRegistry();
+    const registry = new ClusterCoordinator();
     const doInstance = await registry.get("ws-test-1", WebSocketDO);
 
     await doInstance.fetch(new Request("https://do/connect"));
@@ -49,7 +49,7 @@ describe("WebSocket Support", () => {
   });
 
   it("filters websockets by tag", async () => {
-    const registry = new OpenDurableObjectRegistry();
+    const registry = new ClusterCoordinator();
     const doInstance = await registry.get("ws-test-2", WebSocketDO);
 
     // Connect with tags
@@ -75,7 +75,7 @@ describe("WebSocket Support", () => {
   });
   
   it("automatically removes closed sockets", async () => {
-    const registry = new OpenDurableObjectRegistry();
+    const registry = new ClusterCoordinator();
     const doInstance = await registry.get("ws-test-3", WebSocketDO);
 
     // Add a socket manually to access it for closing

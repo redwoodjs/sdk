@@ -1,5 +1,5 @@
 import { expect, test, describe, beforeAll, afterAll } from "vitest";
-import { OpenDurableObject, DurableObjectState, Registry } from "./index.js";
+import { OpenDurableObject, DurableObjectState, ClusterCoordinator as Registry } from "./index.js";
 import fs from "node:fs";
 import path from "node:path";
 

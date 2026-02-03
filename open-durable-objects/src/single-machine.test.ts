@@ -1,5 +1,5 @@
 import { describe, it, expect, afterAll } from "vitest";
-import { OpenDurableObjectRegistry } from "./registry.js";
+import { ClusterCoordinator } from "./coordinator.js";
 import { SimpleDO } from "./fixtures/simple-do.js";
 import path from "node:path";
 
@@ -8,24 +8,24 @@ import path from "node:path";
 SimpleDO.modulePath = path.resolve(__dirname, "fixtures/simple-do.ts");
 
 describe("Single Machine Process Model", () => {
-  let registry: OpenDurableObjectRegistry;
+  let coordinator: ClusterCoordinator;
 
   afterAll(() => {
-    if (registry) registry.close();
+    if (coordinator) coordinator.close();
   });
 
-  it("should spawn a worker and route requests via UDS", async () => {
-    registry = new OpenDurableObjectRegistry({
-      workerCount: 1,
+  it("should spawn a host process and route requests via UDS", async () => {
+    coordinator = new ClusterCoordinator({
+      hostCount: 1,
       // Use transient storage for test
       storageDir: path.resolve(process.cwd(), ".test-storage")
     });
     
-    // Give workers a moment to start (though UDS connect retries might handle it, 
+    // Give host processes a moment to start (though UDS connect retries might handle it, 
     // explicit wait helps in tests)
     await new Promise(r => setTimeout(r, 3000));
 
-    const stub = await registry.get("test-id-1", SimpleDO);
+    const stub = await coordinator.get("test-id-1", SimpleDO);
     
     // We expect 'stub' to be a RemoteStub (casted to SimpleDO)
     // But since SimpleDO methods are not on RemoteStub, direct call like `stub.sayHello()` won't work 
@@ -44,8 +44,8 @@ describe("Single Machine Process Model", () => {
     // OR, we must use `createStub` from `durable-object/rpc.ts` over the `RemoteStub`.
     
     // Verify Router Integration
-    const { createOpenDurableObjectRouter } = await import("./router.js");
-    const router = createOpenDurableObjectRouter(registry, SimpleDO);
+    const { route } = await import("./router.js");
+    const router = route(coordinator, SimpleDO);
 
     const req = new Request("http://localhost/sayHello?id=test-id-1", {
         method: "POST",

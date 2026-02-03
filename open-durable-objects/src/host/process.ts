@@ -10,23 +10,23 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const isBun = typeof Bun !== "undefined";
 
-// Arguments: socketPath, storageDir, [UserWorkerPath?]
+// Arguments: socketPath, storageDir, [UserHostPath?]
 // We need to know where the User's DO code is?
 // The Registry (Coordinator) knows the Class.
-// But the WorkerProcess needs to load the Class.
+// But the HostProcess needs to load the Class.
 // Option 1: Registry sends the file path and export name in a control message?
-// Option 2: WorkerProcess is started with the User Code entry point as an argument?
-// Option 3: We assume a monolithic build where WorkerProcess imports the same user code.
+// Option 2: HostProcess is started with the User Code entry point as an argument?
+// Option 3: We assume a monolithic build where HostProcess imports the same user code.
 
 // For "Open Workers" SDK, usually the user runs *their* script, which imports our SDK.
-// So `bun run index.ts` -> creates Registry -> spawns Workers (which run `bun run worker-entry.ts`?).
-// The `worker-entry.ts` must import the user's DO classes.
+// So `bun run index.ts` -> creates Registry -> spawns Host Processes (which run `bun run host-entry.ts`?).
+// The `host-entry.ts` must import the user's DO classes.
 
-// Solution: The `WorkerProcess` is generic, but it needs a mechanism to resolve the DO class.
+// Solution: The `HostProcess` is generic, but it needs a mechanism to resolve the DO class.
 // We can pass the module path as an argument.
-// `bun run src/worker/process.ts --socket ... --module /path/to/user/code.ts --export MyDO`
+// `bun run src/host/process.ts --socket ... --module /path/to/user/code.ts --export MyDO`
 // Or simpler: The Registry passes the Class *Constructor* to `get()`, but when it's remote...
-// The Registry needs to tell the Remote Worker "Load class X from file Y".
+// The Registry needs to tell the Remote Host "Load class X from file Y".
 
 // Let's assume for this "Single Machine" iteration that we are running in a mode where
 // we can dynamic import.
@@ -40,31 +40,31 @@ const isBun = typeof Bun !== "undefined";
 // But the Router is outside.
 // The Router sends request to Worker.
 // URL: `/?id=...`
-// The Worker needs to instantiate the object.
+// The Host Process needs to instantiate the object.
 // It needs the Ctor.
-// If the Worker is generic, it doesn't know the Ctor.
+// If the Host is generic, it doesn't know the Ctor.
 
 // Re-read "2. The 'Single Machine' Process Model"
 // "The Registry Process: A single, lightweight coordinator."
-// "The Durable Worker Pool: A set of processes ... that actually host the objects."
+// "The Durable Host Pool: A set of processes ... that actually host the objects."
 
-// If I start a Worker Pool, they need to be able to host *any* object?
+// If I start a Host Pool, they need to be able to host *any* object?
 // Or specific objects?
 // Usually Durable Objects are bound to a class.
-// A Worker *instance* (isolate) hosts a class.
+// A Host *instance* (isolate) hosts a class.
 // In Cloudflare, you upload specific script.
 
 // Here, the user has `class MyDO extends ...`.
 // They pass `registry.get(id, MyDO)`.
-// If `Registry` decides "MyDO" lives on "Worker-1",
-// "Worker-1" must have `MyDO` code.
+// If `Registry` decides "MyDO" lives on "Host-1",
+// "Host-1" must have `MyDO` code.
 
-// If `Worker-1` is a separate process spawned by Registry...
+// If `Host-1` is a separate process spawned by Registry...
 // It should probably load the same bundle or entry point as the main process?
 // Or we spawn the *User's Entry Point* with a flag?
-// `bun run user-script.ts --worker --socket ...`
+// `bun run user-script.ts --host --socket ...`
 // This ensures `MyDO` is defined.
-// The user script must have logic to start the Worker if the flag is present.
+// The user script must have logic to start the Host if the flag is present.
 
 // OR, we use a loader.
 // `bun run src/worker/process.ts --entry /absolute/path/to/user/script.ts`
@@ -85,7 +85,7 @@ const isBun = typeof Bun !== "undefined";
 // Let's implement a simple `ClassRegistry` in `durable-object/index.ts`?
 // No, that pollutes the base class.
 
-// Better: Pass `className` and `importPath` in the request to the Worker?
+// Better: Pass `className` and `importPath` in the request to the Host?
 // "Lazy load code"?
 // `GET /?id=123&import=./my-do.ts&class=MyDO`
 // Security risk? Local machine, maybe acceptable.
@@ -103,7 +103,7 @@ const isBun = typeof Bun !== "undefined";
 async function start() {
     const args = process.argv.slice(2);
     const socketArg = args.indexOf("--socket");
-    const socketPath = socketArg !== -1 ? args[socketArg + 1] : "/tmp/do-worker.sock";
+    const socketPath = socketArg !== -1 ? args[socketArg + 1] : "/tmp/do-host.sock";
     
     const storageArg = args.indexOf("--storage");
     const storageDir = storageArg !== -1 ? args[storageArg + 1] : "./.storage";
@@ -175,7 +175,7 @@ async function start() {
             return await container.executeFetch(req, instance);
             
         } catch (e: any) {
-            console.error("Worker Error:", e);
+            console.error("Host Process Error:", e);
             return new Response(e.stack || e.message, { status: 500 });
         }
     };
@@ -188,7 +188,7 @@ async function start() {
              unix: socketPath,
              fetch: requestHandler
          });
-         console.log(`Worker listening on ${socketPath}`);
+         console.log(`Host Process listening on ${socketPath}`);
     } else {
          const http = require("node:http");
          if (fs.existsSync(socketPath)) fs.unlinkSync(socketPath);
@@ -247,7 +247,7 @@ async function start() {
          });
          
          server.listen(socketPath, () => {
-             console.log(`Worker listening on ${socketPath}`);
+             console.log(`Host Process listening on ${socketPath}`);
          });
     }
 }
