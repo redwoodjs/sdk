@@ -46,7 +46,7 @@ export const isBlockedResolvedPath = (
   resolvedPath: string,
   blocklist: string[],
 ) => {
-  const normalizedPath = resolvedPath.split(path.sep).join("/");
+  const normalizedPath = resolvedPath.replace(/\\/g, "/");
   return blocklist.some((entry) =>
     normalizedPath.includes(`/node_modules/${entry}/`),
   );
