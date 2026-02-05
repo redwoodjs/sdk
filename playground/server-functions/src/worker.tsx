@@ -13,8 +13,8 @@ export default defineApp([
     // setup ctx here
     ctx;
   },
-  except((error) => {
-    return <ErrorPage error={error} />;
+  except((error, requestInfo) => {
+    return <ErrorPage {...requestInfo} error={error} />;
   }),
   render(Document, [
     route("/", Home),

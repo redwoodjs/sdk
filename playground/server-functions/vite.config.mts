@@ -7,6 +7,6 @@ export default defineConfig({
     cloudflare({
       viteEnvironment: { name: "worker" },
     }),
-    redwood(),
+    redwood() as any,
   ],
 });

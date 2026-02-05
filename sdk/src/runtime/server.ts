@@ -40,7 +40,13 @@ function createServerFunction<TArgs extends any[] = any[], TResult = any>(
       }
     }
 
-    return mainFn(...args);
+    const result = await mainFn(...args);
+
+    if (result instanceof Response) {
+      throw result;
+    }
+
+    return result;
   };
 
   wrapped.method = options?.method ?? "POST"; // Default to POST if not specified, though user said serverQuery defaults to GET?
