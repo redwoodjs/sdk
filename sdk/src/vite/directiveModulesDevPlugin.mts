@@ -58,11 +58,13 @@ export const directiveModulesDevPlugin = ({
   serverFiles,
   projectRootDir,
   workerEntryPathname,
+  directiveScanBlocklist,
 }: {
   clientFiles: Set<string>;
   serverFiles: Set<string>;
   projectRootDir: string;
   workerEntryPathname: string;
+  directiveScanBlocklist?: string[];
 }): Plugin => {
   const { promise: scanPromise, resolve: resolveScanPromise } =
     Promise.withResolvers<void>();
@@ -94,6 +96,7 @@ export const directiveModulesDevPlugin = ({
         clientFiles,
         serverFiles,
         entries: [workerEntryPathname],
+        directiveScanBlocklist,
       }).then(() => {
         // context(justinvdm, 11 Sep 2025): For vendor barrels, we write the
         // files directly to disk after the scan. For app barrels, we use a
