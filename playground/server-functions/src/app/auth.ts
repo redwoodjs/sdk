@@ -9,17 +9,18 @@ declare module "rwsdk/worker" {
 }
 
 /**
- * Mock authentication check.
- * This is an interrupter that can be used with serverQuery or serverAction.
+ * Middleware that demonstrates a redirect.
  */
-export async function requireAuth({ ctx }: RequestInfo) {
-  // Mock logic: check for a specific header
-  const isAuthorized = ctx.request.headers.get("x-demo-auth") === "secret-token";
+export async function redirectMiddleware() {
+  return Response.redirect("https://google.com");
+}
 
-  if (!isAuthorized) {
-    return new Response("Unauthorized - Missing x-demo-auth: secret-token", {
-      status: 401,
-      statusText: "Unauthorized",
-    });
-  }
+/**
+ * Middleware that demonstrates returning an error.
+ */
+export async function errorMiddleware() {
+  return new Response("This is a deliberate error from middleware!", {
+    status: 400,
+    headers: { "Content-Type": "text/plain" },
+  });
 }
