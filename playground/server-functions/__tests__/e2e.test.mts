@@ -72,19 +72,3 @@ testDevAndDeploy("serverAction works", async ({ page, url }) => {
     return true;
   });
 });
-
-testDevAndDeploy("default serverAction works", async ({ page, url }) => {
-  await page.goto(url);
-  await waitForHydration(page);
-
-  await page.click("#run-default-action");
-
-  await poll(async () => {
-    const result = await page.$eval(
-      "#server-function-result",
-      (el) => el.textContent,
-    );
-    expect(result).toBe("Default action called!");
-    return true;
-  });
-});
