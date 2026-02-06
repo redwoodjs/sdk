@@ -1,10 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   classifyModule,
-  DEFAULT_DIRECTIVE_SCAN_BLOCKLIST,
-  isBlockedResolvedPath,
-  isBlockedSpecifier,
-  normalizeBlocklist,
   resolveModuleWithEnvironment,
 } from "./runDirectivesScan.mjs";
 
@@ -94,43 +90,6 @@ describe("runDirectivesScan helpers", () => {
       expect(result.moduleEnv).toBe("worker");
       expect(result.isClient).toBe(false);
       expect(result.isServer).toBe(false);
-    });
-  });
-
-  describe("directive scan blocklist helpers", () => {
-    it("normalizes blocklist entries", () => {
-      expect(normalizeBlocklist([" lucide-react ", "", "  "])).toEqual([
-        "lucide-react",
-      ]);
-    });
-
-    it("matches bare and subpath specifiers", () => {
-      const blocklist = ["lucide-react", "@scope/pkg"];
-      expect(isBlockedSpecifier("lucide-react", blocklist)).toBe(true);
-      expect(isBlockedSpecifier("lucide-react/icons", blocklist)).toBe(true);
-      expect(isBlockedSpecifier("@scope/pkg", blocklist)).toBe(true);
-      expect(isBlockedSpecifier("@scope/pkg/utils", blocklist)).toBe(true);
-      expect(isBlockedSpecifier("other", blocklist)).toBe(false);
-    });
-
-    it("matches resolved node_modules paths", () => {
-      const blocklist = ["lucide-react"];
-      const unixPath =
-        "/repo/node_modules/lucide-react/dist/esm/Icon.js";
-      const windowsPath =
-        "C:\\repo\\node_modules\\lucide-react\\dist\\esm\\Icon.js";
-      expect(isBlockedResolvedPath(unixPath, blocklist)).toBe(true);
-      expect(isBlockedResolvedPath(windowsPath, blocklist)).toBe(true);
-      expect(
-        isBlockedResolvedPath(
-          "/repo/node_modules/other/dist/index.js",
-          blocklist,
-        ),
-      ).toBe(false);
-    });
-
-    it("defaults include lucide-react", () => {
-      expect(DEFAULT_DIRECTIVE_SCAN_BLOCKLIST).toContain("lucide-react");
     });
   });
 });
