@@ -105,5 +105,16 @@ export async function rscActionHandler(req: Request): Promise<unknown> {
     throw new Error(`Action ${actionId} is not a function`);
   }
 
-  return action(...args);
+  try {
+    return await action(...args);
+  } catch (error) {
+    // Returning a Response already short-circuits naturally.
+    // This keeps throw-based short-circuits flowing through action result
+    // normalization in the RSC payload as well.
+    if (error instanceof Response) {
+      return error;
+    }
+
+    throw error;
+  }
 }

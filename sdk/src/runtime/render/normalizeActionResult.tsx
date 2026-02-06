@@ -42,12 +42,16 @@ function rechunkStream(
 
 export const normalizeActionResult = (actionResult: any) => {
   if (actionResult instanceof Response) {
+    const headers = Object.fromEntries(
+      actionResult.headers.entries(),
+    ) as Record<string, string | null>;
+    headers.location = actionResult.headers.get("location");
+
     return {
       __rw_action_response: {
         status: actionResult.status,
-        headers: {
-          location: actionResult.headers.get("location"),
-        },
+        statusText: actionResult.statusText,
+        headers,
       },
     };
   }

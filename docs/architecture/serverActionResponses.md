@@ -10,6 +10,17 @@ In React Server Components, server actions are expected to return serializable d
 
 RedwoodSDK solves this by normalizing any `Response` object returned from a server action into a generic, serializable JSON abstraction before it is sent to the client.
 
+## Wrapper Contract (`serverQuery`/`serverAction`)
+
+At the server-wrapper layer, `serverQuery` and `serverAction` treat `Response` values as short-circuits by throwing them. This is intentional:
+
+1. The wrapper throws the `Response`.
+2. `rscActionHandler` catches thrown `Response` values and returns them as action results.
+3. The worker normalizes that `Response` into `__rw_action_response`.
+4. The client receives metadata and only auto-redirects for `3xx` responses with a `location` header.
+
+This contract lets server code use `return Response...` or `throw Response...` patterns while keeping client behavior centralized and consistent.
+
 ### 1. Server-Side Normalization
 
 When a server action completes, the framework checks if the result is an instance of `Response`. If it is, it converts it into a special object wrapper.

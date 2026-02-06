@@ -91,8 +91,8 @@ export const fetchTransport: Transport = (transportContext) => {
       }
     }
 
-    // If there's a response handler, check the response first
-    if (transportContext.handleResponse) {
+    // `handleResponse` is for navigation responses only.
+    if (transportContext.handleResponse && source === "navigation") {
       const response = await fetchPromise;
       const shouldContinue = transportContext.handleResponse(response);
       if (!shouldContinue) {

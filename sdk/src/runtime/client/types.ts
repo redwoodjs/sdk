@@ -17,8 +17,10 @@ export type RscActionResponse<Result> = {
 
 export type ActionResponseData = {
   status: number;
+  statusText: string;
   headers: {
     location: string | null;
+    [key: string]: string | null;
   };
 };
 

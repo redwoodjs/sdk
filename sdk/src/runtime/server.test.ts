@@ -1,9 +1,5 @@
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { serverQuery, serverAction } from "./server";
-
-// Mock request info mostly because serverQuery might depend on it (though existing code suggests it uses it inside wrapper)
-// The wrapper accesses `requestInfoBase` from `./requestInfo/worker`. We might need to mock that module.
-// But `server.ts` imports `requestInfo` from `./requestInfo/worker`.
 
 vi.mock("./requestInfo/worker", () => ({
   requestInfo: {
@@ -12,81 +8,132 @@ vi.mock("./requestInfo/worker", () => ({
   },
 }));
 
-describe("serverQuery", () => {
-  it("throws Response when returned by mainFn", async () => {
-    const response = new Response("ok");
-    const query = serverQuery(async () => {
-      return response;
-    });
-
-    try {
-      await query();
-      throw new Error("Should have thrown");
-    } catch (e) {
-      expect(e).toBe(response);
+/**
+ * This helper validates the server wrapper contract, not browser behavior.
+ *
+ * `serverQuery`/`serverAction` throw `Response` values to short-circuit.
+ * Later in the real request pipeline, the runtime catches that thrown response
+ * (in `rscActionHandler`), normalizes it, and sends metadata to the client.
+ * The client then applies redirect behavior only for `3xx + location`.
+ */
+const getThrownResponse = async (
+  run: () => Promise<unknown>,
+): Promise<Response> => {
+  try {
+    await run();
+    throw new Error("Expected a Response to be thrown");
+  } catch (error) {
+    if (error instanceof Response) {
+      return error;
     }
+    throw error;
+  }
+};
+
+describe("serverQuery", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it("throws Response when returned by interruptor", async () => {
-    const response = new Response("interrupt");
-    const interruptor = async () => {
-      return response;
-    };
-    
+  it("throws redirect response returned by mainFn", async () => {
+    const query = serverQuery(async () =>
+      Response.redirect("http://localhost/login", 303),
+    );
+
+    const response = await getThrownResponse(() => query());
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("http://localhost/login");
+  });
+
+  it("throws non-redirect response returned by mainFn", async () => {
+    const query = serverQuery(async () => {
+      return new Response("unauthorized", {
+        status: 401,
+        statusText: "Unauthorized",
+        headers: {
+          "x-reason": "auth",
+        },
+      });
+    });
+
+    const response = await getThrownResponse(() => query());
+    expect(response.status).toBe(401);
+    expect(response.statusText).toBe("Unauthorized");
+    expect(response.headers.get("x-reason")).toBe("auth");
+  });
+
+  it("throws response returned by an interruptor and skips mainFn", async () => {
+    const mainFn = vi.fn(async () => "main");
     const query = serverQuery([
-      interruptor,
-      async () => "main",
+      async () => Response.redirect("http://localhost/login", 303),
+      mainFn,
     ]);
 
-    try {
-      await query();
-      throw new Error("Should have thrown");
-    } catch (e) {
-      expect(e).toBe(response);
-    }
+    const response = await getThrownResponse(() => query());
+    expect(response.status).toBe(303);
+    expect(mainFn).not.toHaveBeenCalled();
   });
 
-  it("returns normal value", async () => {
-    const query = serverQuery(async () => {
-      return "hello";
-    });
+  it("continues when an interruptor returns void", async () => {
+    const mainFn = vi.fn(async () => "done");
+    const query = serverQuery([async () => undefined, mainFn]);
 
     const result = await query();
-    expect(result).toBe("hello");
+    expect(result).toBe("done");
+    expect(mainFn).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("serverAction", () => {
-  it("throws Response when returned by mainFn", async () => {
-    const response = new Response("ok action");
-    const action = serverAction(async () => {
-        return response;
-    });
-
-    try {
-      await action();
-      throw new Error("Should have thrown");
-    } catch (e) {
-      expect(e).toBe(response);
-    }
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it("throws Response when returned by interruptor", async () => {
-    const response = new Response("interrupt");
-    const interruptor = async () => {
-      return response;
-    };
-    
+  it("throws redirect response returned by mainFn", async () => {
+    const action = serverAction(async () =>
+      Response.redirect("http://localhost/login", 303),
+    );
+
+    const response = await getThrownResponse(() => action());
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("http://localhost/login");
+  });
+
+  it("throws non-redirect response returned by mainFn", async () => {
+    const action = serverAction(async () => {
+      return new Response("conflict", {
+        status: 409,
+        statusText: "Conflict",
+        headers: {
+          "x-reason": "duplicate",
+        },
+      });
+    });
+
+    const response = await getThrownResponse(() => action());
+    expect(response.status).toBe(409);
+    expect(response.statusText).toBe("Conflict");
+    expect(response.headers.get("x-reason")).toBe("duplicate");
+  });
+
+  it("throws response returned by an interruptor and skips mainFn", async () => {
+    const mainFn = vi.fn(async () => "main");
     const action = serverAction([
-      interruptor,
-      async () => "main",
+      async () => Response.redirect("http://localhost/login", 303),
+      mainFn,
     ]);
 
-    try {
-      await action();
-      throw new Error("Should have thrown");
-    } catch (e) {
-      expect(e).toBe(response);
-    }
+    const response = await getThrownResponse(() => action());
+    expect(response.status).toBe(303);
+    expect(mainFn).not.toHaveBeenCalled();
+  });
+
+  it("continues when an interruptor returns void", async () => {
+    const mainFn = vi.fn(async () => "done");
+    const action = serverAction([async () => undefined, mainFn]);
+
+    const result = await action();
+    expect(result).toBe("done");
+    expect(mainFn).toHaveBeenCalledTimes(1);
   });
 });

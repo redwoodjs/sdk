@@ -99,7 +99,7 @@ export const realtimeTransport =
     const realtimeCallServer = async <T>(
       id: string | null,
       args: unknown[] | null,
-      _source?: "action" | "navigation" | "query",
+      source?: "action" | "navigation" | "query",
       _method?: "GET" | "POST",
     ): Promise<T | undefined> => {
       try {
@@ -128,7 +128,7 @@ export const realtimeTransport =
         const promisedResponse = respondToRequest(requestId, socket);
         socket.send(message);
 
-        return await processResponse(await promisedResponse);
+        return await processResponse(await promisedResponse, source);
       } catch (e) {
         console.error("[Realtime] Error calling server", e);
         return undefined;
@@ -137,12 +137,13 @@ export const realtimeTransport =
 
     const processResponse = async <T>(
       response: Response,
+      source?: "action" | "navigation" | "query",
     ): Promise<T | undefined> => {
       try {
         let streamForRsc: ReadableStream<Uint8Array>;
         let shouldContinue = true;
 
-        if (transportContext.handleResponse) {
+        if (transportContext.handleResponse && source === "navigation") {
           const [stream1, stream2] = response.body!.tee();
           const clonedResponse = new Response(stream1, response);
           streamForRsc = stream2;
