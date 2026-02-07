@@ -53,9 +53,7 @@ export const renderDocumentHtmlStream = async ({
       />
       <Stylesheets requestInfo={requestInfo} />
       <Preloads requestInfo={requestInfo} />
-      <div id="hydrate-root">
-        <div id="rwsdk-app-start" />
-      </div>
+      <div id="rwsdk-app-start" />
     </Document>
   );
 

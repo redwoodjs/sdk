@@ -14,7 +14,7 @@ type ServerFunctionOptions = {
 };
 
 type WrappedServerFunction<TArgs extends any[] = any[], TResult = any> = {
-  (...args: TArgs): Promise<TResult>;
+  (...args: TArgs): Promise<TResult | any>;
   method?: "GET" | "POST";
 };
 
@@ -26,33 +26,55 @@ function createServerFunction<TArgs extends any[] = any[], TResult = any>(
   const wrapped: WrappedServerFunction<TArgs, TResult> = async (
     ...args: TArgs
   ) => {
-    const { request, ctx } = requestInfoBase;
-
-    // Execute interruptors
     for (const fn of fns) {
       const result = await fn({ ...requestInfoBase, args } as any);
+      if (result === undefined) {
+        continue;
+      }
+
       if (result instanceof Response) {
-        // We can't easily return a Response from a server action function
-        // because the return type is expected to be TResult.
-        // However, if the interruptor returns a Response, it usually means "stop and return this HTTP response".
-        // In the RSC context, throwing a Response is a common pattern to short-circuit.
-        throw result;
+        const headers = Object.fromEntries(result.headers.entries());
+        const location = result.headers.get("location");
+        if (location) {
+          headers.location = location;
+        }
+
+        return {
+          __rw_action_response: {
+            status: result.status,
+            statusText: result.statusText,
+            headers,
+          },
+        };
+      }
+
+      if (result !== undefined) {
+        return result;
       }
     }
 
     const result = await mainFn(...args);
 
     if (result instanceof Response) {
-      throw result;
+      const headers = Object.fromEntries(result.headers.entries());
+      const location = result.headers.get("location");
+      if (location) {
+        headers.location = location;
+      }
+
+      return {
+        __rw_action_response: {
+          status: result.status,
+          statusText: result.statusText,
+          headers,
+        },
+      };
     }
 
     return result;
   };
 
-  wrapped.method = options?.method ?? "POST"; // Default to POST if not specified, though user said serverQuery defaults to GET?
-  // User said: "export const getProject = serverQuery(...) // Defaults to GET"
-  // So serverQuery defaults to GET, serverAction defaults to POST?
-  
+  wrapped.method = options?.method;
   return wrapped;
 }
 
@@ -62,7 +84,10 @@ function createServerFunction<TArgs extends any[] = any[], TResult = any>(
  * - **Method**: Defaults to `GET`. can be changed via `options`.
  * - **Behavior**: When called from the client, it returns data-only and does **not** rehydrate or re-render the React page.
  * - **Location**: Must be defined in a file with `"use server"`. We recommend `queries.ts` colocated with components.
- * - **Middleware**: You can pass an array of functions as the first argument to act as interruptors (e.g. for auth).
+ * - **Interruptors**: You can pass an array of functions as the first argument.
+ *   - Return `undefined` to continue to the next interruptor/main function.
+ *   - Return any value to short-circuit and use it as the query result.
+ *   - Return/throw a `Response` to short-circuit with response metadata.
  *
  * @example
  * ```ts
@@ -110,7 +135,10 @@ export function serverQuery<TArgs extends any[] = any[], TResult = any>(
  * - **Method**: Defaults to `POST`. can be changed via `options`.
  * - **Behavior**: When called from the client, it **will** rehydrate and re-render the React page with the new server state.
  * - **Location**: Must be defined in a file with `"use server"`. We recommend `actions.ts` colocated with components.
- * - **Middleware**: You can pass an array of functions as the first argument to act as interruptors (e.g. for auth).
+ * - **Interruptors**: You can pass an array of functions as the first argument.
+ *   - Return `undefined` to continue to the next interruptor/main function.
+ *   - Return any value to short-circuit and use it as the action result.
+ *   - Return/throw a `Response` to short-circuit with response metadata.
  *
  * @example
  * ```ts

@@ -18,10 +18,17 @@ vi.mock("./requestInfo/worker", () => ({
  */
 const getThrownResponse = async (
   run: () => Promise<unknown>,
-): Promise<Response> => {
+): Promise<Response | any> => {
   try {
-    await run();
-    throw new Error("Expected a Response to be thrown");
+    const result = await run();
+    if (
+      typeof result === "object" &&
+      result !== null &&
+      "__rw_action_response" in result
+    ) {
+      return result;
+    }
+    throw new Error("Expected a Response to be thrown or redirect metadata");
   } catch (error) {
     if (error instanceof Response) {
       return error;
@@ -41,8 +48,10 @@ describe("serverQuery", () => {
     );
 
     const response = await getThrownResponse(() => query());
-    expect(response.status).toBe(303);
-    expect(response.headers.get("location")).toBe("http://localhost/login");
+    expect(response.__rw_action_response.status).toBe(303);
+    expect(response.__rw_action_response.headers.location).toBe(
+      "http://localhost/login",
+    );
   });
 
   it("throws non-redirect response returned by mainFn", async () => {
@@ -66,6 +75,29 @@ describe("serverQuery", () => {
     const mainFn = vi.fn(async () => "main");
     const query = serverQuery([
       async () => Response.redirect("http://localhost/login", 303),
+      mainFn,
+    ]);
+
+    const response = await getThrownResponse(() => query());
+    expect(response.__rw_action_response.status).toBe(303);
+    expect(mainFn).not.toHaveBeenCalled();
+  });
+
+  it("returns value from an interruptor and skips mainFn", async () => {
+    const mainFn = vi.fn(async () => "main");
+    const query = serverQuery([async () => "from-interruptor", mainFn]);
+
+    const result = await query();
+    expect(result).toBe("from-interruptor");
+    expect(mainFn).not.toHaveBeenCalled();
+  });
+
+  it("allows interruptors to throw Response values", async () => {
+    const mainFn = vi.fn(async () => "main");
+    const query = serverQuery([
+      async () => {
+        throw Response.redirect("http://localhost/login", 303);
+      },
       mainFn,
     ]);
 
@@ -95,8 +127,10 @@ describe("serverAction", () => {
     );
 
     const response = await getThrownResponse(() => action());
-    expect(response.status).toBe(303);
-    expect(response.headers.get("location")).toBe("http://localhost/login");
+    expect(response.__rw_action_response.status).toBe(303);
+    expect(response.__rw_action_response.headers.location).toBe(
+      "http://localhost/login",
+    );
   });
 
   it("throws non-redirect response returned by mainFn", async () => {
@@ -120,6 +154,29 @@ describe("serverAction", () => {
     const mainFn = vi.fn(async () => "main");
     const action = serverAction([
       async () => Response.redirect("http://localhost/login", 303),
+      mainFn,
+    ]);
+
+    const response = await getThrownResponse(() => action());
+    expect(response.__rw_action_response.status).toBe(303);
+    expect(mainFn).not.toHaveBeenCalled();
+  });
+
+  it("returns value from an interruptor and skips mainFn", async () => {
+    const mainFn = vi.fn(async () => "main");
+    const action = serverAction([async () => "from-interruptor", mainFn]);
+
+    const result = await action();
+    expect(result).toBe("from-interruptor");
+    expect(mainFn).not.toHaveBeenCalled();
+  });
+
+  it("allows interruptors to throw Response values", async () => {
+    const mainFn = vi.fn(async () => "main");
+    const action = serverAction([
+      async () => {
+        throw Response.redirect("http://localhost/login", 303);
+      },
       mainFn,
     ]);
 

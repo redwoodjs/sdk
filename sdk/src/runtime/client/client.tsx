@@ -47,7 +47,7 @@ export const fetchTransport: Transport = (transportContext) => {
 
     if (isAction) {
       url.searchParams.set("__rsc_action_id", id);
-      
+
       // If args are provided and method is GET, serialize them into the query string
       if (args != null && method === "GET") {
         url.searchParams.set("args", JSON.stringify(args));
@@ -124,9 +124,15 @@ export const fetchTransport: Transport = (transportContext) => {
             window.location.href = location;
             return undefined;
           }
+
+          if (actionResponse.status >= 400) {
+            throw new Error(
+              actionResponse.statusText || `Error ${actionResponse.status}`,
+            );
+          }
         }
 
-        return rawActionResult as Result;
+        return undefined;
       }
 
       return rawActionResult as Result;
@@ -137,7 +143,7 @@ export const fetchTransport: Transport = (transportContext) => {
       callServer: fetchCallServer,
     }) as Promise<RscActionResponse<Result>>;
 
-    if (source === "navigation" || source === "action") {
+    if (source === "navigation") {
       transportContext.setRscPayload(streamData);
     }
     const result = await streamData;
@@ -157,9 +163,27 @@ export const fetchTransport: Transport = (transportContext) => {
           window.location.href = location;
           return undefined;
         }
+
+        if (actionResponse.status >= 400) {
+          throw new Error(
+            actionResponse.statusText || `Error ${actionResponse.status}`,
+          );
+        }
       }
 
-      return rawActionResult as Result;
+      if (source === "action") {
+        transportContext.setRscPayload(
+          Promise.resolve(result as RscActionResponse<Result>),
+        );
+      }
+
+      return undefined;
+    }
+
+    if (source === "action") {
+      transportContext.setRscPayload(
+        Promise.resolve(result as RscActionResponse<Result>),
+      );
     }
 
     return rawActionResult as Result;
@@ -270,11 +294,11 @@ export const initClient = async ({
     upgradeToRealtime,
   };
 
-  const rootEl = document.getElementById("hydrate-root");
+  const rootEl = document.getElementById("root");
 
   if (!rootEl) {
     throw new Error(
-      'RedwoodSDK: No element with id "hydrate-root" found in the document. This element is required for hydration. Ensure your Document component contains a <div id="hydrate-root">{children}</div>.',
+      'RedwoodSDK: No element with id "root" found in the document. This element is required for hydration. Ensure your Document component contains a <div id="root">{children}</div>.',
     );
   }
 

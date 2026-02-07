@@ -8,8 +8,7 @@ body {
   font-family: "Figtree", sans-serif;
 }
 
-#root,
-#hydrate-root {
+#root {
   width: 100vw;
   height: 100vh;
 }

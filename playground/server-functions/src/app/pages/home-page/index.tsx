@@ -1,10 +1,10 @@
 import { RequestInfo } from "rwsdk/worker";
-import { ServerFunctionsDemo } from "./ServerFunctionsDemo.client";
+import { ServerFunctionsDemo } from "./server-functions";
 
-export function Home({ ctx }: RequestInfo) {
+export function HomePage({ ctx }: RequestInfo) {
   return (
     <div>
-      <h1>Server Functions Demo</h1>
+      <h2>Server Functions Demo</h2>
       <p>This playground demonstrates server functions (serverQuery and serverAction).</p>
       <ServerFunctionsDemo />
     </div>

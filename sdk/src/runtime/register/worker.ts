@@ -80,7 +80,7 @@ export async function rscActionHandler(req: Request): Promise<unknown> {
   const contentType = req.headers.get("content-type");
 
   let args: unknown[] = [];
-  
+
   if (req.method === "GET") {
     const argsParam = url.searchParams.get("args");
     if (argsParam) {
@@ -108,9 +108,9 @@ export async function rscActionHandler(req: Request): Promise<unknown> {
   try {
     return await action(...args);
   } catch (error) {
-    // Returning a Response already short-circuits naturally.
-    // This keeps throw-based short-circuits flowing through action result
-    // normalization in the RSC payload as well.
+    // serverQuery/serverAction interruptors can short-circuit by returning or
+    // throwing a Response. Preserve thrown Responses so they can be normalized
+    // into action response metadata in the RSC payload.
     if (error instanceof Response) {
       return error;
     }

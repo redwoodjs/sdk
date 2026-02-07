@@ -9,7 +9,7 @@ import {
   getErrorQuery,
   getRedirectAction,
   getErrorAction,
-} from "../actions";
+} from "./actions";
 
 export function ServerFunctionsDemo() {
   const [result, setResult] = useState<string>("");

@@ -8,8 +8,7 @@ body {
     sans-serif;
 }
 
-#root,
-#hydrate-root {
+#root {
   width: 100vw;
   min-height: 100vh;
   padding: 2rem;

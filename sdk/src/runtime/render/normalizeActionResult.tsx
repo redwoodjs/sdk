@@ -56,6 +56,14 @@ export const normalizeActionResult = (actionResult: any) => {
     };
   }
 
+  if (
+    typeof actionResult === "object" &&
+    actionResult !== null &&
+    "__rw_action_response" in actionResult
+  ) {
+    return actionResult;
+  }
+
   if (actionResult instanceof ReadableStream) {
     return rechunkStream(actionResult);
   }
