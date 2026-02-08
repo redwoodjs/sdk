@@ -21,6 +21,7 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
+      "rwsdk/e2e": ["../../sdk/src/lib/e2e/index.mts"],
       "rwsdk/*": ["../../sdk/src/*"]
     },
     /* Enable importing .json files */
