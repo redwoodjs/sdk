@@ -2144,13 +2144,13 @@ importers:
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.23.1
-        version: 1.23.1(vite@7.3.1(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(workerd@1.20260205.0)(wrangler@4.63.0(@cloudflare/workers-types@4.20260207.0))
+        version: 1.23.1(vite@7.3.1(@types/node@24.10.12)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(workerd@1.20260205.0)(wrangler@4.63.0(@cloudflare/workers-types@4.20260207.0))
       '@cloudflare/workers-types':
         specifier: 4.20260207.0
         version: 4.20260207.0
       '@types/node':
-        specifier: ~24.10.0
-        version: 24.10.4
+        specifier: ~24.10.12
+        version: 24.10.12
       '@types/react':
         specifier: 19.2.13
         version: 19.2.13
@@ -2162,7 +2162,7 @@ importers:
         version: 5.9.3
       vite:
         specifier: 7.3.1
-        version: 7.3.1(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
+        version: 7.3.1(@types/node@24.10.12)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
       wrangler:
         specifier: 4.63.0
         version: 4.63.0(@cloudflare/workers-types@4.20260207.0)
@@ -12090,6 +12090,19 @@ snapshots:
       miniflare: 4.20260205.0
       unenv: 2.0.0-rc.24
       vite: 7.3.1(@types/node@22.18.8)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
+      wrangler: 4.63.0(@cloudflare/workers-types@4.20260207.0)
+      ws: 8.18.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+      - workerd
+
+  '@cloudflare/vite-plugin@1.23.1(vite@7.3.1(@types/node@24.10.12)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(workerd@1.20260205.0)(wrangler@4.63.0(@cloudflare/workers-types@4.20260207.0))':
+    dependencies:
+      '@cloudflare/unenv-preset': 2.12.0(unenv@2.0.0-rc.24)(workerd@1.20260205.0)
+      miniflare: 4.20260205.0
+      unenv: 2.0.0-rc.24
+      vite: 7.3.1(@types/node@24.10.12)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
       wrangler: 4.63.0(@cloudflare/workers-types@4.20260207.0)
       ws: 8.18.0
     transitivePeerDependencies:
