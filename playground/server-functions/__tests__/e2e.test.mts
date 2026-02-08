@@ -3,9 +3,10 @@ import {
   setupPlaygroundEnvironment,
   testDevAndDeploy,
   waitForHydration,
+  type Page,
+  type HTTPResponse,
 } from "rwsdk/e2e";
-import type { Page, Response as PlaywrightResponse } from "playwright";
-import { expect, vi } from "vitest";
+import { expect, vi, type Assertion } from "vitest";
 
 setupPlaygroundEnvironment(import.meta.url);
 
@@ -48,7 +49,7 @@ function captureServerFunctionResponse(page: Page, actionId: string) {
   let status: null | number = null;
   let location: null | string = null;
 
-  const onResponse = (response: PlaywrightResponse) => {
+  const onResponse = (response: HTTPResponse) => {
     const url = response.url();
     if (!url.includes("__rsc_action_id=") || !url.includes(encodedActionId)) {
       return;
@@ -150,7 +151,11 @@ testDevAndDeploy("serverQuery redirect middleware returns redirect metadata", as
   );
 
   if (redirected) {
-    await expect(page.locator("h1")).toHaveText("Redirected!");
+    await poll(async () => {
+      const heading = await page.$eval("h1", (el) => el.textContent);
+      expect(heading).toBe("Redirected!");
+      return true;
+    });
     return;
   }
 
@@ -190,7 +195,11 @@ testDevAndDeploy("serverAction redirect middleware navigates to error page", asy
   );
 
   if (redirected) {
-    await expect(page.locator("h1")).toHaveText("Redirected!");
+    await poll(async () => {
+      const heading = await page.$eval("h1", (el) => el.textContent);
+      expect(heading).toBe("Redirected!");
+      return true;
+    });
     return;
   }
 

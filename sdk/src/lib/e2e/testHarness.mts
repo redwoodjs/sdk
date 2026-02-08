@@ -1,6 +1,10 @@
 import fs from "fs-extra";
 import path, { basename, dirname, join as pathJoin } from "path";
-import puppeteer, { type Browser, type Page } from "puppeteer-core";
+import puppeteer, {
+  type Browser,
+  type Page,
+  type HTTPResponse,
+} from "puppeteer-core";
 import { fileURLToPath } from "url";
 import {
   afterAll,
@@ -35,7 +39,7 @@ import {
 } from "./release.mjs";
 import { setupTarballEnvironment } from "./tarball.mjs";
 import { ensureTmpDir } from "./utils.mjs";
-export type { Browser, Page } from "puppeteer-core";
+export type { Browser, Page, HTTPResponse } from "puppeteer-core";
 
 export {
   DEPLOYMENT_CHECK_TIMEOUT,

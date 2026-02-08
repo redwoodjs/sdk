@@ -66,9 +66,9 @@ describe("serverQuery", () => {
     });
 
     const response = await getThrownResponse(() => query());
-    expect(response.status).toBe(401);
-    expect(response.statusText).toBe("Unauthorized");
-    expect(response.headers.get("x-reason")).toBe("auth");
+    expect(response.__rw_action_response.status).toBe(401);
+    expect(response.__rw_action_response.statusText).toBe("Unauthorized");
+    expect(response.__rw_action_response.headers["x-reason"]).toBe("auth");
   });
 
   it("throws response returned by an interruptor and skips mainFn", async () => {
@@ -145,9 +145,9 @@ describe("serverAction", () => {
     });
 
     const response = await getThrownResponse(() => action());
-    expect(response.status).toBe(409);
-    expect(response.statusText).toBe("Conflict");
-    expect(response.headers.get("x-reason")).toBe("duplicate");
+    expect(response.__rw_action_response.status).toBe(409);
+    expect(response.__rw_action_response.statusText).toBe("Conflict");
+    expect(response.__rw_action_response.headers["x-reason"]).toBe("duplicate");
   });
 
   it("throws response returned by an interruptor and skips mainFn", async () => {
