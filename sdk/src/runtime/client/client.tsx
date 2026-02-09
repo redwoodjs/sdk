@@ -294,11 +294,11 @@ export const initClient = async ({
     upgradeToRealtime,
   };
 
-  const rootEl = document.getElementById("root");
+  const rootEl = document.getElementById("hydrate-root");
 
   if (!rootEl) {
     throw new Error(
-      'RedwoodSDK: No element with id "root" found in the document. This element is required for hydration. Ensure your Document component contains a <div id="root">{children}</div>.',
+      'RedwoodSDK: No element with id "hydrate-root" found in the document. This element is required for hydration. Ensure your Document component contains a <div id="hydrate-root">{children}</div>.',
     );
   }
 

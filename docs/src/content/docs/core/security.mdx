@@ -121,7 +121,7 @@ export const Document = ({ rw, children }) => (
   <html lang="en">
     <head><!-- ... --></head>
     <body>
-      <div id="root">{children}</div>
+      <div id="hydrate-root">{children}</div>
 
       <!-- Set the nonce the inline script -->
       <script nonce={rw.nonce}>/* ... */</script>

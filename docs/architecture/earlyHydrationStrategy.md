@@ -26,7 +26,7 @@ To solve this, our framework adopts a different strategy. The user places an inl
 
 This approach has several key advantages:
 
-1.  **Immediate Execution:** Unlike module scripts, inline scripts are executed by the browser the moment they are parsed. Because our framework ensures this script is placed after the main application shell (`<div id="root">...</div>`), it runs as soon as the initial UI is present in the DOM.
+1.  **Immediate Execution:** Unlike module scripts, inline scripts are executed by the browser the moment they are parsed. Because our framework ensures this script is placed after the main application shell (`<div id="hydrate-root">...</div>`), it runs as soon as the initial UI is present in the DOM.
 2.  **Early Hydration:** This immediate execution means that `hydrateRoot` is called very early in the page load cycle. Client components in the initial shell become interactive almost instantly, even while other parts of the page are still streaming in.
 3.  **Preserves Code Splitting:** By using a dynamic `import()`, we still get all the benefits of modern JavaScript, including code splitting. The browser starts fetching the entry point and its dependencies, but the execution of our client-side logic is not blocked by the entire document download.
 

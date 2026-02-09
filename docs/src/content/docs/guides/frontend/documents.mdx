@@ -24,7 +24,7 @@ In RedwoodSDK, Document components give you complete control over the HTML struc
           <link rel="modulepreload" href="/src/client.tsx" />
         </head>
         <body>
-          <div id="root">{children}</div>
+          <div id="hydrate-root">{children}</div>
           <script>import("/src/client.tsx")</script>
         </body>
       </html>

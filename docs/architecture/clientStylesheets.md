@@ -83,7 +83,7 @@ const RscApp = ({ thenable, requestInfo }) => {
       {Array.from(allStylesheets).map((href) => (
         <link key={href} rel="stylesheet" href={href} precedence="first" />
       ))}
-      <div id="root">{rscVDOM.node}</div>
+      <div id="hydrate-root">{rscVDOM.node}</div>
     </>
   );
 };

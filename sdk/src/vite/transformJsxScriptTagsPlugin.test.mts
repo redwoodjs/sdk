@@ -255,7 +255,7 @@ nonce: requestInfo.rw.nonce
           }),
           jsx("body", {
             children: [
-              jsx("div", { id: "root", children: props.children }),
+              jsx("div", { id: "hydrate-root", children: props.children }),
               jsx("script", { children: 'import("/src/client.tsx")' })
             ]
           })
@@ -286,7 +286,7 @@ jsx("link", { rel: "modulepreload", href: "rwsdk_asset:/src/client.tsx", as: "sc
 }),
 jsx("body", {
 children: [
-jsx("div", { id: "root", children: props.children }),
+jsx("div", { id: "hydrate-root", children: props.children }),
 (
 (requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
 jsx("script", { children: "import(\\"rwsdk_asset:/src/client.tsx\\")",
@@ -625,7 +625,7 @@ export const Document = ({
     columnNumber: 3
   }, this),
   /* @__PURE__ */ jsxDEV("body", { children: [
-    /* @__PURE__ */ jsxDEV("div", { id: "root", children }, void 0, false, {
+    /* @__PURE__ */ jsxDEV("div", { id: "hydrate-root", children }, void 0, false, {
       fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
       lineNumber: 27,
       columnNumber: 4
@@ -746,7 +746,7 @@ children
   columnNumber: 3
 }, this),
 /* @__PURE__ */ jsxDEV("body", { children: [
-  /* @__PURE__ */ jsxDEV("div", { id: "root", children }, void 0, false, {
+  /* @__PURE__ */ jsxDEV("div", { id: "hydrate-root", children }, void 0, false, {
     fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
     lineNumber: 27,
     columnNumber: 4
