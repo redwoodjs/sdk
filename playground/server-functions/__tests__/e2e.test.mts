@@ -140,7 +140,7 @@ testDevAndDeploy("serverQuery redirect middleware returns redirect metadata", as
 
   const responseCapture = captureServerFunctionResponse(
     page,
-    "/src/app/actions.ts#getRedirectQuery",
+    "/src/app/pages/home-page/actions.ts#getRedirectQuery",
   );
 
   await page.click("#run-get-redirect-query");
@@ -184,7 +184,7 @@ testDevAndDeploy("serverAction redirect middleware navigates to error page", asy
 
   const responseCapture = captureServerFunctionResponse(
     page,
-    "/src/app/actions.ts#getRedirectAction",
+    "/src/app/pages/home-page/actions.ts#getRedirectAction",
   );
 
   await page.click("#run-get-redirect-action");
@@ -208,12 +208,12 @@ testDevAndDeploy("serverAction redirect middleware navigates to error page", asy
       const { status, location } = responseCapture.get();
       const networkRedirect =
         status === 303 &&
-        (location ?? "").includes("/redirect?source=redirect-action");
+        (location ?? "").includes("/redirect?source=redirect-middleware");
 
       const result = await getServerFunctionResult(page);
       const hasRedirectResponseMarker =
         result.includes("action-response-status=303") &&
-        result.includes("/redirect?source=redirect-action");
+        result.includes("/redirect?source=redirect-middleware");
       const handledWithoutNavigation = result.includes("redirect-handled");
       return networkRedirect || hasRedirectResponseMarker || handledWithoutNavigation;
     });
@@ -228,7 +228,7 @@ testDevAndDeploy("serverQuery error middleware returns response metadata without
 
   const responseCapture = captureServerFunctionResponse(
     page,
-    "/src/app/actions.ts#getErrorQuery",
+    "/src/app/pages/home-page/actions.ts#getErrorQuery",
   );
 
   await page.click("#run-get-error-query");
@@ -265,7 +265,7 @@ testDevAndDeploy("serverAction error middleware returns response metadata withou
 
   const responseCapture = captureServerFunctionResponse(
     page,
-    "/src/app/actions.ts#getErrorAction",
+    "/src/app/pages/home-page/actions.ts#getErrorAction",
   );
 
   await page.click("#run-get-error-action");
