@@ -25,7 +25,7 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
     </head>
     <body>
       <div className="root">
-        <div id="root">{children}</div>
+        <div id="hydrate-root">{children}</div>
       </div>
       <script>import("/src/client.tsx")</script>
     </body>
