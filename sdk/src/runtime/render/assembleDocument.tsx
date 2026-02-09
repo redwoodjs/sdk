@@ -39,7 +39,7 @@ export const assembleDocument = ({
       />
       <Stylesheets requestInfo={requestInfo} />
       <Preloads requestInfo={requestInfo} />
-      <div id="hydrate-root">{pageElement}</div>
+      <div id="root">{pageElement}</div>
     </Document>
   );
 };

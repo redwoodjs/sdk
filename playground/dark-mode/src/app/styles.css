@@ -16,7 +16,7 @@ body {
   color: white;
 }
 
-#hydrate-root {
+#root {
   width: 100vw;
   min-height: 100vh;
 }

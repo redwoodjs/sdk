@@ -28,7 +28,7 @@ body {
   background-color: #f8f9fa;
 }
 
-#hydrate-root {
+#root {
   min-height: 100vh;
 }
 

@@ -311,7 +311,7 @@ export const DefaultDocument: React.FC<{ children: React.ReactNode }> = ({
       <meta name="viewport" content="width=device-width, initial-scale=1" />
     </head>
     <body>
-      <div id="hydrate-root">{children}</div>
+      <div id="root">{children}</div>
     </body>
   </html>
 );

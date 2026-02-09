@@ -3,7 +3,7 @@ body {
   padding: 0;
 }
 
-#hydrate-root {
+#root {
   width: 100vw;
   height: 100vh;
 }
