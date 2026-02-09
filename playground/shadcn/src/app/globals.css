@@ -74,8 +74,8 @@
     font-family: system-ui;
     min-height: 100vh;
   }
-  #root,
-  #root {
+  #hydrate-root,
+  #hydrate-root {
     width: 100vw;
     min-height: 100vh;
   }
