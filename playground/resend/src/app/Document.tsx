@@ -11,7 +11,7 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
       <link rel="stylesheet" href={stylesUrl} />
     </head>
     <body>
-      <div id="root">{children}</div>
+      {children}
       <script>import("/src/client.tsx")</script>
     </body>
   </html>
