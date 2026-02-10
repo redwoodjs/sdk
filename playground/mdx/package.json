@@ -30,13 +30,13 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.23.1",
     "@cloudflare/workers-types": "4.20260207.0",
-    "@mdx-js/rollup": "^3.0.1",
-    "@types/node": "24.10.4",
+    "@mdx-js/rollup": "^3.1.1",
+    "@types/node": "24.10.12",
     "@types/react": "19.2.13",
     "@types/react-dom": "19.2.3",
     "typescript": "5.9.3",
     "vite": "7.3.1",
-    "vitest": "^4.0.0",
+    "vitest": "^4.0.18",
     "wrangler": "4.63.0"
   },
   "pnpm": {
