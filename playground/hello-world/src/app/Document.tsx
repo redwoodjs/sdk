@@ -9,7 +9,7 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
       <link rel="modulepreload" href="/src/client.tsx" />
     </head>
     <body>
-      <div id="hydrate-root">{children}</div>
+      {children}
       <script>import("/src/client.tsx")</script>
     </body>
   </html>

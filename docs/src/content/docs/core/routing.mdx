@@ -300,7 +300,7 @@ The `render` function takes a React component and an array of route handlers. Th
 This component will be rendered on the server side when the page loads. When defining this component, you'd add:
 
 - Your application's stylesheets and scripts
-- A mount point for your page content (`id="root"` in the code below): this is where your actual page will be rendered - the "dynamic stuff" which updates using React Server Components.
+
 
 ---
 
@@ -312,7 +312,7 @@ export const Document = ({ children }) => (
       <script type="module" src="/src/client.tsx"></script>
     </head>
     <body>
-      <div id="root">{children}</div>
+      {children}
     </body>
   </html>
 );

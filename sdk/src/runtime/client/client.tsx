@@ -47,7 +47,7 @@ export const fetchTransport: Transport = (transportContext) => {
 
     if (isAction) {
       url.searchParams.set("__rsc_action_id", id);
-      
+
       // If args are provided and method is GET, serialize them into the query string
       if (args != null && method === "GET") {
         url.searchParams.set("args", JSON.stringify(args));
@@ -240,7 +240,7 @@ export const initClient = async ({
   onActionResponse?: (actionResponse: ActionResponseData) => boolean | void;
 } = {}) => {
   const transportContext: TransportContext = {
-    setRscPayload: () => {},
+    setRscPayload: () => { },
     handleResponse,
     onHydrated,
     onActionResponse,
@@ -274,7 +274,7 @@ export const initClient = async ({
 
   if (!rootEl) {
     throw new Error(
-      'RedwoodSDK: No element with id "hydrate-root" found in the document. This element is required for hydration. Ensure your Document component contains a <div id="hydrate-root">{children}</div>.',
+      'RedwoodSDK: No element with id "hydrate-root" found in the document. This element is required for hydration. Ensure your Document component contains a {children}.',
     );
   }
 
