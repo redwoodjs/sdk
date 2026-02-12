@@ -9,7 +9,7 @@ import { Aside, Badge } from "@astrojs/starlight/components";
 
 Client-side navigation is a technique that allows users to move between pages without a full-page reload. Instead of the browser reloading the entire HTML document, the JavaScript runtime intercepts navigation events (like link clicks), fetches the next page's content (usually as JavaScript modules or RSC payload), and updates the current view.
 
-This approach is commonly referred to as a Single Page App (SPA). In RedwoodSDK, you get SPA-like navigation with server-fetched React Server Components (RSC), so it's fast and dynamic, but still uses the server for rendering.
+This approach is commonly referred to as a Single Page App (SPA). In RedwoodSDK, you get SPA-like navigation with server-fetched React Server Components (RSC), so it's fast and dynamic, but still uses the server for rendering. RedwoodSDK uses **RSC RPC** to emulate client-side navigation.
 
 ```tsx title="src/client.tsx" ins="initClientNavigation()"
 import { initClient, initClientNavigation } from "rwsdk/client";
