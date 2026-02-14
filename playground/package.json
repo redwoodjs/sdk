@@ -6,8 +6,8 @@
   "scripts": {},
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
-    "fs-extra": "^11.3.0",
+    "fs-extra": "^11.3.3",
     "rwsdk": "workspace:*",
-    "vitest": "^4.0.0"
+    "vitest": "^4.0.18"
   }
 }
