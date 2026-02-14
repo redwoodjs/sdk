@@ -23,7 +23,7 @@
     "test": "vitest run --config ../vitest.config.mts"
   },
   "dependencies": {
-    "@chakra-ui/react": "^3.27.0",
+    "@chakra-ui/react": "^3.33.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-server-dom-webpack": "19.2.4",
@@ -32,12 +32,12 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.24.0",
     "@cloudflare/workers-types": "4.20260210.0",
-    "@types/node": "24.10.4",
+    "@types/node": "24.10.13",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "typescript": "5.9.3",
     "vite": "7.3.1",
-    "vitest": "^4.0.0",
+    "vitest": "^4.0.18",
     "wrangler": "4.64.0"
   },
   "pnpm": {
