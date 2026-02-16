@@ -1,21 +1,35 @@
-# build output
-dist/
-# generated types
-.astro/
+.content-collections/*
 
-# dependencies
+# Node modules
 node_modules/
 
-# logs
+# Logs
+*.log
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 pnpm-debug.log*
 
-
-# environment variables
+# Environment variables
 .env
-.env.production
+.dev.vars
 
-# macOS-specific files
+# Build output
+dist/
+
+# TypeScript
+*.tsbuildinfo
+
+# IDEs
+.vscode/
+.idea/
+
+# macOS
 .DS_Store
+
+# Vite cache
+.vite
+
+# Wrangler
+.wrangler
+
+# Legacy Astro
+.astro/
