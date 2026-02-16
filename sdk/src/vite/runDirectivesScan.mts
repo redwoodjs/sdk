@@ -16,6 +16,16 @@ import { hasDirective } from "./hasDirective.mjs";
 
 const log = debug("rwsdk:vite:run-directives-scan");
 
+const scanStats = {
+  totalFilesRead: 0,
+  cacheSize: 0,
+  totalBytesRead: 0,
+  races: 0,
+  extensions: new Map<string, number>(),
+};
+
+const inflightReads = new Map<string, Promise<string>>();
+
 // Copied from Vite's source code.
 // https://github.com/vitejs/vite/blob/main/packages/vite/src/shared/utils.ts
 const isObject = (value: unknown): value is Record<string, any> =>
@@ -93,12 +103,6 @@ async function findDirectiveRoots({
     }
   }
 
-  log(
-    "Pre-scan searched %s, found %d files, %d with directives",
-    srcDir,
-    files.length,
-    directiveFiles.size,
-  );
   log("Pre-scan found directive files:", Array.from(directiveFiles));
   return directiveFiles;
 }
@@ -185,81 +189,62 @@ export const runDirectivesScan = async ({
     "\n… (rwsdk) Scanning for 'use client' and 'use server' directives...",
   );
 
+  const memInterval = setInterval(() => {
+    const memoryUsage = process.memoryUsage();
+    console.log(
+      `[DirectiveScan TICK] RSS: ${Math.round(memoryUsage.rss / 1024 / 1024)}MB, Heap: ${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB / ${Math.round(memoryUsage.heapTotal / 1024 / 1024)}MB`,
+    );
+  }, 1000);
+
+  const fileContentCache = new Map<string, string>();
   try {
     const combinedBlocklist = [
       ...DEFAULT_DIRECTIVE_SCAN_BLOCKLIST,
       ...normalizeBlocklist(directiveScanBlocklist),
     ];
-
-    // Caches to avoid redundant work.
-    // Note: We avoid caching full file contents to prevent heap exhaustion (OOM).
     const directiveCheckCache = new Map<string, boolean>();
-    const moduleEnvironments = new Map<string, "client" | "worker">();
-    const inflightReads = new Map<string, Promise<string>>();
-
-    // Limit concurrency to prevent OOM spikes from too many large strings in memory at once.
-    const MAX_CONCURRENT_READS = 20;
-    let activeReads = 0;
-    const readQueue: (() => void)[] = [];
-
-    const acquireReadSlot = async () => {
-      if (activeReads < MAX_CONCURRENT_READS) {
-        activeReads++;
-        return;
-      }
-      await new Promise<void>((resolve) => readQueue.push(resolve));
-    };
-
-    const releaseReadSlot = () => {
-      activeReads--;
-      if (readQueue.length > 0) {
-        const next = readQueue.shift();
-        if (next) {
-          activeReads++;
-          next();
-        }
-      }
-    };
-
-    /**
-     * Normalizes paths to handle symlinks and case-insensitive filesystems (macOS).
-     * This prevents duplicating cache entries for the same physical file.
-     */
-    const normalizePath = (p: string) => {
-      try {
-        // realpathSync returns the underlying case on disk and resolves symlinks.
-        // Using synchronous realpath here is safe as it's typically cached by the OS
-        // and simplifies the code significantly.
-        return fsp.realpathSync(p);
-      } catch {
-        return path.resolve(p);
-      }
-    };
-
     const readFileWithCache = async (filePath: string) => {
-      const normalizedPath = normalizePath(filePath);
+      if (fileContentCache.has(filePath)) {
+        return fileContentCache.get(filePath)!;
+      }
 
-      // Check if we already have an inflight read for this path
-      const inflight = inflightReads.get(normalizedPath);
-      if (inflight) {
-        return inflight;
+      // Record race but don't avoid it (TEMPORARY FOR INVESTIGATION)
+      if (inflightReads.has(filePath)) {
+        scanStats.races++;
       }
 
       const readPromise = (async () => {
-        await acquireReadSlot();
         try {
-          const contents = await fsp.readFile(normalizedPath, "utf-8");
+          const contents = await fsp.readFile(filePath, "utf-8");
+          fileContentCache.set(filePath, contents);
+
+          scanStats.totalFilesRead++;
+          scanStats.totalBytesRead += contents.length;
+          const ext = path.extname(filePath);
+          scanStats.extensions.set(
+            ext,
+            (scanStats.extensions.get(ext) || 0) + 1,
+          );
+
+          if (scanStats.totalFilesRead % 100 === 0) {
+            const memoryUsage = process.memoryUsage();
+            console.log(
+              `[DirectiveScan] Read ${scanStats.totalFilesRead} files, ${Math.round(scanStats.totalBytesRead / 1024 / 1024)}MB cached, Races: ${scanStats.races}, Heap: ${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB / ${Math.round(memoryUsage.heapTotal / 1024 / 1024)}MB`,
+            );
+          }
+
           return contents;
         } finally {
-          releaseReadSlot();
-          inflightReads.delete(normalizedPath);
+          inflightReads.delete(filePath);
         }
       })();
 
-      inflightReads.set(normalizedPath, readPromise);
-      return readPromise;
-    };
+      inflightReads.set(filePath, readPromise);
+      // return readPromise; // FIXED VERSION
 
+      // RACING VERSION (how it was before)
+      return await fsp.readFile(filePath, "utf-8");
+    };
     const esbuild = await getViteEsbuild(rootConfig.root);
     const input =
       initialEntries ?? environments.worker.config.build.rollupOptions?.input;
@@ -315,6 +300,8 @@ export const runDirectivesScan = async ({
       environments.client,
     );
 
+    const moduleEnvironments = new Map<string, "client" | "worker">();
+
     const esbuildScanPlugin: Plugin = {
       name: "rwsdk:esbuild-scan-plugin",
       setup(build: PluginBuild) {
@@ -363,10 +350,6 @@ export const runDirectivesScan = async ({
           log("onResolve called for:", args.path, "from:", args.importer);
 
           let importerEnv = moduleEnvironments.get(args.importer);
-          if (!importerEnv && args.importer) {
-            // Check if it's stored under normalized path
-            importerEnv = moduleEnvironments.get(normalizePath(args.importer));
-          }
 
           // If we don't know the importer's environment yet, check its content
           if (
@@ -387,7 +370,7 @@ export const runDirectivesScan = async ({
                 "as",
                 importerEnv,
               );
-              moduleEnvironments.set(normalizePath(args.importer), importerEnv);
+              moduleEnvironments.set(args.importer, importerEnv);
             } catch (e) {
               importerEnv = "worker"; // Default fallback
               log(
@@ -433,10 +416,7 @@ export const runDirectivesScan = async ({
             }
 
             if (isBlockedResolvedPath(resolvedPath, combinedBlocklist)) {
-              log(
-                "Skipping directive scan for blocked path:",
-                resolvedPath,
-              );
+              log("Skipping directive scan for blocked path:", resolvedPath);
               return { external: true };
             }
             // Normalize the path for esbuild compatibility
@@ -489,17 +469,19 @@ export const runDirectivesScan = async ({
                 inheritedEnv,
               });
 
-              // Store the definitive environment for this module.
-              moduleEnvironments.set(normalizePath(args.path), moduleEnv);
+              // Store the definitive environment for this module, so it can be used when it becomes an importer.
+              const realPath = await fsp.realpath(args.path);
+              moduleEnvironments.set(realPath, moduleEnv);
+              log("Set environment for", realPath, "to", moduleEnv);
 
               // Finally, populate the output sets if the file has a directive.
               if (isClient) {
-                log("Discovered 'use client' in:", args.path);
-                clientFiles.add(normalizeModulePath(args.path, rootConfig.root));
+                log("Discovered 'use client' in:", realPath);
+                clientFiles.add(normalizeModulePath(realPath, rootConfig.root));
               }
               if (isServer) {
-                log("Discovered 'use server' in:", args.path);
-                serverFiles.add(normalizeModulePath(args.path, rootConfig.root));
+                log("Discovered 'use server' in:", realPath);
+                serverFiles.add(normalizeModulePath(realPath, rootConfig.root));
               }
 
               let code: string;
@@ -553,6 +535,14 @@ export const runDirectivesScan = async ({
         `${e.stack}`,
     );
   } finally {
+    clearInterval(memInterval);
+    console.log("\n[DirectiveScan] Final stats:", {
+      totalFilesRead: scanStats.totalFilesRead,
+      totalBytesReadMB: Math.round(scanStats.totalBytesRead / 1024 / 1024),
+      races: scanStats.races,
+      extensions: Object.fromEntries(scanStats.extensions),
+      cacheEntries: fileContentCache.size,
+    });
     deferredLog(
       "✔ (rwsdk) Done scanning for 'use client' and 'use server' directives.",
     );

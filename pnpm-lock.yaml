@@ -923,6 +923,9 @@ importers:
 
   playground/hello-world:
     dependencies:
+      lucide-react:
+        specifier: ^0.562.0
+        version: 0.562.0(react@19.2.4)
       react:
         specifier: 19.2.4
         version: 19.2.4
