@@ -28,7 +28,7 @@ const isExternalUrl = (url: string): boolean => externalRE.test(url);
 
 type ReadFileWithCache = (path: string) => Promise<string>;
 
-export const DEFAULT_DIRECTIVE_SCAN_BLOCKLIST = ["lucide-react"];
+export const DEFAULT_DIRECTIVE_SCAN_BLOCKLIST = [];
 
 export const normalizeBlocklist = (blocklist?: string[]) => {
   return (blocklist ?? [])
@@ -93,6 +93,12 @@ async function findDirectiveRoots({
     }
   }
 
+  log(
+    "Pre-scan searched %s, found %d files, %d with directives",
+    srcDir,
+    files.length,
+    directiveFiles.size,
+  );
   log("Pre-scan found directive files:", Array.from(directiveFiles));
   return directiveFiles;
 }
@@ -184,16 +190,76 @@ export const runDirectivesScan = async ({
       ...DEFAULT_DIRECTIVE_SCAN_BLOCKLIST,
       ...normalizeBlocklist(directiveScanBlocklist),
     ];
-    const fileContentCache = new Map<string, string>();
+
+    // Caches to avoid redundant work.
+    // Note: We avoid caching full file contents to prevent heap exhaustion (OOM).
     const directiveCheckCache = new Map<string, boolean>();
-    const readFileWithCache = async (path: string) => {
-      if (fileContentCache.has(path)) {
-        return fileContentCache.get(path)!;
+    const moduleEnvironments = new Map<string, "client" | "worker">();
+    const inflightReads = new Map<string, Promise<string>>();
+
+    // Limit concurrency to prevent OOM spikes from too many large strings in memory at once.
+    const MAX_CONCURRENT_READS = 20;
+    let activeReads = 0;
+    const readQueue: (() => void)[] = [];
+
+    const acquireReadSlot = async () => {
+      if (activeReads < MAX_CONCURRENT_READS) {
+        activeReads++;
+        return;
       }
-      const contents = await fsp.readFile(path, "utf-8");
-      fileContentCache.set(path, contents);
-      return contents;
+      await new Promise<void>((resolve) => readQueue.push(resolve));
     };
+
+    const releaseReadSlot = () => {
+      activeReads--;
+      if (readQueue.length > 0) {
+        const next = readQueue.shift();
+        if (next) {
+          activeReads++;
+          next();
+        }
+      }
+    };
+
+    /**
+     * Normalizes paths to handle symlinks and case-insensitive filesystems (macOS).
+     * This prevents duplicating cache entries for the same physical file.
+     */
+    const normalizePath = (p: string) => {
+      try {
+        // realpathSync returns the underlying case on disk and resolves symlinks.
+        // Using synchronous realpath here is safe as it's typically cached by the OS
+        // and simplifies the code significantly.
+        return fsp.realpathSync(p);
+      } catch {
+        return path.resolve(p);
+      }
+    };
+
+    const readFileWithCache = async (filePath: string) => {
+      const normalizedPath = normalizePath(filePath);
+
+      // Check if we already have an inflight read for this path
+      const inflight = inflightReads.get(normalizedPath);
+      if (inflight) {
+        return inflight;
+      }
+
+      const readPromise = (async () => {
+        await acquireReadSlot();
+        try {
+          const contents = await fsp.readFile(normalizedPath, "utf-8");
+          return contents;
+        } finally {
+          releaseReadSlot();
+          inflightReads.delete(normalizedPath);
+        }
+      })();
+
+      inflightReads.set(normalizedPath, readPromise);
+      return readPromise;
+    };
+
     const esbuild = await getViteEsbuild(rootConfig.root);
     const input =
       initialEntries ?? environments.worker.config.build.rollupOptions?.input;
@@ -249,8 +315,6 @@ export const runDirectivesScan = async ({
       environments.client,
     );
 
-    const moduleEnvironments = new Map<string, "client" | "worker">();
-
     const esbuildScanPlugin: Plugin = {
       name: "rwsdk:esbuild-scan-plugin",
       setup(build: PluginBuild) {
@@ -299,6 +363,10 @@ export const runDirectivesScan = async ({
           log("onResolve called for:", args.path, "from:", args.importer);
 
           let importerEnv = moduleEnvironments.get(args.importer);
+          if (!importerEnv && args.importer) {
+            // Check if it's stored under normalized path
+            importerEnv = moduleEnvironments.get(normalizePath(args.importer));
+          }
 
           // If we don't know the importer's environment yet, check its content
           if (
@@ -319,7 +387,7 @@ export const runDirectivesScan = async ({
                 "as",
                 importerEnv,
               );
-              moduleEnvironments.set(args.importer, importerEnv);
+              moduleEnvironments.set(normalizePath(args.importer), importerEnv);
             } catch (e) {
               importerEnv = "worker"; // Default fallback
               log(
@@ -421,19 +489,17 @@ export const runDirectivesScan = async ({
                 inheritedEnv,
               });
 
-              // Store the definitive environment for this module, so it can be used when it becomes an importer.
-              const realPath = await fsp.realpath(args.path);
-              moduleEnvironments.set(realPath, moduleEnv);
-              log("Set environment for", realPath, "to", moduleEnv);
+              // Store the definitive environment for this module.
+              moduleEnvironments.set(normalizePath(args.path), moduleEnv);
 
               // Finally, populate the output sets if the file has a directive.
               if (isClient) {
-                log("Discovered 'use client' in:", realPath);
-                clientFiles.add(normalizeModulePath(realPath, rootConfig.root));
+                log("Discovered 'use client' in:", args.path);
+                clientFiles.add(normalizeModulePath(args.path, rootConfig.root));
               }
               if (isServer) {
-                log("Discovered 'use server' in:", realPath);
-                serverFiles.add(normalizeModulePath(realPath, rootConfig.root));
+                log("Discovered 'use server' in:", args.path);
+                serverFiles.add(normalizeModulePath(args.path, rootConfig.root));
               }
 
               let code: string;
