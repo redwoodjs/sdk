@@ -93,6 +93,32 @@ route("/files/*/download/*", ...)
 
 ---
 
+## Query Parameters
+
+RedwoodSDK uses the standard Web [Request](https://developer.mozilla.org/en-US/docs/Web/API/Request) object. To access query parameters, you can use the standard `URL` API:
+
+```tsx
+route("/search", ({ request }) => {
+  const url = new URL(request.url);
+  const name = url.searchParams.get("name");
+
+  return <div>Hello, {name}!</div>;
+});
+```
+
+To get multiple values for a single key (e.g., `?tag=js&tag=react`):
+
+```tsx
+route("/posts", ({ request }) => {
+  const url = new URL(request.url);
+  const tags = url.searchParams.getAll("tag"); // ["js", "react"]
+
+  return <div>Filtering by tags: {tags.join(", ")}</div>;
+});
+```
+
+---
+
 ## Request Handlers
 
 The request handler is a function, or array of functions (See [Interrupters](#interrupters)), that are executed when a request is matched.
