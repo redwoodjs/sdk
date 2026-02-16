@@ -1,5 +1,6 @@
 import { allDocs } from "content-collections";
 import { Sidebar } from "@/app/components/Sidebar";
+import { Topbar } from "@/app/components/Topbar";
 
 export function DocPage({ slug: rawSlug }: { slug: string }) {
   // Normalize: strip trailing slashes
@@ -8,9 +9,10 @@ export function DocPage({ slug: rawSlug }: { slug: string }) {
 
   if (!doc) {
     return (
-      <div className="flex min-h-screen">
+      <div className="grid min-h-screen grid-cols-[17.5rem_1fr] grid-rows-[3.5rem_1fr]">
+        <Topbar />
         <Sidebar currentSlug={slug} />
-        <main className="flex-1 px-12 py-8 max-w-3xl">
+        <main className="px-12 py-8 max-w-3xl">
           <h1 className="text-3xl font-bold">Not Found</h1>
           <p className="mt-2 text-zinc-400">
             No documentation found for <code className="rounded bg-zinc-800 px-1.5 py-0.5 text-sm">{slug}</code>.
@@ -21,9 +23,10 @@ export function DocPage({ slug: rawSlug }: { slug: string }) {
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="grid min-h-screen grid-cols-[17.5rem_1fr] grid-rows-[3.5rem_1fr]">
+      <Topbar />
       <Sidebar currentSlug={slug} />
-      <main className="flex-1 px-12 py-8 max-w-3xl">
+      <main className="px-12 py-8 max-w-3xl">
         <h1 className="text-3xl font-bold mb-2">{doc.title}</h1>
         {doc.description && (
           <p className="text-lg text-zinc-400 mb-8 pb-6 border-b border-zinc-800">

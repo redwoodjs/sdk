@@ -50,13 +50,7 @@ function SidebarItems({
 
 export function Sidebar({ currentSlug }: { currentSlug: string }) {
   return (
-    <nav className="sticky top-0 h-screen w-70 shrink-0 overflow-y-auto border-r border-zinc-800 bg-zinc-900 px-4 py-6">
-      <a
-        href={link("/")}
-        className="mb-4 block border-b border-zinc-800 pb-4 text-xl font-bold text-zinc-100 no-underline"
-      >
-        RedwoodSDK
-      </a>
+    <nav className="sticky top-14 self-start max-h-[calc(100vh-3.5rem)] overflow-y-auto border-r border-zinc-800 bg-zinc-900 px-4 py-6">
       <SidebarItems items={sidebar} currentSlug={currentSlug} />
     </nav>
   );
