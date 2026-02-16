@@ -476,7 +476,7 @@ export function AboutPageLayout() {
 }
 ```
 
-After each client navigation, Redwood scans `link[rel="x-prefetch"][href]` elements
+After each client navigation, RedwoodSDK scans `link[rel="x-prefetch"][href]` elements
 and issues background `GET` requests for those route-like URLs with the `__rsc`
 query parameter set and an `x-prefetch: true` header. Successful responses are stored in a generation-based `Cache`
 using `cache.put`, following the semantics described in the MDN Cache
