@@ -1,6 +1,5 @@
 import { allDocs } from "content-collections";
 import { Sidebar } from "@/app/components/Sidebar";
-import { Topbar } from "@/app/components/Topbar";
 
 // Eagerly import all MDX files as React components at build time.
 const mdxModules = import.meta.glob("../../content/docs/**/*.mdx", {
@@ -21,8 +20,7 @@ export function DocPage({ slug: rawSlug }: { slug: string }) {
 
   if (!doc) {
     return (
-      <div className="grid min-h-screen grid-cols-[17.5rem_1fr] grid-rows-[3.5rem_1fr]">
-        <Topbar />
+      <div className="grid min-h-screen grid-cols-[17.5rem_1fr]">
         <Sidebar currentSlug={slug} />
         <main className="px-12 py-8 max-w-3xl">
           <h1 className="text-3xl font-bold">Not Found</h1>
@@ -41,8 +39,7 @@ export function DocPage({ slug: rawSlug }: { slug: string }) {
   const Content = getMDXComponent(doc._meta.path);
 
   return (
-    <div className="grid min-h-screen grid-cols-[17.5rem_1fr] grid-rows-[3.5rem_1fr]">
-      <Topbar />
+    <div className="grid min-h-screen grid-cols-[17.5rem_1fr]">
       <Sidebar currentSlug={slug} />
       <main className="px-12 py-8 max-w-3xl">
         <h1 className="text-3xl font-bold mb-2">{doc.title}</h1>
