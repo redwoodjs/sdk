@@ -22,24 +22,26 @@
     "types": "tsc"
   },
   "dependencies": {
-    "rwsdk": "workspace:*",
+    "@content-collections/core": "0.9.1",
+    "@content-collections/vite": "0.2.7",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-server-dom-webpack": "19.2.4",
-    "@content-collections/core": "0.9.1",
-    "@content-collections/markdown": "^0.1.4",
-    "@content-collections/vite": "0.2.7",
+    "rwsdk": "workspace:*",
     "zod": "^4.1.11"
   },
   "devDependencies": {
-    "@tailwindcss/typography": "^0.5.18",
-    "@tailwindcss/vite": "^4.1.6",
-    "tailwindcss": "^4.1.13",
     "@cloudflare/vite-plugin": "1.24.0",
     "@cloudflare/workers-types": "4.20260210.0",
+    "@mdx-js/rollup": "^3.1.1",
+    "@tailwindcss/typography": "^0.5.18",
+    "@tailwindcss/vite": "^4.1.6",
     "@types/node": "24.10.4",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
+    "remark-frontmatter": "^5.0.0",
+    "remark-mdx-frontmatter": "^5.2.0",
+    "tailwindcss": "^4.1.13",
     "typescript": "5.9.3",
     "vite": "7.3.1",
     "wrangler": "4.64.0"
