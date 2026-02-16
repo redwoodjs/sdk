@@ -105,6 +105,10 @@ export default defineConfig({
                   label: "Dark / Light Mode",
                   slug: "guides/frontend/dark-mode",
                 },
+                {
+                  label: "Image Optimization",
+                  slug: "guides/frontend/images",
+                },
               ],
             },
             {
