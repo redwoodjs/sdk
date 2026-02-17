@@ -16,3 +16,14 @@ We set up a debug script, `debug-przm.mjs`, located in the `przm` repository. Th
 Our findings point to potential "Multiplier Effect" where the interaction between `esbuild`'s native resolution and our custom `createViteAwareResolver` results in duplicate processing of the same physical files under different path strings. We should NOT be biased by these theories - whether they are they are significant factors for the issue at hand is pure conjecture at this point.
 - **Races**: The scanner was triggering redundant `fs.readFile` calls for the same file before the first call could be cached.
 - **Divergent Paths**: Subtle differences in path casing (on macOS) or symlink resolution cause the same dependency to be treated as unique, multiplying the memory required to store file contents in the `fileContentCache`.
+
+## Detailed CI Setup Analysis
+Our investigation into the "przm" CI configuration revealed several critical factors that compound the memory pressure:
+
+- **Runner Constraints**: 
+    - The main build runs on `ubuntu-latest` (standard 7GB / 2-core GitHub runner).
+    - PR Previews use `ubuntu-latest-m` (Medium runner), suggesting they have already encountered and tried to mitigate memory issues by upgrading hardware for some flows.
+- **pnpm Symlink Strategy**: The project uses `pnpm@10.15.1`, which utilizes a deeply symlinked `node_modules` structure. 
+- **Path Reference Mismatch (Cache Poisoning)**: The custom `rwsdk.patch` in the project uses `fsp.realpath(path)` to store module environments, but the scanner looks them up using `args.importer` (the symlinked path). Since these never match on `pnpm`, it forces a "Cache-Miss Re-Classification" loop.
+- **Entry Point Multiplier**: The project has 268 files with "use client"/"use server" directives. The scanner adds all of these as entry points to a single `esbuild.build` call, forcing `esbuild` to manage hundreds of concurrent resolution graphs.
+- **FS Hammering (Racing I/O)**: **note: this is conjecture** The current `runDirectivesScan.mts` implementation has a "Racing" bug in `readFileWithCache` where it triggers redundant `fs.readFile` calls for every request, even if already cached or in-flight. Combined with the 1,866 `lucide-react` icons, this hammers the OS with thousands of concurrent syscalls, exhausting native memory buffers.
