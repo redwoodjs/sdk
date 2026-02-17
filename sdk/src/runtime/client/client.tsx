@@ -143,7 +143,18 @@ export const fetchTransport: Transport = (transportContext) => {
     }
 
     // Original behavior when no handler is present
-    const streamData = createFromFetch(fetchPromise, {
+    const response = await fetchPromise;
+    console.log("[fetchTransport] Response status:", response.status);
+    const location = response.headers.get("Location");
+    console.log("[fetchTransport] Location header:", location);
+
+    if (response.status >= 300 && response.status < 400 && location) {
+      console.log("[fetchTransport] Redirecting to:", location);
+      window.location.href = location;
+      return undefined as any;
+    }
+
+    const streamData = createFromFetch(Promise.resolve(response), {
       callServer: fetchCallServer,
     }) as Promise<RscActionResponse<Result>>;
 

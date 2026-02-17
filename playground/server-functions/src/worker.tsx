@@ -14,13 +14,11 @@ export default defineApp([
     // setup ctx here
     ctx;
   },
-  except(() => {
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: "/error",
-      },
-    });
+  except((error, { request }) => {
+    console.log("[worker] except handler caught error:", error);
+    const errorUrl = new URL("/error", request.url).toString();
+    console.log("[worker] redirecting to:", errorUrl);
+    return Response.redirect(errorUrl, 302);
   }),
   render(Document, [
     route("/", Home),
