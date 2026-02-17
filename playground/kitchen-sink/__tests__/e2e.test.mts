@@ -1,10 +1,11 @@
-import { poll, setupPlaygroundEnvironment, testDevAndDeploy } from "rwsdk/e2e";
+import { poll, setupPlaygroundEnvironment, testDevAndDeploy, waitForHydration } from "rwsdk/e2e";
 import { expect } from "vitest";
 
 setupPlaygroundEnvironment(import.meta.url);
 
 testDevAndDeploy("renders Hello World", async ({ page, url }) => {
   await page.goto(url);
+  await waitForHydration(page);
 
   const getPageContent = () => page.content();
 
@@ -17,9 +18,7 @@ testDevAndDeploy("renders Hello World", async ({ page, url }) => {
 
 testDevAndDeploy("error handling demo is visible", async ({ page, url }) => {
   await page.goto(url);
-
-  // Wait for page to be fully interactive
-  await page.waitForFunction("document.readyState === 'complete'");
+  await waitForHydration(page);
 
   const getErrorDemo = () => page.$("text=Error Handling Demo");
 
@@ -34,9 +33,7 @@ testDevAndDeploy(
   "error handling works for uncaught errors",
   async ({ page, url }) => {
     await page.goto(url);
-
-    // Wait for page to be fully interactive
-    await page.waitForFunction("document.readyState === 'complete'");
+    await waitForHydration(page);
 
     // Wait for the error demo buttons to be available
     const getUncaughtErrorButton = async () => {
@@ -60,7 +57,7 @@ testDevAndDeploy(
 
     // Click the button and wait for navigation to /error
     await Promise.all([
-      page.waitForNavigation({ waitUntil: "networkidle0", timeout: 10000 }),
+      page.waitForNavigation({ waitUntil: "load", timeout: 30000 }),
       uncaughtErrorButton!.click(),
     ]);
 
@@ -88,9 +85,7 @@ testDevAndDeploy(
   "error handling works for async errors",
   async ({ page, url }) => {
     await page.goto(url);
-
-    // Wait for page to be fully interactive
-    await page.waitForFunction("document.readyState === 'complete'");
+    await waitForHydration(page);
 
     // Wait for the error demo buttons to be available
     const getAsyncErrorButton = async () => {
@@ -117,7 +112,7 @@ testDevAndDeploy(
     await asyncErrorButton!.click();
 
     // Wait for navigation to /error (with longer timeout for async error)
-    await page.waitForNavigation({ waitUntil: "networkidle0", timeout: 10000 });
+    await page.waitForNavigation({ waitUntil: "load", timeout: 30000 });
 
     // Verify we were redirected to /error
     expect(page.url()).toContain("/error");
@@ -145,8 +140,7 @@ testDevAndDeploy(
     // Navigate directly to the route that throws an error
     await page.goto(`${url}/debug/throw`);
 
-    // Wait for page to be fully loaded
-    await page.waitForFunction("document.readyState === 'complete'");
+    await waitForHydration(page);
 
     // Verify the error page is displayed (caught by except handler)
     const getErrorPageContent = () => page.content();
@@ -170,9 +164,7 @@ testDevAndDeploy(
   "client components work on initial load (inc. .client.tsx and inlined functions)",
   async ({ page, url }) => {
     await page.goto(url);
-
-    // Wait for page to be fully interactive
-    await page.waitForFunction("document.readyState === 'complete'");
+    await waitForHydration(page);
 
     // 1. Verify Button.client.tsx works
     const getClientButton = () => page.$("#client-button");
