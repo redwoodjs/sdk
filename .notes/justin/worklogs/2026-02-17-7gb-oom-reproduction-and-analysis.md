@@ -60,14 +60,6 @@ To achieve a high-fidelity reproduction of the OOM seen in CI, we will use a Doc
     ```
 - **Goal**: Trigger the "operation was canceled" failure at the 7GB memory threshold during the `DirectiveScan` phase. This baseline will allow us to observe if code changes (like racing fixes) keep the RSS below the limit.
 
----
-
-### IMPORTANT OPERATIONAL NOTE (2026-02-17)
-- **Zero Github/Remote Activity**: Avoid all git commands that interact with remotes (push, fetch, pull, etc.).
-- **Zero External CI Runs**: Do not trigger any actual CI workflows or jobs.
-- **Independent Execution**: The agent is working autonomously while the user is away. No manual interaction or confirmation will be provided.
-- **Worklog Diligence**: Every finding, status update, and planned step must be recorded here before proceeding.
-
 ### Docker Environment Setup Guide (Validated 2026-02-17)
 To successfully run the reproduction within the `node:22-slim` container and avoid `pnpm` environment hurdles:
 
