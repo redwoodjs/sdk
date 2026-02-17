@@ -45,7 +45,7 @@ Our investigation into the "przm" CI configuration revealed several critical fac
 - **FS Hammering (Racing I/O)**: The current `runDirectivesScan.mts` implementation has a confirmed "Racing" bug in `readFileWithCache` where it triggers redundant `fs.readFile` calls for every request, even if already cached or in-flight. Combined with the 1,866 `lucide-react` icons, this hammers the OS with thousands of concurrent syscalls, exhausting native memory buffers.
 
 ## Rapid Reproduction Plan
-To achieve a high-fidelity reproduction of the OOM seen in CI, we will set up a Docker-based environment that mirrors the memory constraints of a standard GitHub runner.
+To achieve a high-fidelity reproduction of the OOM seen in CI, we will use a Docker-based environment that mirrors the memory constraints of a standard GitHub runner.
 
 - **Environment**:
     - **Container OS**: `node:22-slim` (Ubuntu-based).
@@ -53,12 +53,12 @@ To achieve a high-fidelity reproduction of the OOM seen in CI, we will set up a 
     - **Host Resources**: Current machine has 24GB RAM, providing sufficient overhead.
 - **Setup**:
     - Mount the `przm` repository into the container.
-    - Mount the local `sdk` development directory and link it (via `pnpm patch` or manual `node_modules` override) to test the current scanner implementation.
+    - Mount the local `sdk` development directory and link it to test the current scanner implementation.
 - **Execution Command**:
     ```bash
     CLOUDFLARE_ENV=ci pnpm run build:ci
     ```
-- **Goal**: Trigger the "operation was canceled" failure at the 7GB memory threshold during the `DirectiveScan` phase. This baseline will allow us to observe if code changes (like path normalization or racing fixes) keep the RSS below the limit.
+- **Goal**: Trigger the "operation was canceled" failure at the 7GB memory threshold during the `DirectiveScan` phase. This baseline will allow us to observe if code changes (like racing fixes) keep the RSS below the limit.
 
 ---
 
@@ -68,29 +68,17 @@ To achieve a high-fidelity reproduction of the OOM seen in CI, we will set up a 
 - **Independent Execution**: The agent is working autonomously while the user is away. No manual interaction or confirmation will be provided.
 - **Worklog Diligence**: Every finding, status update, and planned step must be recorded here before proceeding.
 
-### Progress Update: Preparation for Docker Reproduction (2026-02-17)
-- **SDK Built**: The local SDK has been built (`pnpm run build` in `sdk/`).
-- **Reproduction Script Created**: `debug-docker.sh` has been created in the workspace root. It sets up a `node:22-slim` environment with 7GB RAM and 2 CPUs to match standard GitHub runners.
-- **Stall Detected**: Initial run of `debug-docker.sh` stalled because `pnpm install` requested confirmation for overriding `node_modules` created on host (macOS vs Linux container).
-- **Fix Applied**: Updated script to use `yes | pnpm install` to ensure non-interactive execution.
-- **Error Detected**: `pnpm install` failed with `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`. This is likely due to the `patchedDependencies` in `package.json` conflicting with the environment or the link attempt.
-- **Fix Applied**: Updated script to use `--no-frozen-lockfile` and ensure proper ordering.
-- **Error Detected**: `pnpm install` failed with `ERR_PNPM_UNUSED_PATCH` because linking the SDK makes the `rwsdk` patch unused. `pnpm` (v10) does not support `--ignore-patches` as a CLI flag.
-- **Fix Applied**: Updated script to use a `node` one-liner to remove `patchedDependencies` from `package.json` before installation inside the container.
-- **Bug Fixed**: Fixed a shell escaping bug in `debug-docker.sh` where double quotes were prematurely terminating the `bash -c` string.
-- **Error Detected**: `ERR_MODULE_NOT_FOUND` for `@cloudflare/vite-plugin`. This occurred because the linked SDK could not resolve its peer dependencies from the host's `/sdk/node_modules` (which might be missing them or have macOS versions).
-- **Fix Applied**: Updated script to run `pnpm install` inside `/sdk` within the container before linking.
-- **Bug Fixed**: Found and fixed a logic error in `normalizeModulePath.mts` where it incorrectly treated absolute paths (like `/sdk/...`) as project-relative "Vite-style" paths because of a failing common-ancestor heuristic in Docker environments (common root `/` was being filtered out).
-- **Observation**: After resolving environment hurdles, the `DirectiveScan` was successfully executed within the 7GB Docker container.
-- **Result**: The scan completed without OOM. `totalFilesRead: 4691`, `RSS peaked at ~618MB`. This suggests that the current "instrumented" version of the scan (even with the racing bug still present in the code I read) might be more stable than the version that failed in CI, or the CI failure is triggered by a specific interaction with the full build pipeline that wasn't hit in this specific run.
-- **Next Steps (for user/agent)**: 
-    1. Re-verify the "Racing" bug impacts by comparing the current "Racing" version with a "Fixed" version (using `await readPromise`).
-    2. Investigate why the `rwsdk.patch` in the project uses `realpath` for caching while the scanner uses `args.importer` (symlinked), as this "Cache Poisoning" is still a strong candidate for memory pressure in `pnpm` environments.
-    3. Finalize the `normalizeModulePath` fix as it is a blocker for any Docker-based scanning.
+### Docker Environment Setup Guide (Validated 2026-02-17)
+To successfully run the reproduction within the `node:22-slim` container and avoid `pnpm` environment hurdles:
+
+1.  **SDK Preparation**: The local SDK must be built (`pnpm run build` in `sdk/`) and its dependencies installed within the container environment before linking to ensure OS compatibility.
+2.  **Handle Interactive Prompts**: Use `yes | pnpm install` to bypass confirmation for overriding `node_modules`.
+3.  **Bypass Lockfile Mismatch**: Use `--no-frozen-lockfile` to prevent `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH` when shared between macOS host and Linux container.
+4.  **Remove Conflict Patches**: Before installation, remove `patchedDependencies` from `package.json` (e.g., via a `node` one-liner). Linking the local SDK makes existing patches unused, which triggers `ERR_PNPM_UNUSED_PATCH`.
+5.  **Execution Persistence**: Ensure the container uses the exact `CLOUDFLARE_ENV=ci pnpm run build:ci` command to match the CI failure vector.
 
 ### Findings Summary (2026-02-17)
 
-1.  **Docker Reproduction Stability**: The 7GB RAM limit was not breached during a clean build in the `node:22-slim` container, peaking at ~618MB RSS. This indicates the OOM might be intermittent or dependent on the specific state of `node_modules` / cache in CI.
-2.  **Path Normalization Bug**: A critical bug was found in `normalizeModulePath`. In Docker, absolute paths like `/sdk` were being misidentified as relative to the project root because the `split("/").filter(Boolean)` helper was removing the root `/`, causing the common ancestor check to fail. This would have caused the scanner to look for files in non-existent paths (e.g., `/app/sdk/...`).
-3.  **IO Racing**: The current `readFileWithCache` implementation still contains the "Racing" bug where it redundanty calls `fsp.readFile` even if a read is in-flight. While not causing an OOM in this run, it hammers the I/O.
-4.  **Symlink Cache Mismatch**: Confirmed that `pnpm` symlinks cause a mismatch between the `realpath` used for some cache keys and the symlinked `args.importer` used for lookups, likely leading to redundant scans of the same physical files.
+1.  **Command Discrepancy**: A previous attempt using a standalone script running `DirectiveScan` only peaked at ~618MB RSS. This confirms we cannot rely on isolated scripts; reproduction requires the full `pnpm run build:ci` pipeline to correctly stress the system.
+2.  **IO Racing**: The `readFileWithCache` implementation is confirmed to have a "Racing" bug where redundant `fs.readFile` calls are made for the same file if a read is in-flight. This hammers I/O and increases memory pressure from native buffers. UNPROVEN CONJECTURE WRT ISSUE AT HAND.
+3.  **Symlink Cache Mismatch**: `pnpm`'s symlinked `node_modules` structure causes a mismatch between the `realpath` used for some cache keys and the symlinked paths used for lookups in `DirectiveScan`, likely leading to redundant scanning of the same physical files. UNPROVEN CONJECTURE WRT ISSUE AT HAND
