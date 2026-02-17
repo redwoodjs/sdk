@@ -22,7 +22,6 @@ export async function buildApp({
   serverFiles,
   projectRootDir,
   workerEntryPathname,
-  directiveScanBlocklist,
 }: {
   builder: ViteBuilder;
   clientEntryPoints: Set<string>;
@@ -30,7 +29,6 @@ export async function buildApp({
   serverFiles: Set<string>;
   projectRootDir: string;
   workerEntryPathname: string;
-  directiveScanBlocklist?: string[];
 }) {
   await rm(resolve(projectRootDir, "dist"), { recursive: true, force: true });
 
@@ -75,7 +73,6 @@ export async function buildApp({
     clientFiles,
     serverFiles,
     entries: [workerEntryPathname],
-    directiveScanBlocklist,
   });
 
   console.log("Building worker...");

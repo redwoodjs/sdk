@@ -129,6 +129,7 @@ export default defineConfig({
               ],
             },
             { label: "Server Function Streams", slug: "guides/rsc-streams" },
+            { label: "Build with AI", slug: "guides/build-with-ai" },
             { label: "Debugging", slug: "guides/debugging" },
             { label: "Vitest", slug: "guides/vitest" },
           ],
