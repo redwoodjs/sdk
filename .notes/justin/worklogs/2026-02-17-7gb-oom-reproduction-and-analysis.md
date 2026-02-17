@@ -21,9 +21,33 @@ Our findings point to potential "Multiplier Effect" where the interaction betwee
 Our investigation into the "przm" CI configuration revealed several critical factors that compound the memory pressure:
 
 - **Runner Constraints**: 
-    - The main build runs on `ubuntu-latest` (standard 7GB / 2-core GitHub runner).
-    - PR Previews use `ubuntu-latest-m` (Medium runner), suggesting they have already encountered and tried to mitigate memory issues by upgrading hardware for some flows.
+    - The main build runs on `ubuntu-latest` (standard 7GB / 2-core GitHub runner) via `.github/workflows/deploy.yml`.
+    - PR Previews use `ubuntu-latest-m` (Medium runner) via `.github/workflows/alchemy-pr-preview.yml`.
+- **Workflow Commands**:
+    - Both workflows run `pnpm install` followed by a build command.
+    - `deploy.yml` runs `pnpm release`, which executes `pnpm run clean && pnpm run build`.
+    - `alchemy-pr-preview.yml` runs `pnpm run clean && pnpm run build`.
+    - **Confirmed Failure Pattern**: A CI run confirmed that the OOM occurs during `pnpm build:ci` (`vite build`). The logs show the process being "canceled" (GitHub's signal for OOM) immediately after the DirectiveScan begins:
+      ```
+      Run pnpm build:ci
+      > CLOUDFLARE_ENV=ci vite build --mode ci
+      Running plugin setup pass...
+      ...
+      ✓ built in 34ms
+      … (rwsdk) Scanning for 'use client' and 'use server' directives...
+       ELIFECYCLE  Command failed.
+      Error: The operation was canceled.
+      ```
+    - **Confirmed Observation**: Git logs for PR #817 in the `przm` repository indicate that the `DirectiveScan` has been a source of memory exhaustion on CI runners (specifically when traversing `lucide-react`). This confirms the scanner as a likely vector for OOM reports.
 - **pnpm Symlink Strategy**: The project uses `pnpm@10.15.1`, which utilizes a deeply symlinked `node_modules` structure. 
-- **Path Reference Mismatch (Cache Poisoning)**: The custom `rwsdk.patch` in the project uses `fsp.realpath(path)` to store module environments, but the scanner looks them up using `args.importer` (the symlinked path). Since these never match on `pnpm`, it forces a "Cache-Miss Re-Classification" loop.
+- **Path Reference Mismatch (Cache Poisoning)**: The custom `rwsdk.patch` in the project (and the current SDK source) uses `fsp.realpath(path)` to store module environments, but the scanner looks them up using `args.importer` (the symlinked path from esbuild). Since these never match on `pnpm`, it forces a "Cache-Miss Re-Classification" loop, re-scanning the same files repeatedly.
 - **Entry Point Multiplier**: The project has 268 files with "use client"/"use server" directives. The scanner adds all of these as entry points to a single `esbuild.build` call, forcing `esbuild` to manage hundreds of concurrent resolution graphs.
-- **FS Hammering (Racing I/O)**: **note: this is conjecture** The current `runDirectivesScan.mts` implementation has a "Racing" bug in `readFileWithCache` where it triggers redundant `fs.readFile` calls for every request, even if already cached or in-flight. Combined with the 1,866 `lucide-react` icons, this hammers the OS with thousands of concurrent syscalls, exhausting native memory buffers.
+- **FS Hammering (Racing I/O)**: The current `runDirectivesScan.mts` implementation has a confirmed "Racing" bug in `readFileWithCache` where it triggers redundant `fs.readFile` calls for every request, even if already cached or in-flight. Combined with the 1,866 `lucide-react` icons, this hammers the OS with thousands of concurrent syscalls, exhausting native memory buffers.
+
+## Rapid Reproduction Brainstorming
+To move faster than synthetic tests, we can set up a local Docker-based reproduction that mimics the CI environment:
+
+- **Container Image**: `node:22-slim` (to match the project's requirement).
+- **Resource Limits**: Run with `--memory=7g` and `--cpus=2` to match `ubuntu-latest`.
+- **Environment**: Mount the `przm` source and the local `sdk`.
+- **Goal**: Reproduce the OOM locally by running the exact CI build commands in a resource-constrained container.
