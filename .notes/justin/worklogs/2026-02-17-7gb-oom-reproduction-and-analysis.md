@@ -127,3 +127,20 @@ Detailed inspection of `memory-profile.log` reveals a specific "Spike" profile r
 - **Velocity:** Memory jumps from **600MB to 2,500MB in ~5 seconds**.
 - **Post-Scan Recovery:** After the scan finishes, RSS remains high briefly before settling back toward 1GB for the remainder of the build.
 - **Conclusion:** The memory exhaustion is a **point-in-time peak** triggered by the DirectiveScan's parallel resolution graph. The consistency across 10 iterations (all peaking at ~2.5GB) confirms this is a functional baseline for the current project scale, not a cumulative object leak.
+
+## Timestamped Correlation Analysis (Detailed)
+
+| Event | Timestamp (ISO) | Node RSS | esbuild RSS | Total Measured RSS |
+| :--- | :--- | :--- | :--- | :--- |
+| **DirectiveScan Start** | `18:55:14.335Z` | ~370 MB | ~14 MB | **~384 MB** |
+| **Worker Build Start** | `18:55:15.000Z` | ~413 MB | ~173 MB | **~586 MB** |
+| **DirectiveScan End** | `18:55:16.000Z` | ~693 MB | ~41 MB | **~734 MB** |
+| SSR Build Peak | `18:55:20.000Z` | ~1.7 GB | ~146 MB | **~1.8 GB** |
+| **Total Build Peak** | `18:55:41.000Z` | ~2.5 GB | ~107 MB | **~2.6 GB** |
+
+### Critical Breakthrough: Parallel Build Overlap
+The logs prove that the memory spike is a "stacking" effect. The `Building worker...` phase starts precisely **1.0 second before** the `DirectiveScan` finishes.
+
+1.  **Scanner contribution:** Adds ~350MB transient RSS.
+2.  **Worker contribution:** Immediately jumps from ~14MB to ~173MB in esbuild memory upon start.
+3.  **The "CI Killer" Theory:** On a standard 7GB runner, the combination of the DirectiveScan's resolution graph *plus* the concurrent start of the Worker and SSR builds likely exceeds the threshold. The scanner happens to be the last thing that logs, creating the illusion that it is the sole cause.
