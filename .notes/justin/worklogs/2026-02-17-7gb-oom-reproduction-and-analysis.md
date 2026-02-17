@@ -44,10 +44,18 @@ Our investigation into the "przm" CI configuration revealed several critical fac
 - **Entry Point Multiplier**: The project has 268 files with "use client"/"use server" directives. The scanner adds all of these as entry points to a single `esbuild.build` call, forcing `esbuild` to manage hundreds of concurrent resolution graphs.
 - **FS Hammering (Racing I/O)**: The current `runDirectivesScan.mts` implementation has a confirmed "Racing" bug in `readFileWithCache` where it triggers redundant `fs.readFile` calls for every request, even if already cached or in-flight. Combined with the 1,866 `lucide-react` icons, this hammers the OS with thousands of concurrent syscalls, exhausting native memory buffers.
 
-## Rapid Reproduction Brainstorming
-To move faster than synthetic tests, we can set up a local Docker-based reproduction that mimics the CI environment:
+## Rapid Reproduction Plan
+To achieve a high-fidelity reproduction of the OOM seen in CI, we will set up a Docker-based environment that mirrors the memory constraints of a standard GitHub runner.
 
-- **Container Image**: `node:22-slim` (to match the project's requirement).
-- **Resource Limits**: Run with `--memory=7g` and `--cpus=2` to match `ubuntu-latest`.
-- **Environment**: Mount the `przm` source and the local `sdk`.
-- **Goal**: Reproduce the OOM locally by running the exact CI build commands in a resource-constrained container.
+- **Environment**:
+    - **Container OS**: `node:22-slim` (Ubuntu-based).
+    - **Resource Limits**: `--memory=7g --cpus=2` (matching `ubuntu-latest`).
+    - **Host Resources**: Current machine has 24GB RAM, providing sufficient overhead.
+- **Setup**:
+    - Mount the `przm` repository into the container.
+    - Mount the local `sdk` development directory and link it (via `pnpm patch` or manual `node_modules` override) to test the current scanner implementation.
+- **Execution Command**:
+    ```bash
+    CLOUDFLARE_ENV=ci pnpm run build:ci
+    ```
+- **Goal**: Trigger the "operation was canceled" failure at the 7GB memory threshold during the `DirectiveScan` phase. This baseline will allow us to observe if code changes (like path normalization or racing fixes) keep the RSS below the limit.
