@@ -75,16 +75,35 @@ To successfully run the reproduction within the `node:22-slim` container and avo
 2.  **IO Racing**: The `readFileWithCache` implementation is confirmed to have a "Racing" bug where redundant `fs.readFile` calls are made for the same file if a read is in-flight. This hammers I/O and increases memory pressure from native buffers. UNPROVEN CONJECTURE WRT ISSUE AT HAND.
 3.  **Symlink Cache Mismatch**: `pnpm`'s symlinked `node_modules` structure causes a mismatch between the `realpath` used for some cache keys and the symlinked paths used for lookups in `DirectiveScan`, likely leading to redundant scanning of the same physical files. UNPROVEN CONJECTURE WRT ISSUE AT HAND
 
-## Next Steps Plan (2026-02-17)
+## High-Resolution Log Correlation (2026-02-17)
 
-1.  **Verify Baseline OOM**: Execute the `CLOUDFLARE_ENV=ci pnpm run build:ci` command inside the 7GB Docker container, following the *Docker Environment Setup Guide*.
-2.  **Confirm Failure**: Ensure the process triggers the "operation was canceled" error at or near the 7GB memory threshold.
-3.  **Atomic Fix Validation**:
-    - Apply the **IO Racing fix** (awaiting `readPromise` in `readFileWithCache`) and re-run the build.
-    - Measure peak RSS and compare against the baseline.
-4.  **Cache Consistency Validation**:
-    - If OOM persists, address the **Symlink Cache Mismatch** by ensuring `realpath` is not used inconsistently between the scanner and the environment cache.
-    - Re-run the build and measure peak RSS.
+We instrumented both the Shell (Docker) and Node.js process with ISO timestamps to correlate memory spikes with specific build phases. 
+
+### Observation: Vite Parallelism
+The logs confirm that Vite is running multiple sub-builds in parallel. Specifically, `Building worker...` starts while the `DirectiveScan` is still active.
+
+| Time (UTC) | Build Phase | Process State |
+| :--- | :--- | :--- |
+| `18:55:14.335Z` | `(rwsdk) Starting Directives Scan...` | Initializing resolution |
+| `18:55:15.000Z` | `Building worker...` | **Parallel build starts** |
+| `18:55:16.000Z` | `Done scanning directives.` | Scanner finishes |
+
+### Memory Phase Analysis
+By mapping `reproduction.log` to `memory-profile.log`, we identified that the `DirectiveScan` is **not** the source of the 2.5GB peak.
+
+- **Pre-Scanner Baseline:** ~370 MB RSS
+- **During DirectiveScan:** ~730 MB RSS (Node + esbuild)
+- **During Worker/SSR Build:** ~1.8 GB RSS
+- **Final Linking Phase:** **~2.6 GB RSS (Peak)**
+
+### Revised Conclusion on OOM
+The peak memory usage occurs during the **Linking** and **Client** build phases, which involve combining thousands of modules. The `DirectiveScan` contributes a transient ~400MB increase but does not explain the full 7GB OOM.
+
+However, the "Canceled" error in CI occurs right as the scanner starts. This suggests that the **initial resolution graph expansion** for the Worker build—which starts immediately after the scanner—is the actual "killer" on standard runners. The scanner is simply the last process to log its start before the kernel kills the parent process.
+
+## Revised Next Steps Plan
+1.  **Memory-Pressure Simulation:** Since our current local environment is too stable (peaking at ~2.6GB), we need to simulate the "CI killer" by adding a high-fanout dependency (like `lucide-react`) to the Worker entry point.
+2.  **Verify Scan Races:** Even if the scanner isn't the absolute peak, its 400MB spike is avoidable. Verify if fixing the "Racing I/O" bug identified earlier flattens this transient spike.
 
 ## Multi-Iteration Reproduction Results (2026-02-17)
 
@@ -101,23 +120,10 @@ The memory usage for Node.js (Vite/DirectiveScan) remained stable within the 2.3
 
 The "operation was canceled" failure seen in CI at 7GB remains un-reproduced in this specific environment, suggesting that either the CI runners have more background pressure or we are missing a specific "trigger" (e.g., specific file changes, symlink depths, or concurrent workflow processes) that pushes it over the threshold.
 
-### ISO-Timestamped Correlation Results (2026-02-17)
-
-We added synchronized ISO timestamps to both the internal scan ticks and the external memory monitor to achieve 100% correlation confidence.
-
-#### Correlation Timeline:
-- **20:39:27.464Z**: `… (rwsdk) Scanning for 'use client' and 'use server' directives...` begins. Initial RSS is **1,358 MB**.
-- **20:39:30.472Z**: `[DirectiveScan TICK]` reports peak RSS of **2,516 MB**.
-- **20:39:30Z**: External `ps` monitor (via `memory-profile.log`) confirms process `3312` (Vite) reached **2,516,396 KB**.
-- **20:39:32.479Z**: `✔ (rwsdk) Done scanning...` message appears. Memory begins to stabilize.
-
-#### The "Smoking Gun" Finding:
-The instrumented logs revealed critical stats about the scan phase that explain this behavior:
-- **totalFilesRead:** 5,747
-- **totalBytesReadMB:** 40
-- **races:** 5,754
-- **cacheEntries:** 5,747
-
-**Analysis:** The number of `races` (redundant `fs.readFile` calls for the same file while a read is already in-flight) effectively matches the number of files. This means **every single file in the project was being read multiple times simultaneously** during the scan. While the total file size is only 40MB, the overhead of thousands of concurrent `fs.readFile` syscalls and their associated native buffers is likely driving the massive 1.2GB spike in native memory (RSS).
-
-**Conclusion:** The memory spike is definitively tied to the `DirectiveScan` phase and is specifically caused by massive I/O racing. The fix must be applied to `readFileWithCache` to await in-flight promises.
+### Memory Trend & Spike Analysis:
+Detailed inspection of `memory-profile.log` reveals a specific "Spike" profile rather than a "Leak" profile:
+- **Baseline (Vite Setup):** ~300MB - 600MB RSS.
+- **Trigger:** Immediately following the `(rwsdk) Scanning for 'use client' and 'use server' directives...` log message.
+- **Velocity:** Memory jumps from **600MB to 2,500MB in ~5 seconds**.
+- **Post-Scan Recovery:** After the scan finishes, RSS remains high briefly before settling back toward 1GB for the remainder of the build.
+- **Conclusion:** The memory exhaustion is a **point-in-time peak** triggered by the DirectiveScan's parallel resolution graph. The consistency across 10 iterations (all peaking at ~2.5GB) confirms this is a functional baseline for the current project scale, not a cumulative object leak.
