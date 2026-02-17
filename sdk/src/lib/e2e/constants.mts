@@ -82,18 +82,18 @@ export const TEST_MAX_RETRIES = process.env.RWSDK_TEST_MAX_RETRIES
   ? parseInt(process.env.RWSDK_TEST_MAX_RETRIES, 10)
   : IS_DEBUG_MODE
     ? 1
-    : 10;
+    : 3; // Reduced from 10
 
 export const TEST_MAX_RETRIES_PER_CODE = process.env
   .RWSDK_TEST_MAX_RETRIES_PER_CODE
   ? parseInt(process.env.RWSDK_TEST_MAX_RETRIES_PER_CODE, 10)
   : IS_DEBUG_MODE
     ? 0
-    : 6;
+    : 2; // Reduced from 6
 
 export const INSTALL_DEPENDENCIES_RETRIES = process.env
   .RWSDK_INSTALL_DEPENDENCIES_RETRIES
   ? parseInt(process.env.RWSDK_INSTALL_DEPENDENCIES_RETRIES, 10)
   : IS_DEBUG_MODE
     ? 1
-    : 10;
+    : 3; // Reduced from 10
