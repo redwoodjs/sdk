@@ -29,7 +29,7 @@
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.25.0",
-    "@cloudflare/workers-types": "4.20260214.0",
+    "@cloudflare/workers-types": "4.20260217.0",
     "@types/node": "~24.10.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
