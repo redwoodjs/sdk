@@ -137,6 +137,36 @@ export default serverAction(async (id) => {
 });
 `;
 
+  let SERVER_QUERY_ARRAY_CODE = `
+"use server";
+export const getProject = serverQuery([
+  auth,
+  async (id) => {
+    return { id, name: "Project X" };
+  }
+]);
+`;
+
+  let SERVER_ACTION_ARRAY_CODE = `
+"use server";
+export const upvote = serverAction([
+  auth,
+  async (id) => {
+    return { id, count: 1 };
+  }
+]);
+`;
+
+  let SERVER_QUERY_ARRAY_POST_CODE = `
+"use server";
+export const getProject = serverQuery([
+  auth,
+  async (id) => {
+    return { id, name: "Project X" };
+  }
+], { method: "POST" });
+`;
+
   const TEST_CASES = {
     COMMENT_CODE,
     MULTI_LINE_COMMENT_CODE,
@@ -154,6 +184,9 @@ export default serverAction(async (id) => {
     SERVER_ACTION_CODE,
     SERVER_QUERY_DEFAULT_CODE,
     SERVER_ACTION_DEFAULT_CODE,
+    SERVER_QUERY_ARRAY_CODE,
+    SERVER_ACTION_ARRAY_CODE,
+    SERVER_QUERY_ARRAY_POST_CODE,
   };
 
   describe("TRANSFORMS", () => {

@@ -180,6 +180,14 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
   });
 
   function handleResponse(response: Response): boolean {
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("Location");
+      if (location) {
+        window.location.href = location;
+        return false;
+      }
+    }
+
     if (!response.ok) {
       // Redirect to the current page (window.location) to show the error
       // This means the page that produced the error is called twice.

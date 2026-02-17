@@ -1,9 +1,9 @@
 
 import { requestInfo } from "./requestInfo/worker";
 
-type Interruptor<TArgs extends any[] = any[], TResult = any> = (
+type Interruptor<TArgs extends any[] = any[]> = (
   context: { request: Request; ctx: Record<string, any>; args: TArgs },
-) => Promise<Response | void | TResult> | Response | void | TResult;
+) => Promise<Response | void> | Response | void;
 
 type ServerFunction<TArgs extends any[] = any[], TResult = any> = (
   ...args: TArgs
@@ -19,7 +19,7 @@ type WrappedServerFunction<TArgs extends any[] = any[], TResult = any> = {
 };
 
 function createServerFunction<TArgs extends any[] = any[], TResult = any>(
-  fns: Interruptor<TArgs, TResult>[],
+  fns: Interruptor<TArgs>[],
   mainFn: ServerFunction<TArgs, TResult>,
   options?: ServerFunctionOptions,
 ): WrappedServerFunction<TArgs, TResult> {
@@ -32,21 +32,17 @@ function createServerFunction<TArgs extends any[] = any[], TResult = any>(
     for (const fn of fns) {
       const result = await fn({ request, ctx, args });
       if (result instanceof Response) {
-        // We can't easily return a Response from a server action function
-        // because the return type is expected to be TResult.
-        // However, if the interruptor returns a Response, it usually means "stop and return this HTTP response".
-        // In the RSC context, throwing a Response is a common pattern to short-circuit.
-        throw result;
+        // We return the Response so it can be handled by the action handler
+        // and serialized into the RSC stream via normalizeActionResult.
+        return result as unknown as TResult;
       }
     }
 
     return mainFn(...args);
   };
 
-  wrapped.method = options?.method ?? "POST"; // Default to POST if not specified, though user said serverQuery defaults to GET?
-  // User said: "export const getProject = serverQuery(...) // Defaults to GET"
-  // So serverQuery defaults to GET, serverAction defaults to POST?
-  
+  wrapped.method = options?.method ?? "POST";
+
   return wrapped;
 }
 
@@ -68,17 +64,17 @@ function createServerFunction<TArgs extends any[] = any[], TResult = any>(
  * })
  * ```
  */
-export function serverQuery<TArgs extends any[] = any[], TResult = any>(
+export function serverQuery<TArgs extends any[], TResult>(
   fnsOrFn:
     | ServerFunction<TArgs, TResult>
-    | [...Interruptor<TArgs, TResult>[], ServerFunction<TArgs, TResult>],
+    | [...Interruptor<TArgs>[], ServerFunction<TArgs, TResult>],
   options?: ServerFunctionOptions,
 ): WrappedServerFunction<TArgs, TResult> {
-  let fns: Interruptor<TArgs, TResult>[] = [];
+  let fns: Interruptor<TArgs>[] = [];
   let mainFn: ServerFunction<TArgs, TResult>;
 
   if (Array.isArray(fnsOrFn)) {
-    fns = fnsOrFn.slice(0, -1) as Interruptor<TArgs, TResult>[];
+    fns = fnsOrFn.slice(0, -1) as Interruptor<TArgs>[];
     mainFn = fnsOrFn[fnsOrFn.length - 1] as ServerFunction<TArgs, TResult>;
   } else {
     mainFn = fnsOrFn;
@@ -108,17 +104,17 @@ export function serverQuery<TArgs extends any[] = any[], TResult = any>(
  * })
  * ```
  */
-export function serverAction<TArgs extends any[] = any[], TResult = any>(
+export function serverAction<TArgs extends any[], TResult>(
   fnsOrFn:
     | ServerFunction<TArgs, TResult>
-    | [...Interruptor<TArgs, TResult>[], ServerFunction<TArgs, TResult>],
+    | [...Interruptor<TArgs>[], ServerFunction<TArgs, TResult>],
   options?: ServerFunctionOptions,
 ): WrappedServerFunction<TArgs, TResult> {
-  let fns: Interruptor<TArgs, TResult>[] = [];
+  let fns: Interruptor<TArgs>[] = [];
   let mainFn: ServerFunction<TArgs, TResult>;
 
   if (Array.isArray(fnsOrFn)) {
-    fns = fnsOrFn.slice(0, -1) as Interruptor<TArgs, TResult>[];
+    fns = fnsOrFn.slice(0, -1) as Interruptor<TArgs>[];
     mainFn = fnsOrFn[fnsOrFn.length - 1] as ServerFunction<TArgs, TResult>;
   } else {
     mainFn = fnsOrFn;

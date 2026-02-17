@@ -4,6 +4,7 @@ import { defineApp } from "rwsdk/worker";
 import { Document } from "@/app/Document";
 import { ErrorPage } from "@/app/pages/ErrorPage";
 import { Home } from "@/app/pages/Home";
+import { RedirectSuccess } from "@/app/pages/RedirectSuccess";
 
 export type AppContext = {};
 
@@ -13,11 +14,17 @@ export default defineApp([
     // setup ctx here
     ctx;
   },
-  except((error) => {
-    return <ErrorPage error={error} />;
+  except(() => {
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: "/error",
+      },
+    });
   }),
   render(Document, [
     route("/", Home),
+    route("/redirect-success", RedirectSuccess),
     route("/error", ErrorPage),
     route("/debug/throw", () => {
       throw new Error("This is a test error from the /debug/throw route");

@@ -91,25 +91,7 @@ export const fetchTransport: Transport = (transportContext) => {
       }
     }
 
-    // If there's a response handler, check the response first
-    if (transportContext.handleResponse) {
-      const response = await fetchPromise;
-      const shouldContinue = transportContext.handleResponse(response);
-      if (!shouldContinue) {
-        return;
-      }
-
-      // Continue with the response if handler returned true
-      const streamData = createFromFetch(Promise.resolve(response), {
-        callServer: fetchCallServer,
-      }) as Promise<RscActionResponse<Result>>;
-
-      if (source === "navigation" || source === "action") {
-        transportContext.setRscPayload(streamData);
-      }
-      const result = await streamData;
-      const rawActionResult = (result as { actionResult: Result }).actionResult;
-
+    const processActionResponse = (rawActionResult: any) => {
       if (isActionResponse(rawActionResult)) {
         const actionResponse = rawActionResult.__rw_action_response;
         const handledByHook =
@@ -124,12 +106,40 @@ export const fetchTransport: Transport = (transportContext) => {
             window.location.href = location;
             return undefined;
           }
+
+          if (actionResponse.status >= 400) {
+            throw new Error(
+              `Server function returned status ${actionResponse.status}`,
+            );
+          }
         }
 
         return rawActionResult as Result;
       }
 
       return rawActionResult as Result;
+    };
+
+    // If there's a response handler, check the response first
+    if (transportContext.handleResponse) {
+      const response = await fetchPromise;
+      const shouldContinue = transportContext.handleResponse(response);
+      if (!shouldContinue) {
+        return undefined as any;
+      }
+
+      // Continue with the response if handler returned true
+      const streamData = createFromFetch(Promise.resolve(response), {
+        callServer: fetchCallServer,
+      }) as Promise<RscActionResponse<Result>>;
+
+      if (source === "navigation" || source === "action") {
+        transportContext.setRscPayload(streamData);
+      }
+      const result = await streamData;
+      return processActionResponse(
+        (result as { actionResult: Result }).actionResult,
+      );
     }
 
     // Original behavior when no handler is present
@@ -141,28 +151,9 @@ export const fetchTransport: Transport = (transportContext) => {
       transportContext.setRscPayload(streamData);
     }
     const result = await streamData;
-    const rawActionResult = (result as { actionResult: Result }).actionResult;
-
-    if (isActionResponse(rawActionResult)) {
-      const actionResponse = rawActionResult.__rw_action_response;
-      const handledByHook =
-        transportContext.onActionResponse?.(actionResponse) === true;
-
-      if (!handledByHook) {
-        const location = actionResponse.headers["location"];
-        const isRedirect =
-          actionResponse.status >= 300 && actionResponse.status < 400;
-
-        if (location && isRedirect) {
-          window.location.href = location;
-          return undefined;
-        }
-      }
-
-      return rawActionResult as Result;
-    }
-
-    return rawActionResult as Result;
+    return processActionResponse(
+      (result as { actionResult: Result }).actionResult,
+    );
   };
 
   return fetchCallServer;
