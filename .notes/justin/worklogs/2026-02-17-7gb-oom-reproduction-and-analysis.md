@@ -12,8 +12,7 @@ We added per-second "Memory Ticks" to the `runDirectivesScan.mts` core logic in 
 ## Reproduced nearly 1GB RSS spike on the Przm project
 We set up a debug script, `debug-przm.mjs`, located in the `przm` repository. This script resolves the production Vite configuration (with bypassed database plugins) and runs the `runDirectivesScan` function using all 626 source files as entry points simultaneously. During execution, we observed a massive jump in memory usage: **RSS spiked from 361MB to 821MB in a single tick**, while the V8 Heap stayed consistently low (~31MB-50MB). This confirmed that the memory pressure is not originating from leaked JavaScript objects, but from native buffers and the underlying `esbuild` process handling a massive, redundant graph.
 
-## Identified the "Multiplier Effect" and path resolution as the root cause
-Our findings strongly point to a "Multiplier Effect" where the interaction between `esbuild`'s native resolution and our custom `createViteAwareResolver` results in duplicate processing of the same physical files under different path strings.
+## Identified potential for "Multiplier Effect" and path resolution as the root cause
+Our findings point to potential "Multiplier Effect" where the interaction between `esbuild`'s native resolution and our custom `createViteAwareResolver` results in duplicate processing of the same physical files under different path strings. We should NOT be biased by these theories - whether they are they are significant factors for the issue at hand is pure conjecture at this point.
 - **Races**: The scanner was triggering redundant `fs.readFile` calls for the same file before the first call could be cached.
 - **Divergent Paths**: Subtle differences in path casing (on macOS) or symlink resolution cause the same dependency to be treated as unique, multiplying the memory required to store file contents in the `fileContentCache`.
-- **Barrel Fan-out**: The combination of `lucide-react`'s massive barrel exports and our lack of a effective blocklist (which we disabled for this test) allows the graph to bloat uncontrollably.
