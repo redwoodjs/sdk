@@ -74,3 +74,14 @@ To successfully run the reproduction within the `node:22-slim` container and avo
 1.  **Command Discrepancy**: A previous attempt using a standalone script running `DirectiveScan` only peaked at ~618MB RSS. This confirms we cannot rely on isolated scripts; reproduction requires the full `pnpm run build:ci` pipeline to correctly stress the system.
 2.  **IO Racing**: The `readFileWithCache` implementation is confirmed to have a "Racing" bug where redundant `fs.readFile` calls are made for the same file if a read is in-flight. This hammers I/O and increases memory pressure from native buffers. UNPROVEN CONJECTURE WRT ISSUE AT HAND.
 3.  **Symlink Cache Mismatch**: `pnpm`'s symlinked `node_modules` structure causes a mismatch between the `realpath` used for some cache keys and the symlinked paths used for lookups in `DirectiveScan`, likely leading to redundant scanning of the same physical files. UNPROVEN CONJECTURE WRT ISSUE AT HAND
+
+## Next Steps Plan (2026-02-17)
+
+1.  **Verify Baseline OOM**: Execute the `CLOUDFLARE_ENV=ci pnpm run build:ci` command inside the 7GB Docker container, following the *Docker Environment Setup Guide*.
+2.  **Confirm Failure**: Ensure the process triggers the "operation was canceled" error at or near the 7GB memory threshold.
+3.  **Atomic Fix Validation**:
+    - Apply the **IO Racing fix** (awaiting `readPromise` in `readFileWithCache`) and re-run the build.
+    - Measure peak RSS and compare against the baseline.
+4.  **Cache Consistency Validation**:
+    - If OOM persists, address the **Symlink Cache Mismatch** by ensuring `realpath` is not used inconsistently between the scanner and the environment cache.
+    - Re-run the build and measure peak RSS.
