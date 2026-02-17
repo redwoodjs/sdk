@@ -263,15 +263,6 @@ importers:
         specifier: 4.64.0
         version: 4.64.0(@cloudflare/workers-types@4.20260210.0)
 
-  community/playground/real-lucide-investigation:
-    dependencies:
-      esbuild:
-        specifier: ^0.27.3
-        version: 0.27.3
-      lucide-react:
-        specifier: ^0.562.0
-        version: 0.562.0(react@19.2.4)
-
   community/playground/vitest-showcase:
     dependencies:
       react:

@@ -69,3 +69,39 @@ We are modifying the `reproduce-oom.sh` script to:
 ## Summary of Handoff
 We have proven *how* the memory can be exhausted (Multipliers + Caching), but haven't found the specific project structure that hits 7GB. The solution should involve **Stateless Scanning** (don't cache content), **Path Normalization** (fuse casing/symlink duplicates), and **Inflight Promise Management**.
 
+---
+
+## 2026-02-17: High-Fidelity Reproduction & Correlation
+
+### 1. Reproduction Success
+Using a Docker container (`node:22-slim`) with resource limits (7GB RAM, 2 CPUs) matching the reporting environment, we successfully reproduced the memory spike using the local PRZM project and the linked SDK.
+
+### 2. Time-Series Analysis & Correlation
+We correlated the `reproduction.log` (build phases) with a high-resolution `memory-profile.log` (RSS tracking).
+
+| Timestamp (Z) | Build Phase | Global Used | esbuild RSS | Vite RSS | Notes |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **19:48:04** | **Scan Begins** | 1.5 GB | 13 MB | 463 MB | Start of `DirectiveScan` |
+| **19:48:08** | **Reading Done** | 1.8 GB | 262 MB | 557 MB | Scanner finishes reading ~4,600 files |
+| **19:48:10** | **Graph Spike** | 2.8 GB | **1.1 GB** | 620 MB | esbuild starts graph processing |
+| **19:48:24** | **OOM Zone** | 7.3 GB | **5.8 GB** | 617 MB | **Exceeds 7GB runner threshold** |
+| **19:48:42** | **Peak Memory** | **8.6 GB** | **6.9 GB** | 351 MB | Maximum pressure reached |
+| **19:48:43** | **Worker Overlap** | 7.1 GB | 4.6 GB | **1.2 GB** | Worker build starts during esbuild flush |
+
+### 3. Key Findings
+- **esbuild vs. Vite:** The memory explosion happens inside the `esbuild` service process, not the main Vite process. While the scanner logs report ~600MB RSS for the main process, `esbuild` peaks at **~6.9GB**.
+- **Post-Reading Growth:** Memory usage peaks *between* "Reading files" and "(rwsdk) Done scanning". This confirms the bottleneck is esbuild's internal handling of the resolution graph/imports for those 4,600+ modules.
+- **Stacked Parallelism:** The `Building worker...` phase begins while the scanner (esbuild) still holds ~4.6GB RSS. This "stacking" of Vite builds creates a lethal memory floor that triggers OOM.
+- **Racing I/O:** Instrumental logs showed 0 races in this specific run, suggesting that while "racing" is a valid bug, the sheer volume of 4,600 resolved files is enough to hit 7GB alone.
+
+### 4. Directives Found
+The scan identified 4,688 files, leading to a final graph of:
+- Total Files Read: 4,688
+- Extensions: `.tsx`: 395, `.ts`: 231, `.js`: 3921, `.mjs`: 141
+- Total Cache Size: 17MB (in-memory buffers)
+
+### 5. Next Steps
+- Implement **Stateless Scanning**: Return empty strings or minimal contents for non-directive-containing external modules to prevent esbuild from buffering their resolution data.
+- **Inflight Deduplication**: Ensure concurrent requests for the same path share a single `readFile` promise.
+- **Sequential Safety**: Potentially block the Worker build from starting until the DirectiveScan process has fully exited or flushed its buffers.
+
