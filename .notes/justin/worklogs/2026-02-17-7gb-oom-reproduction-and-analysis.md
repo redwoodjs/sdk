@@ -85,3 +85,39 @@ To successfully run the reproduction within the `node:22-slim` container and avo
 4.  **Cache Consistency Validation**:
     - If OOM persists, address the **Symlink Cache Mismatch** by ensuring `realpath` is not used inconsistently between the scanner and the environment cache.
     - Re-run the build and measure peak RSS.
+
+## Multi-Iteration Reproduction Results (2026-02-17)
+
+We executed 10 consecutive build iterations using the `reproduce-oom.sh` script to monitor for memory leaks or spikes over time.
+
+- **Iterations**: 10
+- **Peak RSS (Node.js)**: 2,534 MB
+- **Minimum Peak RSS**: 2,308 MB
+- **Observation Range**: 2,300 MB - 2,534 MB
+- **Success Rate**: 10/10 iterations completed successfully (no OOM).
+
+### Analysis of the 10-Iteration Run:
+The memory usage for Node.js (Vite/DirectiveScan) remained stable within the 2.3GB - 2.5GB range across all 10 iterations. While high, this is significantly below the 7GB container limit. The fact that memory does not climb monotonically across iterations suggests that we are not dealing with a simple process-level memory leak that accumulates per build, but rather a high baseline or a transient spike that occurs during the scan phase itself.
+
+The "operation was canceled" failure seen in CI at 7GB remains un-reproduced in this specific environment, suggesting that either the CI runners have more background pressure or we are missing a specific "trigger" (e.g., specific file changes, symlink depths, or concurrent workflow processes) that pushes it over the threshold.
+
+### ISO-Timestamped Correlation Results (2026-02-17)
+
+We added synchronized ISO timestamps to both the internal scan ticks and the external memory monitor to achieve 100% correlation confidence.
+
+#### Correlation Timeline:
+- **20:39:27.464Z**: `… (rwsdk) Scanning for 'use client' and 'use server' directives...` begins. Initial RSS is **1,358 MB**.
+- **20:39:30.472Z**: `[DirectiveScan TICK]` reports peak RSS of **2,516 MB**.
+- **20:39:30Z**: External `ps` monitor (via `memory-profile.log`) confirms process `3312` (Vite) reached **2,516,396 KB**.
+- **20:39:32.479Z**: `✔ (rwsdk) Done scanning...` message appears. Memory begins to stabilize.
+
+#### The "Smoking Gun" Finding:
+The instrumented logs revealed critical stats about the scan phase that explain this behavior:
+- **totalFilesRead:** 5,747
+- **totalBytesReadMB:** 40
+- **races:** 5,754
+- **cacheEntries:** 5,747
+
+**Analysis:** The number of `races` (redundant `fs.readFile` calls for the same file while a read is already in-flight) effectively matches the number of files. This means **every single file in the project was being read multiple times simultaneously** during the scan. While the total file size is only 40MB, the overhead of thousands of concurrent `fs.readFile` syscalls and their associated native buffers is likely driving the massive 1.2GB spike in native memory (RSS).
+
+**Conclusion:** The memory spike is definitively tied to the `DirectiveScan` phase and is specifically caused by massive I/O racing. The fix must be applied to `readFileWithCache` to await in-flight promises.

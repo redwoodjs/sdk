@@ -186,13 +186,13 @@ export const runDirectivesScan = async ({
   directiveScanBlocklist?: string[];
 }) => {
   deferredLog(
-    "\n… (rwsdk) Scanning for 'use client' and 'use server' directives...",
+    `\n[${new Date().toISOString()}] … (rwsdk) Scanning for 'use client' and 'use server' directives...`,
   );
 
   const memInterval = setInterval(() => {
     const memoryUsage = process.memoryUsage();
     console.log(
-      `[DirectiveScan TICK] RSS: ${Math.round(memoryUsage.rss / 1024 / 1024)}MB, Heap: ${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB / ${Math.round(memoryUsage.heapTotal / 1024 / 1024)}MB`,
+      `[${new Date().toISOString()}] [DirectiveScan TICK] RSS: ${Math.round(memoryUsage.rss / 1024 / 1024)}MB, heapUsed: ${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB, heapTotal: ${Math.round(memoryUsage.heapTotal / 1024 / 1024)}MB`,
     );
   }, 1000);
 

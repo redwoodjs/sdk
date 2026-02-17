@@ -56,6 +56,16 @@ The `lucide-react/dist/esm/lucide-react.js` barrel re-exports from 1,866 individ
     - Use actual `lucide-react` via npm (e.g. in `community/playground/lucide-showcase`).
     - Include large `.svg` and `.png` imports to test "Asset Bloat" hypothesis.
 
+## Adding Sidecar Memory Monitoring
+
+To debug the OOM, we need visibility into the process memory usage *during* the crash, as post-mortem analysis is difficult when the container is killed.
+
+We are modifying the `reproduce-oom.sh` script to:
+1.  Launch a background loop inside the Docker container.
+2.  Poll `free -m` and `ps` (sorted by RSS) every 0.5s.
+3.  Log this to `/app/memory-profile.log` (mounted to host).
+4.  Run the actual `pnpm run build:ci` payload.
+
 ## Summary of Handoff
 We have proven *how* the memory can be exhausted (Multipliers + Caching), but haven't found the specific project structure that hits 7GB. The solution should involve **Stateless Scanning** (don't cache content), **Path Normalization** (fuse casing/symlink duplicates), and **Inflight Promise Management**.
 
