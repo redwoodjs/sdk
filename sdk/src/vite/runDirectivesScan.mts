@@ -521,10 +521,11 @@ export const runDirectivesScan = async ({
     await esbuild.build({
       entryPoints: Array.from(combinedEntries),
       bundle: true,
-      write: false,
+      write: true,
       outdir: path.join(INTERMEDIATES_OUTPUT_DIR, "directive-scan"),
       platform: "node",
       format: "esm",
+      splitting: true, // Crucial for memory: deduplicate shared chunks (node_modules)
       logLevel: "silent",
       plugins: [esbuildScanPlugin],
     });

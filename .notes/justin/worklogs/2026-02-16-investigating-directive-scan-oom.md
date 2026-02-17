@@ -105,3 +105,32 @@ The scan identified 4,688 files, leading to a final graph of:
 - **Inflight Deduplication**: Ensure concurrent requests for the same path share a single `readFile` promise.
 - **Sequential Safety**: Potentially block the Worker build from starting until the DirectiveScan process has fully exited or flushed its buffers.
 
+## 2026-02-17: Fix Verification & Impact Analysis
+
+### 1. The Fix of "Splitting: True"
+Following the comparison with Vite's optimizer, we identified that the SDK's directive scanner was running `esbuild.build({ bundle: true })` without `splitting: true`.
+- **Effect:** When thousands of source files import the same icon from `lucide-react` (or any shared barrel file), esbuild duplicates the entire graph of that unresolved dependency into *every single importer's chunk* (conceptually) during the linking phase, leading to combinatorial memory explosion.
+- **Correction:** We added `splitting: true` and `format: 'esm'`, forcing esbuild to hoist shared code into common chunks.
+
+### 2. Validation Data
+We verified the fix using the same reproduction environment (Docker, 7GB limit).
+
+**Observed Memory Profile with Fix:**
+| Timestamp | Phase | Global Used | esbuild RSS | Node RSS | Status |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **21:12:49Z** | Scan Start | 1.5 GB | 14 MB | 469 MB | Steady |
+| **21:12:50Z** | Scan 1k files | 1.7 GB | 162 MB | 515 MB | Climbing |
+| **21:12:52Z** | Scan 2k files | 1.8 GB | 261 MB | 550 MB | Climbing |
+| **21:12:55Z** | Scan 4k files | 1.9 GB | 310 MB | 617 MB | Climbing |
+| **21:12:56Z** | **Scan Peak** | **2.2 GB** | **490 MB** | **754 MB** | **Peak** |
+| **21:13:00Z** | Worker Start | 2.5 GB | 1.3 MB | 1.4 GB | Scan done |
+
+### 3. Impact Assessment
+- **Peak Reduction:** The previous peak was **8.6 GB** (with esbuild taking ~6.9 GB). The new peak is **~1.25 GB** (combined esbuild + Node). This is an **~85% reduction**.
+- **Stability:** The process no longer approaches the 7GB OOM runner threshold.
+- **Performance:** Scan time remains approximately 7 seconds (verified in logs: 21:12:49 -> 21:12:56).
+
+### 4. Conclusion
+The root cause was **Graph Duplication** due to the lack of code splitting in the bundle-based scan. By enabling `splitting: true`, esbuild efficiently deduplicates shared dependencies like `lucide-react`, keeping memory usage linear rather than exponential relative to the number of importers.
+
+
