@@ -43,7 +43,6 @@ export type RedwoodPluginOptions = {
   configPath?: string;
   forceClientPaths?: string[];
   forceServerPaths?: string[];
-  directiveScanBlocklist?: string[];
   entry?: {
     worker?: string;
   };
@@ -142,7 +141,6 @@ export const redwoodPlugin = async (
       serverFiles,
       projectRootDir,
       workerEntryPathname,
-      directiveScanBlocklist: options.directiveScanBlocklist,
     }),
     configPlugin({
       silent: options.silent ?? false,
@@ -151,7 +149,6 @@ export const redwoodPlugin = async (
       clientFiles,
       serverFiles,
       clientEntryPoints,
-      directiveScanBlocklist: options.directiveScanBlocklist,
     }),
     ssrBridgePlugin({
       clientFiles,

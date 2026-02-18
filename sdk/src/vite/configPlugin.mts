@@ -15,7 +15,6 @@ export const configPlugin = ({
   clientFiles,
   serverFiles,
   clientEntryPoints,
-  directiveScanBlocklist,
 }: {
   silent: boolean;
   projectRootDir: string;
@@ -23,7 +22,6 @@ export const configPlugin = ({
   clientFiles: Set<string>;
   serverFiles: Set<string>;
   clientEntryPoints: Set<string>;
-  directiveScanBlocklist?: string[];
 }): Plugin => ({
   name: "rwsdk:config",
   config: async (_, { command }) => {
@@ -215,7 +213,6 @@ export const configPlugin = ({
             clientFiles,
             serverFiles,
             workerEntryPathname,
-            directiveScanBlocklist,
           });
         },
       },

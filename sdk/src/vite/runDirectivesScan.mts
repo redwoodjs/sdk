@@ -28,30 +28,6 @@ const isExternalUrl = (url: string): boolean => externalRE.test(url);
 
 type ReadFileWithCache = (path: string) => Promise<string>;
 
-export const DEFAULT_DIRECTIVE_SCAN_BLOCKLIST = ["lucide-react"];
-
-export const normalizeBlocklist = (blocklist?: string[]) => {
-  return (blocklist ?? [])
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0);
-};
-
-export const isBlockedSpecifier = (specifier: string, blocklist: string[]) => {
-  return blocklist.some(
-    (entry) => specifier === entry || specifier.startsWith(`${entry}/`),
-  );
-};
-
-export const isBlockedResolvedPath = (
-  resolvedPath: string,
-  blocklist: string[],
-) => {
-  const normalizedPath = resolvedPath.replace(/\\/g, "/");
-  return blocklist.some((entry) =>
-    normalizedPath.includes(`/node_modules/${entry}/`),
-  );
-};
-
 async function findDirectiveRoots({
   root,
   readFileWithCache,
@@ -166,24 +142,18 @@ export const runDirectivesScan = async ({
   clientFiles,
   serverFiles,
   entries: initialEntries,
-  directiveScanBlocklist,
 }: {
   rootConfig: ResolvedConfig;
   environments: Record<string, Environment>;
   clientFiles: Set<string>;
   serverFiles: Set<string>;
   entries?: string[];
-  directiveScanBlocklist?: string[];
 }) => {
   deferredLog(
     "\n… (rwsdk) Scanning for 'use client' and 'use server' directives...",
   );
 
   try {
-    const combinedBlocklist = [
-      ...DEFAULT_DIRECTIVE_SCAN_BLOCKLIST,
-      ...normalizeBlocklist(directiveScanBlocklist),
-    ];
     const fileContentCache = new Map<string, string>();
     const directiveCheckCache = new Map<string, boolean>();
     const readFileWithCache = async (path: string) => {
@@ -287,11 +257,6 @@ export const runDirectivesScan = async ({
         );
 
         build.onResolve({ filter: /.*/ }, async (args: OnResolveArgs) => {
-          if (isBlockedSpecifier(args.path, combinedBlocklist)) {
-            log("Skipping directive scan for blocked package:", args.path);
-            return { external: true };
-          }
-
           if (externalModules.includes(args.path)) {
             return { external: true };
           }
@@ -364,10 +329,6 @@ export const runDirectivesScan = async ({
               return { external: true };
             }
 
-            if (isBlockedResolvedPath(resolvedPath, combinedBlocklist)) {
-              log("Skipping directive scan for blocked path:", resolvedPath);
-              return { external: true };
-            }
             // Normalize the path for esbuild compatibility
             const normalizedPath = normalizeModulePath(
               resolvedPath,
@@ -405,11 +366,6 @@ export const runDirectivesScan = async ({
             }
 
             try {
-              if (isBlockedResolvedPath(args.path, combinedBlocklist)) {
-                log("Skipping directive scan for blocked path:", args.path);
-                return null;
-              }
-
               const originalContents = await readFileWithCache(args.path);
               const inheritedEnv = args.pluginData?.inheritedEnv || "worker";
 
