@@ -93,6 +93,32 @@ route("/files/*/download/*", ...)
 
 ---
 
+## Query Parameters
+
+RedwoodSDK uses the standard Web [Request](https://developer.mozilla.org/en-US/docs/Web/API/Request) object. To access query parameters, you can use the standard `URL` API:
+
+```tsx
+route("/search", ({ request }) => {
+  const url = new URL(request.url);
+  const name = url.searchParams.get("name");
+
+  return <div>Hello, {name}!</div>;
+});
+```
+
+To get multiple values for a single key (e.g., `?tag=js&tag=react`):
+
+```tsx
+route("/posts", ({ request }) => {
+  const url = new URL(request.url);
+  const tags = url.searchParams.getAll("tag"); // ["js", "react"]
+
+  return <div>Filtering by tags: {tags.join(", ")}</div>;
+});
+```
+
+---
+
 ## Request Handlers
 
 The request handler is a function, or array of functions (See [Interrupters](#interrupters)), that are executed when a request is matched.
@@ -476,7 +502,7 @@ export function AboutPageLayout() {
 }
 ```
 
-After each client navigation, Redwood scans `link[rel="x-prefetch"][href]` elements
+After each client navigation, RedwoodSDK scans `link[rel="x-prefetch"][href]` elements
 and issues background `GET` requests for those route-like URLs with the `__rsc`
 query parameter set and an `x-prefetch: true` header. Successful responses are stored in a generation-based `Cache`
 using `cache.put`, following the semantics described in the MDN Cache

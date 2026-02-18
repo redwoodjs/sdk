@@ -188,16 +188,12 @@ export const fetchTransport: Transport = (transportContext) => {
  *
  * @example
  * // Basic usage
- * import { initClient } from "rwsdk/client";
- *
- * initClient();
- *
- * @example
- * // With client-side navigation
  * import { initClient, initClientNavigation } from "rwsdk/client";
  *
- * const { handleResponse } = initClientNavigation();
- * initClient({ handleResponse });
+ * // RedwoodSDK uses RSC RPC to emulate client side navigation.
+ * // https://docs.rwsdk.com/guides/frontend/client-side-nav/
+ * const { handleResponse, onHydrated } = initClientNavigation();
+ * initClient({ handleResponse, onHydrated });
  *
  * @example
  * // With error handling

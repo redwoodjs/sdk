@@ -1,0 +1,45 @@
+---
+title: Building with AI
+description: Resources and tips for building RedwoodSDK applications with AI assistance.
+---
+
+import { Card, CardGrid } from "@astrojs/starlight/components";
+
+RedwoodSDK is designed to be AI-friendly. By following "Zero Magic" principles and staying close to web standards, it ensures that what you see in your source code is exactly what runs in the browser and on the server. This makes RedwoodSDK code highly predictable for AI tools.
+
+## Context files
+
+RedwoodSDK provides `llms.txt` and `llms-full.txt` files that contain the full documentation content in a format optimized for AI consumption. These files are located at the root of the documentation site.
+
+- [llms.txt](https://docs.rwsdk.com/llms.txt) — A concise summary of the documentation.
+- [llms-full.txt](https://docs.rwsdk.com/llms-full.txt) — The full documentation content.
+
+Some AI tools, like Cursor or Windsurf, can auto-discover these files if you provide `https://docs.rwsdk.com` as a documentation source.
+
+## Tips for AI-Powered Development
+
+### 1. Leverage "Zero Magic"
+Because RedwoodSDK avoids hidden behavior and complex code generation, AI tools are less likely to hallucinate internal framework logic. When asking an AI to write code, emphasize that it should use standard Web APIs (Request, Response, Fetch) and idiomatic React Server Components.
+
+### 2. Use `create-rwsdk` for Scaffolding
+Rather than asking an AI to set up a project from scratch, always start with the official starter:
+
+```bash
+npx create-rwsdk my-project-name
+```
+
+### 3. Server Functions and RSCs
+AI tools are generally well-versed in React, but they may need reminders about React Server Components (RSC) and Server Functions. If an AI is struggling with data fetching, remind it that it can use `async/await` directly in components or define `"use server";` functions for server-side logic.
+
+### 4. Cloudflare Runtime Aware
+RedwoodSDK runs on the Cloudflare Workers runtime (workerd). When asking for infrastructure help (e.g., using D1, R2, or Durable Objects), remind the AI that these are available via standard Cloudflare bindings.
+
+## Community Support
+
+If you're stuck or want to share how you're using AI with RedwoodSDK, join our community:
+
+<CardGrid>
+  <Card title="Discord" icon="discord">
+    Join the [RedwoodJS Discord](https://community.redwoodjs.com/) to chat with other developers and the core team.
+  </Card>
+</CardGrid>
