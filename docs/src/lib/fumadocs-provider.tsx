@@ -5,7 +5,11 @@ import { FrameworkProvider } from "fumadocs-core/framework";
 
 function subscribe(callback: () => void): () => void {
   window.addEventListener("popstate", callback);
-  return () => window.removeEventListener("popstate", callback);
+  window.addEventListener("locationchange", callback);
+  return () => {
+    window.removeEventListener("popstate", callback);
+    window.removeEventListener("locationchange", callback);
+  };
 }
 
 function getSnapshot(): string {
@@ -16,7 +20,7 @@ function getServerSnapshot(): string {
   return "/";
 }
 
-function usePathname(): string {
+export function usePathname(): string {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
