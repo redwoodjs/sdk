@@ -133,4 +133,28 @@ We verified the fix using the same reproduction environment (Docker, 7GB limit).
 ### 4. Conclusion
 The root cause was **Graph Duplication** due to the lack of code splitting in the bundle-based scan. By enabling `splitting: true`, esbuild efficiently deduplicates shared dependencies like `lucide-react`, keeping memory usage linear rather than exponential relative to the number of importers.
 
+---
+
+## Pull Request Description
+This PR fixes a critical Out-of-Memory issue in the directive scanner for large projects using barrel files.
+
+## Context
+The RedwoodJS SDK uses a custom directive scanner to identify `"use client"` and `"use server"` directives in user code. This scanner runs internally before the main build, processing the dependency graph to configure the bundler correctly. For large projects, this process must be both performant and memory-efficient.
+
+## Problem
+In projects that heavily utilize shared barrel files (such as icon libraries or large UI component sets), the directive scanner was consuming excessive memory, often exceeding 8GB and causing Out-of-Memory crashes on CI runners.
+
+Our investigation revealed that when thousands of components imported the same shared library, esbuild duplicated the entire dependency graph for that library into every single component's processing instruction. This caused memory usage to scale exponentially rather than linearly.
+
+## Solution
+We have updated the internal esbuild configuration to enable `splitting: true`. This forces the bundler to analyze the entire project graph holistically and deduplicate shared code into common chunks.
+
+By enabling this deduplication, the shared dependencies are processed once and referenced by all importers, returning the memory scaling to a linear profile.
+
+**Verification**
+We repro'd then tested the fix using a reproduction environment limited to 7GB RAM.
+- **Before**: Memory usage peaked at ~8.6 GB, causing a crash.
+- **After**: Memory usage peaked at ~1.25 GB, successfully completing the scan.
+- **Performance**: The scan duration remained neutral (~7 seconds).
+
 
