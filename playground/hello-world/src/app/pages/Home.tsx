@@ -1,10 +1,7 @@
-import { DynamicIcon } from "lucide-react/dynamic";
-
 export const Home = () => {
   return (
     <div>
-      <h1>Lucide Repro</h1>
-      <DynamicIcon name="activity" />
+      <h1>Hello World</h1>
     </div>
   );
 };
