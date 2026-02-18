@@ -206,3 +206,8 @@ starters/standard/.pnpm-store
 
 # Webstorm
 .idea/
+
+# Antigravity User Config
+.agent/rules/user
+.agent/skills/user
+.agent/workflows/user

@@ -328,6 +328,7 @@ export const runDirectivesScan = async ({
               );
               return { external: true };
             }
+
             // Normalize the path for esbuild compatibility
             const normalizedPath = normalizeModulePath(
               resolvedPath,
@@ -426,6 +427,7 @@ export const runDirectivesScan = async ({
       entryPoints: Array.from(combinedEntries),
       bundle: true,
       write: false,
+      splitting: true,
       outdir: path.join(INTERMEDIATES_OUTPUT_DIR, "directive-scan"),
       platform: "node",
       format: "esm",
