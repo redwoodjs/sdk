@@ -16,16 +16,6 @@ import { hasDirective } from "./hasDirective.mjs";
 
 const log = debug("rwsdk:vite:run-directives-scan");
 
-const scanStats = {
-  totalFilesRead: 0,
-  cacheSize: 0,
-  totalBytesRead: 0,
-  races: 0,
-  extensions: new Map<string, number>(),
-};
-
-const inflightReads = new Map<string, Promise<string>>();
-
 // Copied from Vite's source code.
 // https://github.com/vitejs/vite/blob/main/packages/vite/src/shared/utils.ts
 const isObject = (value: unknown): value is Record<string, any> =>
@@ -38,7 +28,7 @@ const isExternalUrl = (url: string): boolean => externalRE.test(url);
 
 type ReadFileWithCache = (path: string) => Promise<string>;
 
-export const DEFAULT_DIRECTIVE_SCAN_BLOCKLIST = [];
+export const DEFAULT_DIRECTIVE_SCAN_BLOCKLIST = ["lucide-react"];
 
 export const normalizeBlocklist = (blocklist?: string[]) => {
   return (blocklist ?? [])
@@ -186,64 +176,23 @@ export const runDirectivesScan = async ({
   directiveScanBlocklist?: string[];
 }) => {
   deferredLog(
-    `\n[${new Date().toISOString()}] … (rwsdk) Scanning for 'use client' and 'use server' directives...`,
+    "\n… (rwsdk) Scanning for 'use client' and 'use server' directives...",
   );
 
-  const memInterval = setInterval(() => {
-    const memoryUsage = process.memoryUsage();
-    console.log(
-      `[${new Date().toISOString()}] [DirectiveScan TICK] RSS: ${Math.round(memoryUsage.rss / 1024 / 1024)}MB, heapUsed: ${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB, heapTotal: ${Math.round(memoryUsage.heapTotal / 1024 / 1024)}MB`,
-    );
-  }, 1000);
-
-  const fileContentCache = new Map<string, string>();
   try {
     const combinedBlocklist = [
       ...DEFAULT_DIRECTIVE_SCAN_BLOCKLIST,
       ...normalizeBlocklist(directiveScanBlocklist),
     ];
+    const fileContentCache = new Map<string, string>();
     const directiveCheckCache = new Map<string, boolean>();
-    const readFileWithCache = async (filePath: string) => {
-      if (fileContentCache.has(filePath)) {
-        return fileContentCache.get(filePath)!;
+    const readFileWithCache = async (path: string) => {
+      if (fileContentCache.has(path)) {
+        return fileContentCache.get(path)!;
       }
-
-      // Record race but don't avoid it (TEMPORARY FOR INVESTIGATION)
-      if (inflightReads.has(filePath)) {
-        scanStats.races++;
-      }
-
-      const readPromise = (async () => {
-        try {
-          const contents = await fsp.readFile(filePath, "utf-8");
-          fileContentCache.set(filePath, contents);
-
-          scanStats.totalFilesRead++;
-          scanStats.totalBytesRead += contents.length;
-          const ext = path.extname(filePath);
-          scanStats.extensions.set(
-            ext,
-            (scanStats.extensions.get(ext) || 0) + 1,
-          );
-
-          if (scanStats.totalFilesRead % 100 === 0) {
-            const memoryUsage = process.memoryUsage();
-            console.log(
-              `[DirectiveScan] Read ${scanStats.totalFilesRead} files, ${Math.round(scanStats.totalBytesRead / 1024 / 1024)}MB cached, Races: ${scanStats.races}, Heap: ${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB / ${Math.round(memoryUsage.heapTotal / 1024 / 1024)}MB`,
-            );
-          }
-
-          return contents;
-        } finally {
-          inflightReads.delete(filePath);
-        }
-      })();
-
-      inflightReads.set(filePath, readPromise);
-      // return readPromise; // FIXED VERSION
-
-      // RACING VERSION (how it was before)
-      return await fsp.readFile(filePath, "utf-8");
+      const contents = await fsp.readFile(path, "utf-8");
+      fileContentCache.set(path, contents);
+      return contents;
     };
     const esbuild = await getViteEsbuild(rootConfig.root);
     const input =
@@ -416,7 +365,10 @@ export const runDirectivesScan = async ({
             }
 
             if (isBlockedResolvedPath(resolvedPath, combinedBlocklist)) {
-              log("Skipping directive scan for blocked path:", resolvedPath);
+              log(
+                "Skipping directive scan for blocked path:",
+                resolvedPath,
+              );
               return { external: true };
             }
             // Normalize the path for esbuild compatibility
@@ -521,11 +473,10 @@ export const runDirectivesScan = async ({
     await esbuild.build({
       entryPoints: Array.from(combinedEntries),
       bundle: true,
-      write: true,
+      write: false,
       outdir: path.join(INTERMEDIATES_OUTPUT_DIR, "directive-scan"),
       platform: "node",
       format: "esm",
-      splitting: true, // Crucial for memory: deduplicate shared chunks (node_modules)
       logLevel: "silent",
       plugins: [esbuildScanPlugin],
     });
@@ -536,14 +487,6 @@ export const runDirectivesScan = async ({
         `${e.stack}`,
     );
   } finally {
-    clearInterval(memInterval);
-    console.log("\n[DirectiveScan] Final stats:", {
-      totalFilesRead: scanStats.totalFilesRead,
-      totalBytesReadMB: Math.round(scanStats.totalBytesRead / 1024 / 1024),
-      races: scanStats.races,
-      extensions: Object.fromEntries(scanStats.extensions),
-      cacheEntries: fileContentCache.size,
-    });
     deferredLog(
       "✔ (rwsdk) Done scanning for 'use client' and 'use server' directives.",
     );
