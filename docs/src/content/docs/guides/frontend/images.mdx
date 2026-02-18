@@ -1,0 +1,367 @@
+---
+title: Image Optimization
+description: Optimize images with Cloudflare Images and a responsive Image component
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+[Cloudflare Images](https://developers.cloudflare.com/images/) is an image transformation service that can resize, convert, and optimize images on the fly. It integrates natively with Cloudflare Workers, and therefore, with RedwoodSDK. Combined with a reusable `<Image>` component, you can serve responsive, optimally sized images to every device without managing a build step or external pipeline.
+
+<Aside type="note" title="Prerequisite">
+  Cloudflare Images must be enabled on your zone. You can enable this in the [Cloudflare dashboard](https://dash.cloudflare.com/) under **Images > Transformations**.
+</Aside>
+
+## Setup
+
+<Steps>
+
+1.  **Add a route handler to transform images**
+
+    RedwoodSDK runs on Cloudflare Workers, so you can use the `cf.image` option on `fetch()` to transform images on the fly. The route handler reads `?w=` and `?q=` query params from the request, rewrites the path to the original image, and fetches it with `cf.image` options applied.
+
+    The simplest case is images in your `public/` directory. The route rewrites `/_image/hero.jpg` to `/hero.jpg` (the static file) and lets Cloudflare transform it on the way back:
+
+    ```tsx title="src/worker.tsx"
+    import { defineApp } from "rwsdk/worker";
+    import { route, render } from "rwsdk/router";
+    import { Document } from "@/app/Document";
+
+    export default defineApp([
+      route("/_image/*", ({ request }) => {
+        const url = new URL(request.url);
+
+        // Parse desired width and quality from query params
+        const width = parseInt(url.searchParams.get("w") ?? "800", 10);
+        const quality = parseInt(url.searchParams.get("q") ?? "85", 10);
+
+        // Rewrite /_image/... to the original static file path and strip transform params
+        url.pathname = url.pathname.replace(/^\/_image/, "");
+        url.searchParams.delete("w");
+        url.searchParams.delete("q");
+
+        return fetch(url.toString(), {
+          cf: {
+            image: {
+              width,
+              quality,
+              fit: "scale-down",
+              format: "auto",
+            },
+          },
+        });
+      }),
+
+      // ... your other routes
+      render(Document, [
+        route("/", Home),
+      ]),
+    ]);
+    ```
+
+2.  **Create a reusable Image component**
+
+    Rather than manually constructing transform URLs everywhere, create a reusable `<Image>` component that handles `srcSet` generation and lazy loading. The component appends `?w=` and `?q=` query params to the image src, and the route handler does the actual transformation.
+
+    ```tsx title="src/app/components/Image.tsx"
+    import { forwardRef } from "react";
+
+    interface ImageProps
+      extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, "src" | "alt"> {
+      src: string;
+      alt: string;
+      width?: number;
+      height?: number;
+      fill?: boolean;
+      sizes?: string;
+      quality?: number;
+      priority?: boolean;
+      unoptimized?: boolean;
+    }
+
+    // Append ?w= and ?q= params to the image path for the transform route.
+    // Uses a dummy base so this works in both server and client components.
+    function buildUrl(src: string, width: number, quality: number): string {
+      const url = new URL(src, "http://n");
+      url.searchParams.set("w", String(width));
+      url.searchParams.set("q", String(quality));
+      return url.pathname + url.search;
+    }
+
+    // Common device widths covering phones through 4K displays.
+    const DEVICE_WIDTHS = [640, 750, 828, 1080, 1200, 1920, 2048, 3840];
+
+    function buildSrcSet(src: string, baseWidth: number, quality: number): string {
+      // Cap at 2× the base width — screens beyond 2× DPR show no visible
+      // improvement, and larger variants waste bandwidth.
+      const widths = DEVICE_WIDTHS.filter((w) => w <= baseWidth * 2);
+
+      // Always include the exact base width so there's a 1:1 match.
+      if (!widths.includes(baseWidth)) {
+        widths.push(baseWidth);
+        widths.sort((a, b) => a - b);
+      }
+
+      return widths
+        .map((w) => `${buildUrl(src, w, quality)} ${w}w`)
+        .join(", ");
+    }
+
+    export const Image = forwardRef<HTMLImageElement, ImageProps>(
+      function Image(
+        {
+          src,
+          alt,
+          width,
+          height,
+          fill = false,
+          sizes,
+          quality = 85,
+          priority = false,
+          unoptimized = false,
+          className,
+          style,
+          ...props
+        },
+        ref,
+      ) {
+        const effectiveWidth = width ?? 800;
+
+        const imageSrc = unoptimized
+          ? src
+          : buildUrl(src, effectiveWidth, quality);
+
+        const srcSet = unoptimized
+          ? undefined
+          : buildSrcSet(src, effectiveWidth, quality);
+
+        return (
+          <img
+            ref={ref}
+            alt={alt}
+            width={fill ? undefined : width}
+            height={fill ? undefined : height}
+            loading={priority ? "eager" : "lazy"}
+            decoding="async"
+            fetchPriority={priority ? "high" : undefined}
+            className={className}
+            style={{
+              ...(fill
+                ? {
+                    position: "absolute",
+                    inset: 0,
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                  }
+                : {}),
+              ...style,
+            }}
+            // Keep sizes → srcSet → src in this order so Safari reads
+            // srcSet before it starts fetching src (avoids extra requests).
+            sizes={sizes}
+            srcSet={srcSet}
+            src={imageSrc}
+            {...props}
+          />
+        );
+      },
+    );
+    ```
+
+    <Aside type="tip" title="Key props">
+      - **`quality`** defaults to `85`. Lower values (60–75) produce smaller files, especially combined with `format: "auto"` which serves AVIF and WebP.
+      - **`priority`** switches from lazy to eager loading and sets `fetchPriority="high"`. Use this for hero images and above-the-fold content.
+      - **`unoptimized`** skips transformation entirely. Use for SVGs and already-optimized images.
+    </Aside>
+
+3.  **Use the component in your pages**
+
+    ```tsx
+    // Hero image, served from public/hero.jpg
+    <Image
+      src="/_image/hero.jpg"
+      alt="Welcome to our site"
+      width={1200}
+      height={600}
+      sizes="100vw"
+      priority
+    />
+    ```
+
+    ```tsx
+    // Card thumbnails, served from public/product.jpg
+    <Image
+      src="/_image/product.jpg"
+      alt="Product photo"
+      width={400}
+      height={300}
+      sizes="(max-width: 768px) 100vw, 400px"
+    />
+    ```
+
+    Use `fill` when the image should stretch to fit its parent (the parent must have `position: relative`):
+
+    ```tsx
+    <div style={{ position: "relative", width: "100%", aspectRatio: "16/9" }}>
+      <Image
+        src="/_image/banner.jpg"
+        alt="Banner"
+        fill
+        sizes="100vw"
+      />
+    </div>
+    ```
+
+    For SVGs or already-optimized images, use the direct file path with the `unoptimized` prop to bypass the transform handler:
+
+    ```tsx
+    <Image
+      src="/logo.svg"
+      alt="Logo"
+      width={200}
+      height={60}
+      unoptimized
+    />
+    ```
+
+    <Aside type="note" title="Use sizes correctly">
+      Tell the browser how wide the image will be at each breakpoint. Without `sizes`, the browser assumes the image is `100vw` wide.
+    </Aside>
+
+</Steps>
+
+## Other image sources
+
+The route handler works with any image source. Add separate routes for R2 buckets or external origins.
+
+### R2 bucket images
+
+For user-uploaded content or large image libraries, store images in an [R2 bucket](/core/storage). You'll need two routes: one that serves the raw R2 object, and one that fetches it with `cf.image` to apply transforms.
+
+First, add the R2 binding to your Wrangler config:
+
+```jsonc title="wrangler.jsonc"
+{
+  "r2_buckets": [
+    {
+      "binding": "IMAGES_BUCKET",
+      "bucket_name": "images"
+    }
+  ]
+}
+```
+
+Then add both routes:
+
+```tsx title="src/worker.tsx"
+import { env } from "cloudflare:workers";
+
+// Serve raw images from R2
+route("/_raw/r2/*", async ({ request }) => {
+  const url = new URL(request.url);
+  const key = url.pathname.replace("/_raw/r2/", "");
+  const object = await env.IMAGES_BUCKET.get(key);
+
+  if (!object) {
+    return new Response("Not found", { status: 404 });
+  }
+
+  return new Response(object.body, {
+    headers: { "Content-Type": object.httpMetadata?.contentType ?? "image/jpeg" },
+  });
+}),
+
+// Transform R2 images: rewrites to the raw route and applies cf.image
+route("/_image/r2/*", async ({ request }) => {
+  const url = new URL(request.url);
+  const width = parseInt(url.searchParams.get("w") ?? "800", 10);
+  const quality = parseInt(url.searchParams.get("q") ?? "85", 10);
+
+  // Point to the raw-serving route
+  url.pathname = url.pathname.replace("/_image/r2/", "/_raw/r2/");
+  url.searchParams.delete("w");
+  url.searchParams.delete("q");
+
+  return fetch(url.toString(), {
+    cf: {
+      image: {
+        width,
+        quality,
+        fit: "scale-down",
+        format: "auto",
+      },
+    },
+  });
+}),
+```
+
+```tsx
+// In your component: key "products/photo-123.jpg" in R2
+<Image src="/_image/r2/products/photo-123.jpg" alt="Product" width={400} height={300} />
+```
+
+### External URLs
+
+To transform images hosted on an external origin (e.g. a CMS or third-party CDN), define the allowed origin in your route and proxy through it. The route maps a local path to the external host, not user-supplied URLs at runtime:
+
+```tsx title="src/worker.tsx"
+const CMS_ORIGIN = "https://cdn.example.com";
+
+route("/_image/cms/*", async ({ request }) => {
+  const url = new URL(request.url);
+  const path = url.pathname.replace("/_image/cms/", "");
+  const width = parseInt(url.searchParams.get("w") ?? "800", 10);
+  const quality = parseInt(url.searchParams.get("q") ?? "85", 10);
+
+  return fetch(`${CMS_ORIGIN}/${path}`, {
+    cf: {
+      image: {
+        width,
+        quality,
+        fit: "scale-down",
+        format: "auto",
+      },
+    },
+  });
+}),
+```
+
+```tsx
+// In your component: proxies to https://cdn.example.com/photos/hero.jpg
+<Image
+  src="/_image/cms/photos/hero.jpg"
+  alt="External photo"
+  width={800}
+  height={600}
+/>
+```
+
+Add a separate route for each external origin you need to support.
+
+## `cf.image` options
+
+| Option    | Description |
+|-----------|-------------|
+| `width`   | Maximum width in pixels. With `scale-down` fit, images are never upscaled |
+| `height`  | Maximum height in pixels |
+| `dpr`     | Device pixel ratio multiplier (default `1`). Use as an alternative to generating `srcSet` client-side |
+| `quality` | 1–100 (default `85`), recommended 60–85 for a good size/quality balance |
+| `fit`     | `scale-down`, `contain`, `cover`, `crop`, `pad`, `squeeze` |
+| `format`  | `auto` negotiates the best format (AVIF, WebP, JPEG) |
+
+See the full list of options in the [Cloudflare docs](https://developers.cloudflare.com/images/transform-images/transform-via-workers/).
+
+<Aside type="note" title="Supported input formats">
+  Cloudflare Images only support **JPEG, PNG, GIF, and WebP** as input formats. SVGs cannot be resized — use the `unoptimized` prop with a direct file path (e.g. `/logo.svg`, not `/_image/logo.svg`) to bypass the transform handler entirely.
+</Aside>
+
+<Aside type="tip" title="Caching">
+  Transformed images are automatically cached by Cloudflare as variants of the original URL. You don't need to configure caching yourself, but avoid including transformation parameters (like `width` or `quality`) in any custom `cacheKey`, as Cloudflare manages this internally.
+</Aside>
+
+## Further Reading
+
+- [Cloudflare Images](https://developers.cloudflare.com/images/)
+- [Transform via Workers](https://developers.cloudflare.com/images/transform-images/transform-via-workers/)
+- [Responsive Images on Cloudflare](https://developers.cloudflare.com/images/transform-images/make-responsive-images/)
+- [Image Optimization Best Practices](https://web.dev/fast/#optimize-your-images)
