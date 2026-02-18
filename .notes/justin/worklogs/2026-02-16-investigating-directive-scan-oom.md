@@ -150,6 +150,7 @@ Our investigation revealed that when thousands of components imported the same s
 We have updated the internal esbuild configuration to enable `splitting: true`. This forces the bundler to analyze the entire project graph holistically and deduplicate shared code into common chunks.
 
 By enabling this deduplication, the shared dependencies are processed once and referenced by all importers, returning the memory scaling to a linear profile.
+Additionally, we have **removed the directive scan blocklist capability**. Previously, users had to manually block specific libraries (like `lucide-react`) to avoid memory issues. With code splitting enabled, these libraries are handled efficiently without manual intervention, so the blocklist is no longer necessary.
 
 **Verification**
 We repro'd then tested the fix using a reproduction environment limited to 7GB RAM.
