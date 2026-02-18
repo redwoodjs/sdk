@@ -365,10 +365,7 @@ export const runDirectivesScan = async ({
             }
 
             if (isBlockedResolvedPath(resolvedPath, combinedBlocklist)) {
-              log(
-                "Skipping directive scan for blocked path:",
-                resolvedPath,
-              );
+              log("Skipping directive scan for blocked path:", resolvedPath);
               return { external: true };
             }
             // Normalize the path for esbuild compatibility
@@ -474,6 +471,7 @@ export const runDirectivesScan = async ({
       entryPoints: Array.from(combinedEntries),
       bundle: true,
       write: false,
+      splitting: true,
       outdir: path.join(INTERMEDIATES_OUTPUT_DIR, "directive-scan"),
       platform: "node",
       format: "esm",
