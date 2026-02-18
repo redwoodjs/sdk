@@ -29,15 +29,15 @@
     "ui-lib": "file:./packages/ui-lib"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.25.0",
-    "@cloudflare/workers-types": "4.20260217.0",
+    "@cloudflare/vite-plugin": "1.25.1",
+    "@cloudflare/workers-types": "4.20260218.0",
     "@types/node": "24.10.4",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "typescript": "5.9.3",
     "vite": "7.3.1",
     "vitest": "^4.0.0",
-    "wrangler": "4.65.0"
+    "wrangler": "4.66.0"
   },
   "pnpm": {
   }
