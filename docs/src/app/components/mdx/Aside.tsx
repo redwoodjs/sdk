@@ -1,7 +1,12 @@
-/**
- * Stub for Starlight's <Aside> component.
- * Renders as a styled blockquote with a type indicator.
- */
+import { Callout } from "fumadocs-ui/components/callout";
+
+const typeMap: Record<string, "info" | "warn" | "error"> = {
+  note: "info",
+  tip: "info",
+  caution: "warn",
+  danger: "error",
+};
+
 export function Aside({
   type = "note",
   title,
@@ -12,9 +17,8 @@ export function Aside({
   children?: React.ReactNode;
 }) {
   return (
-    <blockquote className={`aside aside--${type}`}>
-      {title && <strong className="aside-title">{title}</strong>}
+    <Callout type={typeMap[type] ?? "info"} title={title}>
       {children}
-    </blockquote>
+    </Callout>
   );
 }

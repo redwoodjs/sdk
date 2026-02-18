@@ -1,57 +1,106 @@
-import { allDocs } from "content-collections";
-import { Sidebar } from "@/app/components/Sidebar";
+import { source } from "@/lib/source";
+import { RedwoodProvider } from "@/lib/fumadocs-provider";
+import { DocsLayout } from "fumadocs-ui/layouts/docs";
+import {
+  DocsPage,
+  DocsBody,
+  DocsTitle,
+  DocsDescription,
+} from "fumadocs-ui/layouts/docs/page";
+import defaultMdxComponents from "fumadocs-ui/mdx";
+import darkLogoUrl from "@/assets/dark-logo.svg?url";
 
 // Eagerly import all MDX files as React components at build time.
 const mdxModules = import.meta.glob("../../content/docs/**/*.mdx", {
   eager: true,
-}) as Record<string, { default: React.ComponentType }>;
+}) as Record<string, { default: React.ComponentType<{ components?: Record<string, React.ComponentType> }> }>;
 
-// Build a map from content-collections _meta.path → MDX component.
-function getMDXComponent(metaPath: string): React.ComponentType | undefined {
-  // _meta.path is e.g. "core/routing", glob key is e.g. "../../content/docs/core/routing.mdx"
-  const key = `../../content/docs/${metaPath}.mdx`;
+function getMDXComponent(
+  filePath: string,
+): React.ComponentType<{ components?: Record<string, React.ComponentType> }> | undefined {
+  const key = `../../content/docs/${filePath}`;
   return mdxModules[key]?.default;
 }
 
-export function DocPage({ slug: rawSlug }: { slug: string }) {
-  // Normalize: strip trailing slashes
+export function DocPageView({ slug: rawSlug }: { slug: string }) {
   const slug = rawSlug.replace(/\/+$/, "");
-  const doc = allDocs.find((d) => d.slug === slug);
+  const slugs = slug === "index" ? [] : slug.split("/");
+  const page = source.getPage(slugs);
+  const tree = source.pageTree;
 
-  if (!doc) {
+  if (!page) {
     return (
-      <div className="grid min-h-screen grid-cols-[17.5rem_1fr]">
-        <Sidebar currentSlug={slug} />
-        <main className="px-12 py-8 max-w-3xl">
-          <h1 className="text-3xl font-bold">Not Found</h1>
-          <p className="mt-2 text-zinc-400">
-            No documentation found for{" "}
-            <code className="rounded bg-zinc-800 px-1.5 py-0.5 text-sm">
-              {slug}
-            </code>
-            .
-          </p>
-        </main>
-      </div>
+      <RedwoodProvider>
+        <DocsLayout
+          tree={tree}
+          nav={{
+            title: (
+              <img src={darkLogoUrl} alt="RedwoodSDK" className="h-6" />
+            ),
+          }}
+          links={[
+            {
+              icon: "github",
+              url: "https://github.com/redwoodjs/sdk",
+              text: "GitHub",
+            },
+          ]}
+        >
+          <DocsPage>
+            <DocsBody>
+              <h1 className="text-3xl font-bold">Not Found</h1>
+              <p className="mt-2 text-zinc-400">
+                No documentation found for{" "}
+                <code className="rounded bg-zinc-800 px-1.5 py-0.5 text-sm">
+                  {slug}
+                </code>
+                .
+              </p>
+            </DocsBody>
+          </DocsPage>
+        </DocsLayout>
+      </RedwoodProvider>
     );
   }
 
-  const Content = getMDXComponent(doc._meta.path);
+  const Content = getMDXComponent(page.data.file.path);
 
   return (
-    <div className="grid min-h-screen grid-cols-[17.5rem_1fr]">
-      <Sidebar currentSlug={slug} />
-      <main className="px-12 py-8 max-w-3xl">
-        <h1 className="text-3xl font-bold mb-2">{doc.title}</h1>
-        {doc.description && (
-          <p className="text-lg text-zinc-400 mb-8 pb-6 border-b border-zinc-800">
-            {doc.description}
-          </p>
-        )}
-        <div className="prose prose-invert prose-zinc max-w-none">
-          {Content ? <Content /> : <p>Content not available.</p>}
-        </div>
-      </main>
-    </div>
+    <RedwoodProvider>
+      <DocsLayout
+        tree={tree}
+        nav={{
+          title: (
+            <img src={darkLogoUrl} alt="RedwoodSDK" className="h-6" />
+          ),
+        }}
+        links={[
+          {
+            icon: "github",
+            url: "https://github.com/redwoodjs/sdk",
+            text: "GitHub",
+          },
+        ]}
+      >
+        <DocsPage
+          toc={page.data.toc}
+          tableOfContent={{
+            enabled: page.data.tableOfContents !== false,
+          }}
+        >
+          <DocsTitle>{page.data.title}</DocsTitle>
+          {page.data.description && (
+            <DocsDescription>{page.data.description}</DocsDescription>
+          )}
+          <DocsBody>
+            {Content ? (
+              <Content components={{ ...defaultMdxComponents }} />
+            ) : (
+              <p>Content not available.</p>
+            )}
+          </DocsBody>
+        </DocsPage>
+      </DocsLayout>
+    </RedwoodProvider>
   );
 }

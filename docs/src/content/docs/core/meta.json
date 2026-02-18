@@ -1,0 +1,16 @@
+{
+  "title": "Core",
+  "pages": [
+    "overview",
+    "routing",
+    "react-server-components",
+    "storage",
+    "queues",
+    "cron",
+    "email",
+    "env-vars",
+    "authentication",
+    "security",
+    "hosting"
+  ]
+}

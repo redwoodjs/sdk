@@ -1,9 +1,7 @@
 import { cloudflare } from "@cloudflare/vite-plugin";
-import contentCollections from "@content-collections/vite";
 import tailwindcss from "@tailwindcss/vite";
-import mdx from "@mdx-js/rollup";
-import remarkFrontmatter from "remark-frontmatter";
-import remarkMdxFrontmatter from "remark-mdx-frontmatter";
+import mdx from "fumadocs-mdx/vite";
+import * as MdxConfig from "./source.config";
 import { redwood } from "rwsdk/vite";
 import { defineConfig } from "vite";
 import path from "path";
@@ -26,9 +24,6 @@ export default defineConfig({
     }),
     redwood(),
     tailwindcss(),
-    mdx({
-      remarkPlugins: [remarkFrontmatter, remarkMdxFrontmatter],
-    }),
-    contentCollections(),
+    mdx(MdxConfig),
   ],
 });

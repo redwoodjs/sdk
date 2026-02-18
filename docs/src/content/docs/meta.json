@@ -1,0 +1,18 @@
+{
+  "pages": [
+    "index",
+    "---Get Started---",
+    "getting-started",
+    "migrating",
+    "---Core---",
+    "core",
+    "---Experimental---",
+    "experimental",
+    "---Guides---",
+    "guides",
+    "---Reference---",
+    "reference",
+    "---Legacy---",
+    "legacy"
+  ]
+}

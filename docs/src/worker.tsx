@@ -2,7 +2,7 @@ import { defineApp } from "rwsdk/worker";
 import { render, route } from "rwsdk/router";
 
 import { Document } from "@/app/Document";
-import { DocPage } from "@/app/pages/DocPage";
+import { DocPageViewView } from "@/app/pages/DocPageView";
 import { setCommonHeaders } from "@/app/headers";
 
 export type AppContext = {};
@@ -10,7 +10,7 @@ export type AppContext = {};
 export default defineApp([
   setCommonHeaders(),
   render(Document, [
-    route("/", () => <DocPage slug="index" />),
-    route("/*", ({ params }) => <DocPage slug={params.$0} />),
+    route("/", () => <DocPageView slug="index" />),
+    route("/*", ({ params }) => <DocPageView slug={params.$0} />),
   ]),
 ]);

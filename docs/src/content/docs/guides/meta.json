@@ -1,0 +1,13 @@
+{
+  "title": "Guides",
+  "pages": [
+    "frontend",
+    "email",
+    "database",
+    "optimize",
+    "rsc-streams",
+    "debugging",
+    "vitest",
+    "troubleshooting"
+  ]
+}

@@ -1,7 +1,5 @@
-/**
- * Stub for Starlight's <LinkCard> component.
- * Renders as a simple link.
- */
+import { Card } from "fumadocs-ui/components/card";
+
 export function LinkCard({
   title,
   description,
@@ -12,9 +10,6 @@ export function LinkCard({
   href: string;
 }) {
   return (
-    <a href={href} className="link-card">
-      <strong>{title}</strong>
-      {description && <span>{description}</span>}
-    </a>
+    <Card title={title} description={description} href={href} />
   );
 }

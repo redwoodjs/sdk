@@ -1,3 +1,4 @@
+import { Provider } from "@/lib/provider";
 import stylesUrl from "./styles.css?url";
 
 export const Document: React.FC<{ children: React.ReactNode }> = ({
@@ -21,7 +22,7 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
       <meta property="og:type" content="website" />
     </head>
     <body className="bg-zinc-950 text-zinc-200 antialiased">
-      {children}
+      <Provider>{children}</Provider>
       <script>import("/src/client.tsx")</script>
     </body>
   </html>
