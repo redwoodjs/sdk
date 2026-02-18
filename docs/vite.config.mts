@@ -20,10 +20,6 @@ export default defineConfig({
       "astro-embed": path.resolve("src/app/components/mdx/index.tsx"),
       // fumadocs-mdx generated source (rwsdk doesn't use vite-tsconfig-paths)
       "@source": path.resolve(".source"),
-      // Prevent fumadocs sidebar auto-scroll on navigation (see scroll-into-view-noop.ts)
-      "scroll-into-view-if-needed": path.resolve(
-        "src/lib/scroll-into-view-noop.ts",
-      ),
     },
   },
   plugins: [
