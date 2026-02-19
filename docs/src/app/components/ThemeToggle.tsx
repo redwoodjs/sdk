@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import clsx from "clsx";
 
 type InitialTheme = "dark" | "light" | "system" | undefined;
 import { Switch } from "@base-ui/react/switch";
@@ -58,19 +59,27 @@ export function ThemeToggle({ initialTheme }: { initialTheme?: InitialTheme }) {
 
   useEffect(() => {
     const root = document.documentElement;
+
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      // Sync React state with the DOM — the blocking script in Document.tsx
+      // already resolved "system" preference and set the correct class.
+      const isDark = root.classList.contains("dark");
+      if ((isDark ? "dark" : "light") !== theme) {
+        setThemeState(isDark ? "dark" : "light");
+      }
+      return;
+    }
+
     if (theme === "dark") {
       root.classList.add("dark");
     } else {
       root.classList.remove("dark");
     }
 
-    if (!isInitialMount.current) {
-      setTheme(theme).catch((error) => {
-        console.error("Failed to set theme:", error);
-      });
-    } else {
-      isInitialMount.current = false;
-    }
+    setTheme(theme).catch((error) => {
+      console.error("Failed to set theme:", error);
+    });
   }, [theme]);
 
   const isDark = theme === "dark";
@@ -90,18 +99,20 @@ export function ThemeToggle({ initialTheme }: { initialTheme?: InitialTheme }) {
       {/* Sun (light mode, left) */}
       <span className="relative z-10 flex h-full w-1/2 items-center justify-center">
         <SunIcon
-          className={`size-3.5 transition-colors duration-200 ${
-            isDark ? "text-fd-muted-foreground" : "text-fd-accent-foreground"
-          }`}
+          className={clsx(
+            "size-3.5 transition-colors duration-200",
+            isDark ? "text-fd-muted-foreground" : "text-fd-accent-foreground",
+          )}
         />
       </span>
 
       {/* Moon (dark mode, right) */}
       <span className="relative z-10 flex h-full w-1/2 items-center justify-center">
         <MoonIcon
-          className={`size-3.5 transition-colors duration-200 ${
-            isDark ? "text-fd-accent-foreground" : "text-fd-muted-foreground"
-          }`}
+          className={clsx(
+            "size-3.5 transition-colors duration-200",
+            isDark ? "text-fd-accent-foreground" : "text-fd-muted-foreground",
+          )}
         />
       </span>
     </Switch.Root>

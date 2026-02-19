@@ -2,13 +2,12 @@
 
 import { useSyncExternalStore, useCallback, type ReactNode } from "react";
 import { FrameworkProvider } from "fumadocs-core/framework";
+import { navigate } from "rwsdk/client";
 
 function subscribe(callback: () => void): () => void {
   window.addEventListener("popstate", callback);
-  window.addEventListener("locationchange", callback);
   return () => {
     window.removeEventListener("popstate", callback);
-    window.removeEventListener("locationchange", callback);
   };
 }
 
@@ -32,26 +31,27 @@ function useParams(): { slugs?: string[] } {
 
 function Link({
   href,
+  prefetch,
   children,
   ...props
 }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { prefetch?: boolean }) {
-  const { prefetch: _, ...rest } = { prefetch: undefined, ...props };
   return (
-    <a href={href} {...rest}>
-      {children}
-    </a>
+    <>
+      {prefetch && href && <link rel="x-prefetch" href={href} />}
+      <a href={href} {...props}>
+        {children}
+      </a>
+    </>
   );
 }
 
 function useRouter() {
   const push = useCallback((url: string) => {
-    const a = document.createElement("a");
-    a.href = url;
-    a.click();
+    navigate(url);
   }, []);
 
   const refresh = useCallback(() => {
-    window.location.reload();
+    navigate(window.location.href, { history: "replace" });
   }, []);
 
   return { push, refresh };

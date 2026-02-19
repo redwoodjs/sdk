@@ -7,19 +7,6 @@ import {
 } from "fumadocs-ui/layouts/docs/page";
 import defaultMdxComponents from "fumadocs-ui/mdx";
 
-// Eagerly import all MDX files as React components at build time.
-const mdxModules = import.meta.glob("../../content/docs/**/*.mdx", {
-  eager: true,
-}) as Record<string, { default: React.ComponentType<{ components?: Record<string, React.ComponentType> }> }>;
-
-function getMDXComponent(
-  slugs: string[],
-): React.ComponentType<{ components?: Record<string, React.ComponentType> }> | undefined {
-  const path = slugs.length === 0 ? "index" : slugs.join("/");
-  const key = `../../content/docs/${path}.mdx`;
-  return mdxModules[key]?.default;
-}
-
 export function DocPageView({ slug: rawSlug }: { slug: string }) {
   const slug = rawSlug.replace(/\/+$/, "");
   const slugs = slug === "index" ? [] : slug.split("/");
@@ -42,7 +29,7 @@ export function DocPageView({ slug: rawSlug }: { slug: string }) {
     );
   }
 
-  const Content = getMDXComponent(slugs);
+  const MDX = page.data.body;
 
   return (
     <DocsPage
@@ -50,17 +37,18 @@ export function DocPageView({ slug: rawSlug }: { slug: string }) {
       tableOfContent={{
         enabled: page.data.tableOfContents !== false,
       }}
+      tableOfContentPopover={{ enabled: true }}
     >
+      <title>{page.data.title} - RedwoodSDK Docs</title>
+      {page.data.description && (
+        <meta name="description" content={page.data.description} />
+      )}
       <DocsTitle>{page.data.title}</DocsTitle>
       {page.data.description && (
         <DocsDescription>{page.data.description}</DocsDescription>
       )}
       <DocsBody>
-        {Content ? (
-          <Content components={{ ...defaultMdxComponents }} />
-        ) : (
-          <p>Content not available.</p>
-        )}
+        <MDX components={{ ...defaultMdxComponents }} />
       </DocsBody>
     </DocsPage>
   );

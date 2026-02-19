@@ -31,7 +31,14 @@ export default defineConfig({
     cloudflare({
       viteEnvironment: { name: "worker" },
     }),
-    redwood(),
+    redwood({
+      // rwsdk's directive scan can't follow import.meta.glob, so fumadocs
+      // "use client" modules loaded through MDX content are invisible to it.
+      forceClientPaths: [
+        "node_modules/fumadocs-ui/dist/**/*.js",
+        "node_modules/fumadocs-core/dist/**/*.js",
+      ],
+    }),
     tailwindcss(),
     mdx(MdxConfig),
   ],

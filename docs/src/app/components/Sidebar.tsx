@@ -177,7 +177,7 @@ function SidebarNodes({
 
 export function Sidebar({ pathname, initialTheme }: { pathname: string; initialTheme?: "dark" | "light" | "system" }) {
   return (
-    <div className="sticky top-(--fd-docs-row-1) [grid-area:sidebar] h-[calc(var(--fd-docs-height)-var(--fd-docs-row-1))] max-md:hidden md:layout:[--fd-sidebar-width:268px]">
+    <div className="sticky top-0 [grid-area:sidebar] w-[16rem] h-dvh max-md:hidden">
       <aside className="flex h-full flex-col border-e border-fd-border">
         <div className="flex shrink-0 items-center gap-2 px-4 pt-4 pb-2">
           <a href="/">

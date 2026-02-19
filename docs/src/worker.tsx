@@ -1,5 +1,5 @@
 import { defineApp } from "rwsdk/worker";
-import { layout, render, route } from "rwsdk/router";
+import { except, layout, render, route } from "rwsdk/router";
 
 import { Document } from "@/app/Document";
 import { DocPageView } from "@/app/pages/DocPage";
@@ -17,6 +17,10 @@ export default defineApp([
     const match = cookie?.match(/theme=([^;]+)/);
     ctx.theme = (match?.[1] as "dark" | "light" | "system") || "system";
   },
+  except((error) => {
+    console.error("Server error:", error);
+    return new Response("Internal Server Error", { status: 500 });
+  }),
   render(
     Document,
     layout(DocsLayoutWrapper, [

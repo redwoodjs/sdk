@@ -24,7 +24,7 @@ export function PackageManagers({
   const suffix = [pkg, args].filter(Boolean).join(" ");
 
   return (
-    <Tabs groupId="package-manager" persist items={["npm", "yarn", "pnpm", "bun"]}>
+    <Tabs groupId="package-manager" items={["npm", "yarn", "pnpm", "bun"]}>
       {Object.entries(cmdMap).map(([manager, cmd]) => (
         <Tab key={manager} value={manager}>
           <pre>

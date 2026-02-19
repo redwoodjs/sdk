@@ -6,6 +6,7 @@ export function YouTube({ id }: { id: string }) {
         title="YouTube video"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen
+        referrerPolicy="strict-origin-when-cross-origin"
         className="absolute inset-0 h-full w-full border-0"
       />
     </div>
