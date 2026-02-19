@@ -4,8 +4,12 @@ import {
   DocsBody,
   DocsTitle,
   DocsDescription,
+  EditOnGitHub,
+  PageLastUpdate,
 } from "fumadocs-ui/layouts/docs/page";
 import defaultMdxComponents from "fumadocs-ui/mdx";
+
+const GITHUB_REPO_URL = "https://github.com/redwoodjs/sdk";
 
 export function DocPageView({ slug: rawSlug }: { slug: string }) {
   const slug = rawSlug.replace(/\/+$/, "");
@@ -30,6 +34,8 @@ export function DocPageView({ slug: rawSlug }: { slug: string }) {
   }
 
   const MDX = page.data.body;
+  const editUrl = `${GITHUB_REPO_URL}/blob/main/docs/src/content/docs/${page.path}`;
+  const lastModified = (page.data as { lastModified?: Date }).lastModified;
 
   return (
     <DocsPage
@@ -50,6 +56,8 @@ export function DocPageView({ slug: rawSlug }: { slug: string }) {
       <DocsBody>
         <MDX components={{ ...defaultMdxComponents }} />
       </DocsBody>
+      <EditOnGitHub href={editUrl} />
+      {lastModified && <PageLastUpdate date={lastModified} />}
     </DocsPage>
   );
 }
