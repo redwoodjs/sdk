@@ -32,13 +32,11 @@ export default defineConfig({
       viteEnvironment: { name: "worker" },
     }),
     redwood({
-      // rwsdk's directive scan can't follow import.meta.glob, so fumadocs
-      // "use client" modules loaded through MDX content are invisible to it.
-      // Extglob excludes framework-specific files that import uninstalled
-      // optional peer deps (next/*, waku, react-router, @tanstack/react-router).
+      // fumadocs-mdx generates component imports at build time, after rwsdk's
+      // directive scan has run. Extglob excludes files that import uninstalled
+      // optional peer deps, *.server modules, and mdx (server-side component map).
       forceClientPaths: [
-        "node_modules/@fumadocs/base-ui/dist/components/**/*.js",
-        "node_modules/fumadocs-ui/dist/**/!(og|next|waku|react-router|tanstack|mdx|mdx.server).js",
+        "node_modules/fumadocs-ui/dist/**/!(og|next|waku|react-router|tanstack|mdx|*.server).js",
         "node_modules/fumadocs-core/dist/**/!(next|waku|react-router|tanstack|middleware).js",
       ],
       // Prevent the directive scan from re-adding framework files that have
