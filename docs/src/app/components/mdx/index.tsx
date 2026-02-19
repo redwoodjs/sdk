@@ -11,10 +11,3 @@ export { PackageManagers } from "./package-managers";
 export { Steps, Step } from "./Steps";
 export { Tabs, TabItem } from "./Tabs";
 export { YouTube } from "./YouTube";
-
-// Compatibility: some MDX files still import Code from Starlight
-export function Code({ code, lang }: { code: string; lang?: string; title?: string }) {
-  return (
-    <pre><code className={lang ? `language-${lang}` : ""}>{code}</code></pre>
-  );
-}
