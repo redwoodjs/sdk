@@ -34,9 +34,18 @@ export default defineConfig({
     redwood({
       // rwsdk's directive scan can't follow import.meta.glob, so fumadocs
       // "use client" modules loaded through MDX content are invisible to it.
+      // Extglob excludes framework-specific files that import uninstalled
+      // optional peer deps (next/*, waku, react-router, @tanstack/react-router).
       forceClientPaths: [
-        "node_modules/fumadocs-ui/dist/**/*.js",
-        "node_modules/fumadocs-core/dist/**/*.js",
+        "node_modules/@fumadocs/base-ui/dist/components/**/*.js",
+        "node_modules/fumadocs-ui/dist/**/!(og|next|waku|react-router|tanstack|mdx|mdx.server).js",
+        "node_modules/fumadocs-core/dist/**/!(next|waku|react-router|tanstack|middleware).js",
+      ],
+      // Prevent the directive scan from re-adding framework files that have
+      // 'use client' but import uninstalled packages.
+      directiveScanBlocklist: [
+        "fumadocs-core/dist/framework",
+        "fumadocs-ui/dist/provider",
       ],
     }),
     tailwindcss(),

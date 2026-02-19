@@ -1,7 +1,7 @@
 import type { LayoutProps } from "rwsdk/router";
 import { RedwoodProvider } from "@/lib/fumadocs-provider";
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
-import { Sidebar } from "@/app/components/Sidebar";
+import { Sidebar, MobileNav } from "@/app/components/Sidebar";
 import { pageTree } from "@/app/sidebar";
 
 export function DocsLayoutWrapper({ children, requestInfo }: LayoutProps) {
@@ -14,6 +14,7 @@ export function DocsLayoutWrapper({ children, requestInfo }: LayoutProps) {
     | "system";
   return (
     <RedwoodProvider>
+      <MobileNav pathname={pathname} initialTheme={theme} />
       <DocsLayout
         tree={pageTree}
         nav={{ enabled: false }}
