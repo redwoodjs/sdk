@@ -3,7 +3,13 @@ title: Security
 description: Learn about security headers and how to configure them for your app.
 ---
 
-import { Aside, Tabs, TabItem, LinkCard } from "@astrojs/starlight/components";
+import {
+  Aside,
+  Tabs,
+  TabItem,
+  LinkCard,
+  Code,
+} from "@astrojs/starlight/components";
 
 ## 🔐 Security Headers
 
@@ -12,7 +18,7 @@ Security headers are an important part of protecting your application from commo
 Here is an example of a middleware that adds a set of common security headers:
 
 ```typescript title="src/app/headers.ts"
-import type { RouteMiddleware } from "rwsdk/router";
+import type { RouteMiddleware } from "rwsdk/worker";
 
 export const setCommonHeaders =
   (): RouteMiddleware =>
@@ -35,14 +41,18 @@ export const setCommonHeaders =
 You can then apply this middleware in your `src/worker.tsx`:
 
 ```typescript title="src/worker.tsx"
-import { defineApp } from "rwsdk/worker";
-import { route } from "rwsdk/router";
-import { setCommonHeaders } from "./app/headers";
+import { rwsdk } from "rwsdk/worker";
+import { setCommonHeaders } from "./app/headers.js";
+import { routes } from "./app/pages/routes.js";
 
-export default defineApp([
-  setCommonHeaders(),
-  route("/", () => new Response("Hello, world!")),
-]);
+export default {
+  async fetch(request, env, ctx) {
+    return rwsdk(request, env, ctx, {
+      routes,
+      middleware: [setCommonHeaders()],
+    });
+  },
+};
 ```
 
 ### Changing CSP (Content Security Policy) headers
