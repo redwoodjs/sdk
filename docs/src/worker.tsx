@@ -5,6 +5,7 @@ import { Document } from "@/app/Document";
 import { DocPageView } from "@/app/pages/DocPage";
 import { DocsLayoutWrapper } from "@/app/layouts/DocsLayoutWrapper";
 import { setCommonHeaders } from "@/app/headers";
+import { generateSitemap } from "@/app/sitemap";
 
 export interface AppContext {
   theme?: "dark" | "light" | "system";
@@ -20,6 +21,12 @@ export default defineApp([
   except((error) => {
     console.error("Server error:", error);
     return new Response("Internal Server Error", { status: 500 });
+  }),
+  route("/sitemap.xml", ({ request }) => {
+    const origin = new URL(request.url).origin;
+    return new Response(generateSitemap(origin), {
+      headers: { "Content-Type": "application/xml" },
+    });
   }),
   render(
     Document,

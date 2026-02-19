@@ -8,10 +8,12 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const nonce = requestInfo.rw.nonce;
   const theme = requestInfo.ctx?.theme || "system";
-  const origin = new URL(requestInfo.request.url).origin;
+  const url = new URL(requestInfo.request.url);
+  const origin = url.origin;
+  const canonicalUrl = `${origin}${url.pathname.replace(/\/?$/, "/")}`;
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -20,29 +22,43 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
           name="description"
           content="Documentation for RedwoodSDK — the React framework for Cloudflare."
         />
-        <link rel="icon" href="/favicon.svg" />
+        <link rel="canonical" href={canonicalUrl} />
+        <link rel="sitemap" href="/sitemap.xml" />
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="modulepreload" href="/src/client.tsx" />
         <link rel="stylesheet" href={stylesUrl} />
+        <meta property="og:locale" content="en" />
+        <meta property="og:site_name" content="RedwoodSDK" />
         <meta
           property="og:title"
           content="RedwoodSDK Documentation | The React Framework for Cloudflare."
         />
         <meta
           property="og:description"
-          content="Documentation for RedwoodSDK — the React framework for Cloudflare."
+          content="RedwoodSDK is a React Framework for Cloudflare. It begins as a Vite plugin that unlocks SSR, React Server Components, Server Functions, and realtime features. Its standards-based router, with support for middleware and interrupters, gives you fine-grained control over every request and response."
         />
         <meta property="og:type" content="website" />
+        <meta property="og:url" content={`${origin}/`} />
         <meta property="og:image" content={`${origin}${ogImageUrl}`} />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta
-          name="twitter:title"
-          content="RedwoodSDK Documentation | The React Framework for Cloudflare."
-        />
+        <meta name="twitter:title" content="RedwoodSDK Docs" />
         <meta
           name="twitter:description"
-          content="Documentation for RedwoodSDK — the React framework for Cloudflare."
+          content="Official RedwoodSDK documentation for building full-stack React applications on Cloudflare."
         />
         <meta name="twitter:image" content={`${origin}${ogImageUrl}`} />
+        <script
+          async
+          defer
+          src="https://scripts.simpleanalyticscdn.com/latest.js"
+        ></script>
+        <noscript>
+          <img
+            src="https://queue.simpleanalyticscdn.com/noscript.gif"
+            alt=""
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+        </noscript>
       </head>
       <body className="antialiased">
         <script

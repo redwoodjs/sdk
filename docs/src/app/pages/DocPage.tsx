@@ -39,7 +39,7 @@ export function DocPageView({ slug: rawSlug }: { slug: string }) {
       }}
       tableOfContentPopover={{ enabled: true }}
     >
-      <title>{page.data.title} - RedwoodSDK Docs</title>
+      <title>{page.data.title} | RedwoodSDK</title>
       {page.data.description && (
         <meta name="description" content={page.data.description} />
       )}
