@@ -61,6 +61,7 @@ export const configPlugin = ({
           "rwsdk/realtime/worker",
           "rwsdk/router",
           "rwsdk/worker",
+          "rwsdk/use-synced-state/worker"
         ],
         exclude: [],
         entries: [workerEntryPathname],
@@ -117,6 +118,7 @@ export const configPlugin = ({
               "rwsdk/realtime/client",
               "rwsdk/router",
               "rwsdk/turnstile",
+              "rwsdk/use-synced-state/client"
             ],
             entries: [],
             esbuildOptions: {
@@ -155,6 +157,7 @@ export const configPlugin = ({
               "rwsdk/worker",
               "rwsdk/realtime/durableObject",
               "rwsdk/realtime/worker",
+              "rwsdk/use-synced-state/client"
             ],
             esbuildOptions: {
               jsx: "automatic",
