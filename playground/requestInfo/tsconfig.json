@@ -17,7 +17,6 @@
     "types": ["./types/rw.d.ts", "./types/vite.d.ts", "./types/vendor.d.ts"],
     "paths": {
       "@/*": ["./src/*"],
-      "rwsdk/worker": ["../../sdk/src/runtime/entries/worker.ts"],
       "rwsdk/*": ["../../sdk/src/*"]
     },
     /* Enable importing .json files */

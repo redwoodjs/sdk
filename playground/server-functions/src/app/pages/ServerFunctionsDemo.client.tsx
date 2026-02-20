@@ -37,14 +37,6 @@ export function ServerFunctionsDemo() {
         }
       }
       setResult(`Caught Error: ${message}`);
-
-      // Adding this so we can test the global error handling
-      if (
-        message.includes("Server function returned status 400") ||
-        message.includes("Server function returned status 500")
-      ) {
-        throw e;
-      }
     }
   };
 
