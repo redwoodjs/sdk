@@ -114,7 +114,6 @@
     },
     "./use-synced-state/client": {
       "types": "./dist/use-synced-state/client.d.ts",
-      "workerd": "./dist/use-synced-state/clientSSR.js",
       "default": "./dist/use-synced-state/client.js"
     },
     "./use-synced-state/worker": {
