@@ -23,7 +23,7 @@
     "types": "tsc"
   },
   "dependencies": {
-    "drizzle-orm": "^0.45.0",
+    "drizzle-orm": "^0.45.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-server-dom-webpack": "19.2.4",
@@ -32,13 +32,13 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.25.1",
     "@cloudflare/workers-types": "4.20260218.0",
-    "@types/node": "24.10.4",
+    "@types/node": "24.10.13",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "drizzle-kit": "^0.31.0",
+    "drizzle-kit": "^0.31.9",
     "typescript": "5.9.3",
     "vite": "7.3.1",
-    "vitest": "^4.0.0",
+    "vitest": "^4.0.18",
     "wrangler": "4.66.0"
   },
   "pnpm": {
