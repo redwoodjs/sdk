@@ -6,11 +6,10 @@
     "enabled": false
   },
   "rangeStrategy": "bump",
+  "groupName": "all-dependencies",
   "packageRules": [
     {
-      "description": "Horizontal: Critical Dependencies (Repo-wide, ASAP)",
-      "groupName": "critical-deps",
-      "prPriority": 10,
+      "description": "Critical Dependencies (Every Sunday)",
       "matchPackageNames": [
         "react",
         "react-dom",
@@ -22,32 +21,29 @@
         "wrangler",
         "vite"
       ],
-      "ignoreUnstable": true
+      "prPriority": 10,
+      "ignoreUnstable": true,
+      "schedule": ["every sunday"]
     },
     {
-      "description": "Vertical 1: SDK",
-      "groupName": "sdk-deps",
-      "matchFileNames": ["sdk/package.json", "addons/**"],
+      "description": "SDK & Starter (Every 2 weeks on 1st/3rd Sunday)",
+      "matchFileNames": ["sdk/package.json", "addons/**", "starter/package.json"],
       "matchPackageNames": ["*"],
-      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"]
+      "excludePackageNames": [
+        "react",
+        "react-dom",
+        "react-server-dom-webpack",
+        "@types/react",
+        "@types/react-dom",
+        "@cloudflare/vite-plugin",
+        "@cloudflare/workers-types",
+        "wrangler",
+        "vite"
+      ],
+      "schedule": ["* * 1-7 * 0", "* * 15-21 * 0"]
     },
     {
-      "description": "Vertical 2: Starter",
-      "groupName": "starter-deps",
-      "matchFileNames": ["starter/package.json"],
-      "matchPackageNames": ["*"],
-      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"]
-    },
-    {
-      "description": "Vertical 3: Community Library",
-      "groupName": "community-lib-deps",
-      "matchFileNames": ["community/package.json"],
-      "matchPackageNames": ["*"],
-      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"]
-    },
-    {
-      "description": "Vertical 4: Infrastructure & Root (Tools, Versions, Docs)",
-      "groupName": "infra-deps",
+      "description": "Infrastructure, Playgrounds, Community, Rest (Every 2 weeks on 2nd/4th Sunday)",
       "matchFileNames": [
         "package.json",
         "docs/package.json",
@@ -56,31 +52,25 @@
         "docs/.node-version",
         ".tool-versions",
         "pnpm-workspace.yaml",
-        "renovate.json"
+        "renovate.json",
+        "playground/**",
+        "examples/**",
+        "community/package.json",
+        "community/playground/**"
       ],
       "matchPackageNames": ["*"],
-      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"]
-    },
-    {
-      "description": "Vertical 5: SDK Playgrounds & Examples",
-      "groupName": "sdk-playground-deps",
-      "matchFileNames": ["playground/**", "examples/**"],
-      "matchPackageNames": ["*"],
-      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"]
-    },
-    {
-      "description": "Vertical 6: Community Playgrounds",
-      "groupName": "community-playground-deps",
-      "matchFileNames": ["community/playground/**"],
-      "matchPackageNames": ["*"],
-      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"]
-    },
-    {
-      "description": "Schedule: All standard verticals on weekends",
-      "matchUpdateTypes": ["patch", "minor", "major"],
-      "matchPackageNames": ["*"],
-      "excludePackageNames": ["react", "react-dom", "react-server-dom-webpack", "@types/react", "@types/react-dom", "@cloudflare/vite-plugin", "@cloudflare/workers-types", "wrangler", "vite"],
-      "schedule": ["every weekend"]
+      "excludePackageNames": [
+        "react",
+        "react-dom",
+        "react-server-dom-webpack",
+        "@types/react",
+        "@types/react-dom",
+        "@cloudflare/vite-plugin",
+        "@cloudflare/workers-types",
+        "wrangler",
+        "vite"
+      ],
+      "schedule": ["* * 8-14 * 0", "* * 22-28 * 0"]
     }
   ],
   "prHeader": " chore(deps): {{{prTitle}}}",

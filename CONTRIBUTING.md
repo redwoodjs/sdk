@@ -534,12 +534,14 @@ This section outlines the strategy for managing dependencies to maintain stabili
 
 ### Dependency Categories and Update Cadence
 
-We organize dependencies into a **7-Group Model** to balance release control with monorepo stability. This structure uses a "Manifest-First" update strategy (`rangeStrategy: bump`), which forces Renovate to always update `package.json` files. This ensures `pnpm` can correctly branch version resolutions across different workspace verticals without lockfile contradictions.
+We organize dependencies into a **single grouped rolling update** to balance release control with monorepo stability and noise reduction. This structure uses a "Manifest-First" update strategy (`rangeStrategy: bump`), which forces Renovate to always update `package.json` files. This ensures `pnpm` can correctly branch version resolutions across different workspace verticals without lockfile contradictions.
 
-#### 1. Horizontal Layer: Critical Dependencies (`critical-deps`)
+By grouping all updates into a single PR (`groupName: "all-dependencies"`), we eliminate the noise of overlapping PRs. We control when specific dependencies enter the PR using scheduled constraints.
+
+#### 1. Critical Dependencies (Every Sunday)
 
 -   **What**: The most critical shared infrastructure (`wrangler`, `react`, `vite`, etc.) that are defined as `peerDependencies` in the SDK and used across the entire monorepo.
--   **When**: As Soon As Possible (ASAP).
+-   **When**: Every Sunday.
 -   **Why**: These are the "Glue" of the repo. By moving them repo-wide in a single PR, we ensure that the manifests and the lockfile change simultaneously in every folder, preventing pnpm resolution failures.
 
 ##### A Note on React Canary Versions
@@ -547,33 +549,27 @@ The starters intentionally use `canary` versions of React. This is the official 
 
 To manage these potentially unstable versions, Renovate is specifically configured to track React's `next` distribution tag on npm. This provides a more reliable signal for the latest available canary version than tracking the `canary` tag directly, which can be more volatile.
 
-#### 2. Semantic Verticals (Weekly)
+#### 2. Semantic Verticals (Rolling Schedules)
 
-We divide the product and tooling into six semantic verticals. These groups only update dependencies **unique** to their respective folders, excluding the horizontal critical layer.
+We divide the product and tooling into verticals. These groups are updated on alternating weeks in lockstep with the critical dependencies to maintain a smooth flow of updates without overwhelming the PR queue.
 
-To ensure stability, dependencies are **always grouped** by their vertical, preventing them from falling back to individual "noise" PRs. The update window for these groups is restricted to **every weekend** using a collective schedule rule that matches on the active group names.
-
-1.  **SDK**: Updates unique to the core `sdk/` package and `addons/`.
-2.  **Starter**: Updates unique to the template starter project.
-3.  **Community Lib**: Updates unique to the `rwsdk-community` library.
-4.  **Infrastructure**: Shared internal tools, GitHub Actions, and environment files (`.node-version`, etc.), plus all root and documentation dependencies.
-5.  **SDK Playgrounds**: Official SDK example and test projects.
-6.  **Community Playgrounds**: Community-contributed showcases and demos.
+1.  **SDK & Starter**: Updates to the core `sdk/` package, `addons/`, and the template starter project. Scheduled every second week (e.g., 1st and 3rd Sunday).
+2.  **Infrastructure, Playgrounds, and Community**: Shared internal tools, environments, testing projects, and community showcases. Scheduled on the off-weeks (e.g., 2nd and 4th Sunday).
 
 ### Using the Dependency Dashboard
 
-After a new dependency update is available, Renovate will create a Pull Request. For managing all available updates, Renovate also creates a special issue in the repository titled "Dependency Dashboard". You can find this in the "Issues" tab.
+After a new dependency update is available and falls within its scheduled window, Renovate will append it to the single open Pull Request. For managing all available updates, Renovate also creates a special issue in the repository titled "Dependency Dashboard". You can find this in the "Issues" tab.
 
 This dashboard is the central place to manage the greenkeeping process. It provides:
 *   A list of all new dependency versions that have been discovered.
-*   The status of current open Pull Requests for dependency updates.
+*   The status of the single open Pull Request for dependency updates.
 *   A list of updates that are waiting for their scheduled time to run.
 
 #### Manually Triggering Updates
 
-Our configuration schedules most updates to run weekly to reduce noise. However, you can trigger any scheduled update immediately from the dashboard.
+Our configuration schedules updates on rolling cadences to reduce noise. However, you can trigger any scheduled update immediately from the dashboard.
 
-To do this, find the update group you wish to run in the "Awaiting Schedule" section of the dashboard and click the checkbox next to it. Renovate will detect this change and create the corresponding Pull Request within a few minutes. This is particularly useful for forcing a one-time update of all dependencies to establish a new baseline or to test a specific update, such as the `starter-deps` group.
+To do this, find the update you wish to run in the "Awaiting Schedule" section of the dashboard and click the checkbox next to it. Renovate will detect this change and append the update to the PR within a few minutes.
 
 ### Failure Protocol for Peer Dependencies
 
