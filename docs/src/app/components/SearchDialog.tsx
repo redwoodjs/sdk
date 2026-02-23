@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { Dialog } from "@base-ui/react/dialog";
+import { Autocomplete } from "@base-ui/react/autocomplete";
 
 // --- Search context ---
 
@@ -24,12 +25,11 @@ export function useSearch() {
 export function SearchProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
 
-  // Cmd+K / Ctrl+K listener
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        setOpen(true);
+        setOpen((prev) => !prev);
       }
     }
     document.addEventListener("keydown", onKeyDown);
@@ -136,24 +136,28 @@ function SearchDialogInner({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const [search, setSearch] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [searchValue, setSearchValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const listRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Reset on open
   useEffect(() => {
     if (open) {
-      setSearch("");
+      setSearchValue("");
       setResults([]);
-      setActiveIndex(0);
+      setIsLoading(false);
     }
   }, [open]);
 
-  // Debounced fetch
-  useEffect(() => {
-    if (!search) {
+  function handleValueChange(value: string) {
+    setSearchValue(value);
+
+    clearTimeout(timerRef.current);
+    abortRef.current?.abort();
+
+    if (!value.trim()) {
       setResults([]);
       setIsLoading(false);
       return;
@@ -161,148 +165,119 @@ function SearchDialogInner({
 
     setIsLoading(true);
     const controller = new AbortController();
-    const timer = setTimeout(async () => {
+    abortRef.current = controller;
+
+    timerRef.current = setTimeout(async () => {
       try {
         const res = await fetch(
-          `/api/search?query=${encodeURIComponent(search)}`,
+          `/api/search?query=${encodeURIComponent(value)}`,
           { signal: controller.signal },
         );
         const data: SearchResult[] = await res.json();
-        setResults(data);
+        if (!controller.signal.aborted) {
+          setResults(data);
+          setIsLoading(false);
+        }
       } catch {
-        // Aborted or network error
-      } finally {
-        setIsLoading(false);
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+        }
       }
     }, 150);
-
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [search]);
-
-  // Reset active index when results change
-  useEffect(() => {
-    setActiveIndex(0);
-  }, [results]);
-
-  // Scroll active item into view
-  useEffect(() => {
-    const list = listRef.current;
-    if (!list) return;
-    const active = list.querySelector("[data-active=true]");
-    if (active) {
-      active.scrollIntoView({ block: "nearest" });
-    }
-  }, [activeIndex]);
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setActiveIndex((i) => Math.min(i + 1, results.length - 1));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setActiveIndex((i) => Math.max(i - 1, 0));
-    } else if (e.key === "Enter" && results[activeIndex]) {
-      e.preventDefault();
-      window.location.href = results[activeIndex].url;
-      onOpenChange(false);
-    }
   }
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/50 [transition:opacity_150ms] opacity-100 data-starting-style:opacity-0 data-ending-style:opacity-0" />
-        <Dialog.Popup
-          className="fixed left-1/2 top-[15vh] z-50 w-full max-w-lg -translate-x-1/2 rounded-xl border border-fd-border bg-fd-background shadow-2xl [transition:transform_150ms,opacity_150ms] scale-100 opacity-100 data-starting-style:scale-95 data-starting-style:opacity-0 data-ending-style:scale-95 data-ending-style:opacity-0"
-          onKeyDown={handleKeyDown}
-        >
-          {/* Search input */}
-          <div className="flex items-center gap-3 border-b border-fd-border px-4 py-3">
-            <SearchIcon className="size-4 shrink-0 text-fd-muted-foreground" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search documentation..."
-              className="flex-1 bg-transparent text-sm text-fd-foreground placeholder:text-fd-muted-foreground outline-none"
-              autoFocus
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                className="rounded px-1.5 py-0.5 text-xs text-fd-muted-foreground border border-fd-border hover:bg-fd-accent/50"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-
-          {/* Results */}
-          <div ref={listRef} className="max-h-[50vh] overflow-y-auto p-2">
-            {isLoading && search && (
-              <p className="px-3 py-8 text-center text-sm text-fd-muted-foreground">
-                Searching...
-              </p>
-            )}
-
-            {!isLoading && search && results.length === 0 && (
-              <p className="px-3 py-8 text-center text-sm text-fd-muted-foreground">
-                No results found for &ldquo;{search}&rdquo;
-              </p>
-            )}
-
-            {!search && (
-              <p className="px-3 py-8 text-center text-sm text-fd-muted-foreground">
-                Type to search the docs
-              </p>
-            )}
-
-            {results.map((result, i) => (
-              <a
-                key={result.id}
-                href={result.url}
-                data-active={i === activeIndex}
-                onClick={() => onOpenChange(false)}
-                onMouseEnter={() => setActiveIndex(i)}
-                className="flex items-start gap-3 rounded-lg px-3 py-2.5 text-sm text-fd-muted-foreground transition-colors hover:bg-fd-accent/50 data-[active=true]:bg-fd-accent/50 data-[active=true]:text-fd-accent-foreground"
-              >
-                <ResultIcon
-                  type={result.type}
-                  className="mt-0.5 size-4 shrink-0"
+        <Dialog.Viewport className="fixed inset-0 z-50 flex flex-col items-center px-4 py-[10vh]">
+          <Dialog.Popup
+            className="flex w-full max-w-lg flex-col rounded-xl border border-fd-border bg-fd-background shadow-2xl [transition:transform_150ms,opacity_150ms] scale-100 opacity-100 data-starting-style:scale-95 data-starting-style:opacity-0 data-ending-style:scale-95 data-ending-style:opacity-0"
+            aria-label="Search documentation"
+          >
+            <Autocomplete.Root
+              open
+              inline
+              items={results}
+              value={searchValue}
+              onValueChange={handleValueChange}
+              filter={null}
+              autoHighlight="always"
+              keepHighlight
+              itemToStringValue={(item: SearchResult) => item.content}
+            >
+              {/* Search input */}
+              <div className="flex items-center gap-3 border-b border-fd-border px-4 py-3">
+                <SearchIcon className="size-4 shrink-0 text-fd-muted-foreground" />
+                <Autocomplete.Input
+                  placeholder="Search documentation..."
+                  className="flex-1 bg-transparent text-sm text-fd-foreground placeholder:text-fd-muted-foreground outline-none"
+                  autoFocus
                 />
-                <div className="min-w-0 flex-1">
-                  {result.type !== "page" && result.pageTitle && (
-                    <div className="mb-0.5 truncate text-xs text-fd-muted-foreground/70">
-                      {result.pageTitle}
-                    </div>
-                  )}
-                  <div className="truncate">{result.content}</div>
-                </div>
-              </a>
-            ))}
-          </div>
+                {searchValue && (
+                  <Autocomplete.Clear className="rounded px-1.5 py-0.5 text-xs text-fd-muted-foreground border border-fd-border hover:bg-fd-accent/50 cursor-pointer">
+                    Clear
+                  </Autocomplete.Clear>
+                )}
+              </div>
 
-          {/* Footer */}
-          <div className="flex items-center justify-between border-t border-fd-border px-4 py-2 text-xs text-fd-muted-foreground">
-            <div className="flex items-center gap-2">
-              <kbd className="rounded border border-fd-border bg-fd-secondary/50 px-1.5 py-0.5 font-mono">
-                ↑↓
-              </kbd>
-              <span>Navigate</span>
-              <kbd className="rounded border border-fd-border bg-fd-secondary/50 px-1.5 py-0.5 font-mono">
-                ↵
-              </kbd>
-              <span>Open</span>
-              <kbd className="rounded border border-fd-border bg-fd-secondary/50 px-1.5 py-0.5 font-mono">
-                Esc
-              </kbd>
-              <span>Close</span>
+              {/* Empty state */}
+              <Autocomplete.Empty className="px-3 py-8 text-center text-sm text-fd-muted-foreground">
+                {isLoading
+                  ? "Searching..."
+                  : searchValue
+                    ? <>No results found for &ldquo;{searchValue}&rdquo;</>
+                    : "Type to search the docs"}
+              </Autocomplete.Empty>
+
+              {/* Results */}
+              <Autocomplete.List className="max-h-[50vh] overflow-y-auto p-2">
+                {(result: SearchResult) => (
+                  <Autocomplete.Item
+                    key={result.id}
+                    value={result}
+                    onClick={() => {
+                      window.location.href = result.url;
+                      onOpenChange(false);
+                    }}
+                    className="flex items-start gap-3 rounded-lg px-3 py-2.5 text-sm text-fd-muted-foreground transition-colors data-highlighted:bg-fd-accent/50 data-highlighted:text-fd-accent-foreground cursor-default"
+                  >
+                    <ResultIcon
+                      type={result.type}
+                      className="mt-0.5 size-4 shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      {result.type !== "page" && result.pageTitle && (
+                        <div className="mb-0.5 truncate text-xs text-fd-muted-foreground/70">
+                          {result.pageTitle}
+                        </div>
+                      )}
+                      <div className="truncate">{result.content}</div>
+                    </div>
+                  </Autocomplete.Item>
+                )}
+              </Autocomplete.List>
+            </Autocomplete.Root>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between border-t border-fd-border px-4 py-2 text-xs text-fd-muted-foreground">
+              <div className="flex items-center gap-2">
+                <kbd className="rounded border border-fd-border bg-fd-secondary/50 px-1.5 py-0.5 font-mono">
+                  ↑↓
+                </kbd>
+                <span>Navigate</span>
+                <kbd className="rounded border border-fd-border bg-fd-secondary/50 px-1.5 py-0.5 font-mono">
+                  ↵
+                </kbd>
+                <span>Open</span>
+                <kbd className="rounded border border-fd-border bg-fd-secondary/50 px-1.5 py-0.5 font-mono">
+                  Esc
+                </kbd>
+                <span>Close</span>
+              </div>
             </div>
-          </div>
-        </Dialog.Popup>
+          </Dialog.Popup>
+        </Dialog.Viewport>
       </Dialog.Portal>
     </Dialog.Root>
   );
