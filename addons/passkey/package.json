@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "dependencies": {
     "@simplewebauthn/browser": "13.2.2",
-    "@simplewebauthn/server": "13.2.2",
+    "@simplewebauthn/server": "13.2.3",
     "rwsdk": "workspace:*"
   },
   "devDependencies": {
