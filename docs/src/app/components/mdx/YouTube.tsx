@@ -1,4 +1,11 @@
+const YOUTUBE_ID_RE = /^[\w-]{1,15}$/;
+
 export function YouTube({ id }: { id: string }) {
+  if (!YOUTUBE_ID_RE.test(id)) {
+    console.error(`YouTube: invalid video id "${id}"`);
+    return null;
+  }
+
   return (
     <div className="relative my-4 aspect-video w-full overflow-hidden rounded-lg">
       <iframe

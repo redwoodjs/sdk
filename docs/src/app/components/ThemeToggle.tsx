@@ -2,12 +2,25 @@
 
 import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
-
-type InitialTheme = "dark" | "light" | "system" | undefined;
 import { Switch } from "@base-ui/react/switch";
 import { setTheme } from "@/app/actions/setTheme";
 
 type Theme = "dark" | "light";
+
+function resolveInitialTheme(
+  preference: "dark" | "light" | "system" | undefined,
+): Theme {
+  if (preference === "dark") return "dark";
+  if (preference === "light") return "light";
+  // For "system" or undefined, read the class that the blocking script in
+  // Document.tsx already set based on the OS preference.
+  if (typeof document !== "undefined") {
+    return document.documentElement.classList.contains("dark")
+      ? "dark"
+      : "light";
+  }
+  return "light";
+}
 
 function SunIcon({ className }: { className?: string }) {
   return (
@@ -51,26 +64,25 @@ function MoonIcon({ className }: { className?: string }) {
   );
 }
 
-export function ThemeToggle({ initialTheme }: { initialTheme?: InitialTheme }) {
+export function ThemeToggle({
+  initialTheme,
+}: {
+  initialTheme?: "dark" | "light" | "system";
+}) {
   const [theme, setThemeState] = useState<Theme>(() =>
-    initialTheme === "dark" ? "dark" : "light"
+    resolveInitialTheme(initialTheme),
   );
   const isInitialMount = useRef(true);
 
   useEffect(() => {
-    const root = document.documentElement;
-
+    // Skip persisting on the initial mount — the blocking script in
+    // Document.tsx already applied the correct class.
     if (isInitialMount.current) {
       isInitialMount.current = false;
-      // Sync React state with the DOM — the blocking script in Document.tsx
-      // already resolved "system" preference and set the correct class.
-      const isDark = root.classList.contains("dark");
-      if ((isDark ? "dark" : "light") !== theme) {
-        setThemeState(isDark ? "dark" : "light");
-      }
       return;
     }
 
+    const root = document.documentElement;
     if (theme === "dark") {
       root.classList.add("dark");
     } else {

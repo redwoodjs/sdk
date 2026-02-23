@@ -1,4 +1,4 @@
-import { Provider } from "@/lib/provider";
+import { AppProviders } from "@/lib/provider";
 import { requestInfo } from "rwsdk/worker";
 import stylesUrl from "./styles.css?url";
 import ogImageUrl from "../assets/og-docs.png?url";
@@ -17,7 +17,10 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>RedwoodSDK Docs</title>
+        {/* Per-page <title> and <meta name="description"> are set in DocPage.tsx
+            via React 19's metadata hoisting. The tags below are site-wide fallbacks
+            that apply when no page-level override is present (e.g. the home page). */}
+        <title>RedwoodSDK Docs — The React Framework for Cloudflare</title>
         <meta
           name="description"
           content="Documentation for RedwoodSDK — the React framework for Cloudflare."
@@ -67,7 +70,7 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
             __html: `(function(){var t=${JSON.stringify(theme)};var d=document.documentElement;var s=t==="dark"||(t==="system"&&matchMedia("(prefers-color-scheme:dark)").matches);if(s){d.classList.add("dark")}else{d.classList.remove("dark")}d.setAttribute("data-theme",t)})()`,
           }}
         />
-        <Provider>{children}</Provider>
+        <AppProviders>{children}</AppProviders>
         <script>import("/src/client.tsx")</script>
       </body>
     </html>

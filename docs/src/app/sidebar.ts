@@ -1,10 +1,9 @@
 import type * as PageTree from "fumadocs-core/page-tree";
-import { link } from "@/app/shared/links";
 
 const p = (name: string, slug: string): PageTree.Item => ({
   type: "page",
   name,
-  url: link("/*", { $0: slug }),
+  url: `/${slug}`,
 });
 
 export const pageTree: PageTree.Root = {

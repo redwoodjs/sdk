@@ -22,6 +22,6 @@ export const setCommonHeaders =
     );
     response.headers.set(
       "Content-Security-Policy",
-      `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://scripts.simpleanalyticscdn.com; style-src 'self' 'unsafe-inline'; frame-src 'self' https://www.youtube.com; frame-ancestors 'self'; object-src 'none'; img-src 'self' https://imagedelivery.net https://queue.simpleanalyticscdn.com; connect-src 'self' https://queue.simpleanalyticscdn.com;`,
+      `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://scripts.simpleanalyticscdn.com; style-src 'self' 'unsafe-inline'; frame-src 'self' https://www.youtube.com; frame-ancestors 'self'; object-src 'none'; img-src 'self' data: https://imagedelivery.net https://queue.simpleanalyticscdn.com; connect-src 'self' https://queue.simpleanalyticscdn.com;`,
     );
   };

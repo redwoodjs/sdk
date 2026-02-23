@@ -1,29 +1,32 @@
 import { source } from "@/lib/source";
+import type { InferPageType } from "fumadocs-core/source";
 import {
   DocsPage,
   DocsBody,
   DocsTitle,
   DocsDescription,
-  EditOnGitHub,
-  PageLastUpdate,
 } from "fumadocs-ui/layouts/docs/page";
 import defaultMdxComponents from "fumadocs-ui/mdx";
+import { requestInfo } from "rwsdk/worker";
 
-const GITHUB_REPO_URL = "https://github.com/redwoodjs/sdk";
+
+type Page = InferPageType<typeof source>;
 
 export function DocPageView({ slug: rawSlug }: { slug: string }) {
   const slug = rawSlug.replace(/\/+$/, "");
   const slugs = slug === "index" ? [] : slug.split("/");
-  const page = source.getPage(slugs);
+  const page: Page | undefined = source.getPage(slugs);
 
   if (!page) {
+    requestInfo.response.status = 404;
     return (
       <DocsPage>
+        <title>Not Found | RedwoodSDK</title>
         <DocsBody>
           <h1 className="text-3xl font-bold">Not Found</h1>
-          <p className="mt-2 text-zinc-400">
+          <p className="mt-2 text-fd-muted-foreground">
             No documentation found for{" "}
-            <code className="rounded bg-zinc-800 px-1.5 py-0.5 text-sm">
+            <code className="rounded bg-fd-muted px-1.5 py-0.5 text-sm">
               {slug}
             </code>
             .
@@ -34,8 +37,7 @@ export function DocPageView({ slug: rawSlug }: { slug: string }) {
   }
 
   const MDX = page.data.body;
-  const editUrl = `${GITHUB_REPO_URL}/blob/main/docs/src/content/docs/${page.path}`;
-  const lastModified = (page.data as { lastModified?: Date }).lastModified;
+  const pageUrl = `${new URL(requestInfo.request.url).origin}${page.url}`;
 
   return (
     <DocsPage
@@ -45,9 +47,25 @@ export function DocPageView({ slug: rawSlug }: { slug: string }) {
       }}
       tableOfContentPopover={{ enabled: true }}
     >
+      {/* React 19 hoists <title> and <meta> into <head> automatically */}
       <title>{page.data.title} | RedwoodSDK</title>
       {page.data.description && (
         <meta name="description" content={page.data.description} />
+      )}
+      <meta
+        property="og:title"
+        content={`${page.data.title} | RedwoodSDK`}
+      />
+      {page.data.description && (
+        <meta property="og:description" content={page.data.description} />
+      )}
+      <meta property="og:url" content={pageUrl} />
+      <meta
+        name="twitter:title"
+        content={`${page.data.title} | RedwoodSDK`}
+      />
+      {page.data.description && (
+        <meta name="twitter:description" content={page.data.description} />
       )}
       <DocsTitle>{page.data.title}</DocsTitle>
       {page.data.description && (
@@ -56,8 +74,6 @@ export function DocPageView({ slug: rawSlug }: { slug: string }) {
       <DocsBody>
         <MDX components={{ ...defaultMdxComponents }} />
       </DocsBody>
-      <EditOnGitHub href={editUrl} />
-      {lastModified && <PageLastUpdate date={lastModified} />}
     </DocsPage>
   );
 }

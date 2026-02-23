@@ -2,7 +2,6 @@
   "name": "docs",
   "version": "1.0.0",
   "description": "RedwoodSDK Documentation",
-  "main": "index.js",
   "type": "module",
   "keywords": [],
   "author": "",

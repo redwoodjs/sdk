@@ -6,6 +6,7 @@ import { DocPageView } from "@/app/pages/DocPage";
 import { DocsLayoutWrapper } from "@/app/layouts/DocsLayoutWrapper";
 import { setCommonHeaders } from "@/app/headers";
 import { generateSitemap } from "@/app/sitemap";
+import { generateLlmsTxt, generateLlmsFullTxt } from "@/app/llms";
 
 export interface AppContext {
   theme?: "dark" | "light" | "system";
@@ -26,6 +27,18 @@ export default defineApp([
     const origin = new URL(request.url).origin;
     return new Response(generateSitemap(origin), {
       headers: { "Content-Type": "application/xml" },
+    });
+  }),
+  route("/llms.txt", ({ request }) => {
+    const origin = new URL(request.url).origin;
+    return new Response(generateLlmsTxt(origin), {
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }),
+  route("/llms-full.txt", async ({ request }) => {
+    const origin = new URL(request.url).origin;
+    return new Response(await generateLlmsFullTxt(origin), {
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   }),
   render(

@@ -1,8 +1,20 @@
 "use client";
 
-import { useSyncExternalStore, useCallback, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useSyncExternalStore,
+  useCallback,
+  type ReactNode,
+} from "react";
 import { FrameworkProvider } from "fumadocs-core/framework";
 import { navigate } from "rwsdk/client";
+
+/**
+ * Holds the server-rendered pathname so that `useSyncExternalStore` returns the
+ * correct value during SSR instead of always falling back to "/".
+ */
+const PathnameContext = createContext("/");
 
 function subscribe(callback: () => void): () => void {
   window.addEventListener("popstate", callback);
@@ -15,12 +27,9 @@ function getSnapshot(): string {
   return window.location.pathname;
 }
 
-function getServerSnapshot(): string {
-  return "/";
-}
-
 export function usePathname(): string {
-  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const serverPathname = useContext(PathnameContext);
+  return useSyncExternalStore(subscribe, getSnapshot, () => serverPathname);
 }
 
 function useParams(): { slugs?: string[] } {
@@ -57,15 +66,31 @@ function useRouter() {
   return { push, refresh };
 }
 
-export function RedwoodProvider({ children }: { children: ReactNode }) {
+/**
+ * Bridges fumadocs' framework-agnostic APIs (usePathname, useRouter, Link) to
+ * RedwoodSDK's client-side navigation.
+ *
+ * @param pathname - The server-rendered pathname, used as the SSR snapshot for
+ *   `useSyncExternalStore`. Pass this from a server component that has access
+ *   to `requestInfo` so that SSR markup reflects the correct active page.
+ */
+export function RedwoodProvider({
+  children,
+  pathname = "/",
+}: {
+  children: ReactNode;
+  pathname?: string;
+}) {
   return (
-    <FrameworkProvider
-      usePathname={usePathname}
-      useParams={useParams}
-      useRouter={useRouter}
-      Link={Link}
-    >
-      {children}
-    </FrameworkProvider>
+    <PathnameContext.Provider value={pathname}>
+      <FrameworkProvider
+        usePathname={usePathname}
+        useParams={useParams}
+        useRouter={useRouter}
+        Link={Link}
+      >
+        {children}
+      </FrameworkProvider>
+    </PathnameContext.Provider>
   );
 }

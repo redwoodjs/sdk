@@ -45,7 +45,7 @@ function SidebarSeparator({
   depth,
   isFirst,
 }: {
-  name: string;
+  name: React.ReactNode;
   depth: number;
   isFirst: boolean;
 }) {
@@ -68,12 +68,12 @@ function SidebarLink({
   isActive,
   depth,
 }: {
-  name: string;
+  name: React.ReactNode;
   url: string;
   isActive: boolean;
   depth: number;
 }) {
-  const highlight = depth >= 1;
+  const showActiveIndicator = depth >= 1;
   return (
     <li>
       <a
@@ -81,7 +81,7 @@ function SidebarLink({
         data-active={isActive}
         className={clsx(
           "relative flex flex-row items-center gap-2 rounded-lg p-2 text-start text-sm text-fd-muted-foreground transition-colors hover:bg-fd-accent/50 hover:text-fd-accent-foreground/80 hover:transition-none data-[active=true]:bg-fd-primary/10 data-[active=true]:text-fd-primary",
-          highlight && "data-[active=true]:before:content-[''] data-[active=true]:before:bg-fd-primary data-[active=true]:before:absolute data-[active=true]:before:w-px data-[active=true]:before:inset-y-2.5 data-[active=true]:before:start-2.5",
+          showActiveIndicator && "data-[active=true]:before:content-[''] data-[active=true]:before:bg-fd-primary data-[active=true]:before:absolute data-[active=true]:before:w-px data-[active=true]:before:inset-y-2.5 data-[active=true]:before:start-2.5",
         )}
         style={{ paddingInlineStart: getItemOffset(depth) }}
       >
@@ -144,7 +144,7 @@ function SidebarNodes({
         if (node.type === "separator") {
           return (
             <SidebarSeparator
-              key={`sep-${node.name}`}
+              key={`sep-${depth}-${i}`}
               name={node.name}
               depth={depth}
               isFirst={i === 0}
@@ -155,7 +155,7 @@ function SidebarNodes({
         if (node.type === "folder") {
           return (
             <SidebarFolder
-              key={`folder-${node.name}`}
+              key={`folder-${depth}-${i}`}
               node={node}
               pathname={pathname}
               depth={depth}

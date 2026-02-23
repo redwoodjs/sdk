@@ -13,7 +13,7 @@ export function DocsLayoutWrapper({ children, requestInfo }: LayoutProps) {
     | "light"
     | "system";
   return (
-    <RedwoodProvider>
+    <RedwoodProvider pathname={pathname}>
       <MobileNav pathname={pathname} initialTheme={theme} />
       <DocsLayout
         tree={pageTree}
