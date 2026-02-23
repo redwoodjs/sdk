@@ -108,9 +108,11 @@ testDevAndDeploy("query error response works (dev)", async ({ page, url }) => {
   await page.click("#query-greeting-error");
 
   await poll(async () => {
-    expect(page.url()).toBe(new URL("/error", url).toString());
-    const text = await page.$eval("h1", (el) => el.textContent);
-    expect(text).toBe("Error Page");
+    const result = await page.$eval(
+      "#server-function-result",
+      (el) => el.textContent,
+    );
+    expect(result).toMatch(/Caught Error/);
     return true;
   });
 });
@@ -122,9 +124,11 @@ testDevAndDeploy("action error response works (dev)", async ({ page, url }) => {
   await page.click("#action-update-name-error");
 
   await poll(async () => {
-    expect(page.url()).toBe(new URL("/error", url).toString());
-    const text = await page.$eval("h1", (el) => el.textContent);
-    expect(text).toBe("Error Page");
+    const result = await page.$eval(
+      "#server-function-result",
+      (el) => el.textContent,
+    );
+    expect(result).toMatch(/Caught Error/);
     return true;
   });
 });
