@@ -8,7 +8,7 @@ import { SearchProvider } from "@/app/components/SearchDialog";
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <RedwoodProvider>
-      <RootProvider theme={{ enabled: false }}>
+      <RootProvider theme={{ enabled: false }} search={{ enabled: false }}>
         <SearchProvider>{children}</SearchProvider>
       </RootProvider>
     </RedwoodProvider>
