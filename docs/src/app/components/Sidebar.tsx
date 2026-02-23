@@ -8,7 +8,7 @@ import clsx from "clsx";
 import { pageTree } from "@/app/sidebar";
 import { ScrollArea, ScrollViewport } from "fumadocs-ui/components/ui/scroll-area";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
-import { useSearch } from "@/app/components/SearchDialog";
+import { SearchCommand } from "@/app/components/SearchDialog";
 
 function ChevronDown({ className }: { className?: string }) {
   return (
@@ -217,33 +217,6 @@ function Logo() {
   );
 }
 
-function SearchTrigger() {
-  const { setOpen } = useSearch();
-  return (
-    <button
-      type="button"
-      onClick={() => setOpen(true)}
-      className="flex w-full items-center gap-2 rounded-lg border border-fd-border bg-fd-secondary/50 px-3 py-2 text-sm text-fd-muted-foreground transition-colors hover:bg-fd-accent/50 hover:text-fd-accent-foreground"
-    >
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="size-4 shrink-0"
-      >
-        <circle cx="11" cy="11" r="8" />
-        <path d="m21 21-4.3-4.3" />
-      </svg>
-      <span className="flex-1 text-start">Search docs...</span>
-      <kbd className="pointer-events-none hidden select-none items-center gap-0.5 rounded border border-fd-border bg-fd-background px-1.5 py-0.5 font-mono text-[10px] font-medium text-fd-muted-foreground sm:inline-flex">
-        <span className="text-xs">&#8984;</span>K
-      </kbd>
-    </button>
-  );
-}
 
 export function MobileNav({ pathname, initialTheme }: { pathname: string; initialTheme?: "dark" | "light" | "system" }) {
   const [open, setOpen] = useState(false);
@@ -281,7 +254,7 @@ export function MobileNav({ pathname, initialTheme }: { pathname: string; initia
               </Dialog.Close>
             </div>
             <div className="px-3 pb-2">
-              <SearchTrigger />
+              <SearchCommand />
             </div>
             <ScrollArea className="flex-1">
               <ScrollViewport className="px-2 py-4">
@@ -308,7 +281,7 @@ export function Sidebar({ pathname, initialTheme }: { pathname: string; initialT
           <Logo />
         </div>
         <div className="px-3 pb-2">
-          <SearchTrigger />
+          <SearchCommand enableShortcut />
         </div>
         <ScrollArea className="flex-1">
           <ScrollViewport className="px-2 py-4">

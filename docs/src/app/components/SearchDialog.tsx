@@ -1,48 +1,8 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { Autocomplete } from "@base-ui/react/autocomplete";
-
-// --- Search context ---
-
-const SearchContext = createContext<{
-  open: boolean;
-  setOpen: (open: boolean) => void;
-}>({ open: false, setOpen: () => {} });
-
-export function useSearch() {
-  return useContext(SearchContext);
-}
-
-export function SearchProvider({ children }: { children: ReactNode }) {
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setOpen((prev) => !prev);
-      }
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, []);
-
-  return (
-    <SearchContext.Provider value={{ open, setOpen }}>
-      {children}
-      <SearchDialogInner open={open} onOpenChange={setOpen} />
-    </SearchContext.Provider>
-  );
-}
 
 // --- Result type ---
 
@@ -127,20 +87,28 @@ function ResultIcon({
   }
 }
 
-// --- Dialog ---
+// --- Self-contained search command (COSS pattern) ---
 
-function SearchDialogInner({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
+export function SearchCommand({ enableShortcut = false }: { enableShortcut?: boolean }) {
+  const [open, setOpen] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searchValue, setSearchValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Cmd+K shortcut
+  useEffect(() => {
+    if (!enableShortcut) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setOpen((prev) => !prev);
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [enableShortcut]);
 
   // Reset on open
   useEffect(() => {
@@ -187,7 +155,17 @@ function SearchDialogInner({
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+    <Dialog.Root open={open} onOpenChange={setOpen}>
+      {/* Trigger — the search button in the sidebar */}
+      <Dialog.Trigger className="flex w-full items-center gap-2 rounded-lg border border-fd-border bg-fd-secondary/50 px-3 py-2 text-sm text-fd-muted-foreground transition-colors hover:bg-fd-accent/50 hover:text-fd-accent-foreground">
+        <SearchIcon className="size-4 shrink-0" />
+        <span className="flex-1 text-start">Search docs...</span>
+        <kbd className="pointer-events-none hidden select-none items-center gap-0.5 rounded border border-fd-border bg-fd-background px-1.5 py-0.5 font-mono text-[10px] font-medium text-fd-muted-foreground sm:inline-flex">
+          <span className="text-xs">&#8984;</span>K
+        </kbd>
+      </Dialog.Trigger>
+
+      {/* Popup — portalled search dialog */}
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/50 [transition:opacity_150ms] opacity-100 data-starting-style:opacity-0 data-ending-style:opacity-0" />
         <Dialog.Viewport className="fixed inset-0 z-50 flex flex-col items-center px-4 py-[10vh]">
@@ -238,7 +216,7 @@ function SearchDialogInner({
                     value={result}
                     onClick={() => {
                       window.location.href = result.url;
-                      onOpenChange(false);
+                      setOpen(false);
                     }}
                     className="flex items-start gap-3 rounded-lg px-3 py-2.5 text-sm text-fd-muted-foreground transition-colors data-highlighted:bg-fd-accent/50 data-highlighted:text-fd-accent-foreground cursor-default"
                   >
