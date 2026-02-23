@@ -29,15 +29,15 @@
     "workers-og": "^0.0.27"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.25.1",
-    "@cloudflare/workers-types": "4.20260218.0",
+    "@cloudflare/vite-plugin": "1.25.2",
+    "@cloudflare/workers-types": "4.20260302.0",
     "@types/node": "24.10.4",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "typescript": "5.9.3",
     "vite": "7.3.1",
     "vitest": "^4.0.0",
-    "wrangler": "4.66.0"
+    "wrangler": "4.67.0"
   },
   "pnpm": {
   }
