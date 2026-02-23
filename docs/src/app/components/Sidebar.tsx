@@ -8,7 +8,7 @@ import clsx from "clsx";
 import { pageTree } from "@/app/sidebar";
 import { ScrollArea, ScrollViewport } from "fumadocs-ui/components/ui/scroll-area";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
-import { useSearchContext } from "fumadocs-ui/contexts/search";
+import { useSearch } from "@/app/components/SearchDialog";
 
 function ChevronDown({ className }: { className?: string }) {
   return (
@@ -218,11 +218,11 @@ function Logo() {
 }
 
 function SearchTrigger() {
-  const { setOpenSearch } = useSearchContext();
+  const { setOpen } = useSearch();
   return (
     <button
       type="button"
-      onClick={() => setOpenSearch(true)}
+      onClick={() => setOpen(true)}
       className="flex w-full items-center gap-2 rounded-lg border border-fd-border bg-fd-secondary/50 px-3 py-2 text-sm text-fd-muted-foreground transition-colors hover:bg-fd-accent/50 hover:text-fd-accent-foreground"
     >
       <svg

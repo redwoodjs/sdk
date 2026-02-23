@@ -7,7 +7,7 @@ import { DocsLayoutWrapper } from "@/app/layouts/DocsLayoutWrapper";
 import { setCommonHeaders } from "@/app/headers";
 import { generateSitemap } from "@/app/sitemap";
 import { generateLlmsTxt, generateLlmsFullTxt } from "@/app/llms";
-import { searchAPI } from "@/app/api/search";
+import { handleSearch } from "@/app/api/search";
 
 export interface AppContext {
   theme?: "dark" | "light" | "system";
@@ -42,9 +42,7 @@ export default defineApp([
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   }),
-  route("/api/search", ({ request }) => {
-    return searchAPI.GET(request);
-  }),
+  route("/api/search", ({ request }) => handleSearch(request)),
   render(
     Document,
     layout(DocsLayoutWrapper, [
