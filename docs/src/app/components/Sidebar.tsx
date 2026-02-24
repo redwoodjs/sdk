@@ -6,7 +6,7 @@ import { Collapsible } from "@base-ui/react/collapsible";
 import { Dialog } from "@base-ui/react/dialog";
 import clsx from "clsx";
 import { pageTree } from "@/app/sidebar";
-import { ScrollArea, ScrollViewport } from "fumadocs-ui/components/ui/scroll-area";
+import { ScrollArea } from "@/app/components/ui/ScrollArea";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { SearchCommand } from "@/app/components/SearchDialog";
 
@@ -53,7 +53,7 @@ function SidebarSeparator({
   return (
     <li
       className={clsx(
-        "inline-flex items-center gap-2 mb-1.5 px-2 text-base font-bold text-fd-foreground",
+        "inline-flex items-center gap-2 mb-1.5 px-0 text-base font-bold text-fd-foreground",
         !(depth === 0 && isFirst) && "mt-4",
       )}
       style={{ paddingInlineStart: getItemOffset(depth) }}
@@ -180,7 +180,7 @@ function SidebarNodes({
 
 function SidebarFooter({ initialTheme }: { initialTheme?: "dark" | "light" | "system" }) {
   return (
-    <div className="flex shrink-0 items-center gap-1.5 border-t border-fd-border px-4 py-3">
+    <div className="flex shrink-0 items-center gap-1.5">
       <a
         href="https://discord.gg/redwoodjs"
         target="_blank"
@@ -242,7 +242,7 @@ export function MobileNav({ pathname, initialTheme }: { pathname: string; initia
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/50 [transition:opacity_200ms] opacity-100 data-starting-style:opacity-0 data-ending-style:opacity-0" />
         <Dialog.Popup className="fixed inset-y-0 left-0 z-50 w-72 bg-fd-background border-e border-fd-border [transition:transform_200ms] translate-x-0 data-starting-style:-translate-x-full data-ending-style:-translate-x-full">
           <div className="flex h-full flex-col">
-            <div className="flex shrink-0 items-center justify-between px-4 pt-4 pb-2">
+            <div className="flex shrink-0 items-center justify-between px-4 pt-4">
               <Logo />
               <Dialog.Close
                 className="inline-flex items-center justify-center rounded-md p-1.5 text-fd-muted-foreground hover:bg-fd-accent/50 hover:text-fd-accent-foreground"
@@ -253,17 +253,17 @@ export function MobileNav({ pathname, initialTheme }: { pathname: string; initia
                 </svg>
               </Dialog.Close>
             </div>
-            <div className="px-3 pb-2">
+            <div className="px-3">
               <SearchCommand />
             </div>
-            <ScrollArea className="flex-1">
-              <ScrollViewport className="px-2 py-4">
+            <ScrollArea scrollFade className="flex-1">
+              <div className="px-2">
                 <SidebarNodes
                   nodes={pageTree.children}
                   pathname={pathname}
                   depth={0}
                 />
-              </ScrollViewport>
+              </div>
             </ScrollArea>
             <SidebarFooter initialTheme={initialTheme} />
           </div>
@@ -276,21 +276,19 @@ export function MobileNav({ pathname, initialTheme }: { pathname: string; initia
 export function Sidebar({ pathname, initialTheme }: { pathname: string; initialTheme?: "dark" | "light" | "system" }) {
   return (
     <div className="sticky top-0 [grid-area:sidebar] w-[16rem] h-dvh max-md:hidden">
-      <aside className="flex h-full flex-col border-e border-fd-border">
-        <div className="flex shrink-0 items-center gap-2 px-4 pt-4 pb-2">
+      <aside className="flex h-full flex-col gap-4 px-4 py-4 border-e border-fd-border">
+        <div className="flex shrink-0 items-center gap-2">
           <Logo />
         </div>
-        <div className="px-3 pb-2">
-          <SearchCommand enableShortcut />
-        </div>
-        <ScrollArea className="flex-1">
-          <ScrollViewport className="px-2 py-4">
+        <SearchCommand enableShortcut />
+        <ScrollArea scrollFade className="flex-1 border-b border-fd-border">
+          <div className="pb-2">
             <SidebarNodes
               nodes={pageTree.children}
               pathname={pathname}
               depth={0}
             />
-          </ScrollViewport>
+          </div>
         </ScrollArea>
         <SidebarFooter initialTheme={initialTheme} />
       </aside>

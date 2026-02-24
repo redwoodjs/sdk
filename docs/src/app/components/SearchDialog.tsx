@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { Autocomplete } from "@base-ui/react/autocomplete";
 
+
 // --- Result type ---
 
 interface SearchResult {
@@ -87,7 +88,6 @@ function ResultIcon({
   }
 }
 
-// --- Self-contained search command (COSS pattern) ---
 
 export function SearchCommand({ enableShortcut = false }: { enableShortcut?: boolean }) {
   const [open, setOpen] = useState(false);
@@ -157,20 +157,16 @@ export function SearchCommand({ enableShortcut = false }: { enableShortcut?: boo
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       {/* Trigger — the search button in the sidebar */}
-      <Dialog.Trigger className="flex w-full items-center gap-2 rounded-lg border border-fd-border bg-fd-secondary/50 px-3 py-2 text-sm text-fd-muted-foreground transition-colors hover:bg-fd-accent/50 hover:text-fd-accent-foreground">
+      <Dialog.Trigger className="flex w-full items-center gap-2 rounded-lg border border-fd-border bg-fd-secondary/50 p-1.5 text-sm text-fd-muted-foreground transition-colors hover:bg-fd-accent/50 hover:text-fd-accent-foreground">
         <SearchIcon className="size-4 shrink-0" />
-        <span className="flex-1 text-start">Search docs...</span>
-        <kbd className="pointer-events-none hidden select-none items-center gap-0.5 rounded border border-fd-border bg-fd-background px-1.5 py-0.5 font-mono text-[10px] font-medium text-fd-muted-foreground sm:inline-flex">
-          <span className="text-xs">&#8984;</span>K
-        </kbd>
+        <span className="flex-1 text-start">Search</span>
       </Dialog.Trigger>
 
       {/* Popup — portalled search dialog */}
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/50 [transition:opacity_150ms] opacity-100 data-starting-style:opacity-0 data-ending-style:opacity-0" />
-        <Dialog.Viewport className="fixed inset-0 z-50 flex flex-col items-center px-4 py-[10vh]">
+        <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm [transition:opacity_150ms] opacity-100 data-starting-style:opacity-0 data-ending-style:opacity-0" />
           <Dialog.Popup
-            className="flex w-full max-w-lg flex-col rounded-xl border border-fd-border bg-fd-background shadow-2xl [transition:transform_150ms,opacity_150ms] scale-100 opacity-100 data-starting-style:scale-95 data-starting-style:opacity-0 data-ending-style:scale-95 data-ending-style:opacity-0"
+            className="fixed left-1/2 top-4 md:top-[calc(50%-250px)] z-50 w-[calc(100%-1rem)] max-w-screen-sm -translate-x-1/2 flex flex-col rounded-xl border border-fd-border bg-fd-popover text-fd-popover-foreground shadow-2xl shadow-black/50 overflow-hidden data-[open]:animate-fd-dialog-in data-[closed]:animate-fd-dialog-out"
             aria-label="Search documentation"
           >
             <Autocomplete.Root
@@ -185,31 +181,29 @@ export function SearchCommand({ enableShortcut = false }: { enableShortcut?: boo
               itemToStringValue={(item: SearchResult) => item.content}
             >
               {/* Search input */}
-              <div className="flex items-center gap-3 border-b border-fd-border px-4 py-3">
+              <div className="flex items-center gap-2 border-fd-border p-4">
                 <SearchIcon className="size-4 shrink-0 text-fd-muted-foreground" />
                 <Autocomplete.Input
-                  placeholder="Search documentation..."
-                  className="flex-1 bg-transparent text-sm text-fd-foreground placeholder:text-fd-muted-foreground outline-none"
+                  placeholder="Search"
+                  className="flex-1 bg-transparent text-lg text-fd-muted-foreground outline-none"
                   autoFocus
                 />
-                {searchValue && (
-                  <Autocomplete.Clear className="rounded px-1.5 py-0.5 text-xs text-fd-muted-foreground border border-fd-border hover:bg-fd-accent/50 cursor-pointer">
-                    Clear
-                  </Autocomplete.Clear>
-                )}
+                <Dialog.Close className="rounded uppercase px-1.5 py-0.5 font-mono text-xs text-fd-muted-foreground border border-fd-border hover:bg-fd-accent/50 cursor-pointer transition-opacity">Esc</Dialog.Close>
               </div>
 
-              {/* Empty state */}
-              <Autocomplete.Empty className="px-3 py-8 text-center text-sm text-fd-muted-foreground">
-                {isLoading
-                  ? "Searching..."
-                  : searchValue
-                    ? <>No results found for &ldquo;{searchValue}&rdquo;</>
-                    : "Type to search the docs"}
-              </Autocomplete.Empty>
+              {/* Empty state — only show when the user has typed something */}
+              {searchValue && (
+                <Autocomplete.Empty>
+                  <div className="px-3 py-8 text-center text-sm text-fd-muted-foreground">
+                  {isLoading
+                    ? "Searching..."
+                    : <>No results found for &ldquo;{searchValue}&rdquo;</>}
+                  </div>
+                </Autocomplete.Empty>
+              )}
 
               {/* Results */}
-              <Autocomplete.List className="max-h-[50vh] overflow-y-auto p-2">
+              <Autocomplete.List className="max-h-[50vh] overflow-y-auto overscroll-contain">
                 {(result: SearchResult) => (
                   <Autocomplete.Item
                     key={result.id}
@@ -236,26 +230,7 @@ export function SearchCommand({ enableShortcut = false }: { enableShortcut?: boo
                 )}
               </Autocomplete.List>
             </Autocomplete.Root>
-
-            {/* Footer */}
-            <div className="flex items-center justify-between border-t border-fd-border px-4 py-2 text-xs text-fd-muted-foreground">
-              <div className="flex items-center gap-2">
-                <kbd className="rounded border border-fd-border bg-fd-secondary/50 px-1.5 py-0.5 font-mono">
-                  ↑↓
-                </kbd>
-                <span>Navigate</span>
-                <kbd className="rounded border border-fd-border bg-fd-secondary/50 px-1.5 py-0.5 font-mono">
-                  ↵
-                </kbd>
-                <span>Open</span>
-                <kbd className="rounded border border-fd-border bg-fd-secondary/50 px-1.5 py-0.5 font-mono">
-                  Esc
-                </kbd>
-                <span>Close</span>
-              </div>
-            </div>
           </Dialog.Popup>
-        </Dialog.Viewport>
       </Dialog.Portal>
     </Dialog.Root>
   );
