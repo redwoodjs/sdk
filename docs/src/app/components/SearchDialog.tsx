@@ -5,6 +5,7 @@ import { Dialog } from "@base-ui/react/dialog";
 import { ScrollArea as ScrollAreaPrimitive } from "@base-ui/react/scroll-area";
 import { useEffect, useRef, useState } from "react";
 import { HashIcon, SearchIcon, TextIcon } from "@/app/components/ui/Icon";
+import { Button } from "@/app/components/ui/Button";
 
 // --- Result type ---
 
@@ -62,8 +63,10 @@ function HighlightMatch({ text, query }: { text: string; query: string }) {
 
 export function SearchCommand({
   enableShortcut = false,
+  iconOnly = false,
 }: {
   enableShortcut?: boolean;
+  iconOnly?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -132,10 +135,19 @@ export function SearchCommand({
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       {/* Trigger — the search button in the sidebar */}
-      <Dialog.Trigger className="flex w-full items-center gap-2 rounded-lg border border-fd-border bg-fd-secondary/50 p-1.5 text-sm text-fd-muted-foreground transition-colors hover:bg-fd-accent/50 hover:text-fd-accent-foreground">
-        <SearchIcon className="size-4 shrink-0" />
-        <span className="flex-1 text-start">Search</span>
-      </Dialog.Trigger>
+      {iconOnly ? (
+        <Dialog.Trigger
+          render={<Button variant="ghost" className="p-2" />}
+          aria-label="Search"
+        >
+          <SearchIcon className="size-5" />
+        </Dialog.Trigger>
+      ) : (
+        <Dialog.Trigger className="flex w-full items-center gap-2 rounded-lg border border-fd-border bg-fd-secondary/50 p-1.5 text-sm text-fd-muted-foreground transition-colors hover:bg-fd-accent/50 hover:text-fd-accent-foreground">
+          <SearchIcon className="size-4 shrink-0" />
+          <span className="flex-1 text-start">Search</span>
+        </Dialog.Trigger>
+      )}
 
       {/* Popup — portalled search dialog */}
       <Dialog.Portal>

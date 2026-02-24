@@ -246,29 +246,31 @@ export function MobileNav({
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <header className="sticky top-0 z-40 flex items-center justify-between border-b border-fd-border bg-fd-background px-4 h-14 md:hidden">
         <Logo />
-        <Dialog.Trigger
-          render={<Button variant="ghost" className="p-2" />}
-          aria-label="Open navigation"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="size-5"
+        <div className="flex items-center gap-1">
+          <SearchCommand iconOnly />
+          <Dialog.Trigger
+            render={<Button variant="ghost" className="p-2" />}
+            aria-label="Open navigation"
           >
-            <path d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </Dialog.Trigger>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="size-5"
+            >
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </Dialog.Trigger>
+        </div>
       </header>
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/50 [transition:opacity_200ms] opacity-100 data-starting-style:opacity-0 data-ending-style:opacity-0" />
-        <Dialog.Popup className="fixed inset-y-0 left-0 z-50 w-72 bg-fd-background border-e border-fd-border [transition:transform_200ms] translate-x-0 data-starting-style:-translate-x-full data-ending-style:-translate-x-full">
+        <Dialog.Popup className="fixed inset-y-0 right-0 z-50 w-72 bg-fd-background border-s border-fd-border [transition:transform_200ms] translate-x-0 data-starting-style:translate-x-full data-ending-style:translate-x-full">
           <div className="flex h-full flex-col">
-            <div className="flex shrink-0 items-center justify-between px-4 pt-4">
-              <Logo />
+            <div className="flex shrink-0 items-center justify-end px-4 pt-4">
               <Dialog.Close
                 render={<Button variant="ghost" />}
                 aria-label="Close navigation"
@@ -285,9 +287,6 @@ export function MobileNav({
                   <path d="M18 6 6 18M6 6l12 12" />
                 </svg>
               </Dialog.Close>
-            </div>
-            <div className="px-3">
-              <SearchCommand />
             </div>
             <ScrollArea scrollFade className="flex-1">
               <div className="px-2">
