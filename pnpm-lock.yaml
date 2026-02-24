@@ -369,6 +369,9 @@ importers:
       '@orama/orama':
         specifier: ^3.1.18
         version: 3.1.18
+      '@orama/plugin-qps':
+        specifier: ^3.1.18
+        version: 3.1.18
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -3822,6 +3825,9 @@ packages:
   '@orama/orama@3.1.18':
     resolution: {integrity: sha512-a61ljmRVVyG5MC/698C8/FfFDw5a8LOIvyOLW5fztgUXqUpc1jOfQzOitSCbge657OgXXThmY3Tk8fpiDb4UcA==}
     engines: {node: '>= 20.0.0'}
+
+  '@orama/plugin-qps@3.1.18':
+    resolution: {integrity: sha512-q19pFGF1jRk+dGR4j/4MscCACtZo6DKO8ZjnM3AWJICzjWVYJYBvlGuD2+Jt079iUW04cGh4EpMw5WxaTpZQCw==}
 
   '@ota-meshi/ast-token-store@0.3.0':
     resolution: {integrity: sha512-XRO0zi2NIUKq2lUk3T1ecFSld1fMWRKE6naRFGkgkdeosx7IslyUKNv5Dcb5PJTja9tHJoFu0v/7yEpAkrkrTg==}
@@ -12679,6 +12685,10 @@ snapshots:
   '@open-draft/until@2.1.0': {}
 
   '@orama/orama@3.1.18': {}
+
+  '@orama/plugin-qps@3.1.18':
+    dependencies:
+      '@orama/orama': 3.1.18
 
   '@ota-meshi/ast-token-store@0.3.0': {}
 

@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { Autocomplete } from "@base-ui/react/autocomplete";
 
-
 // --- Result type ---
 
 interface SearchResult {
@@ -12,6 +11,7 @@ interface SearchResult {
   url: string;
   type: "page" | "heading" | "text";
   content: string;
+  heading?: string;
   pageTitle: string;
 }
 
@@ -88,6 +88,25 @@ function ResultIcon({
   }
 }
 
+function HighlightMatch({ text, query }: { text: string; query: string }) {
+  if (!query.trim()) return <>{text}</>;
+
+  const tokens = query.trim().split(/\s+/).filter(Boolean);
+  const pattern = new RegExp(`(${tokens.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "gi");
+  const parts = text.split(pattern);
+
+  return (
+    <>
+      {parts.map((part, i) =>
+        pattern.test(part) ? (
+          <span key={i} className="text-brand-orange underline">{part}</span>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  );
+}
 
 export function SearchCommand({ enableShortcut = false }: { enableShortcut?: boolean }) {
   const [open, setOpen] = useState(false);
@@ -110,16 +129,16 @@ export function SearchCommand({ enableShortcut = false }: { enableShortcut?: boo
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [enableShortcut]);
 
-  // Reset on open
+  // Reset on close
   useEffect(() => {
-    if (open) {
+    if (!open) {
       setSearchValue("");
       setResults([]);
       setIsLoading(false);
     }
   }, [open]);
 
-  function handleValueChange(value: string) {
+  function triggerSearch(value: string) {
     setSearchValue(value);
 
     clearTimeout(timerRef.current);
@@ -173,9 +192,7 @@ export function SearchCommand({ enableShortcut = false }: { enableShortcut?: boo
               open
               inline
               items={results}
-              value={searchValue}
-              onValueChange={handleValueChange}
-              filter={null}
+              filter={() => true}
               autoHighlight="always"
               keepHighlight
               itemToStringValue={(item: SearchResult) => item.content}
@@ -187,18 +204,17 @@ export function SearchCommand({ enableShortcut = false }: { enableShortcut?: boo
                   placeholder="Search"
                   className="flex-1 bg-transparent text-lg text-fd-muted-foreground outline-none"
                   autoFocus
+                  onInput={(e) => triggerSearch((e.target as HTMLInputElement).value)}
                 />
                 <Dialog.Close className="rounded uppercase px-1.5 py-0.5 font-mono text-xs text-fd-muted-foreground border border-fd-border hover:bg-fd-accent/50 cursor-pointer transition-opacity">Esc</Dialog.Close>
               </div>
 
-              {/* Empty state — only show when the user has typed something */}
+              {/* Status — loading / empty */}
               {searchValue && (
-                <Autocomplete.Empty>
-                  <div className="px-3 py-8 text-center text-sm text-fd-muted-foreground">
+                <Autocomplete.Empty className="px-3 py-8 text-center text-sm text-fd-muted-foreground empty:m-0 empty:p-0">
                   {isLoading
                     ? "Searching..."
                     : <>No results found for &ldquo;{searchValue}&rdquo;</>}
-                  </div>
                 </Autocomplete.Empty>
               )}
 
@@ -212,7 +228,7 @@ export function SearchCommand({ enableShortcut = false }: { enableShortcut?: boo
                       window.location.href = result.url;
                       setOpen(false);
                     }}
-                    className="flex items-start gap-3 rounded-lg px-3 py-2.5 text-sm text-fd-muted-foreground transition-colors data-highlighted:bg-fd-accent/50 data-highlighted:text-fd-accent-foreground cursor-default"
+                    className="flex items-start gap-3 rounded-lg px-3 py-2.5 text-sm text-fd-muted-foreground cursor-default data-[highlighted]:bg-fd-accent/50 data-[highlighted]:text-fd-accent-foreground"
                   >
                     <ResultIcon
                       type={result.type}
@@ -221,10 +237,10 @@ export function SearchCommand({ enableShortcut = false }: { enableShortcut?: boo
                     <div className="min-w-0 flex-1">
                       {result.type !== "page" && result.pageTitle && (
                         <div className="mb-0.5 truncate text-xs text-fd-muted-foreground/70">
-                          {result.pageTitle}
+                          {result.pageTitle}{result.heading ? ` › ${result.heading}` : ""}
                         </div>
                       )}
-                      <div className="truncate">{result.content}</div>
+                      <div className="truncate"><HighlightMatch text={result.content} query={searchValue} /></div>
                     </div>
                   </Autocomplete.Item>
                 )}
