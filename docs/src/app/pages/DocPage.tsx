@@ -48,7 +48,7 @@ export function DocPageView({ slug: rawSlug }: { slug: string }) {
       tableOfContentPopover={{ enabled: true }}
     >
       {/* React 19 hoists <title> and <meta> into <head> automatically */}
-      <title>{page.data.title} | RedwoodSDK</title>
+      <title>{`${page.data.title} | RedwoodSDK`}</title>
       {page.data.description && (
         <meta name="description" content={page.data.description} />
       )}
