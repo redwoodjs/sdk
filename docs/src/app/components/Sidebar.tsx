@@ -318,13 +318,15 @@ export function Sidebar({
 }) {
   return (
     <div className="sticky top-0 [grid-area:sidebar] w-[16rem] h-dvh max-md:hidden">
-      <aside className="flex h-full flex-col gap-4 px-4 py-4 border-e border-fd-border">
-        <div className="flex shrink-0 items-center gap-2">
+      <aside className="flex h-full flex-col gap-4 py-4 border-e border-fd-border">
+        <div className="flex shrink-0 items-center gap-2 px-4">
           <Logo />
         </div>
-        <SearchCommand enableShortcut />
+        <div className="px-4">
+          <SearchCommand enableShortcut />
+        </div>
         <ScrollArea scrollFade className="flex-1 border-b border-fd-border">
-          <div className="pb-2">
+          <div className="px-4 pb-2">
             <SidebarNodes
               nodes={pageTree.children}
               pathname={pathname}
@@ -332,7 +334,9 @@ export function Sidebar({
             />
           </div>
         </ScrollArea>
-        <SidebarFooter initialTheme={initialTheme} />
+        <div className="px-4">
+          <SidebarFooter initialTheme={initialTheme} />
+        </div>
       </aside>
     </div>
   );
