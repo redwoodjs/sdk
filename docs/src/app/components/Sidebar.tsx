@@ -2,6 +2,7 @@
 
 import { SearchCommand } from "@/app/components/SearchDialog";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
+import { buttonVariants } from "@/app/components/ui/Button";
 import { ScrollArea } from "@/app/components/ui/ScrollArea";
 import { pageTree } from "@/app/sidebar";
 import { Collapsible } from "@base-ui/react/collapsible";
@@ -192,7 +193,7 @@ function SidebarFooter({
         href="https://discord.gg/redwoodjs"
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center justify-center rounded-md p-1.5 text-fd-muted-foreground transition-colors hover:bg-fd-accent/50 hover:text-fd-accent-foreground"
+        className={buttonVariants("ghost")}
         aria-label="Discord"
       >
         <svg viewBox="0 0 24 24" fill="currentColor" className="size-4.5">
@@ -203,7 +204,7 @@ function SidebarFooter({
         href="https://github.com/redwoodjs/sdk"
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center justify-center rounded-md p-1.5 text-fd-muted-foreground transition-colors hover:bg-fd-accent/50 hover:text-fd-accent-foreground"
+        className={buttonVariants("ghost")}
         aria-label="GitHub"
       >
         <svg viewBox="0 0 24 24" fill="currentColor" className="size-4.5">
@@ -250,7 +251,7 @@ export function MobileNav({
       <header className="sticky top-0 z-40 flex items-center justify-between border-b border-fd-border bg-fd-background px-4 h-14 md:hidden">
         <Logo />
         <Dialog.Trigger
-          className="inline-flex items-center justify-center rounded-md p-2 text-fd-muted-foreground hover:bg-fd-accent/50 hover:text-fd-accent-foreground"
+          className={clsx(buttonVariants("ghost"), "p-2")}
           aria-label="Open navigation"
         >
           <svg
@@ -273,7 +274,7 @@ export function MobileNav({
             <div className="flex shrink-0 items-center justify-between px-4 pt-4">
               <Logo />
               <Dialog.Close
-                className="inline-flex items-center justify-center rounded-md p-1.5 text-fd-muted-foreground hover:bg-fd-accent/50 hover:text-fd-accent-foreground"
+                className={buttonVariants("ghost")}
                 aria-label="Close navigation"
               >
                 <svg
