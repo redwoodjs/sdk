@@ -209,7 +209,7 @@ export function SearchCommand({
             itemToStringValue={(item: SearchResult) => item.content}
           >
             {/* Search input */}
-            <div className="flex items-center gap-2 border-fd-border p-4">
+            <div className="flex items-center gap-2 p-4">
               <SearchIcon className="size-4 shrink-0 text-fd-muted-foreground" />
               <Autocomplete.Input
                 placeholder="Search"
@@ -223,6 +223,9 @@ export function SearchCommand({
                 Esc
               </Dialog.Close>
             </div>
+            {searchValue && (
+              <Autocomplete.Separator className="h-px bg-fd-border" />
+            )}
 
             {/* Status — loading / empty */}
             {searchValue && (
@@ -238,7 +241,7 @@ export function SearchCommand({
             {/* Results */}
             <ScrollAreaPrimitive.Root>
               <ScrollAreaPrimitive.Viewport className="max-h-[50vh] overflow-y-auto overscroll-contain mask-t-from-[calc(100%-min(var(--fade-size),var(--scroll-area-overflow-y-start)))] mask-b-from-[calc(100%-min(var(--fade-size),var(--scroll-area-overflow-y-end)))] [--fade-size:1.5rem]">
-                <Autocomplete.List>
+                <Autocomplete.List className={"p-2 data-empty:p-0"}>
                   {(result: SearchResult) => (
                     <Autocomplete.Item
                       key={result.id}
