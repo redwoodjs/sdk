@@ -8,11 +8,12 @@ import {
 } from "fumadocs-ui/layouts/docs/page";
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import { requestInfo } from "rwsdk/worker";
+import { CopyMarkdownButton } from "@/app/components/CopyMarkdownButton";
 
 
 type Page = InferPageType<typeof source>;
 
-export function DocPageView({ slug: rawSlug }: { slug: string }) {
+export async function DocPageView({ slug: rawSlug }: { slug: string }) {
   const slug = rawSlug.replace(/\/+$/, "");
   const slugs = slug === "index" ? [] : slug.split("/");
   const page: Page | undefined = source.getPage(slugs);
@@ -67,10 +68,14 @@ export function DocPageView({ slug: rawSlug }: { slug: string }) {
       {page.data.description && (
         <meta name="twitter:description" content={page.data.description} />
       )}
-      <DocsTitle>{page.data.title}</DocsTitle>
-      {page.data.description && (
-        <DocsDescription>{page.data.description}</DocsDescription>
-      )}
+      <div className="flex items-center justify-between">
+        <DocsTitle className="leading-none">{page.data.title}</DocsTitle>
+        <CopyMarkdownButton markdown={await page.data.getText("processed")} />
+        </div>
+        {page.data.description && (
+          <DocsDescription className="mb-0">{page.data.description}</DocsDescription>
+        )}
+      <hr className="border-fd-border" />
       <DocsBody>
         <MDX components={{ ...defaultMdxComponents }} />
       </DocsBody>
