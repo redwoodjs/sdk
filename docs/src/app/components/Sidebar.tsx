@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type * as PageTree from "fumadocs-core/page-tree";
+import { SearchCommand } from "@/app/components/SearchDialog";
+import { ThemeToggle } from "@/app/components/ThemeToggle";
+import { ScrollArea } from "@/app/components/ui/ScrollArea";
+import { pageTree } from "@/app/sidebar";
 import { Collapsible } from "@base-ui/react/collapsible";
 import { Dialog } from "@base-ui/react/dialog";
 import clsx from "clsx";
-import { pageTree } from "@/app/sidebar";
-import { ScrollArea } from "@/app/components/ui/ScrollArea";
-import { ThemeToggle } from "@/app/components/ThemeToggle";
-import { SearchCommand } from "@/app/components/SearchDialog";
+import type * as PageTree from "fumadocs-core/page-tree";
+import { useEffect, useState } from "react";
 
 function ChevronDown({ className }: { className?: string }) {
   return (
@@ -36,7 +36,8 @@ function hasActiveDescendant(
 ): boolean {
   return nodes.some((node) => {
     if (node.type === "page") return pathname === node.url;
-    if (node.type === "folder") return hasActiveDescendant(node.children, pathname);
+    if (node.type === "folder")
+      return hasActiveDescendant(node.children, pathname);
     return false;
   });
 }
@@ -82,7 +83,8 @@ function SidebarLink({
         data-active={isActive}
         className={clsx(
           "relative flex flex-row items-center gap-2 rounded-lg p-2 text-start text-sm text-fd-muted-foreground transition-colors hover:bg-fd-accent/50 hover:text-fd-accent-foreground/80 hover:transition-none data-[active=true]:bg-fd-primary/10 data-[active=true]:text-fd-primary",
-          showActiveIndicator && "data-[active=true]:before:content-[''] data-[active=true]:before:bg-fd-primary data-[active=true]:before:absolute data-[active=true]:before:w-px data-[active=true]:before:inset-y-2.5 data-[active=true]:before:start-2.5",
+          showActiveIndicator &&
+            "data-[active=true]:before:content-[''] data-[active=true]:before:bg-fd-primary data-[active=true]:before:absolute data-[active=true]:before:w-px data-[active=true]:before:inset-y-2.5 data-[active=true]:before:start-2.5",
         )}
         style={{ paddingInlineStart: getItemOffset(depth) }}
       >
@@ -116,7 +118,8 @@ function SidebarFolder({
         <Collapsible.Panel
           className={clsx(
             "relative overflow-hidden [transition:height_200ms,opacity_300ms] h-(--collapsible-panel-height) opacity-100 data-ending-style:h-0 data-starting-style:h-0 data-ending-style:opacity-0 data-starting-style:opacity-0",
-            depth === 0 && "before:content-[''] before:absolute before:w-px before:inset-y-1 before:bg-fd-border before:start-2.5",
+            depth === 0 &&
+              "before:content-[''] before:absolute before:w-px before:inset-y-1 before:bg-fd-border before:start-2.5",
           )}
         >
           <SidebarNodes
@@ -178,7 +181,11 @@ function SidebarNodes({
   );
 }
 
-function SidebarFooter({ initialTheme }: { initialTheme?: "dark" | "light" | "system" }) {
+function SidebarFooter({
+  initialTheme,
+}: {
+  initialTheme?: "dark" | "light" | "system";
+}) {
   return (
     <div className="flex shrink-0 items-center gap-1.5">
       <a
@@ -211,14 +218,27 @@ function SidebarFooter({ initialTheme }: { initialTheme?: "dark" | "light" | "sy
 function Logo() {
   return (
     <a href="/">
-      <img src="/logo--dark.svg" alt="RedwoodSDK" className="h-8 hidden dark:block" />
-      <img src="/logo--light.svg" alt="RedwoodSDK" className="h-8 block dark:hidden" />
+      <img
+        src="/logo--dark.svg"
+        alt="RedwoodSDK"
+        className="h-8 hidden dark:block"
+      />
+      <img
+        src="/logo--light.svg"
+        alt="RedwoodSDK"
+        className="h-8 block dark:hidden"
+      />
     </a>
   );
 }
 
-
-export function MobileNav({ pathname, initialTheme }: { pathname: string; initialTheme?: "dark" | "light" | "system" }) {
+export function MobileNav({
+  pathname,
+  initialTheme,
+}: {
+  pathname: string;
+  initialTheme?: "dark" | "light" | "system";
+}) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -233,7 +253,15 @@ export function MobileNav({ pathname, initialTheme }: { pathname: string; initia
           className="inline-flex items-center justify-center rounded-md p-2 text-fd-muted-foreground hover:bg-fd-accent/50 hover:text-fd-accent-foreground"
           aria-label="Open navigation"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="size-5">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="size-5"
+          >
             <path d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </Dialog.Trigger>
@@ -248,7 +276,15 @@ export function MobileNav({ pathname, initialTheme }: { pathname: string; initia
                 className="inline-flex items-center justify-center rounded-md p-1.5 text-fd-muted-foreground hover:bg-fd-accent/50 hover:text-fd-accent-foreground"
                 aria-label="Close navigation"
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="size-4">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="size-4"
+                >
                   <path d="M18 6 6 18M6 6l12 12" />
                 </svg>
               </Dialog.Close>
@@ -273,7 +309,13 @@ export function MobileNav({ pathname, initialTheme }: { pathname: string; initia
   );
 }
 
-export function Sidebar({ pathname, initialTheme }: { pathname: string; initialTheme?: "dark" | "light" | "system" }) {
+export function Sidebar({
+  pathname,
+  initialTheme,
+}: {
+  pathname: string;
+  initialTheme?: "dark" | "light" | "system";
+}) {
   return (
     <div className="sticky top-0 [grid-area:sidebar] w-[16rem] h-dvh max-md:hidden">
       <aside className="flex h-full flex-col gap-4 px-4 py-4 border-e border-fd-border">

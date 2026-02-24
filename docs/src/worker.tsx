@@ -1,13 +1,13 @@
-import { defineApp } from "rwsdk/worker";
 import { except, layout, render, route } from "rwsdk/router";
+import { defineApp } from "rwsdk/worker";
 
-import { Document } from "@/app/Document";
-import { DocPageView } from "@/app/pages/DocPage";
-import { DocsLayoutWrapper } from "@/app/layouts/DocsLayoutWrapper";
-import { setCommonHeaders } from "@/app/headers";
-import { generateSitemap } from "@/app/sitemap";
-import { generateLlmsTxt, generateLlmsFullTxt } from "@/app/llms";
 import { handleSearch } from "@/app/api/search";
+import { Document } from "@/app/Document";
+import { setCommonHeaders } from "@/app/headers";
+import { DocsLayoutWrapper } from "@/app/layouts/DocsLayoutWrapper";
+import { generateLlmsFullTxt, generateLlmsTxt } from "@/app/llms";
+import { DocPageView } from "@/app/pages/DocPage";
+import { generateSitemap } from "@/app/sitemap";
 
 export interface AppContext {
   theme?: "dark" | "light" | "system";
