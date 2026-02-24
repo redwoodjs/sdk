@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { Autocomplete } from "@base-ui/react/autocomplete";
+import { ScrollArea as ScrollAreaPrimitive } from "@base-ui/react/scroll-area";
 
 // --- Result type ---
 
@@ -219,32 +220,42 @@ export function SearchCommand({ enableShortcut = false }: { enableShortcut?: boo
               )}
 
               {/* Results */}
-              <Autocomplete.List className="max-h-[50vh] overflow-y-auto overscroll-contain">
-                {(result: SearchResult) => (
-                  <Autocomplete.Item
-                    key={result.id}
-                    value={result}
-                    onClick={() => {
-                      window.location.href = result.url;
-                      setOpen(false);
-                    }}
-                    className="flex items-start gap-3 rounded-lg px-3 py-2.5 text-sm text-fd-muted-foreground cursor-default data-[highlighted]:bg-fd-accent/50 data-[highlighted]:text-fd-accent-foreground"
-                  >
-                    <ResultIcon
-                      type={result.type}
-                      className="mt-0.5 size-4 shrink-0"
-                    />
-                    <div className="min-w-0 flex-1">
-                      {result.type !== "page" && result.pageTitle && (
-                        <div className="mb-0.5 truncate text-xs text-fd-muted-foreground/70">
-                          {result.pageTitle}{result.heading ? ` › ${result.heading}` : ""}
+              <ScrollAreaPrimitive.Root>
+                <ScrollAreaPrimitive.Viewport className="max-h-[50vh] overflow-y-auto overscroll-contain mask-t-from-[calc(100%-min(var(--fade-size),var(--scroll-area-overflow-y-start)))] mask-b-from-[calc(100%-min(var(--fade-size),var(--scroll-area-overflow-y-end)))] [--fade-size:1.5rem]">
+                  <Autocomplete.List>
+                    {(result: SearchResult) => (
+                      <Autocomplete.Item
+                        key={result.id}
+                        value={result}
+                        onClick={() => {
+                          window.location.href = result.url;
+                          setOpen(false);
+                        }}
+                        className="flex items-start gap-3 rounded-lg px-3 py-2.5 text-sm text-fd-muted-foreground cursor-default data-[highlighted]:bg-fd-accent/50 data-[highlighted]:text-fd-accent-foreground"
+                      >
+                        <ResultIcon
+                          type={result.type}
+                          className="mt-0.5 size-4 shrink-0"
+                        />
+                        <div className="min-w-0 flex-1">
+                          {result.type !== "page" && result.pageTitle && (
+                            <div className="mb-0.5 truncate text-xs text-fd-muted-foreground/70">
+                              {result.pageTitle}{result.heading ? ` › ${result.heading}` : ""}
+                            </div>
+                          )}
+                          <div className="truncate"><HighlightMatch text={result.content} query={searchValue} /></div>
                         </div>
-                      )}
-                      <div className="truncate"><HighlightMatch text={result.content} query={searchValue} /></div>
-                    </div>
-                  </Autocomplete.Item>
-                )}
-              </Autocomplete.List>
+                      </Autocomplete.Item>
+                    )}
+                  </Autocomplete.List>
+                </ScrollAreaPrimitive.Viewport>
+                <ScrollAreaPrimitive.Scrollbar
+                  className="m-1 flex w-1.5 opacity-0 transition-opacity delay-300 data-hovering:opacity-100 data-scrolling:opacity-100 data-hovering:delay-0 data-scrolling:delay-0 data-hovering:duration-100 data-scrolling:duration-100"
+                  orientation="vertical"
+                >
+                  <ScrollAreaPrimitive.Thumb className="relative flex-1 rounded-full bg-fd-foreground/20" />
+                </ScrollAreaPrimitive.Scrollbar>
+              </ScrollAreaPrimitive.Root>
             </Autocomplete.Root>
           </Dialog.Popup>
       </Dialog.Portal>
