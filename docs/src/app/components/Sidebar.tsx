@@ -2,7 +2,7 @@
 
 import { SearchCommand } from "@/app/components/SearchDialog";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
-import { buttonVariants } from "@/app/components/ui/Button";
+import { Button, buttonVariants } from "@/app/components/ui/Button";
 import { ScrollArea } from "@/app/components/ui/ScrollArea";
 import { pageTree } from "@/app/sidebar";
 import { Collapsible } from "@base-ui/react/collapsible";
@@ -251,7 +251,7 @@ export function MobileNav({
       <header className="sticky top-0 z-40 flex items-center justify-between border-b border-fd-border bg-fd-background px-4 h-14 md:hidden">
         <Logo />
         <Dialog.Trigger
-          className={clsx(buttonVariants("ghost"), "p-2")}
+          render={<Button variant="ghost" className="p-2" />}
           aria-label="Open navigation"
         >
           <svg
@@ -274,7 +274,7 @@ export function MobileNav({
             <div className="flex shrink-0 items-center justify-between px-4 pt-4">
               <Logo />
               <Dialog.Close
-                className={buttonVariants("ghost")}
+                render={<Button variant="ghost" />}
                 aria-label="Close navigation"
               >
                 <svg

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { buttonVariants } from "@/app/components/ui/Button";
+import { Button } from "@/app/components/ui/Button";
 import { CheckIcon, ClipboardIcon } from "@/app/components/ui/Icon";
 
 export function CopyMarkdownButton({ markdown }: { markdown: string }) {
@@ -14,9 +14,9 @@ export function CopyMarkdownButton({ markdown }: { markdown: string }) {
   }
 
   return (
-    <button
+    <Button
+      variant="secondary"
       onClick={handleCopy}
-      className={buttonVariants("secondary")}
     >
       {copied ? (
         <>
@@ -29,6 +29,6 @@ export function CopyMarkdownButton({ markdown }: { markdown: string }) {
           Copy Markdown
         </>
       )}
-    </button>
+    </Button>
   );
 }
