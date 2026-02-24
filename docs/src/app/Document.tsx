@@ -1,4 +1,3 @@
-import { AppProviders } from "@/lib/provider";
 import { requestInfo } from "rwsdk/worker";
 import stylesUrl from "./styles.css?url";
 import ogImageUrl from "../assets/og-docs.png?url";
@@ -70,7 +69,7 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
             __html: `(function(){var t=${JSON.stringify(theme)};var d=document.documentElement;var s=t==="dark"||(t==="system"&&matchMedia("(prefers-color-scheme:dark)").matches);if(s){d.classList.add("dark")}else{d.classList.remove("dark")}d.setAttribute("data-theme",t)})()`,
           }}
         />
-        <AppProviders>{children}</AppProviders>
+        {children}
         <script>import("/src/client.tsx")</script>
       </body>
     </html>
