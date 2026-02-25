@@ -1,0 +1,22 @@
+@import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-brand-beige: #f4eedf;
+  --color-brand-orange: #f47238;
+  --color-brand-orange-light: #ffad48;
+  --color-brand-orange-dark: #e73c36;
+  --color-brand-orange-medium: #f37238;
+  --color-brand-purple: #8b2243;
+}
+
+:root {
+  --color-fd-primary: var(--color-brand-orange);
+}
+
+.prose {
+  --tw-prose-links: var(--color-brand-orange);
+}
