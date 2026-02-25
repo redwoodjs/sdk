@@ -19,6 +19,15 @@ export default defineApp([
     const cookie = request.headers.get("Cookie");
     const match = cookie?.match(/theme=([^;]+)/);
     ctx.theme = (match?.[1] as "dark" | "light" | "system") || "system";
+
+    // Chrome 93+ sends Sec-CH-Prefers-Color-Scheme when we opt in via Accept-CH.
+    // Resolve "system" to the actual preference so we can set the class in SSR.
+    if (ctx.theme === "system") {
+      const hint = request.headers.get("Sec-CH-Prefers-Color-Scheme")?.trim();
+      if (hint === "dark" || hint === "light") {
+        ctx.theme = hint;
+      }
+    }
   },
   except((error) => {
     console.error("Server error:", error);

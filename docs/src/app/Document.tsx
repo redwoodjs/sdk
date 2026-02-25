@@ -12,7 +12,7 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
   const canonicalUrl = `${origin}${url.pathname.replace(/\/?$/, "/")}`;
 
   return (
-    <html lang="en">
+    <html lang="en" className={theme === "dark" ? "dark" : undefined}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -63,12 +63,16 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
         </noscript>
       </head>
       <body className="antialiased">
-        <script
-          nonce={nonce}
-          dangerouslySetInnerHTML={{
-            __html: `(function(){var t=${JSON.stringify(theme)};var d=document.documentElement;var s=t==="dark"||(t==="system"&&matchMedia("(prefers-color-scheme:dark)").matches);if(s){d.classList.add("dark")}else{d.classList.remove("dark")}d.setAttribute("data-theme",t)})()`,
-          }}
-        />
+        {/* Only needed when theme is "system" (no cookie + no client hint).
+            Reads prefers-color-scheme and sets the dark class before paint. */}
+        {theme === "system" && (
+          <script
+            nonce={nonce}
+            dangerouslySetInnerHTML={{
+              __html: `(function(){var d=document.documentElement;if(matchMedia("(prefers-color-scheme:dark)").matches){d.classList.add("dark")}})()`,
+            }}
+          />
+        )}
         {children}
         <script>import("/src/client.tsx")</script>
       </body>

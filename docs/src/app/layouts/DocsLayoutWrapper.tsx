@@ -9,18 +9,14 @@ export function DocsLayoutWrapper({ children, requestInfo }: LayoutProps) {
   const pathname = requestInfo
     ? new URL(requestInfo.request.url).pathname
     : "/";
-  const theme = (requestInfo?.ctx?.theme ?? "system") as
-    | "dark"
-    | "light"
-    | "system";
   return (
     <RedwoodProvider pathname={pathname}>
       <RootProvider theme={{ enabled: false }} search={{ enabled: false }}>
-        <MobileNav pathname={pathname} initialTheme={theme} />
+        <MobileNav pathname={pathname} />
         <DocsLayout
           tree={pageTree}
           nav={{ enabled: false }}
-          sidebar={{ component: <Sidebar pathname={pathname} initialTheme={theme} /> }}
+          sidebar={{ component: <Sidebar pathname={pathname} /> }}
         >
           {children}
         </DocsLayout>

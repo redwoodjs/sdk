@@ -1,12 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import clsx from "clsx";
-import { Switch } from "@base-ui/react/switch";
 import { setTheme } from "@/app/actions/setTheme";
 import { MoonIcon, SunIcon } from "@/app/components/ui/Icon";
-
-type Theme = "dark" | "light";
 
 function disableTransitions(): () => void {
   const css = document.createElement("style");
@@ -27,87 +22,51 @@ function disableTransitions(): () => void {
   };
 }
 
-function resolveInitialTheme(
-  preference: "dark" | "light" | "system" | undefined,
-): Theme {
-  if (preference === "dark") return "dark";
-  if (preference === "light") return "light";
-  // For "system" or undefined, read the class that the blocking script in
-  // Document.tsx already set based on the OS preference.
-  if (typeof document !== "undefined") {
-    return document.documentElement.classList.contains("dark")
-      ? "dark"
-      : "light";
-  }
-  return "light";
-}
-
-export function ThemeToggle({
-  initialTheme,
-}: {
-  initialTheme?: "dark" | "light" | "system";
-}) {
-  const [theme, setThemeState] = useState<Theme>(() =>
-    resolveInitialTheme(initialTheme),
-  );
-  const isInitialMount = useRef(true);
-
-  useEffect(() => {
-    // Skip persisting on the initial mount — the blocking script in
-    // Document.tsx already applied the correct class.
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-
-    const restore = disableTransitions();
-    const root = document.documentElement;
-    if (theme === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
-    restore();
-
-    setTheme(theme).catch((error) => {
-      console.error("Failed to set theme:", error);
-    });
-  }, [theme]);
-
-  const isDark = theme === "dark";
-
+export function ThemeToggle() {
   return (
-    <Switch.Root
-      checked={isDark}
-      onCheckedChange={(checked) =>
-        setThemeState(checked ? "dark" : "light")
-      }
-      aria-label="Toggle theme"
+    <button
+      type="button"
+      role="switch"
+      aria-checked={false}
+      aria-label="Dark mode"
       data-theme-toggle=""
+      onClick={(e) => {
+        const root = document.documentElement;
+        const isDark = root.classList.contains("dark");
+        const newTheme = isDark ? "light" : "dark";
+
+        const restore = disableTransitions();
+        root.classList.toggle("dark");
+        restore();
+
+        e.currentTarget.setAttribute("aria-checked", String(!isDark));
+
+        setTheme(newTheme).catch((error) => {
+          console.error("Failed to set theme:", error);
+        });
+      }}
+      ref={(el) => {
+        if (el) {
+          el.setAttribute(
+            "aria-checked",
+            String(document.documentElement.classList.contains("dark")),
+          );
+        }
+      }}
       className="ms-auto relative flex h-8 w-16 cursor-pointer items-center rounded-full border border-fd-border bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fd-ring focus-visible:ring-offset-1"
     >
       {/* Sliding highlight — covers exactly half the pill */}
-      <Switch.Thumb className="pointer-events-none absolute left-0 top-0 h-full w-1/2 rounded-full bg-fd-accent transition-transform duration-200 ease-in-out data-[checked]:translate-x-full" />
+      <span className="pointer-events-none absolute left-0 top-0 h-full w-1/2 rounded-full bg-fd-accent transition-transform duration-200 ease-in-out dark:translate-x-full" />
 
       {/* Sun (light mode, left) */}
       <span className="relative z-10 flex h-full w-1/2 items-center justify-center">
-        <SunIcon
-          className={clsx(
-            "size-3.5 transition-colors duration-200",
-            isDark ? "text-fd-muted-foreground" : "text-fd-accent-foreground",
-          )}
-        />
+        <SunIcon className="size-3.5 transition-colors duration-200 text-fd-accent-foreground dark:text-fd-muted-foreground" />
       </span>
 
       {/* Moon (dark mode, right) */}
       <span className="relative z-10 flex h-full w-1/2 items-center justify-center">
-        <MoonIcon
-          className={clsx(
-            "size-3.5 transition-colors duration-200",
-            isDark ? "text-fd-accent-foreground" : "text-fd-muted-foreground",
-          )}
-        />
+        <MoonIcon className="size-3.5 transition-colors duration-200 text-fd-muted-foreground dark:text-fd-accent-foreground" />
       </span>
-    </Switch.Root>
+    </button>
   );
 }

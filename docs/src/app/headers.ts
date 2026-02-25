@@ -10,6 +10,7 @@ export const setCommonHeaders =
       );
     }
 
+    response.headers.set("Accept-CH", "Sec-CH-Prefers-Color-Scheme");
     response.headers.set("X-Content-Type-Options", "nosniff");
     response.headers.set("X-Frame-Options", "DENY");
     response.headers.set(
