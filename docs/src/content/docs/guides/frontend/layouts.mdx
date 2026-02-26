@@ -123,7 +123,7 @@ export function AppLayout({ children, requestInfo }: LayoutProps) {
 
 Each of these examples work:
 
-```tsx title="src/app/worker.tsx" showLineNumbers=false
+```tsx title="src/app/worker.tsx"
 prefix("/api", layout(ApiLayout, routes))          // ✅
 layout(AppLayout, prefix("/admin", routes))        // ✅
 render(Document, layout(AppLayout, routes))        // ✅

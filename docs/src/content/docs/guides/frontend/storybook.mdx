@@ -121,7 +121,7 @@ Given that this is very basic, we'd most likely want to build this out a bit mor
     ![](./images/sb-home-story-1.png)
 
 3. Great! What if we want to mock the logged in user? We can do that by adding a new story, this time passing in a user object to the `ctx` prop:
-    ```tsx title="src/app/pages/Home.stories.tsx" ins={21-32}
+    ```tsx title="src/app/pages/Home.stories.tsx"
     import type { Meta, StoryObj } from "@storybook/react";
 
     import { Home } from "./Home";
@@ -142,6 +142,7 @@ Given that this is very basic, we'd most likely want to build this out a bit mor
       },
     };
 
+    // [!code ++:12]
     export const LoggedIn: Story = {
       args: {
         ctx: {
@@ -183,7 +184,7 @@ Given that this is very basic, we'd most likely want to build this out a bit mor
     if we specify a list of options, [Storybook will know to use a dropdown control](https://storybook.js.org/docs/api/arg-types#control).<br /><br />
     Let's do it:
 
-    ```tsx title="src/app/pages/Home.stories.tsx" ins={32-50} collapse={1-20}
+    ```tsx title="src/app/pages/Home.stories.tsx" collapse={1-20}
     import type { Meta, StoryObj } from "@storybook/react";
 
     import { Home } from "./Home";
@@ -215,6 +216,7 @@ Given that this is very basic, we'd most likely want to build this out a bit mor
           session: null,
         },
       },
+      // [!code ++:19]
       argTypes: {
         ctx: {
           options: ["redwood_fan_123", "storybook_user", "example_user"],
@@ -251,9 +253,10 @@ database via Prisma.
 
 <Steps>
 1. The starter project doesn't ship with a database, so let's imagine we've added one with a `User` table. What's the most obvious thing to do? List out all the users! Let's add this to our `Home` component:
-    ```tsx title="src/app/pages/Home.tsx" ins={2, 13-17} useDiffSyntax={true} ins="async"
+    ```tsx title="src/app/pages/Home.tsx"
+    // [!code word:async]
     import { RequestInfo } from "rwsdk/worker";
-    import { db } from "@/db";
+    import { db } from "@/db"; // [!code ++]
 
     export async function Home({ ctx }: RequestInfo) {
       const users = await db.user.findMany();
@@ -264,6 +267,7 @@ database via Prisma.
               ? `You are logged in as user ${ctx.user.username}`
               : "You are not logged in"}
           </p>
+          // [!code ++:5]
           <ul>
             {users.map((user) => (
               <li key={user.id}>{user.username}</li>
@@ -300,12 +304,14 @@ database via Prisma.
     (We can instead use [subpath imports](https://storybook.js.org/docs/writing-stories/mocking-data-and-modules/mocking-modules#subpath-imports), but it requires a bit more setup — we'd need to change any existing imports.)<br />
 
     One of the Storybook config files is [`.storybook/main.ts`](https://storybook.js.org/docs/api/main-config/main-config) — this defines the behavior of our Storybook project. Open it up and add the following:
-    ```ts title=".storybook/main.ts" ins={2-3, 7-13, 25-33}
+    ```ts title=".storybook/main.ts"
     import type { StorybookConfig } from "@storybook/react-vite";
+    // [!code ++:2]
     import { mergeConfig } from "vite";
     import path from "path";
 
     const config: StorybookConfig = {
+      // [!code ++:8]
       features: {
         /**
          * `experimentalRSC` is required for rendering async server components in Storybook.
@@ -325,6 +331,7 @@ database via Prisma.
         name: "@storybook/react-vite",
         options: {},
       },
+      // [!code ++:9]
       viteFinal: async (config) => {
         return mergeConfig(config, {
           resolve: {
@@ -341,15 +348,17 @@ database via Prisma.
 5. Every time we edit one of the Storybook configs, we'll need to restart the Storybook server.
     However, if we do this before we finish mocking the Prisma client, [our component will infinitely re-render](https://github.com/storybookjs/storybook/issues/30317).
     Let's finish mocking the Prisma client first. Go back to our story, and add the following:
-    ```tsx title="src/app/pages/Home.stories.tsx" ins={3-5, 9-20} collapse={23-66}
+    ```tsx title="src/app/pages/Home.stories.tsx" collapse={23-66}
     import type { Meta, StoryObj } from "@storybook/react";
 
+    // [!code ++:3]
     // Must include the `.mock` portion of filename to specify that that's what we want to import
     import { setupDb } from "@/db.mock";
 
     import { Home } from "./Home";
 
     const meta: Meta<typeof Home> = {
+      // [!code ++:12]
       // https://storybook.js.org/docs/writing-tests/component-testing#beforeeach
       beforeEach: async () => {
         setupDb({

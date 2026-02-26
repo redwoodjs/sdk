@@ -21,13 +21,14 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
 2.  Configure the Vite Plugin
     {" "}
 
-    ```ts ins={2, 7-9, 15} title="vite.config.mts"
+    ```ts title="vite.config.mts"
     import { defineConfig } from "vite";
-    import tailwindcss from "@tailwindcss/vite";
+    import tailwindcss from "@tailwindcss/vite"; // [!code ++]
     import { redwood } from "rwsdk/vite";
     import { cloudflare } from "@cloudflare/vite-plugin";
 
     export default defineConfig({
+      // [!code ++:3]
       environments: {
         ssr: {},
       },
@@ -36,7 +37,7 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
           viteEnvironment: { name: "worker" },
         }),
         redwood(),
-        tailwindcss()
+        tailwindcss() // [!code ++]
       ],
     });
     ```
@@ -51,18 +52,19 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
 
 3.  Create a `src/app/styles.css` file, and import Tailwind CSS
 
-    ```css ins={1} title="src/app/styles.css"
-    @import "tailwindcss";
+    ```css title="src/app/styles.css"
+    @import "tailwindcss"; // [!code ++]
     ```
 
 4.  Import your CSS and add a `<link>` to the `styles.css` file.<br />
     In the `Document.tsx` file, within the `<head>` section, add:
 
-    ```tsx title="src/app/Document.tsx" add={1, 5}
-    import styles from "./styles.css?url";
+    ```tsx title="src/app/Document.tsx"
+    import styles from "./styles.css?url"; // [!code ++]
     ...
     <head>
       ...
+      // [!code ++:1]
       <link rel="stylesheet" href={styles} />
       ...
     </head>

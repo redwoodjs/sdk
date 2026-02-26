@@ -96,7 +96,7 @@ You can delete all the contents inside the `emails` directory. Or, oftentimes, I
 
     Keep in mind that you can pass in props, personalizing the template and making it more dynamic.
 
-    ```tsx title="src/emails/welcome-email.tsx" startLineNumber={10}
+    ```tsx title="src/emails/welcome-email.tsx" lineNumbers=10
     interface WelcomeEmailProps {
       name: string;
     }
@@ -158,7 +158,7 @@ You can delete all the contents inside the `emails` directory. Or, oftentimes, I
 
 2. Wrap your email template in the `Tailwind` component:
 
-    ```tsx title="src/emails/WelcomeEmail.tsx" showLineNumbers=false
+    ```tsx title="src/emails/WelcomeEmail.tsx"
     <Tailwind>
       <Html>
         <Head />
@@ -173,7 +173,7 @@ You can delete all the contents inside the `emails` directory. Or, oftentimes, I
 
 3. If you want to use a custom theme, this will need to be defined as a `config` prop, passed into the `Tailwind` component.
 
-    ```tsx title="src/emails/WelcomeEmail.tsx" showLineNumbers=false
+    ```tsx title="src/emails/WelcomeEmail.tsx"
     <Tailwind
       config={{
         theme: {

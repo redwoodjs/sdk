@@ -59,7 +59,7 @@ Your setup is complete! 🥳 Now, we can send email.
 
 Now, we can send email.
 
-```tsx title="src/app/auth/actions.ts" showLineNumbers={false}
+```tsx title="src/app/auth/actions.ts"
 import { Resend } from "resend";
 
 const resend = new Resend(env.RESEND_API);
@@ -89,19 +89,21 @@ When using Resend, you can send `text`, `react`, or `html` emails.
 
 ### Example: Sending Text Email
 
-```tsx showLineNumbers=false {5} "text"
+```tsx
+// [!code word:text]
 const { data, error } = await resend.emails.send({
   from: "Acme <onboarding@resend.dev>",
   to: email,
   subject: "👋 Hello World",
-  text: `Hello World`,
+  text: `Hello World`, // [!code highlight]
 });
 ```
 
 ### Example: Sending React Email
 
-```tsx showLineNumbers=false  {1-3, 9} "react:"
-const Email = ({ name }: { name: string }) => {
+```tsx
+// [!code word:react\:]
+const Email = ({ name }: { name: string }) => { // [!code highlight:3]
   return <div>Hello {name}</div>;
 };
 
@@ -109,7 +111,7 @@ const { data, error } = await resend.emails.send({
   from: "Acme <onboarding@resend.dev>",
   to: email,
   subject: "👋 Hello World",
-  react: <Email name="John" />,
+  react: <Email name="John" />, // [!code highlight]
 });
 ```
 
@@ -117,12 +119,13 @@ Resend also backs the [React Email](https://react.email/) project. This library 
 
 ### Example: Sending HTML Email
 
-```tsx showLineNumbers=false  {5} "html"
+```tsx
+// [!code word:html]
 const { data, error } = await resend.emails.send({
   from: "Acme <onboarding@resend.dev>",
   to: email,
   subject: "👋 Hello World",
-  html: "<h1>Hello World</h1>",
+  html: "<h1>Hello World</h1>", // [!code highlight]
 });
 ```
 
@@ -162,11 +165,11 @@ export const CONSTANTS = Object.freeze({
 
 Now, you can use the `FROM_EMAIL` constant in your code.
 
-```ts showLineNumbers=false {1,4}
-import { CONSTANTS } from "~/shared/constants";
+```ts
+import { CONSTANTS } from "~/shared/constants"; // [!code highlight]
 ...
 const { data, error } = await resend.emails.send({
-  from: CONSTANTS.FROM_EMAIL,
+  from: CONSTANTS.FROM_EMAIL, // [!code highlight]
   to: email,
   subject: "👋 Hello World",
   text: `Hello World`,

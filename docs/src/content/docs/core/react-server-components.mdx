@@ -15,8 +15,8 @@ export default function MyServerComponent() {
 
 When a user needs to interact with your component: clicking a button, setting state, etc, then you must use a client component. Mark the client component with the `"use client"` directive. This will be hydrated by React in the browser.
 
-```tsx mark={1}
-"use client";
+```tsx
+"use client"; // [!code highlight]
 
 export default function MyClientComponent() {
   return <button>Click me</button>;
@@ -27,7 +27,8 @@ export default function MyClientComponent() {
 
 React Server Components run on the server, they can easily fetch data and make it part of the payload that's sent to the client.
 
-```tsx title="src/app/pages/todos/TodoPage.tsx" "async"
+```tsx title="src/app/pages/todos/TodoPage.tsx"
+// [!code word:async]
 export async function Todos({ ctx }) {
   const todos = await db.todo.findMany({ where: { userId: ctx.user.id } });
   return (
@@ -63,8 +64,8 @@ The `TodoPage` component is a server component. It is rendered by a route, so it
 
 Allow you to execute code on the server from a client component.
 
-```tsx title="@/pages/todos/functions.tsx" mark={1}
-"use server";
+```tsx title="@/pages/todos/functions.tsx"
+"use server"; // [!code highlight]
 
 import { requestInfo } from "rwsdk/worker";
 
@@ -77,10 +78,10 @@ export async function addTodo(formData: FormData) {
 
 The `addTodo` function is a server function. It is executed on the server when the form is submitted from a client side component. The form data is sent to the server and the function is executed. The result is **streamed** back to the client, parsed by React, and the view is updated with the new todo.
 
-```tsx title="@/pages/todos/AddTodo.tsx" mark={1, 3}
-"use client";
+```tsx title="@/pages/todos/AddTodo.tsx"
+"use client"; // [!code highlight]
 
-import { addTodo } from "./functions";
+import { addTodo } from "./functions"; // [!code highlight]
 
 export default function AddTodo() {
   return (

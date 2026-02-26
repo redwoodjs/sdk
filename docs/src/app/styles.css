@@ -20,3 +20,55 @@
 .prose {
   --tw-prose-links: var(--color-brand-orange);
 }
+
+/* Collapsed lines — <details>/<summary> within code blocks */
+pre .ec-collapsed-section {
+  display: block;
+}
+
+pre .ec-collapsed-summary {
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  display: block;
+  width: 100%;
+  padding: 4px 0;
+  opacity: 0.5;
+  font-size: 0.85em;
+  font-family: inherit;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  border-block: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+}
+
+pre .ec-collapsed-summary:hover {
+  opacity: 0.8;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+pre .ec-collapsed-summary::marker {
+  content: "";
+}
+
+/* Hide the summary once opened — open is one-way */
+pre details[open] > .ec-collapsed-summary {
+  display: none;
+}
+
+/* Code block footnote (EC ---...--- syntax) */
+pre .ec-footnote {
+  display: block;
+  padding: 0.875rem 1rem 0;
+  font-size: 0.85em;
+  opacity: 0.75;
+  white-space: normal;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  border-top: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+}
+
+pre .ec-footnote code {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  padding: 0.15em 0.4em;
+  border-radius: 0.25rem;
+  font-size: 0.9em;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
