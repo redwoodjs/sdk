@@ -52,6 +52,12 @@ if (typeof window !== "undefined") {
 export const getSyncedStateClient = (
   endpoint: string = DEFAULT_SYNCED_STATE_PATH,
 ): SyncedStateClient => {
+  // Convert relative endpoint to absolute URL for environments like WKWebView
+  if (endpoint.startsWith("/") && typeof window !== "undefined") {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    endpoint = `${protocol}//${window.location.host}${endpoint}`;
+  }
+
   // Return existing client if already cached for this endpoint
   const existingClient = clientCache.get(endpoint);
   if (existingClient) {
