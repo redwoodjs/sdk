@@ -72,3 +72,13 @@ pre .ec-footnote code {
   font-size: 0.9em;
   font-family: ui-monospace, SFMono-Regular, monospace;
 }
+
+/* withOutput: command lines get a $ prompt, output is outside <code> */
+pre .line.ec-command::before {
+  content: "$ ";
+  opacity: 0.5;
+}
+
+pre .ec-output-section .line.ec-output span[style] {
+  color: inherit !important;
+}

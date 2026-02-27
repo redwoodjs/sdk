@@ -187,6 +187,7 @@ function SidebarFooter() {
     <div className="flex shrink-0 items-center gap-1.5">
       <Button
         variant="ghost"
+        nativeButton={false}
         render={<a href="https://discord.gg/redwoodjs" target="_blank" rel="noopener noreferrer" />}
         aria-label="Discord"
       >
@@ -196,6 +197,7 @@ function SidebarFooter() {
       </Button>
       <Button
         variant="ghost"
+        nativeButton={false}
         render={<a href="https://github.com/redwoodjs/sdk" target="_blank" rel="noopener noreferrer" />}
         aria-label="GitHub"
       >

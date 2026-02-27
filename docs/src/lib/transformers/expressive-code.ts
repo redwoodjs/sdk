@@ -297,16 +297,77 @@ function extractFootnote(codeNode: HastElement): HastElement | null {
   };
 }
 
+/**
+ * Add a CSS class to a line element's existing class list.
+ */
+function addLineClass(node: HastElement, cls: string): void {
+  const existing = node.properties.class;
+  if (typeof existing === "string") {
+    node.properties.class = `${existing} ${cls}`;
+  } else if (Array.isArray(existing)) {
+    (existing as string[]).push(cls);
+  } else {
+    node.properties.class = cls;
+  }
+}
+
+/**
+ * Process withOutput: lines before the first empty line are commands,
+ * all lines after are output. Commands stay in <code> (so copy only
+ * grabs the command). Output is moved to a sibling <div> in <pre>.
+ * Returns the output container element, or null if no output found.
+ */
+function processWithOutput(codeNode: HastElement): HastElement | null {
+  const children = codeNode.children;
+
+  // Find the first empty line element — everything before is command,
+  // everything from the empty line onward is output.
+  let splitIdx = -1;
+  for (let i = 0; i < children.length; i++) {
+    if (isLineElement(children[i]) && isEmptyLine(children[i])) {
+      splitIdx = i;
+      break;
+    }
+  }
+  if (splitIdx === -1) return null;
+
+  // Mark command lines
+  for (let i = 0; i < splitIdx; i++) {
+    if (isLineElement(children[i])) {
+      addLineClass(children[i], "ec-command");
+    }
+  }
+
+  // Collect output nodes (from the empty line onward)
+  const outputNodes = children.slice(splitIdx);
+  // Also strip the leading newline text node before the empty line if present
+  if (splitIdx > 0 && children[splitIdx - 1].type === "text") {
+    codeNode.children = children.slice(0, splitIdx - 1);
+  } else {
+    codeNode.children = children.slice(0, splitIdx);
+  }
+
+  // Mark non-empty output lines
+  for (const node of outputNodes) {
+    if (isLineElement(node) && !isEmptyLine(node)) {
+      addLineClass(node, "ec-output");
+    }
+  }
+
+  return {
+    type: "element",
+    tagName: "div",
+    properties: { class: "ec-output-section nd-copy-ignore" },
+    children: outputNodes,
+  };
+}
+
 export function transformerExpressiveCode(): ShikiTransformer {
   return {
     name: "custom:expressive-code-compat",
 
     pre(node) {
       const meta = getMeta(this);
-
-      if (meta.withOutput) {
-        node.properties["data-with-output"] = "";
-      }
 
       const codeNode = node.children.find(
         (c): c is HastElement =>
@@ -316,6 +377,13 @@ export function transformerExpressiveCode(): ShikiTransformer {
       if (codeNode) {
         // Extract footnote first (before collapse, since it affects line count)
         const footnote = extractFootnote(codeNode);
+
+        if (meta.withOutput) {
+          const outputSection = processWithOutput(codeNode);
+          if (outputSection) {
+            node.children.push(outputSection);
+          }
+        }
 
         if (meta.collapse.length > 0) {
           wrapCollapsedLines(codeNode, meta.collapse);

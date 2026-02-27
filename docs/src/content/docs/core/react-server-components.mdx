@@ -205,14 +205,14 @@ When a `Response` is returned, RedwoodSDK automatically handles it:
 - **Redirects:** If the response has a 3xx status code and a `Location` header, the client will automatically redirect.
 - **Custom Responses:** Other response types are also supported, and their metadata (status, headers) is made available on the client.
 
-```tsx title="src/pages/todos/functions.tsx" "Response.redirect"
+```tsx title="src/pages/todos/functions.tsx"
 "use server";
 
 export async function addTodo(formData: FormData) {
   // ... logic to add todo ...
 
   // Redirect to the todos list page after success
-  return Response.redirect("/todos", 303);
+  return Response.redirect("/todos", 303); // [!code highlight]
 }
 ```
 
@@ -220,7 +220,8 @@ export async function addTodo(formData: FormData) {
 
 You can intercept action responses on the client by providing an `onActionResponse` callback to `initClient`. This is useful if you want to handle redirects manually or perform side effects based on the response.
 
-```tsx title="src/entry.client.tsx" "onActionResponse"
+```tsx title="src/entry.client.tsx"
+// [!code word:onActionResponse]
 import { initClient } from "rwsdk/client";
 
 initClient({
