@@ -34,7 +34,7 @@ testSDK.deploy(
       requestFailures.push(`${request.url()} :: ${failure}`);
     });
 
-    // --GROK--: We do a first deploy and keep this tab open across a second deploy
+    // We do a first deploy and keep this tab open across a second deploy
     // to model client-memory/version skew.
     const initialDeployControl = createDeployment();
     const initialDeployment = await initialDeployControl.start();
@@ -54,7 +54,7 @@ testSDK.deploy(
     const redeployControl = createDeployment();
     await redeployControl.start();
 
-    // --GROK--: Trigger client-side navigation in the existing tab before dynamic import.
+    // Trigger client-side navigation in the existing tab before dynamic import.
     await page.evaluate(() => {
       window.history.pushState({}, "", "/?after-redeploy=1");
       window.dispatchEvent(new PopStateEvent("popstate"));
@@ -66,7 +66,9 @@ testSDK.deploy(
       return true;
     });
 
-    const button = await page.waitForSelector('[data-testid="load-lazy-message"]');
+    const button = await page.waitForSelector(
+      '[data-testid="load-lazy-message"]',
+    );
     await button?.click();
 
     await poll(async () => {
@@ -77,7 +79,11 @@ testSDK.deploy(
       return true;
     });
 
-    const capturedErrors = [...pageErrors, ...consoleErrors, ...requestFailures];
+    const capturedErrors = [
+      ...pageErrors,
+      ...consoleErrors,
+      ...requestFailures,
+    ];
     expect(capturedErrors.join("\n")).not.toContain(
       "Failed to fetch dynamically imported module",
     );
