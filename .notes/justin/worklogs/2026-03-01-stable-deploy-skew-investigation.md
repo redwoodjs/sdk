@@ -167,3 +167,39 @@ Proposed flow:
 4. `playground/stable-deploy` is not currently tracked in this worktree state; we only have local `node_modules/` residue there.
 5. `hello-world` currently has minimal dynamic import surface beyond bootstrap import, so additional dynamic-loading surface likely needs to be introduced for deterministic skew reproduction.
 6. This phase completed context capture, investigation, and RFC drafting only. No implementation was performed.
+
+## Implemented stable-deploy playground baseline from hello-world
+
+We created a tracked `playground/stable-deploy` baseline by copying `playground/hello-world` source files (excluding dependency lock-in behavior changes). We also updated `playground/stable-deploy/package.json` package name to `stable-deploy`.
+
+## Implemented explicit dynamic-import trigger surface
+
+To make deploy-skew behavior observable in a deterministic way, we added a client-side lazy import boundary:
+- `src/app/components/LazyModuleTrigger.tsx` (`"use client"`) with `React.lazy(() => import("./RedeployLazyMessage"))`
+- `src/app/components/RedeployLazyMessage.tsx`
+- `src/app/pages/Home.tsx` now renders `<LazyModuleTrigger />`
+
+This allows us to defer loading a client chunk until after redeploy, which is the critical skew point we need to test.
+
+## Implemented low-level deploy/redeploy E2E flow
+
+We replaced the basic stable-deploy E2E test with a low-level deploy-skew scenario in `playground/stable-deploy/__tests__/e2e.test.mts`:
+1. Deploy once with `createDeployment().start()`.
+2. Open page and confirm baseline content.
+3. Deploy again in the same test (new deployment control).
+4. Keep existing tab alive, trigger client-side navigation via `pushState` + `popstate`.
+5. Trigger lazy dynamic import by clicking `Load Lazy Message`.
+6. Assert lazy content renders and no captured error includes `Failed to fetch dynamically imported module`.
+
+Instrumentation added:
+- `pageerror` capture
+- console error capture
+- failed request capture
+
+## Verification status
+
+We intentionally did not run automated tests in this phase.
+
+Manual verification commands proposed for next step:
+- `pnpm test:e2e playground/stable-deploy/__tests__/e2e.test.mts`
+- Optional deploy-only focus: `RWSDK_SKIP_DEV=1 pnpm test:e2e playground/stable-deploy/__tests__/e2e.test.mts`
