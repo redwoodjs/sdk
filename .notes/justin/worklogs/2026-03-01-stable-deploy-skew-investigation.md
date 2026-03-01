@@ -203,3 +203,26 @@ We intentionally did not run automated tests in this phase.
 Manual verification commands proposed for next step:
 - `pnpm test:e2e playground/stable-deploy/__tests__/e2e.test.mts`
 - Optional deploy-only focus: `RWSDK_SKIP_DEV=1 pnpm test:e2e playground/stable-deploy/__tests__/e2e.test.mts`
+
+## Recorded manual reproduction when deploy E2E was blocked
+
+We could not run deployment E2E because of an unrelated account issue that currently prevents deploys. We reproduced the same failure mode manually using local production preview:
+
+1. `pnpm build`
+2. `pnpm preview`
+3. Open app in browser
+4. Make a component change
+5. `pnpm build` again
+6. Interact on the already-open page/tab
+
+Observed runtime error in browser:
+- `TypeError: Failed to fetch dynamically imported module: http://localhost:4173/assets/RedeployLazyMessage-B6MdoznR.js`
+- Component stack includes `Lazy` / `Suspense` / `LazyModuleTrigger`
+
+Interpretation from this repro:
+- The issue reproduces without Cloudflare deploys and appears to match deploy-skew semantics: the long-lived page runtime references a previously built hashed chunk that no longer exists after rebuild.
+- This aligns with the current production build behavior where output assets are cleared between builds.
+
+Current solution direction (hypothesis):
+- Avoid deleting previous client assets on each deploy/build so older in-memory runtimes can still fetch their versioned dynamic chunks during transition windows.
+- We should validate storage/caching implications and rollout constraints before implementation.
