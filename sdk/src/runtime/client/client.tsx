@@ -144,12 +144,9 @@ export const fetchTransport: Transport = (transportContext) => {
 
     // Original behavior when no handler is present
     const response = await fetchPromise;
-    console.log("[fetchTransport] Response status:", response.status);
     const location = response.headers.get("Location");
-    console.log("[fetchTransport] Location header:", location);
 
     if (response.status >= 300 && response.status < 400 && location) {
-      console.log("[fetchTransport] Redirecting to:", location);
       window.location.href = location;
       return undefined as any;
     }
