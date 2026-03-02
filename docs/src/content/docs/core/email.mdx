@@ -53,7 +53,7 @@ This tells Cloudflare that the worker is also email worker and can be selected t
 
 > Note: If you are just sending emails, you can still use `defineApp` as usual and just call `env.EMAIL.send()` in the route handler or in a server function.
 
-```file title="worker.ts"
+```ts title="worker.ts"
 import * as PostalMime from "postal-mime";
 import { EmailMessage } from "cloudflare:email";
 import { createMimeMessage } from "mimetext";
