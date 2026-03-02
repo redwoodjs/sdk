@@ -47,7 +47,12 @@
     },
     {
       "description": "Infrastructure, Playgrounds, Community, and all remaining files (Every 2 weeks on 2nd/4th Sunday)",
-      "excludeFileNames": ["sdk/package.json", "addons/**", "starter/package.json"],
+      "matchFileNames": [
+        "**/*",
+        "!sdk/package.json",
+        "!addons/**",
+        "!starter/package.json"
+      ],
       "excludePackageNames": [
         "react",
         "react-dom",
