@@ -1,0 +1,121 @@
+## Primed task context from architecture and prior work
+We reviewed `docs/architecture/releaseProcess.md` to align this change with the existing release flow standard that favors packing artifacts before publish. We also reviewed prior community worklog notes in `.notes/justin/worklogs/2026-01-22-community-package-plan.md` and prior peer dependency remediation patterns in `.notes/justin/worklogs/2025-10-12-fix-npm-peer-dep-issue.md`.
+
+## Investigated community publish path and gathered evidence
+We verified `community/package.json` currently defines `peerDependencies.rwsdk` as `workspace:*`.
+
+We verified `.github/workflows/community-release.yml` was publishing with `npm publish` directly after version bumping, without a pnpm packing step that rewrites workspace protocol dependency specs.
+
+We verified published npm metadata for all released versions:
+- `npm view rwsdk-community@0.0.1 peerDependencies --json`
+- `npm view rwsdk-community@0.1.0 peerDependencies --json`
+- `npm view rwsdk-community@0.1.1 peerDependencies --json`
+
+All three versions include `"rwsdk": "workspace:*"` in `peerDependencies`, confirming the report.
+
+## Reproduced installation failure in a clean project
+We reproduced the install failure with:
+```bash
+tmpdir=$(mktemp -d)
+cd "$tmpdir"
+npm init -y
+npm install rwsdk rwsdk-community
+```
+
+Observed error:
+- `npm error code EUNSUPPORTEDPROTOCOL`
+- `Unsupported URL Type "workspace:": workspace:*`
+
+This confirms the publish artifact is invalid for npm consumers.
+
+## Ideated fix options and selected packaging strategy
+We considered two publish approaches:
+1. `pnpm publish`
+2. `pnpm pack` then `npm publish <tarball>`
+
+We selected `pnpm pack` then `npm publish` because it guarantees we publish the already rewritten packed artifact and keeps the current npm publish auth path intact.
+
+## Verified workspace protocol rewrite behavior before workflow edit
+We validated the expected rewrite behavior with:
+```bash
+tmpdir=$(mktemp -d)
+pnpm --dir community pack --pack-destination "$tmpdir"
+tar -xOf "$tmpdir"/*.tgz package/package.json
+```
+
+Result inside tarball `package.json`:
+- `peerDependencies.rwsdk` was rewritten from `workspace:*` to `1.0.0-beta.55`
+
+This confirmed `pnpm pack` is sufficient to fix the publish artifact issue.
+
+## Draft RFC
+### 2000ft View Narrative
+Our community package release path published raw workspace protocol peer dependency specifiers to npm. npm consumers cannot resolve `workspace:*`, so installs fail. We will change the release workflow to publish a packed tarball produced by pnpm so workspace specifiers are rewritten before publication.
+
+### Database Changes
+No database changes.
+
+### Behavior Spec
+- GIVEN the community package release workflow runs
+- WHEN it publishes to npm
+- THEN the published `peerDependencies.rwsdk` is a valid semver string and not `workspace:*`
+
+### API Reference
+No public API shape changes.
+
+### Implementation Breakdown
+- [MODIFY] `.github/workflows/community-release.yml`
+  - Replace direct `npm publish` with `pnpm pack --pack-destination .` and `npm publish "$PACKAGE_FILE"`
+
+### Directory and File Structure
+- `.github/workflows/community-release.yml`
+
+### Types and Data Structures
+No type changes.
+
+### Invariants and Constraints
+- Community package must never publish unresolved `workspace:*` specifiers.
+- Publish command must operate on packed artifact content.
+
+### System Flow Snapshot Diff
+- Previous: `npm version` -> `npm publish` (publishes from workspace tree)
+- New: `npm version` -> `pnpm pack` -> `npm publish <tgz>` (publishes rewritten artifact)
+
+### Suggested Verification
+Manual verification after next release:
+1. Trigger community release workflow.
+2. Run `npm view rwsdk-community@<released-version> peerDependencies --json`.
+3. Confirm `peerDependencies.rwsdk` is not `workspace:*`.
+4. In a clean directory run `npm init -y && npm install rwsdk rwsdk-community`.
+
+### Tasks
+- [x] Confirm issue report against local workflow and npm registry metadata
+- [x] Reproduce npm consumer failure
+- [x] Verify `pnpm pack` rewrites workspace protocol in tarball
+- [x] Update workflow publish step to publish packed artifact
+
+## Implemented workflow change
+We updated `.github/workflows/community-release.yml` in the `Version and Publish` step:
+- Removed direct `npm publish`
+- Added:
+```bash
+PACKAGE_FILE=$(pnpm pack --pack-destination .)
+npm publish "$PACKAGE_FILE"
+```
+
+## Verification summary after implementation
+We re-validated artifact behavior with local `pnpm pack` inspection and confirmed the tarball contains a valid concrete `rwsdk` peer dependency version.
+
+We did not run CI in this session.
+
+## Draft PR
+### Problem
+The community release workflow published `rwsdk-community` with `peerDependencies.rwsdk` set to `workspace:*`. npm consumers cannot resolve workspace protocol specifiers from a registry package, which causes install failures in clean projects.
+
+### Solution
+The release workflow now publishes the packed artifact generated by pnpm instead of publishing directly from the workspace directory. Specifically, the publish step now runs `pnpm pack` and then `npm publish` on the generated tarball. This ensures workspace protocol dependencies are rewritten to valid semver values before the package is published.
+
+### Evidence
+- `npm view` for `0.0.1`, `0.1.0`, and `0.1.1` shows `peerDependencies.rwsdk = workspace:*`.
+- Clean npm install repro fails with `EUNSUPPORTEDPROTOCOL` on `workspace:*`.
+- Local `pnpm pack` tarball inspection shows rewritten `peerDependencies.rwsdk` as a valid version string.
