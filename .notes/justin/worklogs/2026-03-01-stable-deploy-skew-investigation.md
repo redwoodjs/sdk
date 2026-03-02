@@ -226,3 +226,77 @@ Interpretation from this repro:
 Current solution direction (hypothesis):
 - Avoid deleting previous client assets on each deploy/build so older in-memory runtimes can still fetch their versioned dynamic chunks during transition windows.
 - We should validate storage/caching implications and rollout constraints before implementation.
+
+## Synthesis of our collective thought process so far
+
+We started from a downstream report of intermittent runtime failures: `Failed to fetch dynamically imported module`, with a consistent shape of long-lived browser session plus deploy in between interactions.
+
+Our initial plan was to reproduce this in E2E using a dedicated `stable-deploy` playground and low-level lifecycle controls. We validated that the harness supports this path (`testSDK.deploy` and `createDeployment`) and that redeploy-in-one-test is feasible by creating a second deployment control.
+
+Because deployment E2E execution was blocked by an unrelated account issue, we moved to a local production repro to keep evidence gathering unblocked. We reproduced the same failure manually using:
+
+1. `pnpm build`
+2. `pnpm preview`
+3. Open page
+4. Change component
+5. `pnpm build`
+6. Interact on the still-open tab
+
+The browser then throws:
+- `TypeError: Failed to fetch dynamically imported module: http://localhost:4173/assets/RedeployLazyMessage-<hash>.js`
+
+This materially strengthens our confidence that the core issue is not Cloudflare-specific; it is build/deploy skew between long-lived client memory and currently served hashed assets.
+
+We then traced build clearing behavior and found explicit dist cleanup in the production build orchestrator:
+- `sdk/src/vite/buildApp.mts`: `rm(projectRootDir/dist, { recursive: true, force: true })` at build start.
+
+We also checked deployment semantics and confirmed that plain `wrangler deploy` does not preserve old assets by default (Wrangler provides `--old-asset-ttl` specifically to avoid immediate deletion). This means:
+- even if local clearing behavior varied,
+- deploy-time asset replacement/deletion can still remove old chunk URLs that open tabs may request.
+
+From our discussion, we converged on an important architectural constraint:
+- We should not rely on stale files in local build output or machine-specific history.
+- This must work in CI and across independent deployers.
+
+Current direction (framed as hypotheses to validate):
+1. Primary: preserve prior deploy assets for a grace window during rollout (platform-level retention, e.g., old asset TTL).
+2. Secondary: keep hashed assets immutable/content-addressed and avoid hard cutover deletion semantics where possible.
+3. Defense-in-depth: provide a client-side recovery path (error boundary/reload UX) when an old chunk is truly unavailable.
+
+Net result so far:
+- We moved from suspicion to reproducible evidence.
+- We narrowed root-cause class to deploy/build asset skew for dynamic chunks.
+- We identified that local workspace retention is not a reliable fix and that deploy semantics must carry the compatibility guarantee.
+
+## Draft PR narrative for downstream repo
+
+### Problem
+
+We observed intermittent runtime failures in long-lived browser sessions after deploys:
+- `TypeError: Failed to fetch dynamically imported module`
+
+The failure path was consistent:
+1. We deployed a change that produced new hashed client assets.
+2. Previously deployed hashed assets were no longer available.
+3. A tab that was already open before deploy performed a client-side interaction/navigation.
+4. The old in-memory runtime attempted to fetch an old dynamic chunk URL and failed.
+
+Our deploy process replaced static assets without keeping prior versions available for a transition window. This made open tabs from the previous deploy vulnerable to chunk fetch failures during client-side navigation or lazy loading.
+
+### Solution
+
+We updated all Wrangler deploy invocation points in the project to retain old assets temporarily by setting old asset TTL:
+- Added `--old-asset-ttl` to deploy commands.
+- Configured retention to **two weeks**.
+
+This ensures old hashed assets remain available long enough for already-open tabs to continue functioning while users naturally refresh or revisit.
+
+### Validation
+
+We reproduced the issue before the change with this flow:
+1. Deploy/rebuild with client-side asset changes.
+2. Keep an existing pre-deploy tab open.
+3. Perform a root/client-side navigation or interaction on that old tab.
+4. Observe `Failed to fetch dynamically imported module`.
+
+After adding `--old-asset-ttl` (two weeks), we repeated the same scenario twice and did not reproduce the failure.
