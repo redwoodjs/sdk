@@ -1,24 +1,110 @@
 @import "tailwindcss";
 @import "fumadocs-ui/css/neutral.css";
 @import "fumadocs-ui/css/preset.css";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  --color-brand-beige: #f4eedf;
-  --color-brand-orange: #f47238;
-  --color-brand-orange-light: #ffad48;
-  --color-brand-orange-dark: #e73c36;
-  --color-brand-orange-medium: #f37238;
-  --color-brand-purple: #8b2243;
+  /* ── Brand palette (matches rwsdk.com) ── */
+  --color-baige: #f9f7f2;
+  --color-parchment: #fdfcfa;
+  --color-charcoal: #1a1a1a;
+  --color-subtext: #4a4a4a;
+  --color-orange: #F17543;
+  --color-orange-light: #ffad48;
+  --color-orange-dark: #e73c36;
+  --color-orange-medium: #F17543;
+  --color-purple: #8b2243;
+  --color-purple-dark: #6b1a35;
+  --color-light: #f2ece4;
+  --color-editor: #2b1810;
+
+  /* Dark mode palette "Zip" */
+  --color-dark-bg: #1A1412;
+  --color-dark-panel: #281D16;
+  --color-dark-panel-light: #33251C;
+  --color-dark-primary: #F4EBE1;
+  --color-dark-secondary: #BBAFA5;
+  --color-dark-accent: #F07135;
+  --color-dark-border: #3A2A20;
+  --color-dark-footer: #110D0B;
+
+  /* Typography */
+  --font-sans: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
 }
 
+/* ── Light mode: override fumadocs tokens ── */
 :root {
-  --color-fd-primary: var(--color-brand-orange);
+  --color-fd-background: var(--color-parchment);
+  --color-fd-foreground: var(--color-charcoal);
+  --color-fd-primary: var(--color-orange);
+  --color-fd-primary-foreground: #fff;
+  --color-fd-muted: var(--color-baige);
+  --color-fd-muted-foreground: var(--color-subtext);
+  --color-fd-popover: var(--color-parchment);
+  --color-fd-popover-foreground: var(--color-charcoal);
+  --color-fd-card: #e2d6c4;
+  --color-fd-card-foreground: var(--color-charcoal);
+  --color-fd-border: #e0d5c7;
+  --color-fd-accent: #e8dfd3;
+  --color-fd-accent-foreground: var(--color-charcoal);
+  --color-fd-secondary: #eee7dc;
+  --color-fd-secondary-foreground: var(--color-charcoal);
+  --color-fd-ring: #c9b99e;
+  --color-fd-overlay: hsla(30, 10%, 10%, 0.2);
+}
+
+/* ── Dark mode: override fumadocs tokens ── */
+.dark {
+  --color-fd-background: var(--color-dark-bg);
+  --color-fd-foreground: var(--color-dark-primary);
+  --color-fd-primary: var(--color-dark-accent);
+  --color-fd-primary-foreground: #fff;
+  --color-fd-muted: var(--color-dark-panel);
+  --color-fd-muted-foreground: var(--color-dark-secondary);
+  --color-fd-popover: var(--color-dark-panel);
+  --color-fd-popover-foreground: var(--color-dark-primary);
+  --color-fd-card: var(--color-dark-panel-light);
+  --color-fd-card-foreground: var(--color-dark-primary);
+  --color-fd-border: var(--color-dark-border);
+  --color-fd-accent: rgba(58, 42, 32, 0.5);
+  --color-fd-accent-foreground: var(--color-dark-primary);
+  --color-fd-secondary: var(--color-dark-panel-light);
+  --color-fd-secondary-foreground: var(--color-dark-primary);
+  --color-fd-ring: #5a4030;
+  --color-fd-overlay: hsla(20, 20%, 5%, 0.4);
+}
+
+/* ── Global typography ── */
+body {
+  font-family: var(--font-sans);
+}
+
+code, pre, kbd, samp {
+  font-family: var(--font-mono);
+}
+
+/* ── Inline code contrast fix ── */
+:not(pre) > code {
+  color: var(--color-fd-foreground);
+  background: var(--color-fd-card);
+  border: 1px solid var(--color-fd-border);
 }
 
 .prose {
-  --tw-prose-links: var(--color-brand-orange);
+  --tw-prose-links: var(--color-orange);
+  --tw-prose-body: var(--color-charcoal);
+  --tw-prose-headings: var(--color-charcoal);
+  --tw-prose-code: var(--color-charcoal);
+}
+
+.dark .prose {
+  --tw-prose-links: var(--color-dark-accent);
+  --tw-prose-body: var(--color-dark-primary);
+  --tw-prose-headings: var(--color-dark-primary);
+  --tw-prose-code: var(--color-dark-primary);
 }
 
 /* Collapsed lines — <details>/<summary> within code blocks */
