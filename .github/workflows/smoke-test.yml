@@ -89,8 +89,6 @@ jobs:
   smoke-test:
     needs: setup-matrix
     name: Starter Smoke Test
-    # context(peterp, 2026-03-05): Disabled while blocked from deploying to Cloudflare
-    if: false
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
