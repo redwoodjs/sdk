@@ -1,7 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
-  "ignorePresets": ["group:monorepos"],
+  "ignorePresets": ["group:monorepos", "group:recommended"],
   "timezone": "UTC",
   "separateMajorMinor": false,
   "vulnerabilityAlerts": {
@@ -65,6 +65,12 @@
         "vite"
       ],
       "schedule": ["* * 8-14 * 0", "* * 22-28 * 0"]
+    },
+    {
+      "description": "Force all updates into the single all-dependencies group (overrides any preset-injected groupName)",
+      "matchPackageNames": ["*"],
+      "groupName": "all-dependencies",
+      "groupSlug": "all-dependencies"
     }
   ],
   "prHeader": " chore(deps): {{{prTitle}}}",
