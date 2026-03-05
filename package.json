@@ -65,7 +65,8 @@
       "tar-fs@3.1.0": "3.1.2",
       "tar": "7.5.10",
       "tmp@0.2.3": "0.2.5",
-      "vite@7.1.9": "7.3.1"
+      "vite@7.1.9": "7.3.1",
+      "webpack": "5.104.1"
     },
     "onlyBuiltDependencies": [
       "@prisma/client",

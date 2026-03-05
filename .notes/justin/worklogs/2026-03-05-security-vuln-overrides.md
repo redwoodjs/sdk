@@ -117,4 +117,3 @@ pnpm overrides are workspace-local -- they do not propagate to consumers who ins
 | **tar** | root devDep chain | None -- not in SDK |
 | **devalue** | root devDep chain | None -- not in SDK |
 | **@isaacs/brace-expansion** | eslint (root devDep) -> minimatch -> @isaacs/brace-expansion | None -- not in SDK |
-
