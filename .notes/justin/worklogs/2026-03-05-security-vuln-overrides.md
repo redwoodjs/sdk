@@ -84,14 +84,37 @@ After `pnpm audit`: 6 remaining vulnerabilities, all Low severity webpack `build
 
 ## PR Description
 
-### Problem
+### For SDK consumers
 
-Dependabot flagged 23 security vulnerabilities in transitive dependencies across the lockfile. These include path traversal in rollup and basic-ftp, multiple ReDoS vectors in minimatch and ajv, RCE in serialize-javascript, DoS in svgo, and several issues in hono and @hono/node-server. Three existing overrides (tar, devalue, hono) had also fallen behind their patched versions.
+No action required. All affected packages in the SDK's dependency tree use semver ranges that resolve to patched versions on fresh installs. These overrides only fix version pinning in our own monorepo lockfile -- they do not propagate to consumer projects.
 
-### Solution
+### What changed
 
-Added 12 new pnpm overrides and bumped 3 existing ones to force patched versions of vulnerable transitive dependencies. This resolves all Critical, High, and Moderate severity alerts. Six Low severity webpack alerts remain -- these relate to `buildHttp` SSRF which requires opt-in use of HTTP URI loading and cannot be overridden because webpack is auto-installed as a peer dependency of `react-server-dom-webpack`.
+Dependabot flagged 23 security vulnerabilities in transitive dependencies. We added 12 new pnpm overrides and bumped 3 existing ones, resolving all Critical, High, and Moderate alerts. Six Low severity webpack `buildHttp` SSRF alerts remain -- this feature requires explicit opt-in and is not used by the SDK.
 
-**New overrides:** @hono/node-server, @isaacs/brace-expansion, ajv, basic-ftp, minimatch (4 version ranges), rollup, serialize-javascript, svgo
+## SDK vs Playground Dependency Audit
 
-**Bumped overrides:** devalue 5.6.2 -> 5.6.3, tar 7.5.9 -> 7.5.10, hono 4.11.3->4.11.9 replaced with blanket override to 4.12.5
+pnpm overrides are workspace-local -- they do not propagate to consumers who install `rwsdk`. We need to verify that the SDK's declared dependency ranges naturally resolve to patched versions for framework consumers.
+
+### Packages IN the SDK's dependency tree
+
+| Package | SDK dependency chain | Consumer impact |
+|---------|---------------------|-----------------|
+| **rollup** | vite (peer/devDep) -> rollup | Consumers bring their own vite. vite 7.x resolves rollup to 4.59.0 (patched). No action needed. |
+| **basic-ftp** | @puppeteer/browsers ~2.10.0 -> proxy-agent -> pac-proxy-agent -> get-uri -> basic-ftp ^5.0.2 | `^5.0.2` naturally resolves to 5.2.0 (patched) on fresh installs. Override only needed for our lockfile. |
+| **minimatch** | glob ~11.1.0 -> minimatch ^10.1.1; ts-morph ~27.0.0 -> @ts-morph/common -> minimatch ^10.0.1 | Both ranges resolve to 10.2.4 (patched) on fresh installs. Override only needed for our lockfile. |
+| **serialize-javascript** | react-server-dom-webpack (peer) -> webpack (peer) -> terser-webpack-plugin -> serialize-javascript | Consumers get this through their webpack. terser-webpack-plugin declares ^6.0.0 which now resolves to 7.0.3+ (patched). |
+| **ajv** | react-server-dom-webpack (peer) -> webpack (peer) -> schema-utils -> ajv | schema-utils@3 declares ajv ^6.12.5. Range allows 6.14.0 (patched) on fresh installs. |
+| **webpack** | react-server-dom-webpack (peer) -> webpack ^5.59.0 | Range allows 5.104.1+ but package managers may pin to older versions. Cannot be overridden via pnpm. Low severity. |
+
+### Packages NOT in the SDK's dependency tree (playground/root devDep only)
+
+| Package | Where it comes from | Consumer impact |
+|---------|---------------------|-----------------|
+| **svgo** | storybook (playground/storybook) | None -- playground only |
+| **hono** | community playground hono example | None -- playground only |
+| **@hono/node-server** | community playground hono example | None -- playground only |
+| **tar** | root devDep chain | None -- not in SDK |
+| **devalue** | root devDep chain | None -- not in SDK |
+| **@isaacs/brace-expansion** | eslint (root devDep) -> minimatch -> @isaacs/brace-expansion | None -- not in SDK |
+
