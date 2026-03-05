@@ -296,7 +296,6 @@ export const defineApp = <
         }
 
         console.error("rwsdk: Received an unhandled error:\n\n%s", e);
-        console.error("rwsdk: Received an unhandled error:\n\n%s", e);
         throw e;
       }
     },
