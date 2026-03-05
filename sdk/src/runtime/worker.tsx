@@ -296,6 +296,7 @@ export const defineApp = <
         }
 
         console.error("rwsdk: Received an unhandled error:\n\n%s", e);
+        console.error("rwsdk: Received an unhandled error:\n\n%s", e);
         throw e;
       }
     },
@@ -310,9 +311,7 @@ export const DefaultDocument: React.FC<{ children: React.ReactNode }> = ({
       <meta charSet="utf-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1" />
     </head>
-    <body>
-      {children}
-    </body>
+    <body>{children}</body>
   </html>
 );
 
