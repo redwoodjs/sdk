@@ -1,10 +1,10 @@
-import { expect } from "vitest";
 import {
+  poll,
   setupPlaygroundEnvironment,
   testDevAndDeploy,
-  poll,
   waitForHydration,
 } from "rwsdk/e2e";
+import { expect } from "vitest";
 
 setupPlaygroundEnvironment(import.meta.url);
 
@@ -42,6 +42,9 @@ testDevAndDeploy(
     await accordionTrigger?.click();
     await poll(async () => {
       const content = await page.content();
+      content.includes(
+        "Base UI is a library of high-quality unstyled React components",
+      );
       return content.includes(
         "Base UI is a library of high-quality unstyled React components",
       );
