@@ -74,4 +74,24 @@ All changes are pnpm overrides in root `package.json`. Existing overrides that n
 - `"rollup@4.55.1": "4.59.0"`
 - `"serialize-javascript@6.0.2": "7.0.3"`
 - `"svgo@4.0.0": "4.0.1"`
-- `"webpack@5.97.1": "5.104.1"`
+- `"webpack@5.97.1": "5.104.1"` -- removed: pnpm does not apply overrides to auto-installed peer deps
+
+## Implementation
+
+Applied all overrides except webpack. Removed the ineffective webpack override to avoid spurious peer dep warnings. Regenerated lockfile.
+
+After `pnpm audit`: 6 remaining vulnerabilities, all Low severity webpack `buildHttp` SSRF issues. These are not exploitable in our context (we don't use HTTP URI loading in webpack). The webpack vulnerability cannot be resolved via pnpm overrides because webpack enters the tree as an auto-installed peer dependency of `react-server-dom-webpack`.
+
+## PR Description
+
+### Problem
+
+Dependabot flagged 23 security vulnerabilities in transitive dependencies across the lockfile. These include path traversal in rollup and basic-ftp, multiple ReDoS vectors in minimatch and ajv, RCE in serialize-javascript, DoS in svgo, and several issues in hono and @hono/node-server. Three existing overrides (tar, devalue, hono) had also fallen behind their patched versions.
+
+### Solution
+
+Added 12 new pnpm overrides and bumped 3 existing ones to force patched versions of vulnerable transitive dependencies. This resolves all Critical, High, and Moderate severity alerts. Six Low severity webpack alerts remain -- these relate to `buildHttp` SSRF which requires opt-in use of HTTP URI loading and cannot be overridden because webpack is auto-installed as a peer dependency of `react-server-dom-webpack`.
+
+**New overrides:** @hono/node-server, @isaacs/brace-expansion, ajv, basic-ftp, minimatch (4 version ranges), rollup, serialize-javascript, svgo
+
+**Bumped overrides:** devalue 5.6.2 -> 5.6.3, tar 7.5.9 -> 7.5.10, hono 4.11.3->4.11.9 replaced with blanket override to 4.12.5
