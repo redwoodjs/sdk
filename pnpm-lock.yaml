@@ -32,7 +32,6 @@ overrides:
   tar: 7.5.10
   tmp@0.2.3: 0.2.5
   vite@7.1.9: 7.3.1
-  webpack: 5.104.1
 
 importers:
 
@@ -5355,7 +5354,7 @@ packages:
       rollup: 4.59.0
       storybook: ^10.0.3
       vite: 7.3.1
-      webpack: 5.104.1
+      webpack: '*'
     peerDependenciesMeta:
       esbuild:
         optional: true
@@ -9847,7 +9846,7 @@ packages:
     peerDependencies:
       react: ^19.2.4
       react-dom: ^19.2.4
-      webpack: 5.104.1
+      webpack: ^5.59.0
 
   react-server-dom-webpack@19.3.0-canary-4fdf7cf2-20251003:
     resolution: {integrity: sha512-asWkic0OmDY9JSMD8Qt4JJk2o56ycFW03yFmHvTGOP5+OW+FCnqOFqDUntPQWNdQoyA9VM87EpCO7ywg3gR+DA==}
@@ -9855,7 +9854,7 @@ packages:
     peerDependencies:
       react: 19.3.0-canary-4fdf7cf2-20251003
       react-dom: 19.3.0-canary-4fdf7cf2-20251003
-      webpack: 5.104.1
+      webpack: ^5.59.0
 
   react-style-singleton@2.2.3:
     resolution: {integrity: sha512-b6jSvxvVnyptAiLjbkWLE/lOnR4lfTtDAl+eUC7RZy+QQWc6wRzIV2CE6xBuMmDxc2qIihtDCZD5NPOFl7fRBQ==}
@@ -10533,7 +10532,7 @@ packages:
       '@swc/core': '*'
       esbuild: '*'
       uglify-js: '*'
-      webpack: 5.104.1
+      webpack: ^5.1.0
     peerDependenciesMeta:
       '@swc/core':
         optional: true
