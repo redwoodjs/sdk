@@ -84,17 +84,13 @@ After `pnpm audit`: 6 remaining vulnerabilities, all Low severity webpack `build
 
 ## PR Description
 
-### Problem
+### For SDK consumers
 
-Dependabot flagged 23 security vulnerabilities in transitive dependencies across the lockfile. These include path traversal in rollup and basic-ftp, multiple ReDoS vectors in minimatch and ajv, RCE in serialize-javascript, DoS in svgo, and several issues in hono and @hono/node-server. Three existing overrides (tar, devalue, hono) had also fallen behind their patched versions.
+No action required. All affected packages in the SDK's dependency tree use semver ranges that resolve to patched versions on fresh installs. These overrides only fix version pinning in our own monorepo lockfile -- they do not propagate to consumer projects.
 
-### Solution
+### What changed
 
-Added 12 new pnpm overrides and bumped 3 existing ones to force patched versions of vulnerable transitive dependencies. This resolves all Critical, High, and Moderate severity alerts. Six Low severity webpack alerts remain -- these relate to `buildHttp` SSRF which requires opt-in use of HTTP URI loading and cannot be overridden because webpack is auto-installed as a peer dependency of `react-server-dom-webpack`.
-
-**New overrides:** @hono/node-server, @isaacs/brace-expansion, ajv, basic-ftp, minimatch (4 version ranges), rollup, serialize-javascript, svgo
-
-**Bumped overrides:** devalue 5.6.2 -> 5.6.3, tar 7.5.9 -> 7.5.10, hono 4.11.3->4.11.9 replaced with blanket override to 4.12.5
+Dependabot flagged 23 security vulnerabilities in transitive dependencies. We added 12 new pnpm overrides and bumped 3 existing ones, resolving all Critical, High, and Moderate alerts. Six Low severity webpack `buildHttp` SSRF alerts remain -- this feature requires explicit opt-in and is not used by the SDK.
 
 ## SDK vs Playground Dependency Audit
 
@@ -121,3 +117,4 @@ pnpm overrides are workspace-local -- they do not propagate to consumers who ins
 | **tar** | root devDep chain | None -- not in SDK |
 | **devalue** | root devDep chain | None -- not in SDK |
 | **@isaacs/brace-expansion** | eslint (root devDep) -> minimatch -> @isaacs/brace-expansion | None -- not in SDK |
+
