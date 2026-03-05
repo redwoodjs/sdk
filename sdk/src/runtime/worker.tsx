@@ -295,6 +295,7 @@ export const defineApp = <
           return e;
         }
 
+        console.log("dummy change to run ci");
         console.error("rwsdk: Received an unhandled error:\n\n%s", e);
         throw e;
       }
