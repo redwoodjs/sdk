@@ -67,3 +67,34 @@ We will use `pnpm outdated` and `npm view` to check latest versions, then update
 - pnpm build:sdk: succeeded (clean build)
 - pnpm typecheck:starter: succeeded
 - pnpm typecheck:addons: succeeded
+
+## PR Prepared
+
+Branch `greenkeep-important-deps` has one commit (`e80835752 Update dependencies to latest versions.`). Drafted PR title and description; handing off to CI for validation. Infrastructure/playground peer dep warnings are pre-existing and out of scope for this update.
+
+### PR Title
+Update critical and SDK/starter dependencies
+
+### PR Description
+Update critical infrastructure and SDK/starter dependencies to latest stable versions, matching what Renovate would produce under our current config. Infrastructure and playground dependencies are left untouched.
+
+#### Critical dependencies
+- @cloudflare/vite-plugin: 1.25.1 -> 1.26.0
+- @cloudflare/workers-types: 4.20260218.0 -> 4.20260305.1
+- wrangler: 4.66.0 -> 4.70.0
+
+#### SDK dependencies (notable bumps)
+- @ast-grep/napi: 0.39 -> 0.41
+- @puppeteer/browsers: 2.10 -> 2.13
+- chokidar: 4.0 -> 5.0
+- glob: 11.1 -> 13.0
+- puppeteer-core: 24.22 -> 24.38
+- vite-tsconfig-paths: 5.1 -> 6.1
+- vitest: 3.2 -> 4.0
+- capnweb: 0.2 -> 0.5
+- @types/node: 24.10 -> 25.3
+- Plus 17 minor/patch bumps across the rest
+
+#### Starter & Addons
+- @types/node: 24.10 -> 25.3 (starter)
+- @simplewebauthn/server: 13.2.2 -> 13.2.3 (passkey addon)
