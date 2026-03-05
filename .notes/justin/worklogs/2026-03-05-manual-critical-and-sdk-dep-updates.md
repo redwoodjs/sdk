@@ -98,3 +98,33 @@ Update critical infrastructure and SDK/starter dependencies to latest stable ver
 #### Starter & Addons
 - @types/node: 24.10 -> 25.3 (starter)
 - @simplewebauthn/server: 13.2.2 -> 13.2.3 (passkey addon)
+
+## CI Failures Investigation and Fixes
+
+### Vitest snapshot failures in CI (dist tests)
+
+We investigated CI failures where 57 snapshot tests in `dist/vite/transformServerFunctions.test.mjs` failed with "mismatched" errors, while the same tests in `src/` passed fine. This only happened in CI, not locally.
+
+**Root cause**: Two issues combined:
+1. The vitest config had no `exclude` for `dist/` on the `test` block (only on `benchmark`), so vitest discovered and ran compiled test files in `dist/` alongside `src/` tests.
+2. The `dist/vite/__snapshots__/transformServerFunctions.test.mjs.snap` file is gitignored and not tracked. Locally it exists from previous test runs. In CI (fresh checkout + `tsc --build --clean`), the snapshot file doesn't exist.
+3. Vitest 4.x (upgraded from 3.2) changed behavior under `CI=1`: missing snapshots are treated as failures ("mismatched") rather than being silently auto-created as in vitest 3.x.
+
+**Reproduction**: `rm sdk/dist/vite/__snapshots__/transformServerFunctions.test.mjs.snap && CI=1 pnpm test` (in sdk/)
+
+**Fix**: Added `exclude: ["**/node_modules/**", "**/dist/**"]` to the `test` block in `sdk/vitest.config.mts`, matching what was already done for benchmarks.
+
+### TypeScript typecheck:community failures
+
+The community playground packages had `@types/node` at `24.10.4` while the SDK was upgraded to `25.3.3`. pnpm creates separate vite installations for different `@types/node` versions, and TypeScript treats their `PluginOption` types as incompatible (different `.pnpm` store paths = different type identities).
+
+**Fix**: Bulk-updated all community playground `package.json` files to align versions:
+- @cloudflare/vite-plugin: 1.25.1 -> 1.26.0
+- @cloudflare/workers-types: 4.20260218.0 -> 4.20260305.1
+- wrangler: 4.66.0 -> 4.70.0
+- @types/node: 24.10.4 -> 25.3.3
+
+Also updated root `package.json` and `community/package.json` for wrangler and @cloudflare/workers-types.
+
+### PR Description Updated
+Updated to reflect the expanded scope (community/playground dep alignment and CI fixes).
