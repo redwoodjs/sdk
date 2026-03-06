@@ -1,8 +1,7 @@
 // @ts-ignore
 import { compile } from "@mdx-js/mdx";
 import debug from "debug";
-// @ts-ignore
-import { OnLoadArgs, OnResolveArgs, Plugin, PluginBuild } from "esbuild";
+import { BuildOptions, OnLoadArgs, OnResolveArgs, Plugin, PluginBuild } from "esbuild";
 import { glob } from "glob";
 import fsp from "node:fs/promises";
 import path from "node:path";
@@ -15,6 +14,8 @@ import { getViteEsbuild } from "./getViteEsbuild.mjs";
 import { hasDirective } from "./hasDirective.mjs";
 
 const log = debug("rwsdk:vite:run-directives-scan");
+
+export type ConfigurableEsbuildOptions = Omit<BuildOptions, "entryPoints" | "bundle" | "write" | "splitting" | "outdir" | "platform" | "format" | "logLevel" | "plugins">;
 
 // Copied from Vite's source code.
 // https://github.com/vitejs/vite/blob/main/packages/vite/src/shared/utils.ts
@@ -142,12 +143,14 @@ export const runDirectivesScan = async ({
   clientFiles,
   serverFiles,
   entries: initialEntries,
+  esbuildOptions,
 }: {
   rootConfig: ResolvedConfig;
   environments: Record<string, Environment>;
   clientFiles: Set<string>;
   serverFiles: Set<string>;
   entries?: string[];
+  esbuildOptions: ConfigurableEsbuildOptions;
 }) => {
   deferredLog(
     "\n… (rwsdk) Scanning for 'use client' and 'use server' directives...",
@@ -424,6 +427,7 @@ export const runDirectivesScan = async ({
     };
 
     await esbuild.build({
+      ...esbuildOptions,
       entryPoints: Array.from(combinedEntries),
       bundle: true,
       write: false,

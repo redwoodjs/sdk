@@ -1485,6 +1485,52 @@ importers:
         specifier: 4.66.0
         version: 4.66.0(@cloudflare/workers-types@4.20260218.0)
 
+  playground/server-decorators:
+    dependencies:
+      react:
+        specifier: 19.2.4
+        version: 19.2.4
+      react-dom:
+        specifier: 19.2.4
+        version: 19.2.4(react@19.2.4)
+      react-server-dom-webpack:
+        specifier: 19.2.4
+        version: 19.2.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(webpack@5.97.1)
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
+      rwsdk:
+        specifier: workspace:*
+        version: link:../../sdk
+    devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: 1.25.1
+        version: 1.25.1(vite@7.3.1(@types/node@24.10.13)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(workerd@1.20260301.1)(wrangler@4.66.0(@cloudflare/workers-types@4.20260218.0))
+      '@cloudflare/workers-types':
+        specifier: 4.20260218.0
+        version: 4.20260218.0
+      '@types/node':
+        specifier: ~24.10.0
+        version: 24.10.13
+      '@types/react':
+        specifier: 19.2.14
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: 19.2.3
+        version: 19.2.3(@types/react@19.2.14)
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+      vite:
+        specifier: 7.3.1
+        version: 7.3.1(@types/node@24.10.13)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
+      vitest:
+        specifier: ^4.0.0
+        version: 4.0.18(@types/node@24.10.13)(jiti@2.6.1)(lightningcss@1.30.2)(msw@2.11.3(@types/node@24.10.13)(typescript@5.9.3))(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
+      wrangler:
+        specifier: 4.66.0
+        version: 4.66.0(@cloudflare/workers-types@4.20260218.0)
+
   playground/server-functions:
     dependencies:
       react:
@@ -2069,7 +2115,7 @@ importers:
         version: 19.2.4
       react-server-dom-webpack:
         specifier: '>=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0'
-        version: 19.3.0-canary-4fdf7cf2-20251003(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(webpack@5.97.1)
+        version: 19.3.0-canary-4fdf7cf2-20251003(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(webpack@5.97.1(esbuild@0.27.3))
       rsc-html-stream:
         specifier: ~0.0.7
         version: 0.0.7
@@ -2116,6 +2162,9 @@ importers:
       capnweb:
         specifier: ~0.5.0
         version: 0.5.0
+      esbuild:
+        specifier: ~0.27.3
+        version: 0.27.3
       js-beautify:
         specifier: ~1.15.4
         version: 1.15.4
@@ -12513,6 +12562,19 @@ snapshots:
       - utf-8-validate
       - workerd
 
+  '@cloudflare/vite-plugin@1.25.1(vite@7.3.1(@types/node@24.10.13)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(workerd@1.20260301.1)(wrangler@4.66.0(@cloudflare/workers-types@4.20260218.0))':
+    dependencies:
+      '@cloudflare/unenv-preset': 2.13.0(unenv@2.0.0-rc.24)(workerd@1.20260301.1)
+      miniflare: 4.20260217.0
+      unenv: 2.0.0-rc.24
+      vite: 7.3.1(@types/node@24.10.13)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
+      wrangler: 4.66.0(@cloudflare/workers-types@4.20260218.0)
+      ws: 8.18.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+      - workerd
+
   '@cloudflare/vite-plugin@1.25.1(vite@7.3.1(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(workerd@1.20260217.0)(wrangler@4.66.0(@cloudflare/workers-types@4.20260218.0))':
     dependencies:
       '@cloudflare/unenv-preset': 2.13.0(unenv@2.0.0-rc.24)(workerd@1.20260217.0)
@@ -20792,13 +20854,13 @@ snapshots:
       webpack: 5.97.1
       webpack-sources: 3.3.3
 
-  react-server-dom-webpack@19.3.0-canary-4fdf7cf2-20251003(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(webpack@5.97.1):
+  react-server-dom-webpack@19.3.0-canary-4fdf7cf2-20251003(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(webpack@5.97.1(esbuild@0.27.3)):
     dependencies:
       acorn-loose: 8.4.0
       neo-async: 2.6.2
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
-      webpack: 5.97.1
+      webpack: 5.97.1(esbuild@0.27.3)
       webpack-sources: 3.3.3
 
   react-style-singleton@2.2.3(@types/react@19.2.14)(react@19.2.4):
