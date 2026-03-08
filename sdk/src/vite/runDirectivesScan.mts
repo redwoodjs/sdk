@@ -1,7 +1,8 @@
 // @ts-ignore
 import { compile } from "@mdx-js/mdx";
 import debug from "debug";
-import { BuildOptions, OnLoadArgs, OnResolveArgs, Plugin, PluginBuild } from "esbuild";
+// @ts-ignore
+import { OnLoadArgs, OnResolveArgs, Plugin, PluginBuild } from "esbuild";
 import { glob } from "glob";
 import fsp from "node:fs/promises";
 import path from "node:path";
@@ -15,7 +16,7 @@ import { hasDirective } from "./hasDirective.mjs";
 
 const log = debug("rwsdk:vite:run-directives-scan");
 
-export type ConfigurableEsbuildOptions = Omit<BuildOptions, "entryPoints" | "bundle" | "write" | "splitting" | "outdir" | "platform" | "format" | "logLevel" | "plugins">;
+export type ConfigurableEsbuildOptions = Record<string, unknown>;
 
 // Copied from Vite's source code.
 // https://github.com/vitejs/vite/blob/main/packages/vite/src/shared/utils.ts

@@ -2115,7 +2115,7 @@ importers:
         version: 19.2.4
       react-server-dom-webpack:
         specifier: '>=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0'
-        version: 19.3.0-canary-4fdf7cf2-20251003(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(webpack@5.97.1(esbuild@0.27.3))
+        version: 19.3.0-canary-4fdf7cf2-20251003(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(webpack@5.97.1)
       rsc-html-stream:
         specifier: ~0.0.7
         version: 0.0.7
@@ -2162,9 +2162,6 @@ importers:
       capnweb:
         specifier: ~0.5.0
         version: 0.5.0
-      esbuild:
-        specifier: ~0.27.3
-        version: 0.27.3
       js-beautify:
         specifier: ~1.15.4
         version: 1.15.4
@@ -2180,9 +2177,6 @@ importers:
       vite:
         specifier: ~7.3.1
         version: 7.3.1(@types/node@25.3.5)(jiti@2.6.1)(lightningcss@1.31.1)(sugarss@5.0.1(postcss@8.5.8))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
-      vitest:
-        specifier: ~4.0.18
-        version: 4.0.18(@types/node@25.3.5)(jiti@2.6.1)(lightningcss@1.31.1)(msw@2.11.3(@types/node@25.3.5)(typescript@5.9.3))(sugarss@5.0.1(postcss@8.5.8))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
 
   starter:
     dependencies:
@@ -19354,13 +19348,13 @@ snapshots:
       webpack: 5.97.1
       webpack-sources: 3.3.3
 
-  react-server-dom-webpack@19.3.0-canary-4fdf7cf2-20251003(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(webpack@5.97.1(esbuild@0.27.3)):
+  react-server-dom-webpack@19.3.0-canary-4fdf7cf2-20251003(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(webpack@5.97.1):
     dependencies:
       acorn-loose: 8.4.0
       neo-async: 2.6.2
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
-      webpack: 5.97.1(esbuild@0.27.3)
+      webpack: 5.97.1
       webpack-sources: 3.3.3
 
   react-style-singleton@2.2.3(@types/react@19.2.14)(react@19.2.4):
