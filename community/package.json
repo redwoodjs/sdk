@@ -1,6 +1,6 @@
 {
   "name": "rwsdk-community",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Community extensions and utilities for RedwoodSDK",
   "type": "module",
   "keywords": [
@@ -35,11 +35,11 @@
     "react": ">=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0",
     "react-dom": ">=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0",
     "rwsdk": "workspace:*",
-    "wrangler": "^4.66.0"
+    "wrangler": "^4.71.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "~4.20260218.0",
-    "fs-extra": "~11.3.3",
+    "@cloudflare/workers-types": "~4.20260307.1",
+    "fs-extra": "~11.3.4",
     "@types/fs-extra": "~11.0.4",
     "@types/react": "~19.2.14",
     "@types/react-dom": "~19.2.3",

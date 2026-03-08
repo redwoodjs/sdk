@@ -1,12 +1,16 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
+  "ignorePresets": ["group:monorepos", "group:recommended"],
+  "timezone": "UTC",
   "separateMajorMinor": false,
   "vulnerabilityAlerts": {
     "enabled": false
   },
   "rangeStrategy": "bump",
   "groupName": "all-dependencies",
+  "groupSlug": "all-dependencies",
+  "updateNotScheduled": false,
   "packageRules": [
     {
       "description": "Critical Dependencies (Every Sunday)",
@@ -28,7 +32,6 @@
     {
       "description": "SDK & Starter (Every 2 weeks on 1st/3rd Sunday)",
       "matchFileNames": ["sdk/package.json", "addons/**", "starter/package.json"],
-      "matchPackageNames": ["*"],
       "excludePackageNames": [
         "react",
         "react-dom",
@@ -43,22 +46,13 @@
       "schedule": ["* * 1-7 * 0", "* * 15-21 * 0"]
     },
     {
-      "description": "Infrastructure, Playgrounds, Community, Rest (Every 2 weeks on 2nd/4th Sunday)",
+      "description": "Infrastructure, Playgrounds, Community, and all remaining files (Every 2 weeks on 2nd/4th Sunday)",
       "matchFileNames": [
-        "package.json",
-        "docs/package.json",
-        ".node-version",
-        ".nvmrc",
-        "docs/.node-version",
-        ".tool-versions",
-        "pnpm-workspace.yaml",
-        "renovate.json",
-        "playground/**",
-        "examples/**",
-        "community/package.json",
-        "community/playground/**"
+        "**/*",
+        "!sdk/package.json",
+        "!addons/**",
+        "!starter/package.json"
       ],
-      "matchPackageNames": ["*"],
       "excludePackageNames": [
         "react",
         "react-dom",
@@ -71,6 +65,12 @@
         "vite"
       ],
       "schedule": ["* * 8-14 * 0", "* * 22-28 * 0"]
+    },
+    {
+      "description": "Force all updates into the single all-dependencies group (overrides any preset-injected groupName)",
+      "matchPackageNames": ["*"],
+      "groupName": "all-dependencies",
+      "groupSlug": "all-dependencies"
     }
   ],
   "prHeader": " chore(deps): {{{prTitle}}}",

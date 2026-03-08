@@ -143,7 +143,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 24.13.1
+          node-version: 24.14.0
           cache: "pnpm"
 
       - name: Install dependencies
@@ -169,7 +169,7 @@ jobs:
           pnpm test:e2e
 
       - name: Upload playground artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: playground-e2e-dev-artifacts-${{ matrix.os }}-${{ matrix.package-manager }}
@@ -232,7 +232,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 24.13.1
+          node-version: 24.14.0
           cache: "pnpm"
 
       - name: Install dependencies
@@ -258,7 +258,7 @@ jobs:
           pnpm test:e2e
 
       - name: Upload playground artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: playground-e2e-deploy-artifacts-${{ matrix.os }}-${{ matrix.package-manager }}

@@ -513,7 +513,7 @@ export async function runRelease(
     // Extract deployment URL from output
     log("Extracting deployment URL from output");
     const urlMatch = stdout.match(
-      /https:\/\/([a-zA-Z0-9-]+)\.redwoodjs\.workers\.dev/,
+      /https:\/\/([a-zA-Z0-9-]+)(?:\.[a-zA-Z0-9-]+)?\.workers\.dev/,
     );
     if (!urlMatch || !urlMatch[0]) {
       log("ERROR: Could not extract deployment URL from release output");

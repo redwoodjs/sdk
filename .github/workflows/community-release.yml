@@ -32,7 +32,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
-          node-version: 24.13.1
+          node-version: 24.14.0
           cache: 'pnpm'
 
       - name: Update npm
@@ -60,7 +60,9 @@ jobs:
         run: |
           NEW_VERSION=$(npm version ${{ inputs.type }} --no-git-tag-version)
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
-          npm publish
+          PACK_OUTPUT=$(pnpm pack --pack-destination . --json)
+          PACKAGE_FILE=$(PACK_OUTPUT="$PACK_OUTPUT" node -e "const packed = JSON.parse(process.env.PACK_OUTPUT); const entry = Array.isArray(packed) ? packed[0] : packed; if (!entry?.filename) { throw new Error('pnpm pack did not return a filename'); } console.log(entry.filename);")
+          npm publish "$PACKAGE_FILE"
 
       - name: Commit and Tag
         run: |
