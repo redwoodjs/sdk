@@ -64,7 +64,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 24.13.1
+          node-version: 24.14.0
           cache: "pnpm"
 
       - name: Update npm
@@ -135,14 +135,14 @@ jobs:
 
       - name: Upload logs on failure
         if: failure() && steps.release_script.outputs.project-dir
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: smoke-test-failure-logs
           path: ${{ steps.release_script.outputs.project-dir }}
 
       - name: Upload smoke test artifacts
         if: always() && steps.release_script.outputs.project-dir
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: release-smoke-test-artifacts
           path: ${{ steps.release_script.outputs.project-dir }}/artifacts
