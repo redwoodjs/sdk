@@ -50,7 +50,7 @@ function HighlightMatch({ text, query }: { text: string; query: string }) {
     <>
       {parts.map((part, i) =>
         testPattern.test(part) ? (
-          <span key={i} className="text-brand-orange underline">
+          <span key={i} className="text-orange underline">
             {part}
           </span>
         ) : (

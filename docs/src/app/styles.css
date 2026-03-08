@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @import "fumadocs-ui/css/neutral.css";
 @import "fumadocs-ui/css/preset.css";
-@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -45,12 +44,12 @@
   --color-fd-muted-foreground: var(--color-subtext);
   --color-fd-popover: var(--color-parchment);
   --color-fd-popover-foreground: var(--color-charcoal);
-  --color-fd-card: #e2d6c4;
+  --color-fd-card: var(--color-baige);
   --color-fd-card-foreground: var(--color-charcoal);
   --color-fd-border: #e0d5c7;
   --color-fd-accent: #e8dfd3;
   --color-fd-accent-foreground: var(--color-charcoal);
-  --color-fd-secondary: #eee7dc;
+  --color-fd-secondary: var(--color-baige);
   --color-fd-secondary-foreground: var(--color-charcoal);
   --color-fd-ring: #c9b99e;
   --color-fd-overlay: hsla(30, 10%, 10%, 0.2);
@@ -66,7 +65,7 @@
   --color-fd-muted-foreground: var(--color-dark-secondary);
   --color-fd-popover: var(--color-dark-panel);
   --color-fd-popover-foreground: var(--color-dark-primary);
-  --color-fd-card: var(--color-dark-panel-light);
+  --color-fd-card: var(--color-dark-panel);
   --color-fd-card-foreground: var(--color-dark-primary);
   --color-fd-border: var(--color-dark-border);
   --color-fd-accent: rgba(58, 42, 32, 0.5);
@@ -75,6 +74,11 @@
   --color-fd-secondary-foreground: var(--color-dark-primary);
   --color-fd-ring: #5a4030;
   --color-fd-overlay: hsla(20, 20%, 5%, 0.4);
+  --color-fd-info: var(--color-dark-secondary);
+  --color-fd-warning: var(--color-dark-secondary);
+  --color-fd-error: var(--color-dark-secondary);
+  --color-fd-success: var(--color-dark-secondary);
+  --color-fd-idea: var(--color-dark-secondary);
 }
 
 /* ── Global typography ── */
@@ -82,29 +86,35 @@ body {
   font-family: var(--font-sans);
 }
 
-code, pre, kbd, samp {
+code,
+pre,
+kbd,
+samp {
   font-family: var(--font-mono);
 }
 
 /* ── Inline code contrast fix ── */
-:not(pre) > code {
+:not(pre)>code {
   color: var(--color-fd-foreground);
   background: var(--color-fd-card);
   border: 1px solid var(--color-fd-border);
 }
 
+/* Prose link color — everything else derives from fd-foreground via fumadocs' typography plugin */
 .prose {
-  --tw-prose-links: var(--color-orange);
-  --tw-prose-body: var(--color-charcoal);
-  --tw-prose-headings: var(--color-charcoal);
-  --tw-prose-code: var(--color-charcoal);
+  --tw-prose-links: var(--color-fd-primary);
 }
 
-.dark .prose {
-  --tw-prose-links: var(--color-dark-accent);
-  --tw-prose-body: var(--color-dark-primary);
-  --tw-prose-headings: var(--color-dark-primary);
-  --tw-prose-code: var(--color-dark-primary);
+/* Right-align line numbers in code blocks */
+[data-line-numbers] .line::after {
+  text-align: right;
+  width: calc(4 * var(--spacing));
+}
+
+/* Remove shadows from code blocks and callouts */
+figure.shiki,
+.prose>.bg-fd-card {
+  box-shadow: none;
 }
 
 /* Collapsed lines — <details>/<summary> within code blocks */
@@ -136,7 +146,7 @@ pre .ec-collapsed-summary::marker {
 }
 
 /* Hide the summary once opened — open is one-way */
-pre details[open] > .ec-collapsed-summary {
+pre details[open]>.ec-collapsed-summary {
   display: none;
 }
 
