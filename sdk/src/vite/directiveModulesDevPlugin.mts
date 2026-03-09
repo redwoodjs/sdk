@@ -9,7 +9,7 @@ import {
   VENDOR_SERVER_BARREL_PATH,
 } from "../lib/constants.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
-import { runDirectivesScan } from "./runDirectivesScan.mjs";
+import { ConfigurableEsbuildOptions, runDirectivesScan } from "./runDirectivesScan.mjs";
 
 export const generateVendorBarrelContent = (
   files: Set<string>,
@@ -58,11 +58,13 @@ export const directiveModulesDevPlugin = ({
   serverFiles,
   projectRootDir,
   workerEntryPathname,
+  esbuildOptions,
 }: {
   clientFiles: Set<string>;
   serverFiles: Set<string>;
   projectRootDir: string;
   workerEntryPathname: string;
+  esbuildOptions: ConfigurableEsbuildOptions;
 }): Plugin => {
   const { promise: scanPromise, resolve: resolveScanPromise } =
     Promise.withResolvers<void>();
@@ -94,6 +96,7 @@ export const directiveModulesDevPlugin = ({
         clientFiles,
         serverFiles,
         entries: [workerEntryPathname],
+        esbuildOptions,
       }).then(() => {
         // context(justinvdm, 11 Sep 2025): For vendor barrels, we write the
         // files directly to disk after the scan. For app barrels, we use a
