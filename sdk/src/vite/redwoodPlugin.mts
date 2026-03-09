@@ -19,6 +19,7 @@ import { configPlugin } from "./configPlugin.mjs";
 import { devServerTimingPlugin } from "./devServerTimingPlugin.mjs";
 import { directiveModulesDevPlugin } from "./directiveModulesDevPlugin.mjs";
 import { directivesFilteringPlugin } from "./directivesFilteringPlugin.mjs";
+import { ConfigurableEsbuildOptions } from "./runDirectivesScan.mjs";
 import { directivesPlugin } from "./directivesPlugin.mjs";
 import { injectVitePreamble } from "./injectVitePreamblePlugin.mjs";
 import { knownDepsResolverPlugin } from "./knownDepsResolverPlugin.mjs";
@@ -46,6 +47,7 @@ export type RedwoodPluginOptions = {
   entry?: {
     worker?: string;
   };
+  esbuildOptions?: ConfigurableEsbuildOptions;
 };
 
 export const determineWorkerEntryPathname = async ({
@@ -76,6 +78,7 @@ export const redwoodPlugin = async (
   options: RedwoodPluginOptions = {},
 ): Promise<InlineConfig["plugins"]> => {
   const projectRootDir = process.cwd();
+  const esbuildOptions = options.esbuildOptions ?? {};
 
   if (options.forceClientPaths) {
     const clientPaths = await resolveForcedPaths({
@@ -141,6 +144,7 @@ export const redwoodPlugin = async (
       serverFiles,
       projectRootDir,
       workerEntryPathname,
+      esbuildOptions,
     }),
     configPlugin({
       silent: options.silent ?? false,
@@ -149,6 +153,7 @@ export const redwoodPlugin = async (
       clientFiles,
       serverFiles,
       clientEntryPoints,
+      esbuildOptions,
     }),
     ssrBridgePlugin({
       clientFiles,

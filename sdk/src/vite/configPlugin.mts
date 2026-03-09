@@ -5,6 +5,7 @@ import { InlineConfig, Plugin, ViteBuilder } from "vite";
 import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import { buildApp } from "./buildApp.mjs";
 import { externalModules } from "./constants.mjs";
+import { ConfigurableEsbuildOptions } from "./runDirectivesScan.mjs";
 
 import { ssrBridgeWrapPlugin } from "./ssrBridgeWrapPlugin.mjs";
 
@@ -15,6 +16,7 @@ export const configPlugin = ({
   clientFiles,
   serverFiles,
   clientEntryPoints,
+  esbuildOptions,
 }: {
   silent: boolean;
   projectRootDir: string;
@@ -22,6 +24,7 @@ export const configPlugin = ({
   clientFiles: Set<string>;
   serverFiles: Set<string>;
   clientEntryPoints: Set<string>;
+  esbuildOptions: ConfigurableEsbuildOptions;
 }): Plugin => ({
   name: "rwsdk:config",
   config: async (_, { command }) => {
@@ -213,6 +216,7 @@ export const configPlugin = ({
             clientFiles,
             serverFiles,
             workerEntryPathname,
+            esbuildOptions,
           });
         },
       },

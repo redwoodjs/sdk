@@ -16,6 +16,8 @@ import { hasDirective } from "./hasDirective.mjs";
 
 const log = debug("rwsdk:vite:run-directives-scan");
 
+export type ConfigurableEsbuildOptions = Record<string, unknown>;
+
 // Copied from Vite's source code.
 // https://github.com/vitejs/vite/blob/main/packages/vite/src/shared/utils.ts
 const isObject = (value: unknown): value is Record<string, any> =>
@@ -142,12 +144,14 @@ export const runDirectivesScan = async ({
   clientFiles,
   serverFiles,
   entries: initialEntries,
+  esbuildOptions,
 }: {
   rootConfig: ResolvedConfig;
   environments: Record<string, Environment>;
   clientFiles: Set<string>;
   serverFiles: Set<string>;
   entries?: string[];
+  esbuildOptions: ConfigurableEsbuildOptions;
 }) => {
   deferredLog(
     "\n… (rwsdk) Scanning for 'use client' and 'use server' directives...",
@@ -424,6 +428,7 @@ export const runDirectivesScan = async ({
     };
 
     await esbuild.build({
+      ...esbuildOptions,
       entryPoints: Array.from(combinedEntries),
       bundle: true,
       write: false,

@@ -4,7 +4,9 @@ import { pathToFileURL } from "node:url";
 
 const require = createRequire(import.meta.url);
 
-export async function getViteEsbuild(projectRootDir: string): Promise<any> {
+export async function getViteEsbuild(
+  projectRootDir: string,
+) {
   const vitePath = require.resolve("vite/package.json", {
     paths: [projectRootDir],
   });

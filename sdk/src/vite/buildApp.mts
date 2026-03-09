@@ -4,7 +4,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import type { ViteBuilder } from "vite";
 import { INTERMEDIATES_OUTPUT_DIR } from "../lib/constants.mjs";
-import { runDirectivesScan } from "./runDirectivesScan.mjs";
+import { ConfigurableEsbuildOptions, runDirectivesScan } from "./runDirectivesScan.mjs";
 
 const log = debug("rwsdk:vite:build-app");
 
@@ -22,6 +22,7 @@ export async function buildApp({
   serverFiles,
   projectRootDir,
   workerEntryPathname,
+  esbuildOptions,
 }: {
   builder: ViteBuilder;
   clientEntryPoints: Set<string>;
@@ -29,6 +30,7 @@ export async function buildApp({
   serverFiles: Set<string>;
   projectRootDir: string;
   workerEntryPathname: string;
+  esbuildOptions: ConfigurableEsbuildOptions;
 }) {
   await rm(resolve(projectRootDir, "dist"), { recursive: true, force: true });
 
@@ -73,6 +75,7 @@ export async function buildApp({
     clientFiles,
     serverFiles,
     entries: [workerEntryPathname],
+    esbuildOptions,
   });
 
   console.log("Building worker...");
