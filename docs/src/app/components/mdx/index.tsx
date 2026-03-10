@@ -1,6 +1,5 @@
 /**
  * Barrel re-export for all MDX components.
- * Vite aliases resolve Astro package imports to this file.
  */
 export { Aside } from "./Aside";
 export { Badge } from "./Badge";

@@ -10,16 +10,13 @@ import path from "path";
 export default defineConfig({
   resolve: {
     alias: {
-      // MDX content still imports from old Starlight packages
-      "@astrojs/starlight/components": path.resolve(
-        "src/app/components/mdx/index.tsx",
-      ),
-      "starlight-package-managers": path.resolve(
-        "src/app/components/mdx/index.tsx",
-      ),
-      "astro-embed": path.resolve("src/app/components/mdx/index.tsx"),
-      // fumadocs-mdx generated source (rwsdk doesn't use vite-tsconfig-paths)
+      // rwsdk doesn't use vite-tsconfig-paths, so mirror tsconfig paths here
+      "@/": path.resolve("src") + "/",
       "@source": path.resolve(".source"),
+      // Stub unused optional peer deps of fumadocs so rwsdk's client barrel
+      // doesn't crash when it encounters them at runtime.
+      flexsearch: path.resolve("src/lib/module-stub.ts"),
+      "@takumi-rs/image-response": path.resolve("src/lib/module-stub.ts"),
     },
   },
   plugins: [
@@ -33,14 +30,12 @@ export default defineConfig({
     }),
     redwood({
       // fumadocs-mdx generates component imports at build time, after rwsdk's
-      // directive scan has run. Extglob excludes files that import uninstalled
-      // optional peer deps, *.server modules, and mdx (server-side component map).
+      // directive scan has run. forceClientPaths pre-registers these modules in
+      // the vendor barrel so they're available when discovered during reloads.
       forceClientPaths: [
         "node_modules/fumadocs-ui/dist/**/!(og|next|waku|react-router|tanstack|mdx|*.server).js",
         "node_modules/fumadocs-core/dist/**/!(next|waku|react-router|tanstack|middleware).js",
       ],
-      // Prevent the directive scan from re-adding framework files that have
-      // 'use client' but import uninstalled packages.
       directiveScanBlocklist: [
         "fumadocs-core/dist/framework",
         "fumadocs-ui/dist/provider",
