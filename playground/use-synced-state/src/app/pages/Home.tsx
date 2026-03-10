@@ -1,6 +1,7 @@
 "use client";
 
 import { MountUnmountTest } from "@/app/components/MountUnmountTest";
+import { ServerTickTest } from "@/app/components/ServerTickTest";
 import { UserPresence } from "@/app/components/UserPresence";
 import { AppContext } from "@/worker";
 import { useSyncedState } from "rwsdk/use-synced-state/client";
@@ -184,6 +185,9 @@ export function Home({ ctx }: { ctx: AppContext }) {
           isLoggedIn={isLoggedIn}
           currentUserId={ctx.userId}
         />
+
+        {/* Server-side tick test (PRZM driver-location repro) */}
+        <ServerTickTest />
 
         {/* Mount/Unmount test component */}
         <MountUnmountTest />

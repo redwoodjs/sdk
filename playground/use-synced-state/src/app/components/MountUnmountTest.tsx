@@ -30,7 +30,7 @@ function TestComponent({ testKey }: { testKey: string }) {
       </p>
       <div className="counter-display">Value: {value}</div>
       <div className="button-group" style={{ marginTop: "0.5rem" }}>
-        <button onClick={() => setValue((v) => v + 1)}>Increment</button>
+        <button onClick={() => setValue((v) => v + 1)}>Incremnt</button>
         <button onClick={() => setValue((v) => v - 1)}>Decrement</button>
         <button onClick={() => setValue(0)}>Reset</button>
       </div>

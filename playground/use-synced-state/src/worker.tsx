@@ -29,6 +29,22 @@ function generateUserId(): string {
 
 export default defineApp([
   setCommonHeaders(),
+  // --GROK--: Server-side tick endpoint that mirrors PRZM's broadcastDriverLocation pattern.
+  // Writes to the DO via stub.setState() (server-side RPC), NOT via client WebSocket.
+  // This triggers #notifySubscribers which pushes to all WebSocket-connected clients.
+  route("/api/tick", async () => {
+    const namespace = env.SYNCED_STATE_SERVER;
+    const id = namespace.idFromName("syncedState");
+    const stub = namespace.get(id);
+
+    const current = (await stub.getState("server-tick")) as number | undefined;
+    const next = (current ?? 0) + 1;
+    await stub.setState(next, "server-tick");
+
+    return new Response(JSON.stringify({ tick: next }), {
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
   ({ ctx, request, response }) => {
     // grab userID from search params in request.
     const url = new URL(request.url);
