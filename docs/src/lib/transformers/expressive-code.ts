@@ -27,7 +27,7 @@ interface HastText {
 }
 
 interface ShikiTransformerContext {
-  options: { meta?: { __raw?: string } };
+  options: { lang?: string; meta?: { __raw?: string } };
 }
 
 interface ShikiTransformer {
@@ -362,6 +362,17 @@ function processWithOutput(codeNode: HastElement): HastElement | null {
   };
 }
 
+// Languages that should show line numbers by default
+const LINE_NUMBER_LANGS = new Set([
+  "js",
+  "javascript",
+  "ts",
+  "typescript",
+  "css",
+  "tsx",
+  "jsx",
+]);
+
 export function transformerExpressiveCode(): ShikiTransformer {
   return {
     name: "custom:expressive-code-compat",
@@ -375,6 +386,13 @@ export function transformerExpressiveCode(): ShikiTransformer {
       );
 
       if (codeNode) {
+        // Auto-enable line numbers for certain languages
+        const lang = this.options.lang;
+        if (lang && LINE_NUMBER_LANGS.has(lang)) {
+          if (!node.properties["data-line-numbers"]) {
+            node.properties["data-line-numbers"] = true;
+          }
+        }
         // Extract footnote first (before collapse, since it affects line count)
         const footnote = extractFootnote(codeNode);
 
