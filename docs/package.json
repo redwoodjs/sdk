@@ -17,8 +17,12 @@
     "clean:vite": "rm -rf ./node_modules/.vite",
     "release": "rw-scripts ensure-deploy-env && pnpm run clean && pnpm run build && wrangler deploy",
     "generate": "rw-scripts ensure-env && wrangler types",
-    "check": "pnpm run generate && pnpm run types",
-    "types": "tsc"
+    "check": "pnpm run generate && pnpm run types && pnpm run lint && pnpm run fmt:check",
+    "types": "tsc",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check"
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",
@@ -44,6 +48,8 @@
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "^5.1.4",
     "babel-plugin-react-compiler": "^1.0.0",
+    "oxfmt": "^0.37.0",
+    "oxlint": "^1.52.0",
     "tailwindcss": "^4.1.13",
     "typescript": "5.9.3",
     "vite": "7.3.1",
