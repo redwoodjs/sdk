@@ -40,7 +40,7 @@ interface ShikiTransformer {
   ) => void;
 }
 
-function parseRanges(str: string): Array<[number, number]> {
+export function parseRanges(str: string): Array<[number, number]> {
   return str.split(",").flatMap((part) => {
     const trimmed = part.trim();
     const match = trimmed.match(/^(\d+)(?:-(\d+))?$/);
@@ -60,20 +60,14 @@ interface ParsedMeta {
   withOutput: boolean;
 }
 
-function parseMeta(raw: string): ParsedMeta {
-  let meta = raw;
-
+export function parseMeta(raw: string): ParsedMeta {
   let collapse: Array<[number, number]> = [];
-  meta = meta.replace(/collapse=\{([^}]+)\}/g, (_, ranges) => {
-    collapse = parseRanges(ranges);
-    return "";
-  });
+  const collapseMatch = raw.match(/collapse=\{([^}]+)\}/);
+  if (collapseMatch) {
+    collapse = parseRanges(collapseMatch[1]);
+  }
 
-  let withOutput = false;
-  meta = meta.replace(/\bwithOutput\b/g, () => {
-    withOutput = true;
-    return "";
-  });
+  const withOutput = /\bwithOutput\b/.test(raw);
 
   return { collapse, withOutput };
 }
@@ -94,9 +88,8 @@ function getMeta(ctx: ShikiTransformerContext): ParsedMeta {
  */
 function isLineElement(node: HastNode): node is HastElement {
   if (node.type !== "element") return false;
-  const el = node as HastElement;
-  if (el.tagName !== "span") return false;
-  const cls = el.properties?.class;
+  if (node.tagName !== "span") return false;
+  const cls = node.properties?.class;
   if (typeof cls === "string") return cls === "line" || cls.split(" ").includes("line");
   if (Array.isArray(cls)) return cls.includes("line");
   return false;
@@ -214,7 +207,7 @@ function isEmptyLine(node: HastNode): boolean {
 }
 
 /** Parse backtick-wrapped text into HAST nodes with <code> elements. */
-function parseInlineMarkdown(text: string): HastNode[] {
+export function parseInlineMarkdown(text: string): HastNode[] {
   const nodes: HastNode[] = [];
   const regex = /`([^`]+)`/g;
   let lastIndex = 0;
@@ -324,7 +317,7 @@ function processWithOutput(codeNode: HastElement): HastElement | null {
   // everything from the empty line onward is output.
   let splitIdx = -1;
   for (let i = 0; i < children.length; i++) {
-    if (isLineElement(children[i]) && isEmptyLine(children[i])) {
+    if (isEmptyLine(children[i])) {
       splitIdx = i;
       break;
     }

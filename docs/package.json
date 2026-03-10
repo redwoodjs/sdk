@@ -22,7 +22,8 @@
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt",
-    "fmt:check": "oxfmt --check"
+    "fmt:check": "oxfmt --check",
+    "test": "vitest run"
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",
@@ -50,8 +51,11 @@
     "babel-plugin-react-compiler": "^1.0.0",
     "oxfmt": "^0.37.0",
     "oxlint": "^1.52.0",
+    "remark": "^15.0.1",
+    "remark-mdx": "^3.1.1",
     "tailwindcss": "^4.1.13",
     "typescript": "5.9.3",
+    "unist-util-visit": "^5.1.0",
     "vite": "7.3.1",
     "wrangler": "4.64.0"
   },

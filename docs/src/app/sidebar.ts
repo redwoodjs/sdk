@@ -49,7 +49,6 @@ export const pageTree: PageTree.Root = {
         p("Client Side Navigation (SPA)", "guides/frontend/client-side-nav"),
         p("Error Handling", "guides/frontend/error-handling"),
         p("Dark / Light Mode", "guides/frontend/dark-mode"),
-        p("Image Optimization", "guides/frontend/images"),
       ],
     },
     {
