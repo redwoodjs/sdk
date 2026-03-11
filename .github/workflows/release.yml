@@ -7,9 +7,8 @@ on:
         description: "The type of version bump"
         required: true
         type: choice
-        default: "beta"
+        default: "patch"
         options:
-          - beta
           - patch
           - minor
           - explicit
