@@ -69,6 +69,7 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
             Reads prefers-color-scheme and sets the dark class before paint. */}
         {theme === "system" && (
           <script
+            nonce={requestInfo.rw.nonce}
             dangerouslySetInnerHTML={{
               __html: `(function(){var d=document.documentElement;if(matchMedia("(prefers-color-scheme:dark)").matches){d.classList.add("dark")}})()`,
             }}

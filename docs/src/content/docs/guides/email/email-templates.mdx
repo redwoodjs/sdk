@@ -70,16 +70,18 @@ You can delete all the contents inside the `emails` directory. Or, oftentimes, I
     } from "@react-email/components";
 
     export default function WelcomeEmail() {
-      <Html>
-        <Head />
-        <Preview>Hello World</Preview>
-        <Body>
-          <Container>
-            <Heading>Hello World</Heading>
-          </Container>
-        </Body>
-      </Html>
-    );
+      return (
+        <Html>
+          <Head />
+          <Preview>Hello World</Preview>
+          <Body>
+            <Container>
+              <Heading>Hello World</Heading>
+            </Container>
+          </Body>
+        </Html>
+      );
+    }
     ```
 
     <Aside type="caution" title="Default Export">
@@ -102,16 +104,18 @@ You can delete all the contents inside the `emails` directory. Or, oftentimes, I
     }
 
     export default function WelcomeEmail({ name }: WelcomeEmailProps) {
-      <Html>
-        <Head />
-        <Preview>Hello {name}</Preview>
-        <Body>
-          <Container>
-            <Heading>Hello {name}</Heading>
-          </Container>
-        </Body>
-      </Html>
-    );
+      return (
+        <Html>
+          <Head />
+          <Preview>Hello {name}</Preview>
+          <Body>
+            <Container>
+              <Heading>Hello {name}</Heading>
+            </Container>
+          </Body>
+        </Html>
+      );
+    }
     ```
 
 4. When you've finished building the email template, you can get the code by clicking on the Code button in the browser preview.
