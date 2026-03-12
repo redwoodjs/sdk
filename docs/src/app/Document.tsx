@@ -5,7 +5,6 @@ import ogImageUrl from "../assets/og-docs.png?url";
 export const Document: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const nonce = requestInfo.rw.nonce;
   const theme = requestInfo.ctx?.theme || "system";
   const url = new URL(requestInfo.request.url);
   const origin = url.origin;
@@ -70,13 +69,12 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
             Reads prefers-color-scheme and sets the dark class before paint. */}
         {theme === "system" && (
           <script
-            nonce={nonce}
             dangerouslySetInnerHTML={{
               __html: `(function(){var d=document.documentElement;if(matchMedia("(prefers-color-scheme:dark)").matches){d.classList.add("dark")}})()`,
             }}
           />
         )}
-        {children}
+        <div id="root">{children}</div>
         <script>import("/src/client.tsx")</script>
       </body>
     </html>

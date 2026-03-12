@@ -3,6 +3,10 @@
 import { setTheme } from "@/app/actions/setTheme";
 import { MoonIcon, SunIcon } from "@/app/components/ui/Icon";
 
+// Prevents the jarring flash of every element on the page animating at once
+// when the theme changes. The toggle itself (and its children) are excluded via
+// [data-theme-toggle] so the pill slide animation still plays smoothly.
+// Returns a cleanup function that re-enables transitions after the repaint.
 function disableTransitions(): () => void {
   const css = document.createElement("style");
   css.appendChild(
@@ -13,9 +17,9 @@ function disableTransitions(): () => void {
   document.head.appendChild(css);
 
   return () => {
-    // Force restyle
+    // Flush the style change so the browser applies it before we remove it
     window.getComputedStyle(document.body);
-    // Remove on next tick
+    // Re-enable transitions on the next frame so elements can animate again
     setTimeout(() => {
       document.head.removeChild(css);
     }, 1);
