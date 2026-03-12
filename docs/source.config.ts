@@ -9,6 +9,7 @@ export const docs = defineDocs({
   docs: {
     schema: frontmatterSchema.extend({
       tableOfContents: z.boolean().default(true),
+      experimental: z.boolean().default(false),
     }),
     postprocess: {
       includeProcessedMarkdown: true,

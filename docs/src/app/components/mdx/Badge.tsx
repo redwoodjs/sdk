@@ -9,18 +9,23 @@ const variantClasses: Record<string, string> = {
   danger: "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300",
 };
 
+type Variant = "note" | "tip" | "caution" | "danger" | "default";
+
 export function Badge({
   text,
   variant = "default",
+  type,
 }: {
   text: string;
-  variant?: "note" | "tip" | "caution" | "danger" | "default";
+  variant?: Variant;
+  type?: Variant;
 }) {
+  const resolved = type ?? variant;
   return (
     <span
       className={clsx(
-        "inline-flex items-center rounded-full py-0.5 text-xs font-medium",
-        variantClasses[variant] ?? variantClasses.default,
+        "inline-flex items-center align-middle rounded-md px-1.5 py-0.5 text-xs font-medium",
+        variantClasses[resolved] ?? variantClasses.default,
       )}
     >
       {text}

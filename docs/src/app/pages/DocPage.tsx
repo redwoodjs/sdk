@@ -9,6 +9,7 @@ import {
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import { requestInfo } from "rwsdk/worker";
 import { CopyMarkdownButton } from "@/app/components/CopyMarkdownButton";
+import { Badge } from "@/app/components/mdx";
 
 
 type Page = InferPageType<typeof source>;
@@ -69,7 +70,12 @@ export async function DocPageView({ slug: rawSlug }: { slug: string }) {
         <meta name="twitter:description" content={page.data.description} />
       )}
       <div className="flex items-center justify-between">
-        <DocsTitle className="leading-none">{page.data.title}</DocsTitle>
+        <div className="flex items-center gap-3">
+          <DocsTitle className="leading-none">{page.data.title}</DocsTitle>
+          {page.data.experimental && (
+            <Badge text="Experimental" variant="caution" />
+          )}
+        </div>
         <CopyMarkdownButton markdown={await page.data.getText("processed")} />
         </div>
         {page.data.description && (
