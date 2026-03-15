@@ -124,3 +124,23 @@ Added `playground/fouc-repro/__tests__/e2e.test.mts` with two tests:
 2. `testDeploy("production HTML includes stylesheet link to prevent FOUC")` -- the FOUC regression test
 
 The FOUC test disables JavaScript in the Puppeteer page before navigating, so only the server-rendered HTML is present. It then asserts that a `<link rel="stylesheet" href="...css">` tag exists in the HTML. This is deploy-only (`testDeploy`) since dev intentionally has no server-side stylesheet injection (accepted trade-off documented in `docs/architecture/clientStylesheets.md`).
+
+Playground later renamed from `fouc-repro` to `css` to serve as a broader CSS test surface.
+
+## Knowledge Extraction
+
+Promoted to `.docs/learnings/`:
+- `vite-manifest-key-format.md` -- Vite manifest keys lack leading slashes, while `normalizeModulePath` produces them
+- `e2e-fouc-test-pattern.md` -- Pattern for testing FOUC: disable JS in Puppeteer, assert `<link>` in SSR HTML
+
+## Draft PR
+
+### Problem
+
+Production builds suffered from a Flash of Unstyled Content (FOUC). The `Stylesheets` and `Preloads` components failed to render `<link>` tags in the server-sent HTML, causing CSS to load only after client JavaScript executed.
+
+### Solution
+
+The root cause was a key format mismatch between module IDs in `scriptsToBeLoaded` and Vite's client manifest. Our `normalizeModulePath` returns Vite-style paths with a leading slash (`/src/app/pages/Welcome.tsx`), but Vite's `manifest.json` keys omit the leading slash (`src/app/pages/Welcome.tsx`). The direct `manifest[scriptId]` lookup in both `findCssForModule` and `findScriptForModule` silently missed every entry.
+
+We added a `toManifestKey` helper that strips the leading slash before manifest lookups, in both `stylesheets.tsx` and `preloads.tsx`. We also added a `playground/css` e2e test that verifies the production HTML contains a `<link rel="stylesheet">` tag by navigating with JavaScript disabled.
