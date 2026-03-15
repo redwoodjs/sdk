@@ -59,3 +59,68 @@ The system has a two-phase approach:
 5. **`scriptsToBeLoaded` population timing**: Is `scriptsToBeLoaded` actually populated by the time `Stylesheets` renders? The RSC stream is awaited first, but we should verify the `$$id` getter actually fires during stream consumption.
 
 6. **CSS module specifics**: The starter uses CSS Modules (`welcome.module.css`), not plain CSS. Does the manifest handle these differently?
+
+## Investigation: Deployed HTML and Manifest Key Mismatch
+
+### Deployed fouc-repro to Cloudflare Workers
+
+Created `playground/fouc-repro` by copying `hello-world` and adding a `"use client"` component (`Welcome.tsx`) with CSS Modules import, matching the starter template pattern.
+
+Built and deployed to `https://fouc-repro.redwoodjs.workers.dev/`.
+
+### HTML Response Analysis
+
+Fetched raw HTML via `curl`. Key observations:
+
+1. **No `<link rel="stylesheet">` tag anywhere in the response** -- the `Stylesheets` component rendered nothing
+2. CSS module class names are correctly applied in the SSR output (e.g., `class="_container_yaxpn_1"`) -- SSR bridge is working fine for class name resolution
+3. The CSS file (`Welcome-DfGrmhxX.css`) exists in the build output but is never referenced in the HTML
+4. CSS only loads when client JS executes: browser loads `client-CGCk5-s-.js` -> dynamically imports `Welcome-CskV7DQb.js` -> that imports the CSS -> FOUC
+
+### Root Cause: Leading Slash Mismatch Between `scriptsToBeLoaded` IDs and Manifest Keys
+
+**Evidence:**
+
+The built worker bundle (`dist/worker/index.js`) contains:
+- `scriptsToBeLoaded.add("/src/client.tsx")` -- leading slash (from `transformJsxScriptTagsPlugin`)
+- `registerClientReference` uses IDs like `"/src/app/pages/Welcome.tsx"` -- leading slash (from `normalizeModulePath`)
+
+The Vite client manifest (`dist/client/.vite/manifest.json`) uses keys like:
+- `"src/app/pages/Welcome.tsx"` -- **no leading slash**
+- `"src/client.tsx"` -- **no leading slash**
+
+The `findCssForModule` function in `stylesheets.tsx` does a direct lookup: `manifest[scriptId]`. Since `"/src/app/pages/Welcome.tsx" !== "src/app/pages/Welcome.tsx"`, the lookup silently returns no CSS.
+
+**Where the leading slash comes from:**
+
+`normalizeModulePath` (`sdk/src/lib/normalizeModulePath.mts`, line 113) always returns `"/" + cleanRelative` for paths within the project root. This is the Vite-style convention (Vite uses leading-slash paths internally). However, Vite's `manifest.json` uses paths **without** leading slashes.
+
+**Scope of the bug:**
+
+This affects both:
+- Static entry points (from `transformJsxScriptTagsPlugin`): `scriptsToBeLoaded.add("/src/client.tsx")`
+- Dynamic components (from `registerClientReference`): `scriptsToBeLoaded.add("/src/app/pages/Welcome.tsx")`
+
+Both use `normalizeModulePath` which produces leading-slash IDs. Neither matches the manifest key format.
+
+## Fix Applied
+
+Added a `toManifestKey` helper that strips the leading `/` before looking up module IDs in the Vite manifest. Applied to both:
+
+1. `sdk/src/runtime/render/stylesheets.tsx` -- `findCssForModule` now uses `manifest[toManifestKey(id)]`
+2. `sdk/src/runtime/render/preloads.tsx` -- `findScriptForModule` now uses `manifest[toManifestKey(id)]`
+
+The fix is minimal and local to the lookup site, avoiding changes to the broader `normalizeModulePath` contract (which other consumers depend on).
+
+## Verification
+
+After rebuilding the SDK (`cd sdk && pnpm build`) and redeploying the fouc-repro playground, the FOUC is resolved. The `<link rel="stylesheet">` tags now appear in the HTML response, loaded as render-blocking resources in `<head>` via React 19's `precedence="first"` hoisting.
+
+## E2E Test Added
+
+Added `playground/fouc-repro/__tests__/e2e.test.mts` with two tests:
+
+1. `testDevAndDeploy("renders page with styled content")` -- basic smoke test, verifies content renders
+2. `testDeploy("production HTML includes stylesheet link to prevent FOUC")` -- the FOUC regression test
+
+The FOUC test disables JavaScript in the Puppeteer page before navigating, so only the server-rendered HTML is present. It then asserts that a `<link rel="stylesheet" href="...css">` tag exists in the HTML. This is deploy-only (`testDeploy`) since dev intentionally has no server-side stylesheet injection (accepted trade-off documented in `docs/architecture/clientStylesheets.md`).
