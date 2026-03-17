@@ -64,4 +64,15 @@ describe("linkWorkerBundle", () => {
     });
     expect(result.code).toContain(`const publicImg = "/images/photo.jpg";`);
   });
+
+  it("should deprefix remaining asset placeholders with base prefix", () => {
+    const code = `const publicImg = "rwsdk_asset:/images/photo.jpg";`;
+    const result = linkWorkerBundle({
+      code,
+      manifestContent,
+      projectRootDir,
+      base: "/app/",
+    });
+    expect(result.code).toContain(`const publicImg = "/app/images/photo.jpg";`);
+  });
 });
