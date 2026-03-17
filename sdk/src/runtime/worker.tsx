@@ -51,6 +51,18 @@ export const defineApp = <
     fetch: async (request: Request, env: Env, cf: ExecutionContext) => {
       globalThis.__webpack_require__ = ssrWebpackRequire;
 
+      // context(justinvdm, 17 Mar 2026): Strip the Vite base path from the
+      // request URL so that routes defined as "/" match requests to "/app/"
+      // when base: '/app/' is configured. Vite injects BASE_URL automatically.
+      const base: string | undefined = (import.meta.env as any).BASE_URL;
+      if (base && base !== "/") {
+        const url = new URL(request.url);
+        if (url.pathname.startsWith(base)) {
+          url.pathname = "/" + url.pathname.slice(base.length);
+          request = new Request(url.toString(), request);
+        }
+      }
+
       // context(justinvdm, 5 Feb 2025): Serve assets requests using the assets service binding
       // todo(justinvdm, 5 Feb 2025): Find a way to avoid this so asset requests are served directly
       // rather than first needing to go through the worker
