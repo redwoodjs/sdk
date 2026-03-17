@@ -1,0 +1,29 @@
+import { expect } from "vitest";
+import {
+  setupPlaygroundEnvironment,
+  testDevAndDeploy,
+  trackPageErrors,
+  poll,
+} from "rwsdk/e2e";
+
+setupPlaygroundEnvironment(import.meta.url);
+
+testDevAndDeploy(
+  "renders page and loads assets with base path",
+  async ({ page, url }) => {
+    const errorTracker = trackPageErrors(page);
+
+    await page.goto(url);
+
+    await poll(async () => {
+      const content = await page.content();
+      expect(content).toContain("Hello from Base Path");
+      return true;
+    });
+
+    // --GROK--: Verify no failed requests — this catches asset 404s (CSS, JS, favicons)
+    // which would indicate the base path is not being handled correctly.
+    const errors = errorTracker.get();
+    expect(errors.failedRequests).toHaveLength(0);
+  },
+);
