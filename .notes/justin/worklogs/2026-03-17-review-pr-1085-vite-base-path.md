@@ -210,8 +210,8 @@ Scenario: Default base path still works
 8. `cbdc48e61` refactor: clean up base-path support code quality
 
 ### Remaining work
-- [ ] Run e2e tests (base-path playground + hello-world) to verify asset serving
-- [ ] Consider backporting the linkerPlugin deprefix improvement from the PR to main
+- [x] Run e2e tests (base-path playground + hello-world) to verify asset serving
+- [x] Backport linkerPlugin deprefix improvement (prepend base to remaining placeholders)
 
 ## Investigation: Route Matching With Base Path
 
@@ -227,3 +227,45 @@ The e2e test for the base-path playground was failing with 404. Investigation re
 
 ### Updated commits
 9. `7c721cfeb` feat: strip Vite base path from request URL before routing
+10. `9ff960d12` fix: prefix asset paths with base in dev mode
+11. `99074bb80` fix: prepend base to remaining asset placeholders in linkerPlugin
+12. `a64411e10` fix: lower cleanup script default age threshold from 1h to 5min
+
+---
+
+## Finalization Report
+
+### Decisions Made
+- **Dropped the linkerPlugin commit**: Main already had the fix (`36d601120`). We backported the deprefix improvement separately.
+- **Used `import.meta.env.BASE_URL` for runtime base detection**: Vite injects this at transform time in all environments including the Cloudflare worker. Required `as any` cast since `ImportMetaEnv` doesn't declare `BASE_URL`.
+- **Kept the `/assets/` handler simplification**: The old `.slice("/assets/".length)` code was provably broken with base paths and the pass-through works correctly for both default and non-default base (verified by e2e deploy tests).
+- **Dev-mode asset path prefixing**: `transformAssetPath` was a no-op in dev. Added base prefixing for dev mode when base is non-default.
+
+### Assumptions
+- The reverse proxy in production strips the base path before forwarding to the Cloudflare worker (if not, `import.meta.env.BASE_URL` handles it in the worker)
+- `import.meta.env.BASE_URL` is available in the Cloudflare worker environment (verified empirically)
+
+### Hurdles Encountered
+1. SDK source changes not picked up in playground dev — resolved by discovering that `rwsdk/worker` resolves to `dist/` output, not source. Required `pnpm build`.
+2. E2e harness strips base path from dev server URL — resolved by appending `/app/` in the test.
+3. Cloudflare account hit 100 worker limit — resolved by running cleanup script with `MAX_WORKER_AGE_SECONDS=0`. Fixed default threshold from 1h to 5min.
+
+### Open Questions
+- Should the e2e harness be updated to preserve the base path from Vite's output? Currently tests with base need to manually append it.
+
+### Commit Log
+1. `67f307b02` feat: add stripBase helper (zshannon)
+2. `5c0c0db00` feat: thread base through transformJsxScriptTags (zshannon)
+3. `9bd41ef03` test: add base-stripping tests (zshannon)
+4. `8ad9fd019` feat: vitePreamblePlugin base-path support (zshannon)
+5. `560e3802a` feat: nest client output under base subdir (zshannon)
+6. `2d1eeb10d` fix: simplify /assets/ handler (zshannon)
+7. `23dc3cf8a` feat: add base-path playground + e2e test
+8. `cbdc48e61` refactor: code quality cleanup
+9. `b18bb5dbd` fix: ResolvedConfig type annotation
+10. `5bb3ac159` fix: navigate to base path URL in e2e test
+11. `7c721cfeb` feat: strip base from request URL before routing
+12. `9ff960d12` fix: prefix asset paths with base in dev mode
+13. `24d97a5a6` chore: clean up grok comments
+14. `a64411e10` fix: lower cleanup script age threshold
+15. `99074bb80` fix: prepend base to remaining asset placeholders in linkerPlugin
