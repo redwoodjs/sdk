@@ -1,4 +1,5 @@
 import MagicString from "magic-string";
+import type { ResolvedConfig } from "vite";
 import { virtualPlugin } from "./virtualPlugin.mjs";
 
 export const vitePreamblePlugin = () => {
@@ -17,7 +18,7 @@ import RefreshRuntime from "${refreshPath}"; RefreshRuntime.injectIntoGlobalHook
 
   return {
     ...inner,
-    configResolved(config) {
+    configResolved(config: ResolvedConfig) {
       base = config.base || "/";
     },
   };
