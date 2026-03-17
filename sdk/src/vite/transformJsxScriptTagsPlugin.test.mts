@@ -792,4 +792,92 @@ columnNumber: 2
 
     expect(normalizeCode(result?.code || "")).toEqual(normalizeCode(expected));
   });
+
+  it("strips base prefix from script src entry points", async () => {
+    const code = `
+      jsx("script", {
+        src: "/auth/src/client.tsx",
+        type: "module"
+      })
+    `;
+
+    const clientEntryPoints = new Set<string>();
+    const result = await transformJsxScriptTagsCode(
+      code,
+      clientEntryPoints,
+      mockManifest,
+      "/project/root/dir",
+      "/auth/",
+    );
+
+    expect(clientEntryPoints.has("/src/client.tsx")).toBe(true);
+    expect(clientEntryPoints.has("/auth/src/client.tsx")).toBe(false);
+    expect(result?.code).toContain('scriptsToBeLoaded.add("/src/client.tsx")');
+    expect(result?.code).not.toContain(
+      'scriptsToBeLoaded.add("/auth/src/client.tsx")',
+    );
+  });
+
+  it("strips base prefix from dynamic imports in inline scripts", async () => {
+    const code = `
+      jsx("script", {
+        type: "module",
+        children: "import('/auth/src/client.tsx')"
+      })
+    `;
+
+    const clientEntryPoints = new Set<string>();
+    const result = await transformJsxScriptTagsCode(
+      code,
+      clientEntryPoints,
+      mockManifest,
+      "/project/root/dir",
+      "/auth/",
+    );
+
+    expect(clientEntryPoints.has("/src/client.tsx")).toBe(true);
+    expect(clientEntryPoints.has("/auth/src/client.tsx")).toBe(false);
+    expect(result?.code).toContain('scriptsToBeLoaded.add("/src/client.tsx")');
+  });
+
+  it("strips base prefix from link preload href in asset paths", async () => {
+    const code = `
+      jsx("link", {
+        rel: "modulepreload",
+        href: "/auth/src/client.tsx"
+      })
+    `;
+
+    const clientEntryPoints = new Set<string>();
+    const result = await transformJsxScriptTagsCode(
+      code,
+      clientEntryPoints,
+      mockManifest,
+      "/project/root/dir",
+      "/auth/",
+    );
+
+    expect(result?.code).toContain("rwsdk_asset:/src/client.tsx");
+    expect(result?.code).not.toContain("rwsdk_asset:/auth/src/client.tsx");
+  });
+
+  it("does not strip when base is /", async () => {
+    const code = `
+      jsx("script", {
+        src: "/src/client.tsx",
+        type: "module"
+      })
+    `;
+
+    const clientEntryPoints = new Set<string>();
+    await transformJsxScriptTagsCode(
+      code,
+      clientEntryPoints,
+      mockManifest,
+      "/project/root/dir",
+      "/",
+    );
+
+    expect(clientEntryPoints.has("/src/client.tsx")).toBe(true);
+  });
 });
