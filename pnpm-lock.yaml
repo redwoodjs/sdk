@@ -1548,7 +1548,7 @@ importers:
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.25.1
-        version: 1.25.1(vite@7.3.1(@types/node@24.10.15)(jiti@2.6.1)(lightningcss@1.31.1)(sugarss@5.0.1(postcss@8.5.8))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(workerd@1.20260217.0)(wrangler@4.66.0(@cloudflare/workers-types@4.20260218.0))
+        version: 1.25.1(vite@7.3.1(@types/node@24.10.15)(jiti@2.6.1)(lightningcss@1.31.1)(sugarss@5.0.1(postcss@8.5.8))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(workerd@1.20260301.1)(wrangler@4.71.0(@cloudflare/workers-types@4.20260218.0))
       '@cloudflare/workers-types':
         specifier: 4.20260218.0
         version: 4.20260218.0
@@ -1571,8 +1571,8 @@ importers:
         specifier: ^4.0.0
         version: 4.0.18(@types/node@24.10.15)(jiti@2.6.1)(lightningcss@1.31.1)(msw@2.11.3(@types/node@24.10.15)(typescript@5.9.3))(sugarss@5.0.1(postcss@8.5.8))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
       wrangler:
-        specifier: 4.66.0
-        version: 4.66.0(@cloudflare/workers-types@4.20260218.0)
+        specifier: 4.71.0
+        version: 4.71.0(@cloudflare/workers-types@4.20260218.0)
 
   playground/server-functions:
     dependencies:
@@ -10817,16 +10817,6 @@ packages:
   workers-og@0.0.27:
     resolution: {integrity: sha512-QvwptQ0twmouQHiITUi3kYxEPCLdueC/U4msQ2xMz2iktd+iseSs7zlREw3T1dAsPxPw73FQlw8cXFsfANZPlw==}
 
-  wrangler@4.66.0:
-    resolution: {integrity: sha512-b9RVIdKai0BXDuYg0iN0zwVnVbULkvdKGP7Bf1uFY2GhJ/nzDGqgwQbCwgDIOhmaBC8ynhk/p22M2jc8tJy+dQ==}
-    engines: {node: '>=20.0.0'}
-    hasBin: true
-    peerDependencies:
-      '@cloudflare/workers-types': ^4.20260217.0
-    peerDependenciesMeta:
-      '@cloudflare/workers-types':
-        optional: true
-
   wrangler@4.71.0:
     resolution: {integrity: sha512-j6pSGAncOLNQDRzqtp0EqzYj52CldDP7uz/C9cxVrIgqa5p+cc0b4pIwnapZZAGv9E1Loa3tmPD0aXonH7KTkw==}
     engines: {node: '>=20.0.0'}
@@ -11617,11 +11607,11 @@ snapshots:
 
   '@cloudflare/kv-asset-handler@0.4.2': {}
 
-  '@cloudflare/unenv-preset@2.13.0(unenv@2.0.0-rc.24)(workerd@1.20260217.0)':
+  '@cloudflare/unenv-preset@2.13.0(unenv@2.0.0-rc.24)(workerd@1.20260301.1)':
     dependencies:
       unenv: 2.0.0-rc.24
     optionalDependencies:
-      workerd: 1.20260217.0
+      workerd: 1.20260301.1
 
   '@cloudflare/unenv-preset@2.15.0(unenv@2.0.0-rc.24)(workerd@1.20260301.1)':
     dependencies:
@@ -11629,13 +11619,13 @@ snapshots:
     optionalDependencies:
       workerd: 1.20260301.1
 
-  '@cloudflare/vite-plugin@1.25.1(vite@7.3.1(@types/node@24.10.15)(jiti@2.6.1)(lightningcss@1.31.1)(sugarss@5.0.1(postcss@8.5.8))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(workerd@1.20260217.0)(wrangler@4.66.0(@cloudflare/workers-types@4.20260218.0))':
+  '@cloudflare/vite-plugin@1.25.1(vite@7.3.1(@types/node@24.10.15)(jiti@2.6.1)(lightningcss@1.31.1)(sugarss@5.0.1(postcss@8.5.8))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(workerd@1.20260301.1)(wrangler@4.71.0(@cloudflare/workers-types@4.20260218.0))':
     dependencies:
-      '@cloudflare/unenv-preset': 2.13.0(unenv@2.0.0-rc.24)(workerd@1.20260217.0)
+      '@cloudflare/unenv-preset': 2.13.0(unenv@2.0.0-rc.24)(workerd@1.20260301.1)
       miniflare: 4.20260217.0
       unenv: 2.0.0-rc.24
       vite: 7.3.1(@types/node@24.10.15)(jiti@2.6.1)(lightningcss@1.31.1)(sugarss@5.0.1(postcss@8.5.8))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
-      wrangler: 4.66.0(@cloudflare/workers-types@4.20260218.0)
+      wrangler: 4.71.0(@cloudflare/workers-types@4.20260218.0)
       ws: 8.18.0
     transitivePeerDependencies:
       - bufferutil
@@ -21185,16 +21175,16 @@ snapshots:
       satori: 0.15.2
       yoga-wasm-web: 0.3.3
 
-  wrangler@4.66.0(@cloudflare/workers-types@4.20260218.0):
+  wrangler@4.71.0(@cloudflare/workers-types@4.20260218.0):
     dependencies:
       '@cloudflare/kv-asset-handler': 0.4.2
-      '@cloudflare/unenv-preset': 2.13.0(unenv@2.0.0-rc.24)(workerd@1.20260217.0)
+      '@cloudflare/unenv-preset': 2.15.0(unenv@2.0.0-rc.24)(workerd@1.20260301.1)
       blake3-wasm: 2.1.5
       esbuild: 0.27.3
-      miniflare: 4.20260217.0
+      miniflare: 4.20260301.1
       path-to-regexp: 6.3.0
       unenv: 2.0.0-rc.24
-      workerd: 1.20260217.0
+      workerd: 1.20260301.1
     optionalDependencies:
       '@cloudflare/workers-types': 4.20260218.0
       fsevents: 2.3.3
