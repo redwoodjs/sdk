@@ -22,8 +22,8 @@ DELETED_COUNT=0
 FAILED_COUNT=0
 #
 # Max age of a worker in seconds
-# Defaults to 1 hour
-MAX_WORKER_AGE_SECONDS=${MAX_WORKER_AGE_SECONDS:-3600}
+# Defaults to 5 minutes (long enough to protect in-flight tests)
+MAX_WORKER_AGE_SECONDS=${MAX_WORKER_AGE_SECONDS:-300}
 
 # Max number of workers to delete in a single run
 # Defaults to 100

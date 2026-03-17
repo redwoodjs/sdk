@@ -167,6 +167,33 @@ testDevAndDeploy(
 );
 
 testDevAndDeploy(
+  "except handler catches errors from component route handlers",
+  async ({ page, url }) => {
+    // Navigate to a route where a server *component* throws during rendering.
+    // This exercises the renderPage/RSC stream path (unlike /debug/throw which
+    // is a function handler and throws before rendering).
+    await page.goto(`${url}/debug/throw-component`);
+
+    await page.waitForFunction("document.readyState === 'complete'");
+
+    const getErrorPageContent = () => page.content();
+    await poll(
+      async () => {
+        const content = await getErrorPageContent();
+        expect(content).toContain("Error Page");
+        expect(content).toContain("Error Details");
+        expect(content).toContain(
+          "This is a test error from the /debug/throw-component route",
+        );
+        expect(content).not.toContain("Hello World");
+        return true;
+      },
+      { timeout: 10000 },
+    );
+  },
+);
+
+testDevAndDeploy(
   "client components work on initial load (inc. .client.tsx and inlined functions)",
   async ({ page, url }) => {
     await page.goto(url);

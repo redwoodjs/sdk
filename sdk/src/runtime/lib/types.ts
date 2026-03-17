@@ -14,6 +14,7 @@ export type RwContext = {
   inlineScripts: Set<string>;
   pageRouteResolved: PromiseWithResolvers<void> | undefined;
   actionResult?: unknown;
+  renderError?: unknown;
 };
 
 export type DocumentProps<T extends RequestInfo = RequestInfo> = T & {

@@ -586,11 +586,23 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
                     requestInfo.rw.pageRouteResolved = Promise.withResolvers();
                   }
 
-                  return await renderPage(
+                  const response = await renderPage(
                     requestInfo,
                     WrappedComponent,
                     onError,
                   );
+
+                  // context(justinvdm, 2026-03-17): renderPage stores rendering
+                  // errors on rw.renderError instead of throwing, to avoid
+                  // corrupting React's internal RSC stream state. We check for
+                  // it here and throw so except handlers can process it.
+                  if (requestInfo.rw.renderError) {
+                    const error = requestInfo.rw.renderError;
+                    requestInfo.rw.renderError = undefined;
+                    throw error;
+                  }
+
+                  return response;
                 }
 
                 // Handle non-component final handler (e.g., returns new Response)
@@ -626,6 +638,10 @@ Route handlers must return one of:
               },
             );
           } catch (error) {
+            // context(justinvdm, 2026-03-17): If pageRouteResolved was set up for
+            // the component that threw, resolve it so the worker doesn't hang
+            // waiting on it after the except handler returns its response.
+            getRequestInfo().rw.pageRouteResolved?.resolve();
             return await executeExceptHandlers(error, currentRouteIndex);
           }
         }
