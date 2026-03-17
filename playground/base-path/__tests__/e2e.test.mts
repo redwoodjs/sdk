@@ -13,8 +13,8 @@ testDevAndDeploy(
   async ({ page, url }) => {
     const errorTracker = trackPageErrors(page);
 
-    // --GROK--: The e2e harness extracts just the origin (http://localhost:PORT)
-    // from Vite's output, stripping the base path. We need to append it.
+    // context(justinvdm, 17 Mar 2026): The e2e harness extracts just the origin
+    // from Vite's output, stripping the base path. We append it here.
     await page.goto(`${url}/app/`);
 
     await poll(async () => {
@@ -23,8 +23,6 @@ testDevAndDeploy(
       return true;
     });
 
-    // --GROK--: Verify no failed requests — this catches asset 404s (CSS, JS, favicons)
-    // which would indicate the base path is not being handled correctly.
     const errors = errorTracker.get();
     if (errors.failedRequests.length > 0) {
       console.error("Failed requests:", errors.failedRequests);
