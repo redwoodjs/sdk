@@ -1,7 +1,15 @@
 import debug from "debug";
-import { existsSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import type { ViteBuilder } from "vite";
 import { INTERMEDIATES_OUTPUT_DIR } from "../lib/constants.mjs";
 import { ConfigurableEsbuildOptions, runDirectivesScan } from "./runDirectivesScan.mjs";
@@ -127,4 +135,49 @@ export async function buildApp({
   await builder.build(workerEnv);
 
   console.log("Build complete!");
+
+  // context(zshannon, 16 Mar 2026): Nest client output under base subdirectory
+  // for Cloudflare's assets module, which maps URL paths directly to file paths.
+  const base = builder.config.base || "/";
+  if (base !== "/") {
+    const subdir = base.replace(/^\/|\/$/g, "");
+    const clientDir = resolve(projectRootDir, "dist", "client");
+    const tmpDir = resolve(projectRootDir, "dist", "_client_tmp");
+    const nestDir = join(clientDir, subdir);
+
+    rmSync(tmpDir, { force: true, recursive: true });
+    cpSync(clientDir, tmpDir, { recursive: true });
+    rmSync(clientDir, { force: true, recursive: true });
+    mkdirSync(nestDir, { recursive: true });
+
+    for (const entry of readdirSync(tmpDir)) {
+      cpSync(join(tmpDir, entry), join(nestDir, entry), { recursive: true });
+    }
+    rmSync(tmpDir, { force: true, recursive: true });
+
+    const wranglerPath = resolve(
+      projectRootDir,
+      "dist",
+      "worker",
+      "wrangler.json",
+    );
+    if (existsSync(wranglerPath)) {
+      const wrangler = JSON.parse(readFileSync(wranglerPath, "utf-8"));
+      if (wrangler.assets?.directory) {
+        const currentDir = wrangler.assets.directory;
+        const fixedDir = currentDir.replace(`/${subdir}`, "");
+        if (fixedDir !== currentDir) {
+          wrangler.assets.directory = fixedDir;
+          writeFileSync(wranglerPath, JSON.stringify(wrangler));
+        } else {
+          console.warn(
+            `Warning: wrangler.json assets.directory "${currentDir}" ` +
+              `did not contain expected "/${subdir}" segment`,
+          );
+        }
+      }
+    }
+
+    console.log(`Nested client assets under ${subdir}/`);
+  }
 }
