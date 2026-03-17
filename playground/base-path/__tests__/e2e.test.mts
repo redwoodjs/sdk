@@ -26,6 +26,9 @@ testDevAndDeploy(
     // --GROK--: Verify no failed requests — this catches asset 404s (CSS, JS, favicons)
     // which would indicate the base path is not being handled correctly.
     const errors = errorTracker.get();
+    if (errors.failedRequests.length > 0) {
+      console.error("Failed requests:", errors.failedRequests);
+    }
     expect(errors.failedRequests).toHaveLength(0);
   },
 );

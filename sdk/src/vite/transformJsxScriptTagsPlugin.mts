@@ -20,6 +20,11 @@ function transformAssetPath(
   base: string,
 ): string {
   if (process.env.VITE_IS_DEV_SERVER === "1") {
+    // context(justinvdm, 17 Mar 2026): In dev mode with a non-default base,
+    // prefix the path so Vite can resolve it under the base URL.
+    if (base && base !== "/" && importPath.startsWith("/") && !importPath.startsWith(base)) {
+      return base.replace(/\/$/, "") + importPath;
+    }
     return importPath;
   }
   const strippedPath = stripBase(importPath, base);
