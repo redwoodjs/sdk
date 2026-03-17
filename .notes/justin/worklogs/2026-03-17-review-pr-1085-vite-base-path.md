@@ -185,9 +185,31 @@ Scenario: Default base path still works
 
 ### Tasks
 
-- [ ] Task 1: Create `playground/base-path/` example (clone hello-world, add `base: '/app/'`)
-- [ ] Task 2: Add e2e test for base-path playground
-- [ ] Task 3: Rebase onto main, resolve conflicts
-- [ ] Task 4: Clean up vitePreamblePlugin spread pattern
-- [ ] Task 5: Clean up buildApp.mts (async fs, robust wrangler patching)
-- [ ] Task 6: Run unit tests to verify nothing breaks
+- [x] Task 1: Create `playground/base-path/` example (clone hello-world, add `base: '/app/'`)
+- [x] Task 2: Add e2e test for base-path playground
+- [x] Task 3: Rebase onto main, resolve conflicts (dropped linkerPlugin commit, resolved buildApp imports)
+- [x] Task 4: Clean up vitePreamblePlugin spread pattern
+- [x] Task 5: Clean up buildApp.mts (async fs, robust wrangler patching)
+- [x] Task 6: Run unit tests — all 457 tests pass (35 files)
+
+## Implementation Notes
+
+### Rebase
+- Skipped commit `e1b44509a` (linkerPlugin changes) — already on main via `36d601120`
+- Resolved `buildApp.mts` imports conflict by merging both sets (main's async + PR's sync, later converted all to async)
+- Lockfile regenerated for new playground
+
+### Commits (on rebased branch)
+1. `67f307b02` feat: add stripBase helper for Vite base path support (zshannon)
+2. `5c0c0db00` feat: thread base parameter through transformJsxScriptTags functions (zshannon)
+3. `9bd41ef03` test: add base-stripping tests for transformJsxScriptTagsCode (zshannon)
+4. `8ad9fd019` feat: add base-path support to vitePreamblePlugin (zshannon)
+5. `560e3802a` feat: nest client output under base subdirectory for Cloudflare assets (zshannon)
+6. `2d1eeb10d` fix: simplify /assets/ handler to support base path prefix (zshannon)
+7. `23dc3cf8a` feat: add base-path playground example for e2e testing
+8. `cbdc48e61` refactor: clean up base-path support code quality
+
+### Remaining work
+- [ ] Run e2e tests (base-path playground + hello-world) to verify asset serving
+- [ ] Verify the `/assets/` handler simplification empirically
+- [ ] Consider backporting the linkerPlugin deprefix improvement from the PR to main
