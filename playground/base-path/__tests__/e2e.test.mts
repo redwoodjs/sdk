@@ -13,7 +13,9 @@ testDevAndDeploy(
   async ({ page, url }) => {
     const errorTracker = trackPageErrors(page);
 
-    await page.goto(url);
+    // --GROK--: The e2e harness extracts just the origin (http://localhost:PORT)
+    // from Vite's output, stripping the base path. We need to append it.
+    await page.goto(`${url}/app/`);
 
     await poll(async () => {
       const content = await page.content();
