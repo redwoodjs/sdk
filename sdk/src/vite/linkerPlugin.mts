@@ -44,8 +44,11 @@ export function linkWorkerBundle({
 
   // 3. Deprefix any remaining placeholders that were not in the manifest.
   // This handles public assets that don't go through the bundler.
+  // context(justinvdm, 17 Mar 2026): Prepend base (without trailing slash)
+  // so public asset paths are correct under a non-default base.
   log("Deprefixing remaining asset placeholders");
-  newCode = newCode.replaceAll("rwsdk_asset:", "");
+  const basePrefix = (base ? base : "/").replace(/\/$/, "");
+  newCode = newCode.replaceAll("rwsdk_asset:", basePrefix);
 
   return {
     code: newCode,
