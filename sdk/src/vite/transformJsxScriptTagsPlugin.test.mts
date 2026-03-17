@@ -35,6 +35,7 @@ describe("transformJsxScriptTagsCode", () => {
       clientEntryPoints,
       mockManifest,
       "/Users/justin/rw/forks/workers-sdk/sdk/sdk",
+      "/",
     );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
@@ -65,6 +66,7 @@ nonce: requestInfo.rw.nonce
       clientEntryPoints,
       mockManifest,
       "/project/root/dir",
+      "/",
     );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
@@ -92,6 +94,7 @@ nonce: requestInfo.rw.nonce
       clientEntryPoints,
       mockManifest,
       "/project/root/dir",
+      "/",
     );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
@@ -127,6 +130,7 @@ nonce: requestInfo.rw.nonce
       clientEntryPoints,
       mockManifest,
       "/project/root/dir",
+      "/",
     );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
@@ -167,6 +171,7 @@ import('/src/entry.js');
       clientEntryPoints,
       mockManifest,
       "/project/root/dir",
+      "/",
     );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
@@ -202,6 +207,7 @@ nonce: requestInfo.rw.nonce
       clientEntryPoints,
       mockManifest,
       "/project/root/dir",
+      "/",
     );
 
     const expected = `
@@ -229,6 +235,7 @@ nonce: requestInfo.rw.nonce
       clientEntryPoints,
       mockManifest,
       "/project/root/dir",
+      "/",
     );
 
     const expected = `
@@ -269,6 +276,7 @@ nonce: requestInfo.rw.nonce
       clientEntryPoints,
       mockManifest,
       "/project/root/dir",
+      "/",
     );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
@@ -312,6 +320,7 @@ nonce: requestInfo.rw.nonce
       clientEntryPoints,
       mockManifest,
       "/project/root/dir",
+      "/",
     );
 
     expect(result).toBeUndefined();
@@ -331,6 +340,7 @@ nonce: requestInfo.rw.nonce
       clientEntryPoints,
       mockManifest,
       "/project/root/dir",
+      "/",
     );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
@@ -361,6 +371,7 @@ nonce: requestInfo.rw.nonce
       clientEntryPoints,
       mockManifest,
       "/project/root/dir",
+      "/",
     );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
@@ -391,6 +402,7 @@ nonce: requestInfo.rw.nonce
       clientEntryPoints,
       mockManifest,
       "/project/root/dir",
+      "/",
     );
 
     expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
@@ -417,6 +429,7 @@ nonce: requestInfo.rw.nonce
       clientEntryPoints,
       mockManifest,
       "/project/root/dir",
+      "/",
     );
 
     expect(result?.code).toEqual(undefined);
@@ -437,6 +450,7 @@ nonce: requestInfo.rw.nonce
       clientEntryPoints,
       mockManifest,
       "/project/root/dir",
+      "/",
     );
 
     expect(result?.code).toEqual(undefined);
@@ -459,6 +473,7 @@ nonce: requestInfo.rw.nonce
       clientEntryPoints,
       mockManifest,
       "/project/root/dir",
+      "/",
     );
 
     expect(result?.code).toEqual(`
@@ -495,6 +510,7 @@ nonce: requestInfo.rw.nonce
       clientEntryPoints,
       mockManifest,
       "/project/root/dir",
+      "/",
     );
 
     expect(result?.code).toEqual(`
@@ -524,6 +540,7 @@ nonce: requestInfo.rw.nonce
       clientEntryPoints,
       mockManifest,
       "/project/root/dir",
+      "/",
     );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
@@ -652,6 +669,7 @@ export const Document = ({
       clientEntryPoints,
       mockManifest,
       "/project/root/dir",
+      "/",
     );
 
     // For this complex test, we'll just verify the key transformations
