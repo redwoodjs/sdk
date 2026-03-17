@@ -211,5 +211,19 @@ Scenario: Default base path still works
 
 ### Remaining work
 - [ ] Run e2e tests (base-path playground + hello-world) to verify asset serving
-- [ ] Verify the `/assets/` handler simplification empirically
 - [ ] Consider backporting the linkerPlugin deprefix improvement from the PR to main
+
+## Investigation: Route Matching With Base Path
+
+The e2e test for the base-path playground was failing with 404. Investigation revealed that the PR's changes only addressed asset paths, not route matching. When `base: '/app/'` is configured, the worker receives requests with `/app/` in the pathname, but routes are defined as `route("/", Home)`.
+
+**Root cause**: The router extracts `url.pathname` from `request.url` at `router.ts:370`. With base `/app/`, the pathname is `/app/` but the route expects `/`.
+
+**Fix**: Added base-path stripping in `worker.tsx`, before the router is called. Uses `import.meta.env.BASE_URL` (Vite built-in, injected at transform time). When the pathname starts with the base, we strip it and create a new Request.
+
+**Important discovery**: The SDK's `dist/` output is what playgrounds use (via `package.json` exports), not the source. Changes to `sdk/src/runtime/worker.tsx` require `pnpm build` before they take effect in dev mode. The e2e harness handles this automatically.
+
+**Verified locally**: After `pnpm build`, `curl http://localhost:5174/app/` returns 200 with "Hello from Base Path" in the HTML.
+
+### Updated commits
+9. `7c721cfeb` feat: strip Vite base path from request URL before routing
