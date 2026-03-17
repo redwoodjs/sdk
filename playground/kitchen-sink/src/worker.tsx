@@ -4,6 +4,7 @@ import { defineApp } from "rwsdk/worker";
 import { Document } from "@/app/Document";
 import { ErrorPage } from "@/app/pages/ErrorPage";
 import { Home } from "@/app/pages/Home";
+import { ThrowingComponent } from "@/app/pages/ThrowingComponent";
 
 export type AppContext = {};
 
@@ -22,5 +23,6 @@ export default defineApp([
     route("/debug/throw", () => {
       throw new Error("This is a test error from the /debug/throw route");
     }),
+    route("/debug/throw-component", ThrowingComponent),
   ]),
 ]);
