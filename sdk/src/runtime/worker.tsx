@@ -55,9 +55,7 @@ export const defineApp = <
       // todo(justinvdm, 5 Feb 2025): Find a way to avoid this so asset requests are served directly
       // rather than first needing to go through the worker
       if (request.url.includes("/assets/")) {
-        const url = new URL(request.url);
-        url.pathname = url.pathname.slice("/assets/".length);
-        return env.ASSETS.fetch(new Request(url.toString(), request));
+        return env.ASSETS.fetch(request);
       } else if (
         import.meta.env.VITE_IS_DEV_SERVER &&
         new URL(request.url).pathname === "/__worker-run"
