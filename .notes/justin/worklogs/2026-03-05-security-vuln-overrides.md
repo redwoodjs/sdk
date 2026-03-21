@@ -118,3 +118,166 @@ pnpm overrides are workspace-local -- they do not propagate to consumers who ins
 | **devalue** | root devDep chain | None -- not in SDK |
 | **@isaacs/brace-expansion** | eslint (root devDep) -> minimatch -> @isaacs/brace-expansion | None -- not in SDK |
 
+---
+
+## 2026-03-21: Second Round of Security Vulnerability Overrides
+
+### Task Brief
+
+GitHub Dependabot has flagged a new batch of security vulnerabilities. The priorities, in order:
+
+1. **SDK**: Most critical. Ensure the SDK's declared version ranges allow consumers to receive patched versions (semver ranges must not cap below the patch). Additionally, we should be on those patched versions ourselves in our lockfile.
+2. **Starter project**: Must not ship with vulnerable dependencies.
+3. **Playground examples and transitive dependencies**: Lower priority. Add pnpm overrides to bring transitive deps to patched versions.
+
+The most concerning package is **kysely** -- it is a direct SDK dependency used for the database layer.
+
+### Investigation
+
+#### Kysely (CRITICAL -- SDK direct dependency)
+
+Two High severity SQL injection CVEs:
+- GHSA-wmrf-hv6w-mr66: SQL Injection via unsanitized JSON path keys (when ignoring/silencing compilation errors or using `Kysely<any>`)
+- MySQL SQL Injection via insufficient backslash escaping in `sql.lit(string)`
+
+**Vulnerable versions**: `>=0.26.0 <=0.28.11`
+**Patched versions**: `>=0.28.12`
+**Latest 0.28.x**: `0.28.14`
+
+Current state:
+- SDK declares `"kysely": "~0.28.2"` -- tilde range allows `>=0.28.2 <0.29.0`, so consumers CAN resolve to 0.28.12+ (patched). **Range is safe for consumers.**
+- Our lockfile currently resolves to `0.28.2` (vulnerable). Every workspace package using rwsdk transitively gets kysely 0.28.2.
+- `kysely-do@0.0.1-rc.1` declares `"kysely": "*"` as peer dep -- no constraint, any version works.
+- `playground/database-do` declares `"kysely": "^0.28.0"` -- caret range also allows 0.28.12+.
+
+**Fix**: Add pnpm override `"kysely": "0.28.14"` to bump all instances in our lockfile to latest patched.
+
+#### Undici (High/Moderate -- 6 CVEs)
+
+All via `wrangler > miniflare > undici`. Currently resolved to `7.18.2`, patched at `>=7.24.0`.
+
+CVEs: WebSocket 64-bit length overflow, unbounded memory consumption (permessage-deflate), unhandled exception (server_max_window_bits), HTTP request/response smuggling, CRLF injection via upgrade, unbounded memory consumption (DeduplicationHandler).
+
+**Fix**: Add pnpm override `"undici@7.18.2": "7.24.0"`.
+
+#### Existing Overrides Needing Bumps
+
+| Override | Current | Needed | Reason |
+|----------|---------|--------|--------|
+| `h3` | 1.15.5 | >=1.15.9 | SSE injection (High), path traversal (Moderate x2), SSE bypass (Moderate) |
+| `hono` | 4.12.5 | >=4.12.7 | Prototype pollution via `parseBody({ dot: true })` (Moderate) |
+| `devalue` | 5.6.3 | >=5.6.4 | Prototype pollution in parse/unflatten (Moderate), `__proto__` own properties (Low) |
+| `tar` | 7.5.10 | >=7.5.11 | Symlink path traversal via drive-relative linkpath (High) |
+
+#### New Overrides Needed
+
+| Package | Current | Patched | Path | Severity |
+|---------|---------|---------|------|----------|
+| `flatted` | 3.3.3 | >=3.4.0 | eslint > file-entry-cache > flat-cache > flatted | High |
+| `express-rate-limit` | 8.2.0 | >=8.2.2 | playground shadcn > shadcn > @mcp/sdk > express-rate-limit | High |
+
+#### Community Todo Playground (npm lockfile)
+
+`playground/community/todo-serverquery-and-actions` has its own `package-lock.json` (npm, not pnpm). It depends on published `rwsdk@1.0.0-beta.51` which pulls in kysely 0.28.2 (vulnerable). It also has undici 7.18.2 via wrangler/miniflare. pnpm overrides do not help here. We can add npm overrides to its package.json.
+
+#### Webpack (Low -- known, cannot override)
+
+Still present from prior round. Auto-installed peer dependency of react-server-dom-webpack. Low severity buildHttp SSRF issues. Not exploitable in our context.
+
+### Tier Summary
+
+| Tier | Package | Action |
+|------|---------|--------|
+| 1 (SDK) | kysely | Override to 0.28.14. Range `~0.28.2` already allows consumers to get patched. |
+| 3 (transitive) | undici | Override 7.18.2 -> 7.24.0 |
+| 3 (transitive) | h3 | Bump override 1.15.5 -> 1.15.9 |
+| 3 (transitive) | hono | Bump override 4.12.5 -> 4.12.7 |
+| 3 (transitive) | devalue | Bump override 5.6.3 -> 5.6.4 |
+| 3 (transitive) | tar | Bump override 7.5.10 -> 7.5.11 |
+| 3 (transitive) | flatted | New override 3.3.3 -> 3.4.0 |
+| 3 (transitive) | express-rate-limit | New override -> 8.2.2 |
+| N/A | webpack | Cannot override (auto-installed peer). Low severity. |
+
+### RFC: Override Changes (Round 2)
+
+#### Updates to existing overrides:
+- `"h3"`: `1.15.5` -> `1.15.9`
+- `"hono"`: `4.12.5` -> `4.12.7`
+- `"devalue"`: `5.6.3` -> `5.6.4`
+- `"tar"`: `7.5.10` -> `7.5.11`
+
+#### New overrides:
+- `"kysely": "0.28.14"`
+- `"undici@7.18.2": "7.24.0"`
+- `"flatted@3.3.3": "3.4.0"`
+- `"express-rate-limit@8.2.0": "8.2.2"`
+
+#### Community todo playground (npm):
+- Add npm `overrides` to `playground/community/todo-serverquery-and-actions/package.json` for undici.
+- Kysely fix in that playground will come through whenever rwsdk is next published (the range allows it).
+
+#### Tasks:
+- [x] Update root package.json pnpm overrides
+- [x] Regenerate pnpm lockfile
+- [x] Handle community todo playground npm lockfile
+- [x] Verify with pnpm audit
+
+### Implementation Notes
+
+#### Course correction: kysely override removed
+
+We initially added a pnpm override for kysely, but since kysely is a direct SDK dependency (not transitive), the right fix is to let pnpm re-resolve within the existing `~0.28.2` range. We removed the override and ran `pnpm update kysely` to bump the lockfile resolution from 0.28.2 to 0.28.14 (latest patched).
+
+#### Course correction: community todo playground
+
+`playground/community/todo-serverquery-and-actions` was the only workspace package using a pinned published `rwsdk` version (`1.0.0-beta.51`) instead of `workspace:*`. This meant:
+- It had its own `package-lock.json` (npm), causing GitHub to scan it separately
+- It was frozen on an old SDK version with vulnerable transitive deps
+- pnpm overrides from the root did not help it
+
+Fix: switched to `workspace:*`, removed the npm overrides we had added, and deleted the `package-lock.json`. The playground is now managed by pnpm like every other workspace package.
+
+#### Override adjustments during implementation
+
+- `express-rate-limit`: override target corrected from `8.2.0` to `8.2.1` (actual resolved version)
+- `flatted`: bumped override from `3.4.0` to `3.4.2` (new CVE GHSA-rf6f-7fwh-wjgh requires `>=3.4.2`)
+
+#### Final audit result
+
+After all changes: **6 vulnerabilities remaining, all Low severity webpack `buildHttp` SSRF issues**. These are the same known issue from the prior round -- webpack enters the tree as an auto-installed peer dependency and cannot be overridden.
+
+All High, Moderate, and Critical vulnerabilities are resolved:
+- kysely: 0.28.2 -> 0.28.14 (SQL injection fixes)
+- undici: 7.18.2 -> 7.24.0 (6 WebSocket/HTTP CVEs)
+- h3: 1.15.5 -> 1.15.9 (SSE injection, path traversal)
+- hono: 4.12.5 -> 4.12.7 (prototype pollution)
+- devalue: 5.6.3 -> 5.6.4 (prototype pollution)
+- tar: 7.5.10 -> 7.5.11 (symlink path traversal)
+- flatted: 3.3.3 -> 3.4.2 (unbounded recursion DoS, prototype pollution)
+- express-rate-limit: 8.2.1 -> 8.2.2 (IPv6 bypass)
+
+#### Kysely version range bump
+
+The SDK declared `"kysely": "~0.28.2"`, which allowed vulnerable versions (0.28.2 through 0.28.11) to satisfy the range. While a fresh install would resolve to 0.28.14 today, a consumer with an existing lockfile pinned to a vulnerable version would not be forced to upgrade. We bumped the range to `"~0.28.12"` to ensure the declared range itself excludes all vulnerable versions.
+
+Similarly, `playground/database-do` declared `"kysely": "^0.28.0"` -- bumped to `"^0.28.12"` for the same reason.
+
+#### Community todo playground: workspace:* fix
+
+`playground/community/todo-serverquery-and-actions` was the only workspace package pinned to a published rwsdk version (`1.0.0-beta.51`) instead of `workspace:*`. This caused:
+- GitHub scanning its separate `package-lock.json`, surfacing duplicate vulnerability alerts
+- The playground being frozen on old transitive deps that our root pnpm overrides could not reach
+
+We switched it to `workspace:*` and deleted the `package-lock.json`. It is now managed by pnpm like every other workspace package.
+
+### Summary of all changes
+
+| File | Change | Why |
+|------|--------|-----|
+| `sdk/package.json` | kysely range `~0.28.2` -> `~0.28.12` | Exclude vulnerable versions from declared range |
+| `playground/database-do/package.json` | kysely range `^0.28.0` -> `^0.28.12` | Same |
+| `playground/community/todo-serverquery-and-actions/package.json` | rwsdk `1.0.0-beta.51` -> `workspace:*` | Align with all other workspace packages |
+| `playground/community/todo-serverquery-and-actions/package-lock.json` | Deleted | No longer needed under pnpm workspace |
+| `package.json` (root) | 4 pnpm overrides bumped, 4 new overrides added | Resolve High/Moderate transitive dep vulns |
+| `pnpm-lock.yaml` | Regenerated | Reflects all override and range changes |
+
