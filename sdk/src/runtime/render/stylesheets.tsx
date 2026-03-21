@@ -1,6 +1,13 @@
 import { getManifest } from "../lib/manifest.js";
 import { type RequestInfo } from "../requestInfo/types.js";
 
+// context(justinvdm, 2026-03-15): Vite's client manifest uses keys without
+// a leading slash (e.g. "src/app/pages/Welcome.tsx"), but our module IDs in
+// scriptsToBeLoaded use Vite-style leading-slash paths (e.g.
+// "/src/app/pages/Welcome.tsx") from normalizeModulePath. We strip the
+// leading slash here so the lookup succeeds.
+const toManifestKey = (id: string) => (id.startsWith("/") ? id.slice(1) : id);
+
 const findCssForModule = (
   scriptId: string,
   manifest: Record<string, { file: string; css?: string[] }>,
@@ -14,7 +21,7 @@ const findCssForModule = (
     }
     visited.add(id);
 
-    const entry = manifest[id];
+    const entry = manifest[toManifestKey(id)];
     if (!entry) {
       return;
     }

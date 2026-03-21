@@ -10,17 +10,25 @@ import {
 } from "ts-morph";
 import { type Plugin } from "vite";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
+import { stripBase } from "../lib/stripBase.mjs";
 
 const log = debug("rwsdk:vite:transform-jsx-script-tags");
 
 function transformAssetPath(
   importPath: string,
   projectRootDir: string,
+  base: string,
 ): string {
   if (process.env.VITE_IS_DEV_SERVER === "1") {
+    // context(justinvdm, 17 Mar 2026): In dev mode with a non-default base,
+    // prefix the path so Vite can resolve it under the base URL.
+    if (base && base !== "/" && importPath.startsWith("/") && !importPath.startsWith(base)) {
+      return base.replace(/\/$/, "") + importPath;
+    }
     return importPath;
   }
-  const normalizedImportPath = normalizeModulePath(importPath, projectRootDir);
+  const strippedPath = stripBase(importPath, base);
+  const normalizedImportPath = normalizeModulePath(strippedPath, projectRootDir);
   return `rwsdk_asset:${normalizedImportPath}`;
 }
 
@@ -49,6 +57,7 @@ function transformScriptImports(
   clientEntryPoints: Set<string>,
   manifest: Record<string, any>,
   projectRootDir: string,
+  base: string,
 ): {
   content: string | undefined;
   hasChanges: boolean;
@@ -88,12 +97,14 @@ function transformScriptImports(
                 "Found dynamic import with root-relative path: %s",
                 importPath,
               );
-              entryPoints.push(importPath);
-              clientEntryPoints.add(importPath);
+              const normalizedEntry = stripBase(importPath, base);
+              entryPoints.push(normalizedEntry);
+              clientEntryPoints.add(normalizedEntry);
 
               const transformedImportPath = transformAssetPath(
                 importPath,
                 projectRootDir,
+                base,
               );
               args[0].setLiteralValue(transformedImportPath);
               hasChanges = true;
@@ -159,6 +170,7 @@ export async function transformJsxScriptTagsCode(
   clientEntryPoints: Set<string>,
   manifest: Record<string, any> = {},
   projectRootDir: string,
+  base: string,
 ) {
   // context(justinvdm, 15 Jun 2025): Optimization to exit early
   // to avoidunnecessary ts-morph parsing
@@ -252,12 +264,14 @@ export async function transformJsxScriptTagsCode(
                   const srcValue = initializer.getLiteralValue();
 
                   if (srcValue.startsWith("/")) {
-                    entryPoints.push(srcValue);
-                    clientEntryPoints.add(srcValue);
+                    const normalizedSrcEntry = stripBase(srcValue, base);
+                    entryPoints.push(normalizedSrcEntry);
+                    clientEntryPoints.add(normalizedSrcEntry);
 
                     const transformedSrc = transformAssetPath(
                       srcValue,
                       projectRootDir,
+                      base,
                     );
 
                     modifications.push({
@@ -288,6 +302,7 @@ export async function transformJsxScriptTagsCode(
                   clientEntryPoints,
                   manifest,
                   projectRootDir,
+                  base,
                 );
 
                 entryPoints.push(...dynamicEntryPoints);
@@ -339,6 +354,7 @@ export async function transformJsxScriptTagsCode(
                 const transformedHref = transformAssetPath(
                   hrefValue,
                   projectRootDir,
+                  base,
                 );
                 modifications.push({
                   type: "literalValue",
@@ -508,11 +524,13 @@ export const transformJsxScriptTagsPlugin = ({
   projectRootDir: string;
 }): Plugin => {
   let isBuild = false;
+  let base = "/";
 
   return {
     name: "rwsdk:vite:transform-jsx-script-tags",
     configResolved(config) {
       isBuild = config.command === "build";
+      base = config.base || "/";
     },
     async transform(code, id) {
 
@@ -538,6 +556,7 @@ export const transformJsxScriptTagsPlugin = ({
           clientEntryPoints,
           {}, // Empty manifest during discovery
           projectRootDir,
+          base,
         );
         if (result) {
           log("Transformed JSX script tags in %s", id);

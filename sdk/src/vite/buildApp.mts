@@ -1,7 +1,7 @@
 import debug from "debug";
 import { existsSync } from "node:fs";
-import { mkdir, rm, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
 import type { ViteBuilder } from "vite";
 import { INTERMEDIATES_OUTPUT_DIR } from "../lib/constants.mjs";
 import { ConfigurableEsbuildOptions, runDirectivesScan } from "./runDirectivesScan.mjs";
@@ -127,4 +127,53 @@ export async function buildApp({
   await builder.build(workerEnv);
 
   console.log("Build complete!");
+
+  // context(zshannon, 16 Mar 2026): Nest client output under base subdirectory
+  // for Cloudflare's assets module, which maps URL paths directly to file paths.
+  const base = builder.config.base || "/";
+  if (base !== "/") {
+    const subdir = base.replace(/^\/|\/$/g, "");
+    const clientDir = resolve(projectRootDir, "dist", "client");
+    const tmpDir = resolve(projectRootDir, "dist", "_client_tmp");
+    const nestDir = join(clientDir, subdir);
+
+    await rm(tmpDir, { force: true, recursive: true });
+    await cp(clientDir, tmpDir, { recursive: true });
+    await rm(clientDir, { force: true, recursive: true });
+    await mkdir(nestDir, { recursive: true });
+
+    for (const entry of await readdir(tmpDir)) {
+      await cp(join(tmpDir, entry), join(nestDir, entry), { recursive: true });
+    }
+    await rm(tmpDir, { force: true, recursive: true });
+
+    // context(justinvdm, 17 Mar 2026): The Cloudflare Vite plugin generates a
+    // wrangler.json in the dist output. We need to patch its assets.directory
+    // to account for the nesting we just did.
+    const workerDistDir = resolve(projectRootDir, "dist", "worker");
+    const wranglerCandidates = ["wrangler.json", "wrangler.jsonc", "wrangler.toml"];
+    for (const candidate of wranglerCandidates) {
+      const wranglerPath = join(workerDistDir, candidate);
+      if (existsSync(wranglerPath) && candidate !== "wrangler.toml") {
+        const content = await readFile(wranglerPath, "utf-8");
+        const wrangler = JSON.parse(content);
+        if (wrangler.assets?.directory) {
+          const currentDir = wrangler.assets.directory;
+          const fixedDir = currentDir.replace(`/${subdir}`, "");
+          if (fixedDir !== currentDir) {
+            wrangler.assets.directory = fixedDir;
+            await writeFile(wranglerPath, JSON.stringify(wrangler, null, 2));
+          } else {
+            console.warn(
+              `Warning: ${candidate} assets.directory "${currentDir}" ` +
+                `did not contain expected "/${subdir}" segment`,
+            );
+          }
+        }
+        break;
+      }
+    }
+
+    console.log(`Nested client assets under ${subdir}/`);
+  }
 }

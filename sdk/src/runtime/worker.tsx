@@ -51,6 +51,18 @@ export const defineApp = <
     fetch: async (request: Request, env: Env, cf: ExecutionContext) => {
       globalThis.__webpack_require__ = ssrWebpackRequire;
 
+      // context(justinvdm, 17 Mar 2026): Strip the Vite base path from the
+      // request URL so that routes defined as "/" match requests to "/app/"
+      // when base: '/app/' is configured. Vite injects BASE_URL automatically.
+      const base: string | undefined = (import.meta.env as any).BASE_URL;
+      if (base && base !== "/") {
+        const url = new URL(request.url);
+        if (url.pathname.startsWith(base)) {
+          url.pathname = "/" + url.pathname.slice(base.length);
+          request = new Request(url.toString(), request);
+        }
+      }
+
       // context(justinvdm, 5 Feb 2025): Serve assets requests using the assets service binding
       // todo(justinvdm, 5 Feb 2025): Find a way to avoid this so asset requests are served directly
       // rather than first needing to go through the worker
@@ -164,7 +176,7 @@ export const defineApp = <
         const renderPage = async (
           requestInfo: RequestInfo<T>,
           Page: React.FC<any>,
-          onError: (error: unknown) => void,
+          _onError: (error: unknown) => void,
         ) => {
           if (isClientReference(requestInfo.rw.Document)) {
             if (import.meta.env.DEV) {
@@ -175,6 +187,18 @@ export const defineApp = <
               status: 500,
             });
           }
+
+          // context(justinvdm, 2026-03-17): Capture rendering errors so the
+          // router can throw them and route to except handlers. We store the
+          // error on rw.renderError instead of throwing from renderPage, because
+          // throwing mid-render corrupts React's internal RSC stream state
+          // (causing "chunk.reason.enqueueModel is not a function" in subsequent
+          // renders). By returning normally, streams are cleaned up properly.
+          const onError = (error: unknown) => {
+            if (!rw.renderError) {
+              rw.renderError = error;
+            }
+          };
 
           const actionResult = normalizeActionResult(
             requestInfo.rw.actionResult,
@@ -227,13 +251,27 @@ export const defineApp = <
             });
           }
 
-          let html: ReadableStream<any> = await renderDocumentHtmlStream({
-            rscPayloadStream: rscPayloadStream,
-            Document: rw.Document,
-            requestInfo: requestInfo,
-            onError,
-            shouldSSR: rw.ssr,
-          });
+          let html: ReadableStream<any>;
+          try {
+            html = await renderDocumentHtmlStream({
+              rscPayloadStream: rscPayloadStream,
+              Document: rw.Document,
+              requestInfo: requestInfo,
+              onError,
+              shouldSSR: rw.ssr,
+            });
+          } catch (renderError) {
+            // context(justinvdm, 2026-03-17): If renderDocumentHtmlStream throws
+            // AND we already captured the error via onError, return a minimal
+            // response. The router will detect rw.renderError and route to
+            // except handlers. We must not re-throw here because throwing from
+            // renderPage corrupts React's internal RSC stream state, preventing
+            // the except handler from rendering its error page.
+            if (rw.renderError) {
+              return new Response(null, { status: 500 });
+            }
+            throw renderError;
+          }
 
           if (injectRSCPayloadStream) {
             html = html.pipeThrough(injectRSCPayloadStream);
@@ -251,22 +289,14 @@ export const defineApp = <
 
         const response = await runWithRequestInfo(
           outerRequestInfo,
-          async () =>
-            new Promise<Response>(async (resolve, reject) => {
-              try {
-                resolve(
-                  await router.handle({
-                    request,
-                    renderPage,
-                    getRequestInfo: getRequestInfo as () => T,
-                    runWithRequestInfoOverrides,
-                    onError: reject,
-                    rscActionHandler,
-                  }),
-                );
-              } catch (e) {
-                reject(e);
-              }
+          () =>
+            router.handle({
+              request,
+              renderPage,
+              getRequestInfo: getRequestInfo as () => T,
+              runWithRequestInfoOverrides,
+              onError: () => {},
+              rscActionHandler,
             }),
         );
 
