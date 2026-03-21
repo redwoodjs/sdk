@@ -3,9 +3,7 @@ title: shadcn/ui
 description: A comprehensive guide to installing and configuring ShadCN UI components within RedwoodSDK projects, with step-by-step instructions for proper integration with TailwindCSS v4.
 ---
 
-import { Aside, Steps, FileTree } from '@astrojs/starlight/components';
-
-import { PackageManagers } from "starlight-package-managers";
+import { Aside, Steps, FileTree, PackageManagers } from "@/app/components/mdx";
 
 ## Installing shadcn/ui
 
@@ -26,7 +24,7 @@ import { PackageManagers } from "starlight-package-managers";
 
     If you want to match RedwoodSDK conventions, add the following aliases to the `components.json` file:
 
-    ```json title="components.json" startLineNumber={13}
+    ```json title="components.json" lineNumbers=13
     ...
     "aliases": {
       "components": "@/app/components",

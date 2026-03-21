@@ -3,7 +3,7 @@ title: Client Side Navigation (Single Page Apps)
 description: Implement client side navigation in your RedwoodSDK project
 ---
 
-import { Aside, Badge } from "@astrojs/starlight/components";
+import { Aside, Badge } from "@/app/components/mdx";
 
 ## What is Client Side Navigation?
 
@@ -11,7 +11,8 @@ Client-side navigation is a technique that allows users to move between pages wi
 
 This approach is commonly referred to as a Single Page App (SPA). In RedwoodSDK, you get SPA-like navigation with server-fetched React Server Components (RSC), so it's fast and dynamic, but still uses the server for rendering. RedwoodSDK uses **RSC RPC** to emulate client-side navigation.
 
-```tsx title="src/client.tsx" ins="initClientNavigation()"
+```tsx title="src/client.tsx"
+// [!code word:initClientNavigation]
 import { initClient, initClientNavigation } from "rwsdk/client";
 
 const { handleResponse, onHydrated } = initClientNavigation();
@@ -69,15 +70,15 @@ initClientNavigation({
 For infinite-scroll feeds or chat applications you might want to _keep_ the user
 exactly where they were, by setting `history.scrollRestoration` to `"manual"` before each navigation action you'll disable the automatic scrolling.
 
-```tsx title="src/client.tsx" ins="history.scrollRestoration = 'manual'"
-history.scrollRestoration = "manual";
+```tsx title="src/client.tsx"
+history.scrollRestoration = "manual"; // [!code highlight]
 ```
 
 Alternatively you can set `scrollToTop: false` to disable it completely.
 
-```tsx title="src/client.tsx" ins="scrollToTop: false"
+```tsx title="src/client.tsx"
 initClientNavigation({
-  scrollToTop: false,
+  scrollToTop: false, // [!code highlight]
 });
 ```
 

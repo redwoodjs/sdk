@@ -3,7 +3,7 @@ title: React Compiler
 description: Enable the React Compiler with RedwoodSDK (Vite)
 ---
 
-import { Aside, Steps } from '@astrojs/starlight/components';
+import { Aside, Steps } from "@/app/components/mdx";
 
 The React Compiler can optimize your components automatically. RedwoodSDK works with the compiler via Vite — you only need to add the Babel plugin and runtime, and enable it in your Vite config.
 
@@ -34,15 +34,16 @@ pnpm add -D babel-plugin-react-compiler@latest @vitejs/plugin-react@latest
 
 Enable the compiler by adding the React plugin with the compiler Babel plugin. Place it before the Cloudflare and RedwoodSDK plugins.
 
-```ts ins="import react from "@vitejs/plugin-react";'" ins="tailwindcss()," {4, 12} ins={8-12} title="vite.config.mts"
+```ts title="vite.config.mts"
 
 import { defineConfig } from "vite";
 import { redwood } from "rwsdk/vite";
-import { cloudflare } from "@cloudflare/vite-plugin";
-import react from "@vitejs/plugin-react";
+import { cloudflare } from "@cloudflare/vite-plugin"; // [!code highlight]
+import react from "@vitejs/plugin-react"; // [!code ++]
 
 export default defineConfig({
   plugins: [
+// [!code ++:5]
     react({
       babel: {
         plugins: ["babel-plugin-react-compiler"],

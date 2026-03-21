@@ -3,7 +3,7 @@ title: Queues
 description: Messages, queues, and background tasks
 ---
 
-import { Aside } from "@astrojs/starlight/components";
+import { Aside } from "@/app/components/mdx";
 
 Whilst building a webapp you want to be able to respond as quickly as possible to user interactions, but sometimes you need to do things that take a long time! For example, you might need to send an email when a user submits a form, or you need to process a payment, or do something magic with AI - and you don't want the user to wait for these things to complete.
 
@@ -18,7 +18,7 @@ To handle these you'll use **background tasks**. Background tasks are managed by
 
 First thing you've got to do is create a queue and bind the queue producers and consumers to your worker.
 
-```bash showLineNumbers=false
+```bash
 npx wrangler queues create my-queue-name
 ```
 
@@ -92,13 +92,13 @@ export default defineApp([
 
 In order to "consume messages" from the queue you need to change the shape of the `default` export of your worker. You'll add another function called `queue` that will receive a batch of messages.
 
-```tsx title="src/worker.tsx" mark={5-9}
+```tsx title="src/worker.tsx"
 
 const app = defineApp([ /* routes... */])
 
 export default {
   fetch: app.fetch,
-  async queue(batch) {
+  async queue(batch) { // [!code highlight:5]
     for (const message of batch.messages) {
       console.log('handling message' + JSON.stringify(message))
     }
@@ -191,13 +191,13 @@ export default defineApp([
 when handling queues and receivng a `MessageBatch`, the `batch` contains
 a collection of `messages` and the name of the `queue` which you can use to handle
 
-```tsx title="src/worker.tsx" mark={5-9}
+```tsx title="src/worker.tsx"
 
 const app = defineApp([ /* routes... */])
 
 export default {
   fetch: app.fetch,
-  async queue(batch) {
+  async queue(batch) { // [!code highlight:5]
     if (batch.queue === 'my-queue-name') {
       for (const message of batch.messages) {
         console.log('handling my-queue-name message' + JSON.stringify(message))
@@ -237,12 +237,12 @@ export default defineApp([
 
 One can then determine the message type and handle accordingly:
 
-```tsx title="src/worker.tsx" mark={5-9}
+```tsx title="src/worker.tsx"
 const app = defineApp([ /* routes... */])
 
 export default {
   fetch: app.fetch,
-  async queue(batch) {
+  async queue(batch) { // [!code highlight:5]
     for (const message of batch.messages) {
       const { type, userId, amount, currenct } = message.body as { type: string, userId: number, amount: number, currency: string };
       if (type === 'PAYMENT') {
