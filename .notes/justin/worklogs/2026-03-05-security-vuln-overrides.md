@@ -270,14 +270,36 @@ Similarly, `playground/database-do` declared `"kysely": "^0.28.0"` -- bumped to 
 
 We switched it to `workspace:*` and deleted the `package-lock.json`. It is now managed by pnpm like every other workspace package.
 
+### Rebase onto main
+
+Rebased onto latest `origin/main`. Main had already bumped several overrides to higher versions (e.g. `@modelcontextprotocol/sdk` 1.27.1, `ajv` 8.18.0, `minimatch` 10.2.4, `serialize-javascript` 7.0.4). We took main's higher versions and layered our new additions on top.
+
+Main also bumped `sdk/package.json` kysely to `~0.28.11` and `playground/database-do` to `^0.28.11`, but 0.28.11 is still in the vulnerable range (`<=0.28.11`). We kept our `~0.28.12` / `^0.28.12`.
+
+Main updated `playground/community/todo-serverquery-and-actions` rwsdk pin from `1.0.0-beta.51` to `1.0.0-beta.56` -- still a pinned published version. We replaced with `workspace:*` as planned.
+
+Post-rebase, undici override `"undici@7.18.2": "7.24.0"` didn't cover `undici@7.14.0` from a new playground (`playground/base-path`). Changed to blanket override `"undici": "7.24.0"`.
+
+Final post-rebase audit: **4 vulnerabilities, all Low severity webpack**.
+
 ### Summary of all changes
 
 | File | Change | Why |
 |------|--------|-----|
-| `sdk/package.json` | kysely range `~0.28.2` -> `~0.28.12` | Exclude vulnerable versions from declared range |
-| `playground/database-do/package.json` | kysely range `^0.28.0` -> `^0.28.12` | Same |
-| `playground/community/todo-serverquery-and-actions/package.json` | rwsdk `1.0.0-beta.51` -> `workspace:*` | Align with all other workspace packages |
+| `sdk/package.json` | kysely range `~0.28.11` -> `~0.28.12` | Exclude vulnerable 0.28.11 from declared range |
+| `playground/database-do/package.json` | kysely range `^0.28.11` -> `^0.28.12` | Same |
+| `playground/community/todo-serverquery-and-actions/package.json` | rwsdk `1.0.0-beta.56` -> `workspace:*` | Align with all other workspace packages |
 | `playground/community/todo-serverquery-and-actions/package-lock.json` | Deleted | No longer needed under pnpm workspace |
 | `package.json` (root) | 4 pnpm overrides bumped, 4 new overrides added | Resolve High/Moderate transitive dep vulns |
 | `pnpm-lock.yaml` | Regenerated | Reflects all override and range changes |
+
+### PR Description (Round 2)
+
+### Problem
+
+Dependabot flagged 25 security vulnerabilities. The most critical is kysely (SDK direct dependency) with two High severity SQL injection CVEs. The SDK's declared version range (`~0.28.11`) still allows the vulnerable version 0.28.11. Additionally, several transitive dependencies (undici, h3, hono, devalue, tar, flatted, express-rate-limit) have new CVEs since our last security pass. The community todo playground was pinned to a published rwsdk version instead of using `workspace:*`, causing it to be frozen on old vulnerable transitive deps and generating duplicate vulnerability alerts from its separate npm lockfile.
+
+### Solution
+
+Bumped the SDK's kysely range to `~0.28.12` to exclude all vulnerable versions. Added 4 new pnpm overrides (undici, flatted, express-rate-limit) and bumped 4 existing ones (h3, hono, devalue, tar). Switched the community todo playground to `workspace:*` and deleted its npm `package-lock.json`. Four Low severity webpack alerts remain (buildHttp SSRF, requires opt-in, not exploitable).
 
