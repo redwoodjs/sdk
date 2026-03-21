@@ -295,11 +295,36 @@ Final post-rebase audit: **4 vulnerabilities, all Low severity webpack**.
 
 ### PR Description (Round 2)
 
-### Problem
+### For SDK consumers
 
-Dependabot flagged 25 security vulnerabilities. The most critical is kysely (SDK direct dependency) with two High severity SQL injection CVEs. The SDK's declared version range (`~0.28.11`) still allows the vulnerable version 0.28.11. Additionally, several transitive dependencies (undici, h3, hono, devalue, tar, flatted, express-rate-limit) have new CVEs since our last security pass. The community todo playground was pinned to a published rwsdk version instead of using `workspace:*`, causing it to be frozen on old vulnerable transitive deps and generating duplicate vulnerability alerts from its separate npm lockfile.
+**Action required for kysely users**: The SDK's kysely dependency range has been bumped from `~0.28.11` to `~0.28.12`. Versions 0.28.2 through 0.28.11 contain SQL injection vulnerabilities (unsanitized JSON path keys, insufficient backslash escaping in `sql.lit()`). If your lockfile pins kysely below 0.28.12, running `pnpm install` or `npm install` will resolve to a patched version.
 
-### Solution
+All other affected packages in the SDK's dependency tree use semver ranges that resolve to patched versions on fresh installs. The pnpm overrides only fix version pinning in our own monorepo lockfile -- they do not propagate to consumer projects.
 
-Bumped the SDK's kysely range to `~0.28.12` to exclude all vulnerable versions. Added 4 new pnpm overrides (undici, flatted, express-rate-limit) and bumped 4 existing ones (h3, hono, devalue, tar). Switched the community todo playground to `workspace:*` and deleted its npm `package-lock.json`. Four Low severity webpack alerts remain (buildHttp SSRF, requires opt-in, not exploitable).
+### What changed
+
+Dependabot flagged 25 security vulnerabilities. We bumped the SDK's kysely range to exclude vulnerable versions, added 4 new pnpm overrides, bumped 4 existing ones, and fixed a community playground that was pinned to a stale published SDK version. Four Low severity webpack `buildHttp` SSRF alerts remain -- this feature requires explicit opt-in and is not used by the SDK.
+
+### SDK vs Playground Dependency Audit
+
+pnpm overrides are workspace-local -- they do not propagate to consumers who install `rwsdk`. We verified that the SDK's declared dependency ranges naturally resolve to patched versions for framework consumers.
+
+#### Packages IN the SDK's dependency tree
+
+| Package | SDK dependency chain | Consumer impact |
+|---------|---------------------|-----------------|
+| **kysely** | rwsdk -> kysely ~0.28.12 | Range now excludes vulnerable versions. Consumers on fresh installs get 0.28.14 (patched). |
+| **undici** | wrangler (peer) -> miniflare -> undici | Consumers bring their own wrangler. Current wrangler versions resolve to patched undici. Override only needed for our lockfile. |
+
+#### Packages NOT in the SDK's dependency tree (playground/root devDep only)
+
+| Package | Where it comes from | Consumer impact |
+|---------|---------------------|-----------------|
+| **undici** | wrangler (root devDep) -> miniflare -> undici | None -- devDep only |
+| **h3** | docs -> astro -> unstorage -> h3 | None -- docs only |
+| **hono** | playground shadcn -> shadcn -> @mcp/sdk -> hono | None -- playground only |
+| **devalue** | docs -> astro -> devalue | None -- docs only |
+| **tar** | playground shadcn -> @tailwindcss/oxide -> tar | None -- playground only |
+| **flatted** | eslint (root devDep) -> file-entry-cache -> flat-cache -> flatted | None -- devDep only |
+| **express-rate-limit** | playground shadcn -> shadcn -> @mcp/sdk -> express-rate-limit | None -- playground only |
 
