@@ -23,6 +23,7 @@ export function DocsLayoutWrapper({ children, requestInfo }: LayoutProps) {
         <DocsLayout
           tree={pageTree}
           nav={{
+            enabled: false,
             title: (
               <>
                 <img src="/logo--dark.svg" alt="RedwoodSDK" className="h-8 hidden dark:block" />
@@ -30,6 +31,11 @@ export function DocsLayoutWrapper({ children, requestInfo }: LayoutProps) {
               </>
             ),
             url: "/",
+          }}
+          containerProps={{
+            style: {
+              gridTemplateColumns: "0 var(--fd-sidebar-col) minmax(0, calc(var(--fd-layout-width, 97rem) - var(--fd-sidebar-width) - var(--fd-toc-width))) var(--fd-toc-width) minmax(min-content, 1fr)",
+            },
           }}
           themeSwitch={{ component: <ThemeToggle /> }}
           githubUrl="https://github.com/redwoodjs/sdk"
