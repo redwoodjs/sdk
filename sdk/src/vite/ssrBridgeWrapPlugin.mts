@@ -71,8 +71,8 @@ export const ssrBridgeWrapPlugin = (): Plugin => {
           if (exportStart !== -1) break;
         }
 
-        const banner = `export const { renderHtmlStream, ssrLoadModule, ssrWebpackRequire, ssrGetModuleExport, createThenableFromReadableStream } = (function() {`;
-        const footer = `return { renderHtmlStream, ssrLoadModule, ssrWebpackRequire, ssrGetModuleExport, createThenableFromReadableStream };\n})();`;
+        const banner = `const { renderHtmlStream, ssrLoadModule, ssrWebpackRequire, ssrGetModuleExport, createThenableFromReadableStream } = (function() {`;
+        const footer = `return { renderHtmlStream, ssrLoadModule, ssrWebpackRequire, ssrGetModuleExport, createThenableFromReadableStream };\n})();\nexport { renderHtmlStream, ssrLoadModule, ssrWebpackRequire, ssrGetModuleExport, createThenableFromReadableStream };`;
 
         // Insert banner after the last import (or at the beginning if no imports)
         const insertIndex = lastImportEnd === -1 ? 0 : lastImportEnd;
