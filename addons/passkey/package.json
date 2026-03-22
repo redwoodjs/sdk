@@ -3,12 +3,12 @@
   "private": true,
   "version": "0.0.0",
   "dependencies": {
-    "@simplewebauthn/browser": "13.2.2",
-    "@simplewebauthn/server": "13.2.3",
+    "@simplewebauthn/browser": "13.3.0",
+    "@simplewebauthn/server": "13.3.0",
     "rwsdk": "workspace:*"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "4.20260307.1",
+    "@cloudflare/workers-types": "4.20260317.1",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3"
   }
