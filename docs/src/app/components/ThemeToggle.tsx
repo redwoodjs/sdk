@@ -1,6 +1,5 @@
 "use client";
 
-import { setTheme } from "@/app/actions/setTheme";
 import { MoonIcon, SunIcon } from "@/app/components/ui/Icon";
 
 // Prevents the jarring flash of every element on the page animating at once
@@ -45,9 +44,7 @@ export function ThemeToggle() {
 
         e.currentTarget.setAttribute("aria-checked", String(!isDark));
 
-        setTheme(newTheme).catch((error) => {
-          console.error("Failed to set theme:", error);
-        });
+        document.cookie = `theme=${newTheme}; path=/; max-age=31536000; samesite=lax`;
       }}
       ref={(el) => {
         if (el) {
