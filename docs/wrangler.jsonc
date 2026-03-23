@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "rwsdk-docs",
+  "name": "redwood-sdk-docs",
   "main": "src/worker.tsx",
   "compatibility_date": "2025-08-21",
   "compatibility_flags": ["nodejs_compat"],
@@ -10,5 +10,8 @@
   "observability": {
     "enabled": true
   },
-  "vars": {}
+  "vars": {},
+  "routes": [
+    { "pattern": "docs.rwsdk.com", "custom_domain": true }
+  ]
 }
