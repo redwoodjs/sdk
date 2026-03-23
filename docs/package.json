@@ -8,7 +8,7 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "build": "pnpm --filter rwsdk build && vite build",
+    "build": "cd ../sdk && npx tsc --build --clean && npx tsc && cd ../docs && vite build",
     "dev": "vite dev",
     "dev:init": "rw-scripts dev-init",
     "preview": "vite preview",
