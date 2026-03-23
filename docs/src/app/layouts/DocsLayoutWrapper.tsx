@@ -2,6 +2,7 @@ import type { LayoutProps } from "rwsdk/router";
 import { RedwoodProvider } from "@/lib/fumadocs-provider";
 import { RootProvider } from "fumadocs-ui/provider/base";
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
+import { SearchCommand } from "@/app/components/SearchDialog";
 import { MobileNav } from "@/app/components/Sidebar";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { pageTree } from "@/app/sidebar";
@@ -22,6 +23,9 @@ export function DocsLayoutWrapper({ children, requestInfo }: LayoutProps) {
         <MobileNav pathname={pathname} />
         <DocsLayout
           tree={pageTree}
+          sidebar={{
+            banner: <SearchCommand enableShortcut />,
+          }}
           nav={{
             enabled: false,
             title: (

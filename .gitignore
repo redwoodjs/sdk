@@ -214,3 +214,4 @@ CLAUDE.md
 .agent/rules/user
 .agent/skills/user
 .agent/workflows/user
+.devcontainer/kindling/
