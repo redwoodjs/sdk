@@ -10,14 +10,14 @@ This pattern is useful for sending partial responses to the client, such as when
 
 First create a server function that returns a stream. In this example we're using Cloudflare's AI, and we're streaming the response back to the client.
 
-```tsx title="app/pages/Chat/functions.ts" lineNumbers mark={7}
+```tsx title="app/pages/Chat/functions.ts" lineNumbers
 "use server";
 
 export async function sendMessage(prompt: string) {
   console.log("Running AI with Prompt:", prompt);
   const response = await env.AI.run("@cf/meta/llama-4-scout-17b-16e-instruct", {
     prompt,
-    stream: true,
+    stream: true, // [!code highlight]
   });
   return response as unknown as ReadableStream;
 }
@@ -25,7 +25,7 @@ export async function sendMessage(prompt: string) {
 
 Now on the client component, we can use the `consumeEventStream` function to parse the chunks whilst keeping the UI updated.
 
-```tsx title="app/pages/Chat/Chat.tsx" lineNumbers mark={17-29}
+```tsx title="app/pages/Chat/Chat.tsx" lineNumbers
 "use client";
 
 import { sendMessage } from "./functions";
@@ -41,7 +41,7 @@ export function Chat() {
 
     setIsLoading(true);
 
-    setReply("");
+    setReply(""); // [!code highlight:13]
     (await sendMessage(message)).pipeTo(
       consumeEventStream({
         onChunk: (event) => {

@@ -3,7 +3,7 @@ title: React Server Components
 description: React, Server Components, Server Actions, and Suspense
 ---
 
-import { Aside, Tabs, TabItem, LinkCard, Badge } from "@astrojs/starlight/components";
+import { Aside, Tabs, TabItem, LinkCard, Badge } from "@/app/components/mdx";
 
 React is used to build your user interface. By default, all components are server components. That means that the component is rendered on the server as HTML and then streamed to the client. These do not include any client-side interactivity.
 
@@ -15,8 +15,8 @@ export default function MyServerComponent() {
 
 When a user needs to interact with your component: clicking a button, setting state, etc, then you must use a client component. Mark the client component with the `"use client"` directive. This will be hydrated by React in the browser.
 
-```tsx mark={1}
-"use client";
+```tsx
+"use client"; // [!code highlight]
 
 export default function MyClientComponent() {
   return <button>Click me</button>;
@@ -27,7 +27,8 @@ export default function MyClientComponent() {
 
 React Server Components run on the server, they can easily fetch data and make it part of the payload that's sent to the client.
 
-```tsx title="src/app/pages/todos/TodoPage.tsx" "async"
+```tsx title="src/app/pages/todos/TodoPage.tsx"
+// [!code word:async]
 export async function Todos({ ctx }) {
   const todos = await db.todo.findMany({ where: { userId: ctx.user.id } });
   return (
@@ -63,8 +64,8 @@ The `TodoPage` component is a server component. It is rendered by a route, so it
 
 Allow you to execute code on the server from a client component.
 
-```tsx title="@/pages/todos/functions.tsx" mark={1}
-"use server";
+```tsx title="@/pages/todos/functions.tsx"
+"use server"; // [!code highlight]
 
 import { requestInfo } from "rwsdk/worker";
 
@@ -77,10 +78,10 @@ export async function addTodo(formData: FormData) {
 
 The `addTodo` function is a server function. It is executed on the server when the form is submitted from a client side component. The form data is sent to the server and the function is executed. The result is **streamed** back to the client, parsed by React, and the view is updated with the new todo.
 
-```tsx title="@/pages/todos/AddTodo.tsx" mark={1, 3}
-"use client";
+```tsx title="@/pages/todos/AddTodo.tsx"
+"use client"; // [!code highlight]
 
-import { addTodo } from "./functions";
+import { addTodo } from "./functions"; // [!code highlight]
 
 export default function AddTodo() {
   return (
@@ -204,14 +205,14 @@ When a `Response` is returned, RedwoodSDK automatically handles it:
 - **Redirects:** If the response has a 3xx status code and a `Location` header, the client will automatically redirect.
 - **Custom Responses:** Other response types are also supported, and their metadata (status, headers) is made available on the client.
 
-```tsx title="src/pages/todos/functions.tsx" "Response.redirect"
+```tsx title="src/pages/todos/functions.tsx"
 "use server";
 
 export async function addTodo(formData: FormData) {
   // ... logic to add todo ...
 
   // Redirect to the todos list page after success
-  return Response.redirect("/todos", 303);
+  return Response.redirect("/todos", 303); // [!code highlight]
 }
 ```
 
@@ -219,7 +220,8 @@ export async function addTodo(formData: FormData) {
 
 You can intercept action responses on the client by providing an `onActionResponse` callback to `initClient`. This is useful if you want to handle redirects manually or perform side effects based on the response.
 
-```tsx title="src/entry.client.tsx" "onActionResponse"
+```tsx title="src/entry.client.tsx"
+// [!code word:onActionResponse]
 import { initClient } from "rwsdk/client";
 
 initClient({

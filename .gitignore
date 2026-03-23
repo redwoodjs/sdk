@@ -207,6 +207,9 @@ starters/standard/.pnpm-store
 # Webstorm
 .idea/
 
+# Claude Code
+CLAUDE.md
+
 # Antigravity User Config
 .agent/rules/user
 .agent/skills/user

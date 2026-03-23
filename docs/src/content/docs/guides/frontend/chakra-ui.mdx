@@ -3,10 +3,7 @@ title: Chakra UI
 description: A step-by-step guide for installing and configuring Chakra UI v3 in RedwoodSDK projects, including customization options and theming techniques.
 ---
 
-import { Aside } from "@astrojs/starlight/components";
-import { Steps } from "@astrojs/starlight/components";
-
-import { PackageManagers } from "starlight-package-managers";
+import { Aside, Steps, PackageManagers } from "@/app/components/mdx";
 
 ## Installing Chakra UI
 
@@ -45,13 +42,14 @@ Since RedwoodSDK is based on React and Vite, we can work through the ["Using Vit
 
    Update your `tsconfig.json` to include path mappings for the snippets:
 
-   ```json title="tsconfig.json" ins={4-6}
+   ```json title="tsconfig.json"
    {
      "compilerOptions": {
        "target": "ESNext",
        "module": "ESNext",
        "moduleResolution": "Bundler",
        "skipLibCheck": true,
+       // [!code ++:3]
        "paths": {
          "@/*": ["./src/*"]
        }
@@ -69,15 +67,15 @@ Since RedwoodSDK is based on React and Vite, we can work through the ["Using Vit
 
 5. Configure the Vite Plugin
 
-   ```ts ins={3, 8} title="vite.config.mts"
+   ```ts title="vite.config.mts"
    import { defineConfig } from "vite";
    import react from "@vitejs/plugin-react";
-   import tsconfigPaths from "vite-tsconfig-paths";
+   import tsconfigPaths from "vite-tsconfig-paths"; // [!code ++]
    import { redwood } from "rwsdk/vite";
    import { cloudflare } from "@cloudflare/vite-plugin";
 
    export default defineConfig({
-     plugins: [
+     plugins: [ // [!code ++]
        cloudflare({
          viteEnvironment: { name: "worker" },
        }),
@@ -117,13 +115,13 @@ Since RedwoodSDK is based on React and Vite, we can work through the ["Using Vit
    }
    ```
 
-   ```tsx title="src/worker.tsx" ins={1, 6, 16}
-   import { layout, render, route } from "rwsdk/router";
+   ```tsx title="src/worker.tsx"
+   import { layout, render, route } from "rwsdk/router"; // [!code ++]
    import { defineApp } from "rwsdk/worker";
 
    import { Document } from "@/app/Document";
    import { AppLayout } from "@/app/layouts/AppLayout";
-   import { setCommonHeaders } from "@/app/headers";
+   import { setCommonHeaders } from "@/app/headers"; // [!code ++]
    import { Home } from "@/app/pages/Home";
 
    export default defineApp([
@@ -211,13 +209,14 @@ export const system = createSystem(defaultConfig, customConfig);
 
 Update the provider to use your custom system:
 
-```tsx title="src/components/ui/provider.tsx" ins={2, 6}
+```tsx title="src/components/ui/provider.tsx"
 import { ChakraProvider } from "@chakra-ui/react";
-import { system } from "@/theme";
+import { system } from "@/theme"; // [!code ++]
 import { ColorModeProvider } from "@/components/ui/color-mode";
 
 export function Provider(props: { children: React.ReactNode }) {
   return (
+    // [!code ++:1]
     <ChakraProvider value={system}>
       <ColorModeProvider>{props.children}</ColorModeProvider>
     </ChakraProvider>

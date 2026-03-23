@@ -1,10 +1,9 @@
 ---
 title: Email Templates
 description: How to create and use layout components in your RedwoodSDK project
-slug: guides/email/email-templates
 ---
 
-import { Aside, Steps, FileTree } from "@astrojs/starlight/components";
+import { Aside, Steps, FileTree } from "@/app/components/mdx";
 
 The [React Email](https://react.email/) project makes it easy to create email templates. It includes unstyled components and the Tailwind CSS support.
 
@@ -71,16 +70,18 @@ You can delete all the contents inside the `emails` directory. Or, oftentimes, I
     } from "@react-email/components";
 
     export default function WelcomeEmail() {
-      <Html>
-        <Head />
-        <Preview>Hello World</Preview>
-        <Body>
-          <Container>
-            <Heading>Hello World</Heading>
-          </Container>
-        </Body>
-      </Html>
-    );
+      return (
+        <Html>
+          <Head />
+          <Preview>Hello World</Preview>
+          <Body>
+            <Container>
+              <Heading>Hello World</Heading>
+            </Container>
+          </Body>
+        </Html>
+      );
+    }
     ```
 
     <Aside type="caution" title="Default Export">
@@ -97,22 +98,24 @@ You can delete all the contents inside the `emails` directory. Or, oftentimes, I
 
     Keep in mind that you can pass in props, personalizing the template and making it more dynamic.
 
-    ```tsx title="src/emails/welcome-email.tsx" startLineNumber={10}
+    ```tsx title="src/emails/welcome-email.tsx" lineNumbers=10
     interface WelcomeEmailProps {
       name: string;
     }
 
     export default function WelcomeEmail({ name }: WelcomeEmailProps) {
-      <Html>
-        <Head />
-        <Preview>Hello {name}</Preview>
-        <Body>
-          <Container>
-            <Heading>Hello {name}</Heading>
-          </Container>
-        </Body>
-      </Html>
-    );
+      return (
+        <Html>
+          <Head />
+          <Preview>Hello {name}</Preview>
+          <Body>
+            <Container>
+              <Heading>Hello {name}</Heading>
+            </Container>
+          </Body>
+        </Html>
+      );
+    }
     ```
 
 4. When you've finished building the email template, you can get the code by clicking on the Code button in the browser preview.
@@ -159,7 +162,7 @@ You can delete all the contents inside the `emails` directory. Or, oftentimes, I
 
 2. Wrap your email template in the `Tailwind` component:
 
-    ```tsx title="src/emails/WelcomeEmail.tsx" showLineNumbers=false
+    ```tsx title="src/emails/WelcomeEmail.tsx"
     <Tailwind>
       <Html>
         <Head />
@@ -174,7 +177,7 @@ You can delete all the contents inside the `emails` directory. Or, oftentimes, I
 
 3. If you want to use a custom theme, this will need to be defined as a `config` prop, passed into the `Tailwind` component.
 
-    ```tsx title="src/emails/WelcomeEmail.tsx" showLineNumbers=false
+    ```tsx title="src/emails/WelcomeEmail.tsx"
     <Tailwind
       config={{
         theme: {

@@ -4,15 +4,7 @@ description: From request to response in seconds!
 next: false
 ---
 
-import {
-  Aside,
-  Tabs,
-  TabItem,
-  LinkCard,
-  Code,
-} from "@astrojs/starlight/components";
-
-import { PackageManagers } from "starlight-package-managers";
+import { Aside, Tabs, TabItem, LinkCard, Code, PackageManagers } from "@/app/components/mdx";
 
 In this quick start you'll go from zero to request/response in seconds and deploy to production in minutes!
 
@@ -32,7 +24,7 @@ Create a new project by running the following command, replacing `my-project-nam
 
 ### Install the dependencies
 
-```bash frame="none" showLineNumbers=false
+```bash
 cd my-project-name
 ```
 
@@ -45,12 +37,11 @@ cd my-project-name
 RedwoodSDK is just a plugin for Vite, so you can use the same commands to run the development server as you would with any other Vite project.
 
 <PackageManagers
-  frame="none"
   type="run"
   args="dev"
 />
 
-```bash frame="none" showLineNumbers=false
+```bash
 VITE v6.2.0  ready in 500 ms
 
 ➜  Local:   http://localhost:5173/
@@ -69,7 +60,8 @@ The entry point of your webapp is `src/worker.tsx`, open that file in your favor
 
 Here you'll see the `defineApp` function, this is the main function that "defines your webapp," where the purpose is to handle requests by returning responses to the client.
 
-```tsx title="src/worker.tsx" showLineNumbers=false "defineApp"
+```tsx title="src/worker.tsx"
+// [!code word:defineApp]
 import { defineApp } from "rwsdk/worker";
 import { route, render } from "rwsdk/router";
 
@@ -83,13 +75,14 @@ export default defineApp([
 
 You're going to add your own route, insert the `"/ping"` route handler:
 
-```tsx title="src/worker.tsx" ins={7-9} showLineNumbers=false
+```tsx title="src/worker.tsx"
 import { defineApp } from "rwsdk/worker";
 import { route, render } from "rwsdk/router";
 
 export default defineApp([
   render(Document, [
     route("/", () => new Response("Hello, World!")),
+// [!code ++:3]
     route("/ping", function () {
       return <h1>Pong!</h1>;
     }),
@@ -111,7 +104,6 @@ Now when you navigate to [http://localhost:5173/ping](http://localhost:5173/ping
 RedwoodSDK is built for the Cloudflare Development Platform. You can deploy your webapp to Cloudflare with a single command:
 
 <PackageManagers
-  frame="none"
   type="run"
   args="release"
 />

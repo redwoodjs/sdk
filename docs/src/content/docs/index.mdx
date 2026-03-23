@@ -1,10 +1,10 @@
 ---
 title: What is RedwoodSDK?
 description: From concept to cloud
-tableOfContents: false
+tableOfContents: true
 ---
 
-import { Card, CardGrid } from "@astrojs/starlight/components";
+import { Card, CardGrid } from "@/app/components/mdx";
 
 RedwoodSDK is a React framework for Cloudflare. It starts as a Vite plugin that enables server-side rendering, React Server Components, server functions, streaming responses, and real-time capabilities. Its standards-based router—with support for middleware and interrupters—gives you fine-grained control over every request and response.
 
@@ -14,7 +14,7 @@ Local development mirrors production with Miniflare, which emulates the Cloudfla
 	<Card title="Quick start" icon="">
     	Create a new project by running the following command, replacing {"my-project-name"} with your project name
 
-    	```bash frame="none"
+    	```bash
     	npx create-rwsdk my-project-name
     	```
 
