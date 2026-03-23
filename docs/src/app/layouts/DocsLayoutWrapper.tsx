@@ -4,7 +4,7 @@ import { RootProvider } from "fumadocs-ui/provider/base";
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import { MobileNav } from "@/app/components/Sidebar";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
-import { SidebarSearch } from "@/app/components/SidebarSearch";
+import { SearchCommand } from "@/app/components/SearchDialog";
 import { pageTree } from "@/app/sidebar";
 
 const DiscordIcon = () => (
@@ -24,7 +24,7 @@ export function DocsLayoutWrapper({ children, requestInfo }: LayoutProps) {
         <DocsLayout
           tree={pageTree}
           sidebar={{
-            banner: <SidebarSearch />,
+            banner: <SearchCommand enableShortcut />,
           }}
           nav={{
             enabled: false,
