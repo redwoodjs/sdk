@@ -210,6 +210,9 @@ starters/standard/.pnpm-store
 # Claude Code
 CLAUDE.md
 
+# Kindling task artifacts (worklogs, advisory drafts, debug logs)
+.notes/
+
 # Antigravity User Config
 .agent/rules/user
 .agent/skills/user
