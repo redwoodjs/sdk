@@ -529,47 +529,37 @@ This section outlines the strategy for managing dependencies to maintain stabili
 ### Guiding Principles
 
 1.  **User Stability First**: Changes to peer dependencies, which directly impact user projects, must be handled with the utmost care. We should never knowingly publish a version of the SDK that allows a broken peer dependency version range.
-2.  **Automation with Control**: We use automation to handle routine updates, but maintain manual control over merging and releasing, especially for changes that affect peer dependencies.
+2.  **Automation with Control**: We use [kindling](https://github.com/redwoodjs/kindling) scheduled tasks to handle routine updates, but maintain manual control over merging and releasing, especially for changes that affect peer dependencies.
 3.  **Clear Categorization**: We treat different types of dependencies with different protocols based on their potential impact.
 
 ### Dependency Categories and Update Cadence
 
-We organize dependencies into a **single grouped rolling update** to balance release control with monorepo stability and noise reduction. This structure uses a "Manifest-First" update strategy (`rangeStrategy: bump`), which forces Renovate to always update `package.json` files. This ensures `pnpm` can correctly branch version resolutions across different workspace verticals without lockfile contradictions.
+We organize dependencies into a **single grouped rolling update** to balance release control with monorepo stability and noise reduction. Updates follow a "Manifest-First" strategy: `package.json` files are always edited directly (not just the lockfile). This ensures `pnpm` can correctly branch version resolutions across different workspace verticals without lockfile contradictions.
 
-By grouping all updates into a single PR (`groupName: "all-dependencies"`), we eliminate the noise of overlapping PRs. We control when specific dependencies enter the PR using scheduled constraints.
+A kindling cron task runs weekly and produces a single PR covering the applicable dependency tiers for that week.
 
-#### 1. Critical Dependencies (Every Sunday)
+#### 1. Critical Dependencies (Every Week)
 
 -   **What**: The most critical shared infrastructure (`wrangler`, `react`, `vite`, etc.) that are defined as `peerDependencies` in the SDK and used across the entire monorepo.
--   **When**: Every Sunday.
+-   **When**: Every week.
 -   **Why**: These are the "Glue" of the repo. By moving them repo-wide in a single PR, we ensure that the manifests and the lockfile change simultaneously in every folder, preventing pnpm resolution failures.
-
-##### A Note on React Canary Versions
-The starters intentionally use `canary` versions of React. This is the official channel recommended by the React team for frameworks that implement React Server Components. Using canaries gives us access to the latest features and ensures our implementation remains compatible with the direction of React.
-
-To manage these potentially unstable versions, Renovate is specifically configured to track React's `next` distribution tag on npm. This provides a more reliable signal for the latest available canary version than tracking the `canary` tag directly, which can be more volatile.
 
 #### 2. Semantic Verticals (Rolling Schedules)
 
 We divide the product and tooling into verticals. These groups are updated on alternating weeks in lockstep with the critical dependencies to maintain a smooth flow of updates without overwhelming the PR queue.
 
-1.  **SDK & Starter**: Updates to the core `sdk/` package, `addons/`, and the template starter project. Scheduled every second week (e.g., 1st and 3rd Sunday).
-2.  **Infrastructure, Playgrounds, and Community**: Shared internal tools, environments, testing projects, and community showcases. Scheduled on the off-weeks (e.g., 2nd and 4th Sunday).
+1.  **SDK & Starter**: Updates to the core `sdk/` package, `addons/`, and the template starter project. Included on the 1st and 3rd week of the month.
+2.  **Infrastructure, Playgrounds, and Community**: Shared internal tools, environments, testing projects, and community showcases. Included on the 2nd and 4th week of the month.
 
-### Using the Dependency Dashboard
+### Triggering Updates Manually
 
-After a new dependency update is available and falls within its scheduled window, Renovate will append it to the single open Pull Request. For managing all available updates, Renovate also creates a special issue in the repository titled "Dependency Dashboard". You can find this in the "Issues" tab.
+To trigger a greenkeeping run outside of the scheduled cadence, run from the repo root:
 
-This dashboard is the central place to manage the greenkeeping process. It provides:
-*   A list of all new dependency versions that have been discovered.
-*   The status of the single open Pull Request for dependency updates.
-*   A list of updates that are waiting for their scheduled time to run.
+```sh
+kindling launch "Run greenkeeping for the SDK" --model sonnet
+```
 
-#### Manually Triggering Updates
-
-Our configuration schedules updates on rolling cadences to reduce noise. However, you can trigger any scheduled update immediately from the dashboard.
-
-To do this, find the update you wish to run in the "Awaiting Schedule" section of the dashboard and click the checkbox next to it. Renovate will detect this change and append the update to the PR within a few minutes.
+This launches a full greenkeeping task force that audits, updates, and creates a PR.
 
 ### Failure Protocol for Peer Dependencies
 
@@ -580,9 +570,8 @@ When the smoke tests or playground E2E tests fail on a peer dependency update, i
     *   **A Regression in the Dependency**: The dependency may have a legitimate bug or regression.
 
 2.  **Manual Corrective Action**:
-    *   If the issue is in our SDK, a fix should be implemented and pushed directly to the failing Renovate PR branch.
-    *   If the failure is a regression in the dependency itself, a maintainer must perform the following steps **on the Renovate PR branch**:
-        1.  **Revert Dependency in Starters and Playground**: In the `starter/package.json` and `playground/*/package.json` files, revert the dependency version back to the previously working version.
+    *   If the issue is in our SDK, a fix should be implemented and pushed directly to the greenkeeping PR branch (use `kindling resume <taskId> "Fix the CI failure"`).
+    *   If the failure is a regression in the dependency itself, a maintainer must revert the dependency version back to the previously working version in the affected `package.json` files.
 
 ## Releasing Versions
 

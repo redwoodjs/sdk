@@ -1,0 +1,8 @@
+cron:
+  scheduled:
+    - name: weekly-greenkeep
+      cron: "0 6 * * 0"
+      task: .kindling/crons/greenkeep.md
+      flags:
+        model: sonnet
+        auto-merge: false
