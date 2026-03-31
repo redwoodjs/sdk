@@ -1,6 +1,9 @@
 import { except, render, route } from "rwsdk/router";
 import { defineApp } from "rwsdk/worker";
 
+// @ts-ignore - testing scanner with node_modules import
+import { Icon } from "lucide-react";
+
 import { Document } from "@/app/Document";
 import { ErrorPage } from "@/app/pages/ErrorPage";
 import { Home } from "@/app/pages/Home";

@@ -9,5 +9,8 @@
     "fs-extra": "^11.3.4",
     "rwsdk": "workspace:*",
     "vitest": "^4.1.2"
+  },
+  "dependencies": {
+    "lucide-react": "1.7.0"
   }
 }
