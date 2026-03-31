@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@ark-ui/react": "^5.35.0",
-    "lucide-react": "^0.577.0",
+    "lucide-react": "^1.7.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-server-dom-webpack": "19.2.4",
@@ -35,10 +35,10 @@
     "@types/node": "25.3.5",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "typescript": "5.9.3",
+    "typescript": "6.0.2",
     "vite": "7.3.1",
-    "vitest": "^4.0.18",
-    "wrangler": "4.77.0"
+    "vitest": "^4.1.2",
+    "wrangler": "4.79.0"
   },
   "pnpm": {
   }

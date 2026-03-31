@@ -33,9 +33,9 @@
     "@types/node": "~25.3.5",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "typescript": "5.9.3",
+    "typescript": "6.0.2",
     "vite": "7.3.1",
-    "wrangler": "4.77.0"
+    "wrangler": "4.79.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

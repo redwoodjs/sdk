@@ -26,8 +26,8 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-server-dom-webpack": "19.2.4",
-    "@mantine/core": "^8.3.16",
-    "@mantine/hooks": "^8.3.16"
+    "@mantine/core": "^9.0.0",
+    "@mantine/hooks": "^9.0.0"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.30.1",
@@ -35,10 +35,10 @@
     "@types/node": "24.12.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "typescript": "5.9.3",
+    "typescript": "6.0.2",
     "vite": "7.3.1",
-    "vitest": "^4.0.18",
-    "wrangler": "4.77.0",
+    "vitest": "^4.1.2",
+    "wrangler": "4.79.0",
     "postcss": "^8.5.8",
     "postcss-preset-mantine": "^1.18.0",
     "postcss-simple-vars": "^7.0.1"

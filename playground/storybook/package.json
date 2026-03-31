@@ -45,10 +45,10 @@
     "@storybook/addon-a11y": "^10.3.3",
     "@storybook/addon-vitest": "^10.3.3",
     "@storybook/testing-library": "^0.2.2",
-    "typescript": "5.9.3",
+    "typescript": "6.0.2",
     "vite": "7.3.1",
-    "vitest": "^4.0.18",
-    "wrangler": "4.77.0"
+    "vitest": "^4.1.2",
+    "wrangler": "4.79.0"
   },
   "pnpm": {
   }
