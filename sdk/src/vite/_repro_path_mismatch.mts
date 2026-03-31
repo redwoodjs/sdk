@@ -4,18 +4,20 @@
  * Confirmed root cause: BARREL INTERNAL path inconsistency, NOT barrel-lookup mismatch.
  *
  * Summary of findings:
- * - runDirectivesScan.mts:389     → stores normalized path in clientFiles Set
+ * - runDirectivesScan.mts:389        → stores normalized path in clientFiles Set
  * - createDirectiveLookupPlugin.mts:32 → uses Set value as lookup key (no extra normalize)
- * - directiveModulesDevPlugin.mts:22  → barrel IMPORT uses normalizeModulePath(absolute:true)
- * - directiveModulesDevPlugin.mts:33  → barrel EXPORT uses normalizeModulePath (no absolute:true)
+ * - directiveModulesDevPlugin.mts:22   → barrel IMPORT uses normalizeModulePath(absolute:true)
+ * - directiveModulesDevPlugin.mts:33   → barrel EXPORT uses normalizeModulePath (no absolute:true)
  *
  * KEY DISCOVERY:
  * Barrel export key and lookup key BOTH use the same normalized path (Vite-style
  * /node_modules/...). The hypothesized "barrel vs lookup" mismatch does NOT occur.
  *
  * The ACTUAL bug is: barrel import uses ABSOLUTE paths, barrel export uses VITE-STYLE paths.
- * When the barrel is loaded at runtime, the import resolves to a real absolute path,
- * but the export key is Vite-style, causing lookup to fail.
+ * Within generateVendorBarrelContent(), line 22 and line 33 call normalizeModulePath
+ * with different options for the same file, producing two different path formats.
+ * The resulting barrel module is malformed — the import resolves to one path but the
+ * export key is in a different format, making the named export inaccessible at runtime.
  *
  * Evidence: All 458 existing tests pass because they test barrel export keys but
  * do NOT verify that barrel imports resolve to the same module.
@@ -76,92 +78,85 @@ console.log("Project root:", projectRootDir);
 console.log("Real file   :", realLucidePath);
 console.log("");
 
-// STEP 1: Directive Scan
+// Stage 1: Directive Scan (runDirectivesScan.mts:389)
 const storedInSet = normalizeModulePath(realLucidePath, projectRootDir);
-console.log("STEP 1 - Directive Scan (runDirectivesScan.mts:389)");
+console.log("STAGE 1 - Directive Scan  [runDirectivesScan.mts:389]");
 console.log("  Code: clientFiles.add(normalizeModulePath(realPath, rootConfig.root))");
 console.log("  Stored in clientFiles Set:", JSON.stringify(storedInSet));
 console.log("");
 
-// STEP 2: Lookup Map Generation
+// Stage 2: Lookup Map (createDirectiveLookupPlugin.mts:32)
 const lookupKey = storedInSet;
-console.log("STEP 2 - Lookup Map (createDirectiveLookupPlugin.mts:32)");
-console.log("  Code: `${file}` used as key directly (no additional normalizeModulePath call)");
+console.log("STAGE 2 - Lookup Map  [createDirectiveLookupPlugin.mts:32]");
+console.log("  Code: `${file}` used as key (no extra normalizeModulePath call)");
 console.log("  Lookup key:", JSON.stringify(lookupKey));
-console.log("  Generated: " + `"${lookupKey}": () => import("rwsdk/__vendor_client_barrel").then(m => m.default["${lookupKey}"])`);
 console.log("");
 
-// STEP 3: Barrel Generation (TWO different normalizeModulePath calls)
+// Stage 3: Barrel Generation (directiveModulesDevPlugin.mts:22 & 33)
 const barrelImport = normalizeModulePath(storedInSet, projectRootDir, { absolute: true });
 const barrelExportKey = normalizeModulePath(storedInSet, projectRootDir);
-console.log("STEP 3 - Barrel Generation (directiveModulesDevPlugin.mts:22 & 33)");
-console.log("  IMPORT code: normalizeModulePath(file, projectRootDir, { absolute: true })");
+console.log("STAGE 3 - Barrel Generation  [directiveModulesDevPlugin.mts:22 & 33]");
+console.log("  IMPORT (line 22): normalizeModulePath(file, projectRootDir, { absolute: true })");
 console.log("  Import path:", barrelImport);
-console.log("  EXPORT code: normalizeModulePath(file, projectRootDir)  [NO absolute:true]");
-console.log("  Export key :", barrelExportKey);
+console.log("  EXPORT (line 33): normalizeModulePath(file, projectRootDir)  [no absolute:true]");
+console.log("  Export key:", barrelExportKey);
 console.log("");
 
-// Key checks
-console.log("=== KEY CHECKS ===\n");
-const barrelExportMatchesLookup = barrelExportKey === lookupKey;
-const barrelImportMatchesExport = barrelImport === barrelExportKey;
-console.log("Barrel export key === Lookup key?:", barrelExportMatchesLookup ? "YES (no mismatch)" : "NO - MISMATCH!");
-console.log("Barrel import   === Barrel export key?:", barrelImportMatchesExport ? "YES" : "NO - INTERNAL BUG!");
+const barrelLookupMatch = barrelExportKey === lookupKey;
+const barrelInternalMatch = barrelImport === barrelExportKey;
+
+console.log("=== MISMATCH CHECKS ===\n");
+console.log("Check 1: Barrel export key === Lookup key?");
+console.log("  Result:", barrelLookupMatch ? "YES — keys are consistent" : "NO — MISMATCH!");
+console.log("  Interpretation: the original hypothesis ('barrel vs lookup mismatch') is " +
+  (barrelLookupMatch ? "REFUTED." : "CONFIRMED."));
+console.log("");
+console.log("Check 2: Barrel import path === Barrel export key?");
+console.log("  Result:", barrelInternalMatch ? "YES — barrel is consistent" : "NO — INTERNAL MISMATCH!");
+console.log("  Interpretation: the ACTUAL bug is " +
+  (!barrelInternalMatch ? "CONFIRMED: barrel import and export use different path formats." : "not present."));
 console.log("");
 
-if (!barrelExportMatchesLookup) {
-  console.log("HYPOTHESIS CONFIRMED: Barrel export key and lookup key mismatch.");
-  console.log("  Lookup key    :", JSON.stringify(lookupKey));
-  console.log("  Barrel export :", JSON.stringify(barrelExportKey));
-  console.log("  At runtime: m.default[lookupKey] => undefined");
-}
-
-if (!barrelImportMatchesExport) {
-  console.log("BARREL INTERNAL BUG CONFIRMED: Import path and export key format differ.");
-  console.log("  Import: " + `import * as M0 from '${barrelImport}'`);
-  console.log("  Export: " + `'${barrelExportKey}': M0`);
-  console.log("");
+if (!barrelInternalMatch) {
+  console.log("Root cause: line 22 uses { absolute: true } (absolute path),");
+  console.log("  line 33 omits it (Vite-style path) — different formats for same file.");
+  console.log("  The barrel module is malformed: import path != export key.");
   console.log("  When the barrel is loaded at runtime:");
-  console.log("  1. The import resolves to the module at:", barrelImport);
-  console.log("  2. The module's default export is assigned to M0");
-  console.log("  3. The barrel exports: { '${barrelExportKey}': M0 }");
-  console.log("  4. Runtime tries to access: m.default['${lookupKey}']");
-  console.log("     But the export key is '${barrelExportKey}', not '${lookupKey}'");
+  console.log("  1. Import: import * as M0 from '" + barrelImport + "'");
+  console.log("  2. Export: { '" + barrelExportKey + "': M0 }");
+  console.log("  3. Lookup accesses: m.default['" + lookupKey + "']");
+  console.log("  4. The export key is '" + barrelExportKey + "', not '" + lookupKey + "'");
   console.log("  Result: undefined -> scanner crash");
 }
 
-console.log("\n=== NORMALIZE FUNCTION BEHAVIOR EVIDENCE ===\n");
+console.log("\n=== normalizeModulePath BEHAVIOR EVIDENCE ===\n");
 const cases = [
   [realLucidePath, "real absolute (inside project)"],
-  [`/node_modules/lucide-react/dist/esm/icons/activity.js`, "Vite-style path (same file)"],
-  [`node_modules/lib-a/index.js`, "relative (test data)"],
-  [`/Users/shared/lib/utils.js`, "real absolute (outside project)"],
+  ["/node_modules/lucide-react/dist/esm/icons/activity.js", "Vite-style path (same file)"],
+  ["node_modules/lib-a/index.js", "relative (test data)"],
+  ["/Users/shared/lib/utils.js", "real absolute (outside project)"],
 ];
 for (const [p, label] of cases) {
   const noOpt = normalizeModulePath(p, projectRootDir);
   const withAbs = normalizeModulePath(p, projectRootDir, { absolute: true });
-  console.log(`  [${label}]`);
-  console.log(`    Input        : ${p}`);
-  console.log(`    no opts      : ${noOpt}`);
-  console.log(`    {absolute:true}: ${withAbs}`);
+  console.log("  [" + label + "]");
+  console.log("    Input        : " + p);
+  console.log("    no opts      : " + noOpt);
+  console.log("    {absolute:true}: " + withAbs);
   console.log("");
 }
 
 console.log("=== VERDICT ===\n");
-console.log("HYPOTHESIS STATUS:");
-console.log("  'Barrel export key uses normalizeModulePath, lookup uses raw file'");
-console.log("  -> Barrel export and lookup keys ARE consistent (both Vite-style).");
-console.log("  -> HYPOTHESIS about barrel-lookup mismatch is REFUTED.");
-console.log("");
-console.log("ACTUAL ROOT CAUSE:");
-console.log("  Barrel import uses normalizeModulePath(absolute:true) -> absolute path");
-console.log("  Barrel export uses normalizeModulePath(no opts) -> Vite-style path");
-console.log("  -> INTERNAL INCONSISTENCY in barrel generation.");
-console.log("");
-console.log("WHY TESTS PASS:");
-console.log("  Tests check barrel export keys but NOT barrel import resolution.");
-console.log("  Test data uses relative paths that normalize to Vite-style.");
-console.log("  Bug is masked because barrel export key happens to be correct.");
-console.log("  Bug manifests in production where real absolute paths are used.");
+if (barrelLookupMatch && barrelInternalMatch) {
+  console.log("NO BUG FOUND: all three path formats are consistent.");
+} else if (!barrelLookupMatch) {
+  console.log("HYPOTHESIS CONFIRMED: barrel-lookup key mismatch is the root cause.");
+} else {
+  console.log("BARREL-INTERNAL BUG CONFIRMED: import/export path format inconsistency.");
+  console.log("  This is a REFINEMENT of the original hypothesis — the barrel-lookup");
+  console.log("  keys are consistent, but the barrel itself is internally inconsistent.");
+  console.log("  The bug manifests when the runtime tries to access the named export");
+  console.log("  using the Vite-style key while the import resolved to an absolute path.");
+}
 
-process.exit(barrelExportMatchesLookup && barrelImportMatchesExport ? 0 : 1);
+process.exit(barrelLookupMatch && barrelInternalMatch ? 0 : 1);
