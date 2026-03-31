@@ -104,6 +104,8 @@ Follow the generic GreenKeeper PR framing rules. All PRs are routine dependency 
 
 PR title format: `chore(deps): update dependencies`
 
+**MANDATORY**: The PR description MUST use the table-based structure from the generic GreenKeeper role -- one row per updated package in the "Updates applied" table, one row per override in the "Overrides applied" table, and a "Deferred" section for anything skipped. A generic prose summary without package-level detail is a failed deliverable.
+
 ### Advisory Draft
 
 When advisories are resolved, write a communication-ready draft to `.notes/advisory-drafts/`. This file is for manual review and Discord posting -- it does not appear in the PR diff or description.
