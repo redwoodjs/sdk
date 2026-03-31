@@ -10,13 +10,13 @@ describe("directiveModulesDevPlugin helpers", () => {
   describe("generateVendorBarrelContent", () => {
     it("should generate correct content for vendor files", () => {
       const files = new Set([
-        "node_modules/lib-a/index.js",
+        "/node_modules/lib-a/index.js",
         "src/app.js",
-        "node_modules/lib-b/component.tsx",
+        "/node_modules/lib-b/component.tsx",
       ]);
       const content = generateVendorBarrelContent(files, projectRootDir);
-      const expected = `import * as M0 from '${projectRootDir}/node_modules/lib-a/index.js';
-import * as M1 from '${projectRootDir}/node_modules/lib-b/component.tsx';
+      const expected = `import * as M0 from '/node_modules/lib-a/index.js';
+import * as M1 from '/node_modules/lib-b/component.tsx';
 
 export default {
   '/node_modules/lib-a/index.js': M0,

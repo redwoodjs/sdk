@@ -29,11 +29,9 @@ console.log("Simulated project root:", projectRootDir);
 console.log("Simulated file in clientFiles Set:", fileInClientFiles);
 console.log("");
 
-// ---- Barrel import path (uses { absolute: true }) ----
-const barrelImportPath = normalizeModulePath(fileInClientFiles, projectRootDir, {
-  absolute: true,
-});
-console.log("Barrel IMPORT path  (absolute: true):");
+// ---- Barrel import path (FIXED: no { absolute: true }) ----
+const barrelImportPath = normalizeModulePath(fileInClientFiles, projectRootDir);
+console.log("Barrel IMPORT path  (no absolute flag - FIXED):");
 console.log(`  ${barrelImportPath}`);
 console.log("");
 
@@ -96,9 +94,9 @@ console.log("   This produces: '${barrelExportKey}'");
 console.log("   Which matches the lookup key: '${fileInClientFiles}'");
 console.log("");
 
-console.log("4. Barrel import uses normalizeModulePath(file, projectRootDir, { absolute: true })");
+console.log("4. Barrel import now uses normalizeModulePath(file, projectRootDir) (FIXED)");
 console.log("   This produces: '${barrelImportPath}'");
-console.log("   (Different format, but the import path string itself is just a literal)");
+console.log("   (Same format as the export key - the barrel is now self-consistent)");
 console.log("");
 
 // ---- Conclusion ----
