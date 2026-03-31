@@ -21,7 +21,7 @@
     "node": ">=24.14.0",
     "pnpm": ">=10.31.0"
   },
-  "packageManager": "pnpm@10.31.0",
+  "packageManager": "pnpm@10.33.0",
   "devDependencies": {
     "@antfu/eslint-config": "^7.7.0",
     "@manypkg/cli": "^0.25.1",
