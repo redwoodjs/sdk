@@ -35,7 +35,7 @@
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "vitest": "^4.1.2",
-    "wrangler": "^4.77.0"
+    "wrangler": "^4.79.0"
   },
   "pnpm": {
     "overrides": {
