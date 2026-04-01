@@ -19,7 +19,9 @@ export const generateVendorBarrelContent = (
     .filter((file) => file.includes("node_modules"))
     .map(
       (file, i) =>
-        `import * as M${i} from '${normalizeModulePath(file, projectRootDir)}';`,
+        `import * as M${i} from '${normalizeModulePath(file, projectRootDir, {
+          absolute: true,
+        })}';`,
     )
     .join("\n");
 
