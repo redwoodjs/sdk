@@ -31,14 +31,14 @@
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.30.1",
-    "@cloudflare/workers-types": "4.20260317.1",
+    "@cloudflare/workers-types": "4.20260331.1",
     "@types/node": "25.3.5",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "typescript": "5.9.3",
+    "typescript": "6.0.2",
     "vite": "7.3.1",
-    "wrangler": "4.77.0",
+    "wrangler": "4.79.0",
     "@cloudflare/vitest-pool-workers": "^0.12.20",
-    "vitest": "4.0.18"
+    "vitest": "4.1.2"
   }
 }
