@@ -10,11 +10,13 @@ All incoming requests are processed through a single, unified loop that works th
 
 2.  **Middleware Execution and Short-Circuiting:** When a middleware function is encountered, it is executed immediately. If the middleware returns a `Response` object (e.g., for a redirect), the entire processing loop is terminated, and the response is sent to the client. This is the core short-circuiting behavior.
 
-3.  **RSC Action Handling:** The *first time* a page route definition is encountered in the list, the router immediately checks for and handles any pending RSC action. This timing ensures that all global middleware (i.e., any middleware defined before the first page route) has successfully run before the action handler is invoked.
+3.  **Page Route Matching:** The router attempts to match each page route definition's path against the request URL and validates the HTTP method.
+    *   If it does not match (wrong path or unsupported method), the loop continues to the next item.
+    *   If it matches, the router proceeds to RSC action handling and then route execution (steps 4–5).
 
-4.  **Page Route Matching & Rendering:** After the action check, the router attempts to match the page route's path against the request URL.
-    *   If it does not match, the loop continues to the next item.
-    *   If it matches, its handler (and any route-specific middleware) is executed to generate a response. The loop then terminates.
+4.  **RSC Action Handling:** Once a matching route is confirmed, the router checks for and handles any pending RSC action before executing the route. Because path matching only succeeds after all preceding entries in the loop (including global middleware) have already run, this guarantees that action handlers — and any interruptors registered on them — always have access to a fully-prepared request context.
+
+5.  **Route Execution:** The matched route's handler (and any route-specific middleware) is executed to generate a response. The loop then terminates.
 
 This single-pass, short-circuiting model is more resilient than a fixed multi-stage pipeline, as it guarantees that only the middleware relevant to a specific request is ever executed.
 

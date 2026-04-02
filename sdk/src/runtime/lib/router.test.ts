@@ -643,7 +643,7 @@ describe("defineRoutes - Request Handling Behavior", () => {
       // Global middleware that sets up context (e.g. session / auth)
       const globalMiddleware = async (requestInfo: RequestInfo) => {
         executionOrder.push("globalMiddleware");
-        requestInfo.ctx.user = { id: 1 };
+        (requestInfo.ctx as any).user = { id: 1 };
       };
 
       const PageComponent = () => {
