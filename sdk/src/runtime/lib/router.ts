@@ -542,14 +542,6 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
             handler = route.handler;
           }
 
-          // Found a match: all global middleware has run, so it's safe to handle
-          // any pending RSC action before executing the route.
-          try {
-            await handleAction();
-          } catch (error) {
-            return await executeExceptHandlers(error, currentRouteIndex);
-          }
-
           // Found a match: run route-specific middlewares, then the final component, then stop.
           try {
             return await runWithRequestInfoOverrides(
@@ -567,6 +559,10 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
                     return handled;
                   }
                 }
+
+                // All global and route-specific middlewares have run, so it's
+                // safe to handle any pending RSC action before rendering.
+                await handleAction();
 
                 // Final component/handler
                 if (isRouteComponent(componentHandler)) {
@@ -644,16 +640,15 @@ Route handlers must return one of:
         }
 
         // If we've gotten this far, no route was matched.
-        // We still need to handle a possible action if the app has no route definitions at all.
-        if (!actionHandled) {
-          try {
-            await handleAction();
-          } catch (error) {
-            return await executeExceptHandlers(
-              error,
-              compiledRoutes.length - 1,
-            );
-          }
+        // All global middlewares have already executed, so it's safe to handle
+        // any pending RSC action before returning the 404 response.
+        try {
+          await handleAction();
+        } catch (error) {
+          return await executeExceptHandlers(
+            error,
+            compiledRoutes.length - 1,
+          );
         }
 
         return new Response("Not Found", { status: 404 });
