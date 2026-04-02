@@ -624,6 +624,89 @@ describe("defineRoutes - Request Handling Behavior", () => {
       // Should only call action handler once, even though there are multiple routes
     });
 
+    // Regression test for issue #1110, case 2:
+    // Simulates the exact smoke test starter route configuration:
+    //   realtimeRoute (route def) → middleware → render(Document, [route("/", Home)])
+    //                             → render(Document, [route("/__smoke_test", SmokeTest)])
+    // Action is POSTed to /__smoke_test.  The realtimeRoute definition appears BEFORE
+    // global middleware, so with the old code handleAction() fired too early. With the
+    // fix it fires only when /__smoke_test matches, which is after all middleware.
+    it("should handle RSC action correctly when a non-matching route definition precedes global middleware (smoke-test topology)", async () => {
+      const executionOrder: string[] = [];
+
+      // realtimeRoute() returns route("/__realtime", handler) — a route definition
+      // that appears first in defineApp, before global middleware.
+      const realtimeRouteDef = route(
+        "/__realtime/",
+        async () => new Response("realtime"),
+      );
+
+      const globalMiddleware = async (_requestInfo: RequestInfo) => {
+        executionOrder.push("globalMiddleware");
+      };
+
+      // render(Document, [route("/", Home)]) flattens to [documentMw, route("/", Home)]
+      const documentMiddleware1 = (_requestInfo: RequestInfo) => {
+        executionOrder.push("documentMiddleware1");
+      };
+      const HomeComponent = () => {
+        executionOrder.push("HomeComponent");
+        return React.createElement("div", {}, "Home");
+      };
+
+      // render(Document, [route("/__smoke_test", SmokeTest)]) flattens to [documentMw2, route("/__smoke_test", ...)]
+      const documentMiddleware2 = (_requestInfo: RequestInfo) => {
+        executionOrder.push("documentMiddleware2");
+      };
+      const SmokeTestComponent = () => {
+        executionOrder.push("SmokeTestComponent");
+        return React.createElement("div", {}, "SmokeTest");
+      };
+
+      const router = defineRoutes([
+        realtimeRouteDef,     // route definition BEFORE global middleware
+        globalMiddleware,
+        documentMiddleware1,
+        route("/", HomeComponent),
+        documentMiddleware2,
+        route("/__smoke_test/", SmokeTestComponent),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRscActionHandler = async (_request: Request) => {
+        executionOrder.push("rscActionHandler");
+        return { actionResult: "smoke-test-result" };
+      };
+
+      const request = new Request(
+        "http://localhost:3000/__smoke_test/?__rsc_action_id=smokeTestAction",
+        { method: "POST" },
+      );
+      deps.mockRequestInfo.request = request;
+
+      await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      // The action handler must fire AFTER all middleware but BEFORE the component.
+      expect(executionOrder).toEqual([
+        "globalMiddleware",
+        "documentMiddleware1",
+        // route("/", Home) — no match for /__smoke_test/, skipped
+        "documentMiddleware2",
+        "rscActionHandler",
+        "SmokeTestComponent",
+      ]);
+      expect(deps.mockRequestInfo.rw.actionResult).toEqual({
+        actionResult: "smoke-test-result",
+      });
+    });
+
     // Regression test for issue #1110:
     // When a route definition appears before global middleware in the flattened
     // route list (e.g. an API route defined before a session-setup middleware),
