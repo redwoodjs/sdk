@@ -533,7 +533,7 @@ describe("defineRoutes - Request Handling Behavior", () => {
   });
 
   describe("RSC Action Handling", () => {
-    it("should handle RSC actions before the first route definition", async () => {
+    it("should handle RSC actions after global middleware but before page rendering", async () => {
       const executionOrder: string[] = [];
 
       const middleware1 = (requestInfo: RequestInfo) => {
@@ -622,6 +622,123 @@ describe("defineRoutes - Request Handling Behavior", () => {
 
       expect(executionOrder).toEqual(["rscActionHandler", "PageComponent2"]);
       // Should only call action handler once, even though there are multiple routes
+    });
+
+    // Regression test for issue #1110:
+    // When a route definition appears before global middleware in the flattened
+    // route list (e.g. an API route defined before a session-setup middleware),
+    // the RSC action handler was incorrectly fired at the first route definition
+    // encountered – before those later middlewares had run. Interruptors
+    // (registered via serverAction/serverQuery) execute inside rscActionHandler,
+    // so they would see an incomplete request context (e.g. ctx.user not yet set).
+    it("should run all global middleware before rscActionHandler even when a route definition appears first", async () => {
+      const executionOrder: string[] = [];
+
+      // A route definition that appears BEFORE global middleware
+      const apiRoute = route(
+        "/api/data/",
+        async () => new Response(JSON.stringify({ data: "ok" })),
+      );
+
+      // Global middleware that sets up context (e.g. session / auth)
+      const globalMiddleware = async (requestInfo: RequestInfo) => {
+        executionOrder.push("globalMiddleware");
+        requestInfo.ctx.user = { id: 1 };
+      };
+
+      const PageComponent = () => {
+        executionOrder.push("PageComponent");
+        return React.createElement("div", {}, "Page");
+      };
+
+      const router = defineRoutes([
+        apiRoute,
+        globalMiddleware, // global middleware defined AFTER a route definition
+        route("/test/", PageComponent),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request(
+        "http://localhost:3000/test/?__rsc_action_id=test",
+      );
+      deps.mockRscActionHandler = async (request: Request) => {
+        executionOrder.push("rscActionHandler");
+        return { actionResult: "test-result" };
+      };
+
+      const request = new Request(
+        "http://localhost:3000/test/?__rsc_action_id=test",
+      );
+      await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      // globalMiddleware must complete before rscActionHandler runs so that
+      // interruptors inside the action have access to ctx.user.
+      expect(executionOrder).toEqual([
+        "globalMiddleware",
+        "rscActionHandler",
+        "PageComponent",
+      ]);
+    });
+
+    it("should handle RSC actions after route-specific middleware", async () => {
+      const executionOrder: string[] = [];
+
+      const globalMiddleware = async (requestInfo: RequestInfo) => {
+        executionOrder.push("globalMiddleware");
+        requestInfo.ctx.user = { id: 1 };
+      };
+
+      const requireAdmin = async (requestInfo: RequestInfo) => {
+        executionOrder.push("requireAdmin");
+        if (!requestInfo.ctx.user?.isAdmin) {
+          return new Response("Forbidden", { status: 403 });
+        }
+      };
+
+      const AdminPage = () => {
+        executionOrder.push("AdminPage");
+        return React.createElement("div", {}, "Admin");
+      };
+
+      const router = defineRoutes([
+        globalMiddleware,
+        route("/admin/", [requireAdmin, AdminPage]),
+      ]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request(
+        "http://localhost:3000/admin/?__rsc_action_id=test",
+      );
+      deps.mockRscActionHandler = async (request: Request) => {
+        executionOrder.push("rscActionHandler");
+        return { actionResult: "test-result" };
+      };
+
+      const request = new Request(
+        "http://localhost:3000/admin/?__rsc_action_id=test",
+      );
+      const response = await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      // requireAdmin should short-circuit before the action runs
+      expect(executionOrder).toEqual([
+        "globalMiddleware",
+        "requireAdmin",
+      ]);
+      expect(response.status).toBe(403);
     });
   });
 
