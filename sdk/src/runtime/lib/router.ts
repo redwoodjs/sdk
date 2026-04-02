@@ -453,7 +453,6 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
       }
 
       // --- Main flow ---
-      let firstRouteDefinitionEncountered = false;
       let actionHandled = false;
       const handleAction = async () => {
         // Handle RSC actions once per request, based on the incoming URL.
@@ -491,16 +490,6 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
           }
 
           // This is a RouteDefinition (route.type === "definition").
-          // The first time we see one, we handle any RSC actions.
-          if (!firstRouteDefinitionEncountered) {
-            firstRouteDefinitionEncountered = true;
-            try {
-              await handleAction();
-            } catch (error) {
-              return await executeExceptHandlers(error, currentRouteIndex);
-            }
-          }
-
           let params: T["params"] | null = null;
           if (route.isStatic) {
             if (route.path === path) {
@@ -551,6 +540,14 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
             }
           } else {
             handler = route.handler;
+          }
+
+          // Found a match: all global middleware has run, so it's safe to handle
+          // any pending RSC action before executing the route.
+          try {
+            await handleAction();
+          } catch (error) {
+            return await executeExceptHandlers(error, currentRouteIndex);
           }
 
           // Found a match: run route-specific middlewares, then the final component, then stop.
@@ -648,7 +645,7 @@ Route handlers must return one of:
 
         // If we've gotten this far, no route was matched.
         // We still need to handle a possible action if the app has no route definitions at all.
-        if (!firstRouteDefinitionEncountered) {
+        if (!actionHandled) {
           try {
             await handleAction();
           } catch (error) {
