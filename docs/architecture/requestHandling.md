@@ -42,6 +42,6 @@ This mechanism provides a robust way to break out of the asynchronous rendering 
 **A Note on RSC Action Handling**
 A core design principle is that all request types, including page loads and RSC actions, must be subject to the same middleware. This guarantees that security policies and context population (e.g., loading a user session) are applied consistently.
 
-To achieve this, RSC action handling is integrated directly into the request processing loop. It executes after all *global* middleware has run but before the page route itself is processed, ensuring that action handlers have access to a fully-prepared request context.
+To achieve this, RSC action handling is integrated directly into the request processing loop. It executes after a matching route is found and all middleware (both global and route-specific) has run, but before the page component renders. This guarantees that action handlers have access to a fully-prepared request context.
 
 </aside>
