@@ -38,6 +38,8 @@ const findCssForModule = (
   return Array.from(css);
 };
 
+import { toAbsoluteHref } from "./assetPaths.js";
+
 export const Stylesheets = async ({
   requestInfo,
 }: {
@@ -49,7 +51,7 @@ export const Stylesheets = async ({
   for (const scriptId of requestInfo.rw.scriptsToBeLoaded) {
     const css = findCssForModule(scriptId, manifest);
     for (const entry of css) {
-      allStylesheets.add(entry);
+      allStylesheets.add(toAbsoluteHref(entry));
     }
   }
 
