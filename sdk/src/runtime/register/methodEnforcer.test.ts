@@ -108,15 +108,17 @@ describe("rscActionHandler method enforcement", () => {
     expect(body).toContain("Allowed: POST");
   });
 
-  it("handles array method property", async () => {
-    const action = Object.assign(vi.fn(), { method: ["POST", "PUT"] });
+  it("allows through when .method is not a string", async () => {
+    const action = Object.assign(vi.fn().mockReturnValue("ok"), {
+      method: 42,
+    });
     const deps = createDeps(action);
     const req = makeRequest(ACTION_URL, "GET");
 
-    const result = (await rscActionHandler(req, deps)) as Response;
+    const result = await rscActionHandler(req, deps);
 
-    expect(result.status).toBe(405);
-    expect(result.headers.get("Allow")).toBe("POST, PUT");
+    expect(result).toBe("ok");
+    expect(action).toHaveBeenCalled();
   });
 
   it("throws when action is not a function", async () => {

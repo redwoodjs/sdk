@@ -54,19 +54,14 @@ export async function rscActionHandler(
   // time via createServerFunction(). We check it here before invocation to prevent
   // GET-based CSRF attacks. Actions without .method (bare re-exported functions
   // that bypass createServerFunction) are allowed through on any method.
-  const actionMethod = (action as Function & { method?: string | string[] })
-    .method;
+  const actionMethod = (action as Function & { method?: string }).method;
 
-  if (actionMethod !== undefined && actionMethod !== req.method) {
-    const allowed = Array.isArray(actionMethod)
-      ? actionMethod
-      : [actionMethod];
-
+  if (typeof actionMethod === "string" && actionMethod !== req.method) {
     return new Response(
-      `Method ${req.method} is not allowed for this action. Allowed: ${allowed.join(", ")}.`,
+      `Method ${req.method} is not allowed for this action. Allowed: ${actionMethod}.`,
       {
         status: 405,
-        headers: { Allow: allowed.join(", ") },
+        headers: { Allow: actionMethod },
       },
     );
   }
