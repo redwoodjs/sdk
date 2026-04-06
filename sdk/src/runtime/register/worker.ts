@@ -6,6 +6,7 @@ import {
 } from "react-server-dom-webpack/server.edge";
 import { getServerModuleExport } from "../imports/worker.js";
 import { requestInfo } from "../requestInfo/worker.js";
+import { rscActionHandler as rscActionHandlerImpl } from "./methodEnforcer.js";
 
 export function registerServerReference(
   action: Function,
@@ -76,34 +77,5 @@ export async function __smokeTestActionHandler(
 }
 
 export async function rscActionHandler(req: Request): Promise<unknown> {
-  const url = new URL(req.url);
-  const contentType = req.headers.get("content-type");
-
-  let args: unknown[] = [];
-  
-  if (req.method === "GET") {
-    const argsParam = url.searchParams.get("args");
-    if (argsParam) {
-      args = JSON.parse(argsParam);
-    }
-  } else {
-    const data = contentType?.startsWith("multipart/form-data")
-      ? await req.formData()
-      : await req.text();
-
-    args = (await decodeReply(data, null)) as unknown[];
-  }
-  const actionId = url.searchParams.get("__rsc_action_id");
-
-  if (import.meta.env.VITE_IS_DEV_SERVER && actionId === "__rsc_hot_update") {
-    return null;
-  }
-
-  const action = await getServerModuleExport(actionId!);
-
-  if (typeof action !== "function") {
-    throw new Error(`Action ${actionId} is not a function`);
-  }
-
-  return action(...args);
+  return rscActionHandlerImpl(req, { getServerModuleExport, decodeReply });
 }
