@@ -52,11 +52,12 @@ export async function rscActionHandler(
   // context(justinvdm, 2026-04-06): Method enforcement for CSRF protection
   // (GHSA-x8rx-789c-2pxq). serverAction() attaches .method = "POST" at creation
   // time via createServerFunction(). We check it here before invocation to prevent
-  // GET-based CSRF attacks. Actions without .method (bare re-exported functions
-  // that bypass createServerFunction) are allowed through on any method.
-  const actionMethod = (action as Function & { method?: string }).method;
+  // GET-based CSRF attacks. Functions without .method default to POST — bare
+  // re-exported server functions are treated as actions (POST-only) to prevent
+  // CSRF via GET on unprotected exports.
+  const actionMethod = (action as Function & { method?: string }).method ?? "POST";
 
-  if (typeof actionMethod === "string" && actionMethod !== req.method) {
+  if (actionMethod !== req.method) {
     return new Response(
       `Method ${req.method} is not allowed for this action. Allowed: ${actionMethod}.`,
       {

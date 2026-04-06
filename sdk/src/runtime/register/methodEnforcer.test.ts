@@ -83,17 +83,25 @@ describe("rscActionHandler method enforcement", () => {
     expect(action).toHaveBeenCalled();
   });
 
-  it("allows any method for actions without .method property", async () => {
+  it("defaults to POST for actions without .method property", async () => {
     const action = vi.fn().mockReturnValue("ok");
     const deps = createDeps(action);
-
-    const getReq = makeRequest(ACTION_URL, "GET");
-    const getResult = await rscActionHandler(getReq, deps);
-    expect(getResult).toBe("ok");
 
     const postReq = makeRequest(ACTION_URL, "POST", "[]");
     const postResult = await rscActionHandler(postReq, deps);
     expect(postResult).toBe("ok");
+    expect(action).toHaveBeenCalled();
+  });
+
+  it("rejects GET for actions without .method property", async () => {
+    const action = vi.fn();
+    const deps = createDeps(action);
+
+    const getReq = makeRequest(ACTION_URL, "GET");
+    const getResult = await rscActionHandler(getReq, deps);
+    expect(getResult).toBeInstanceOf(Response);
+    expect((getResult as Response).status).toBe(405);
+    expect(action).not.toHaveBeenCalled();
   });
 
   it("includes allowed methods in 405 response body", async () => {
@@ -108,8 +116,8 @@ describe("rscActionHandler method enforcement", () => {
     expect(body).toContain("Allowed: POST");
   });
 
-  it("allows through when .method is not a string", async () => {
-    const action = Object.assign(vi.fn().mockReturnValue("ok"), {
+  it("rejects when .method is not a valid string", async () => {
+    const action = Object.assign(vi.fn(), {
       method: 42,
     });
     const deps = createDeps(action);
@@ -117,8 +125,9 @@ describe("rscActionHandler method enforcement", () => {
 
     const result = await rscActionHandler(req, deps);
 
-    expect(result).toBe("ok");
-    expect(action).toHaveBeenCalled();
+    expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(405);
+    expect(action).not.toHaveBeenCalled();
   });
 
   it("throws when action is not a function", async () => {
