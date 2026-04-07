@@ -5,4 +5,5 @@ interface ImportMeta {
 interface ImportMetaEnv {
   readonly DEV: boolean;
   readonly VITE_IS_DEV_SERVER: string;
+  readonly BASE_URL: string;
 }
