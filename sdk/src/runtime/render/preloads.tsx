@@ -40,6 +40,8 @@ export function findScriptForModule(
   return find(id);
 }
 
+import { toAbsoluteHref } from "./assetPaths.js";
+
 export const Preloads = async ({
   requestInfo,
 }: {
@@ -51,7 +53,7 @@ export const Preloads = async ({
   for (const scriptId of requestInfo.rw.scriptsToBeLoaded) {
     const script = findScriptForModule(scriptId, manifest);
     if (script) {
-      allScripts.add(script.file);
+      allScripts.add(toAbsoluteHref(script.file));
     }
   }
 
