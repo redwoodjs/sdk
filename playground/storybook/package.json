@@ -46,7 +46,7 @@
     "@storybook/addon-vitest": "^10.3.3",
     "@storybook/testing-library": "^0.2.2",
     "typescript": "6.0.2",
-    "vite": "7.3.1",
+    "vite": "~7.3.2",
     "vitest": "^4.1.2",
     "wrangler": "4.79.0"
   },
