@@ -41,13 +41,9 @@ We follow a coordinated disclosure process:
 
 ## Supported Versions
 
-RedwoodSDK is currently in **beta** (`1.0.0-beta.x`).
+Security fixes target the **latest stable release** only.
 
-Security fixes are provided only for the **latest beta release**.
-
-Beta releases may include breaking changes, and fixes are not guaranteed to be backported to earlier beta versions.
-
-Once RedwoodSDK reaches a stable 1.0 release, this policy may be updated to reflect supported stable versions.
+Pre-release versions (alpha, beta) are not supported. Users on pre-release versions should upgrade to the latest stable release to receive fixes.
 
 ---
 
