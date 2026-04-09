@@ -1,7 +1,7 @@
 import "./shared";
 
 export interface ClientNavigationOptions {
-  onNavigate?: () => void;
+  onNavigate?: () => Promise<void> | void;
   scrollToTop?: boolean;
   scrollBehavior?: "auto" | "smooth" | "instant";
 }

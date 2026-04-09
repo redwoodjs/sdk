@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { validateClickEvent, initClientNavigation, navigate } from "./navigation";
+import { validateClickEvent, initClientNavigation } from "./navigation";
 
 // Mocking browser globals
 vi.stubGlobal("window", {
