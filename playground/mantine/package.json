@@ -23,9 +23,9 @@
   },
   "dependencies": {
     "rwsdk": "workspace:*",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "react-server-dom-webpack": "19.2.4",
+    "react": "19.2.5",
+    "react-dom": "19.2.5",
+    "react-server-dom-webpack": "19.2.5",
     "@mantine/core": "^9.0.0",
     "@mantine/hooks": "^9.0.0"
   },
@@ -44,8 +44,8 @@
     "postcss-simple-vars": "^7.0.1"
   },
   "overrides": {
-    "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react": "19.2.5",
+    "react-dom": "19.2.5"
   },
   "pnpm": {
   }
