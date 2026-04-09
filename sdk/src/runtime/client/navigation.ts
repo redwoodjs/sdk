@@ -8,7 +8,7 @@ import {
 export type { NavigationCache, NavigationCacheStorage };
 
 export interface ClientNavigationOptions {
-  onNavigate?: () => void;
+  onNavigate?: () => Promise<void> | void;
   scrollToTop?: boolean;
   scrollBehavior?: "auto" | "smooth" | "instant";
   cacheStorage?: NavigationCacheStorage;
@@ -60,6 +60,7 @@ let IS_CLIENT_NAVIGATION = false;
 
 export interface NavigateOptions {
   history?: "push" | "replace";
+  onNavigate?: () => Promise<void> | void;
   info?: {
     scrollToTop?: boolean;
     scrollBehavior?: "auto" | "smooth" | "instant";
@@ -84,6 +85,8 @@ export async function navigate(
   } else {
     window.history.replaceState({ path: href }, "", url);
   }
+
+  await options.onNavigate?.();
 
   await globalThis.__rsc_callServer(null, null, "navigation");
 
@@ -170,12 +173,13 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
       const a = el.closest("a");
       const href = a?.getAttribute("href") as string;
 
-      await navigate(href);
+      await navigate(href, { history: "push", onNavigate: opts.onNavigate });
     },
     true,
   );
 
   window.addEventListener("popstate", async function handlePopState() {
+    await opts.onNavigate?.();
     await globalThis.__rsc_callServer(null, null, "navigation");
   });
 

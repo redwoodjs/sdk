@@ -103,6 +103,131 @@ describe("clientNavigation", () => {
   });
 });
 
+// Regression tests for issue #1123: onNavigate callback was never called
+// Root cause: commit c543ef7 extracted navigate() but dropped onNavigate wiring
+describe("onNavigate callback (issue #1123 regression)", () => {
+  let capturedClickHandler: ((event: MouseEvent) => void) | null = null;
+  let capturedPopstateHandler: (() => void) | null = null;
+
+  beforeEach(() => {
+    capturedClickHandler = null;
+    capturedPopstateHandler = null;
+    vi.clearAllMocks();
+
+    // Capture registered event listeners so we can invoke them manually
+    vi.stubGlobal("document", {
+      addEventListener: vi.fn((event: string, handler: any) => {
+        if (event === "click") capturedClickHandler = handler;
+      }),
+    });
+    vi.stubGlobal("window", {
+      location: { href: "http://localhost/" },
+      addEventListener: vi.fn((event: string, handler: any) => {
+        if (event === "popstate") capturedPopstateHandler = handler;
+      }),
+      history: {
+        scrollRestoration: "auto",
+        pushState: vi.fn(),
+        replaceState: vi.fn(),
+        state: {},
+      },
+      scrollTo: vi.fn(),
+    });
+    vi.stubGlobal("history", {
+      scrollRestoration: "auto",
+      pushState: vi.fn(),
+      replaceState: vi.fn(),
+      state: {},
+    });
+    vi.stubGlobal("URL", class {
+      href: string;
+      constructor(path: string, base: string) {
+        this.href = base.replace(/\/$/, "") + path;
+      }
+    });
+    // Assign directly to globalThis without replacing it (avoids breaking Vitest internals)
+    (globalThis as any).__rsc_callServer = vi.fn().mockResolvedValue(undefined);
+  });
+
+  it("onNavigate is called during link click navigation", async () => {
+    const onNavigate = vi.fn();
+
+    initClientNavigation({ onNavigate });
+
+    expect(capturedClickHandler).not.toBeNull();
+
+    const fakeAnchor = {
+      getAttribute: (attr: string) => (attr === "href" ? "/about" : null),
+      hasAttribute: () => false,
+      target: "",
+      closest: (sel: string) => (sel === "a" ? fakeAnchor : null),
+    };
+    const fakeTarget = {
+      closest: (sel: string) => (sel === "a" ? fakeAnchor : null),
+    };
+    const fakeClickEvent = {
+      button: 0,
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      altKey: false,
+      target: fakeTarget,
+      preventDefault: vi.fn(),
+    } as unknown as MouseEvent;
+
+    await capturedClickHandler!(fakeClickEvent);
+
+    expect(onNavigate).toHaveBeenCalled();
+  });
+
+  it("onNavigate is called during popstate navigation", async () => {
+    const onNavigate = vi.fn();
+
+    initClientNavigation({ onNavigate });
+
+    expect(capturedPopstateHandler).not.toBeNull();
+
+    await capturedPopstateHandler!();
+
+    expect(onNavigate).toHaveBeenCalled();
+  });
+
+  it("onNavigate fires after pushState but before RSC fetch", async () => {
+    const callOrder: string[] = [];
+    const onNavigate = vi.fn(() => { callOrder.push("onNavigate"); });
+    (globalThis as any).__rsc_callServer = vi.fn(() => {
+      callOrder.push("rscCallServer");
+      return Promise.resolve();
+    });
+
+    initClientNavigation({ onNavigate });
+
+    const fakeAnchor = {
+      getAttribute: (attr: string) => (attr === "href" ? "/about" : null),
+      hasAttribute: () => false,
+      target: "",
+      closest: (sel: string) => (sel === "a" ? fakeAnchor : null),
+    };
+    const fakeTarget = {
+      closest: (sel: string) => (sel === "a" ? fakeAnchor : null),
+    };
+    const fakeClickEvent = {
+      button: 0,
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      altKey: false,
+      target: fakeTarget,
+      preventDefault: vi.fn(),
+    } as unknown as MouseEvent;
+
+    await capturedClickHandler!(fakeClickEvent);
+
+    expect(callOrder).toEqual(["onNavigate", "rscCallServer"]);
+    expect(window.history.pushState).toHaveBeenCalled();
+  });
+});
+
 describe("initClientNavigation", () => {
   beforeEach(() => {
     window.location.href = "http://localhost/";
