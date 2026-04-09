@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { validateClickEvent, initClientNavigation } from "./navigation";
+import { validateClickEvent, initClientNavigation, navigate } from "./navigation";
 
 // Mocking browser globals
 vi.stubGlobal("window", {
@@ -100,6 +100,105 @@ describe("clientNavigation", () => {
         }),
       } as unknown as HTMLElement),
     ).toBe(true);
+  });
+});
+
+// Reproduction test for issue #1123:
+// ClientNavigationOptions['onNavigate'] is never called
+describe("onNavigate callback (issue #1123 reproduction)", () => {
+  let capturedClickHandler: ((event: MouseEvent) => void) | null = null;
+  let capturedPopstateHandler: (() => void) | null = null;
+
+  beforeEach(() => {
+    capturedClickHandler = null;
+    capturedPopstateHandler = null;
+    vi.clearAllMocks();
+
+    // Capture registered event listeners so we can invoke them manually
+    vi.stubGlobal("document", {
+      addEventListener: vi.fn((event: string, handler: any) => {
+        if (event === "click") capturedClickHandler = handler;
+      }),
+    });
+    vi.stubGlobal("window", {
+      location: { href: "http://localhost/" },
+      addEventListener: vi.fn((event: string, handler: any) => {
+        if (event === "popstate") capturedPopstateHandler = handler;
+      }),
+      history: {
+        scrollRestoration: "auto",
+        pushState: vi.fn(),
+        replaceState: vi.fn(),
+        state: {},
+      },
+      scrollTo: vi.fn(),
+    });
+    vi.stubGlobal("history", {
+      scrollRestoration: "auto",
+      pushState: vi.fn(),
+      replaceState: vi.fn(),
+      state: {},
+    });
+    vi.stubGlobal("URL", class {
+      href: string;
+      constructor(path: string, base: string) {
+        this.href = base.replace(/\/$/, "") + path;
+      }
+    });
+    // Assign directly to globalThis without replacing it (avoids breaking Vitest internals)
+    (globalThis as any).__rsc_callServer = vi.fn().mockResolvedValue(undefined);
+  });
+
+  it("REPRODUCES ISSUE #1123: onNavigate is NOT called during link click navigation", async () => {
+    const onNavigate = vi.fn();
+
+    // Initialize navigation with the onNavigate callback
+    initClientNavigation({ onNavigate });
+
+    // Confirm the click handler was registered
+    expect(capturedClickHandler).not.toBeNull();
+
+    // Build a fake click event on an anchor element
+    const fakeAnchor = {
+      getAttribute: (attr: string) => (attr === "href" ? "/about" : null),
+      hasAttribute: () => false,
+      target: "",
+      closest: (sel: string) => (sel === "a" ? fakeAnchor : null),
+    };
+    const fakeTarget = {
+      closest: (sel: string) => (sel === "a" ? fakeAnchor : null),
+    };
+    const fakeClickEvent = {
+      button: 0,
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      altKey: false,
+      target: fakeTarget,
+      preventDefault: vi.fn(),
+    } as unknown as MouseEvent;
+
+    // Fire the captured click handler
+    await capturedClickHandler!(fakeClickEvent);
+
+    // onNavigate SHOULD have been called (but per issue #1123, it is not)
+    // This assertion FAILS, confirming the bug:
+    expect(onNavigate).toHaveBeenCalled();
+  });
+
+  it("REPRODUCES ISSUE #1123: onNavigate is NOT called during popstate navigation", async () => {
+    const onNavigate = vi.fn();
+
+    initClientNavigation({ onNavigate });
+
+    expect(capturedPopstateHandler).not.toBeNull();
+
+    // Trigger a popstate (back/forward navigation)
+    await capturedPopstateHandler!();
+
+    // onNavigate SHOULD have been called (but per issue #1123, it is not)
+    // This assertion FAILS, confirming the bug:
+    expect(onNavigate).toHaveBeenCalled();
   });
 });
 
