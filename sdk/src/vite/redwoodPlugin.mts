@@ -1,6 +1,6 @@
 import { cloudflare } from "@cloudflare/vite-plugin";
-import { resolve } from "node:path/posix";
-import { InlineConfig, Plugin } from "vite";
+import { resolve } from "node:path";
+import { InlineConfig, normalizePath, Plugin } from "vite";
 import { unstable_readConfig } from "wrangler";
 
 import { devServerConstantPlugin } from "./devServerConstant.mjs";
@@ -62,12 +62,12 @@ export const determineWorkerEntryPathname = async ({
   readConfig?: typeof unstable_readConfig;
 }) => {
   if (options.entry?.worker) {
-    return resolve(projectRootDir, options.entry.worker);
+    return normalizePath(resolve(projectRootDir, options.entry.worker));
   }
 
   const workerConfig = readConfig({ config: workerConfigPath });
 
-  return resolve(projectRootDir, workerConfig.main ?? "src/worker.tsx");
+  return normalizePath(resolve(projectRootDir, workerConfig.main ?? "src/worker.tsx"));
 };
 
 const clientFiles = new Set<string>();
