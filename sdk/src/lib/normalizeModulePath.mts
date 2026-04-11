@@ -103,8 +103,9 @@ export function normalizeModulePath(
   // Check if the resolved path is within the project root
   const relative = path.relative(projectRootDir, resolved);
 
-  // If the path goes outside the project root (starts with ..), return absolute
-  if (relative.startsWith("..")) {
+  // If the path goes outside the project root (starts with ..) or is on a
+  // different drive (Windows: path.relative returns an absolute path), return absolute
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
     return resolved;
   }
 
