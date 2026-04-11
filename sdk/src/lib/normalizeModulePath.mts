@@ -1,5 +1,12 @@
 import path from "node:path";
-import { normalizePath as normalizePathSeparators } from "vite";
+import { normalizePath } from "vite";
+
+const windowsDriveAbsoluteRE = /^[A-Za-z]:\//;
+
+// Vite's normalizePath only converts backslashes on Windows. This wrapper
+// ensures forward slashes regardless of platform, which matters when win32
+// path functions are injected for testing on Linux.
+const normalizePathSeparators = (p: string) => normalizePath(p.replace(/\\/g, "/"));
 
 /**
  * Find the number of common ancestor segments between two absolute paths.
@@ -49,9 +56,10 @@ export function normalizeModulePath(
   modulePath: string,
   projectRootDir: string,
   options: { absolute?: boolean; isViteStyle?: boolean } = {},
+  _path = path,
 ): string {
   modulePath = normalizePathSeparators(modulePath);
-  projectRootDir = normalizePathSeparators(path.resolve(projectRootDir));
+  projectRootDir = normalizePathSeparators(_path.resolve(projectRootDir));
 
   // Handle empty string or current directory
   if (modulePath === "" || modulePath === ".") {
@@ -60,7 +68,7 @@ export function normalizeModulePath(
 
   // For relative paths, resolve them first
   let resolved: string;
-  if (path.isAbsolute(modulePath)) {
+  if (_path.isAbsolute(modulePath)) {
     if (
       modulePath.startsWith(projectRootDir + "/") ||
       modulePath === projectRootDir
@@ -72,7 +80,7 @@ export function normalizeModulePath(
       if (options.isViteStyle !== undefined) {
         // User explicitly specified whether this should be treated as Vite-style
         if (options.isViteStyle) {
-          resolved = path.resolve(projectRootDir, modulePath.slice(1));
+          resolved = _path.resolve(projectRootDir, modulePath.slice(1));
         } else {
           resolved = modulePath;
         }
@@ -80,17 +88,18 @@ export function normalizeModulePath(
         // Fall back to heuristics using common ancestor depth
         const commonDepth = findCommonAncestorDepth(modulePath, projectRootDir);
 
-        if (commonDepth > 0) {
-          // Paths share meaningful common ancestor - treat as real absolute path
+        if (commonDepth > 0 || windowsDriveAbsoluteRE.test(modulePath)) {
+          // Paths share meaningful common ancestor, or this is a Windows absolute
+          // path on a different drive — treat as a real external absolute path
           resolved = modulePath;
         } else {
           // No meaningful common ancestor - assume Vite-style path within project
-          resolved = path.resolve(projectRootDir, modulePath.slice(1));
+          resolved = _path.resolve(projectRootDir, modulePath.slice(1));
         }
       }
     }
   } else {
-    resolved = path.resolve(projectRootDir, modulePath);
+    resolved = _path.resolve(projectRootDir, modulePath);
   }
 
   resolved = normalizePathSeparators(resolved);
@@ -101,11 +110,11 @@ export function normalizeModulePath(
   }
 
   // Check if the resolved path is within the project root
-  const relative = path.relative(projectRootDir, resolved);
+  const relative = _path.relative(projectRootDir, resolved);
 
   // If the path goes outside the project root (starts with ..) or is on a
   // different drive (Windows: path.relative returns an absolute path), return absolute
-  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+  if (relative.startsWith("..") || _path.isAbsolute(relative)) {
     return resolved;
   }
 

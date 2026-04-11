@@ -1,3 +1,4 @@
+import { win32 as windowsPath } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   findCommonAncestorDepth,
@@ -370,5 +371,44 @@ describe("normalizeModulePath", () => {
         ).toBe("/Users/name/code/my-app/opt/tools/logger.ts");
       });
     });
+  });
+});
+
+describe("Windows paths (path.win32)", () => {
+  const root = "C:/Projects/app";
+
+  it("Windows absolute path inside project", () => {
+    expect(
+      normalizeModulePath("C:/Projects/app/src/page.tsx", root, {}, windowsPath),
+    ).toBe("/src/page.tsx");
+  });
+
+  it("Windows absolute path outside project (same drive)", () => {
+    expect(
+      normalizeModulePath("C:/other/utils.ts", root, {}, windowsPath),
+    ).toBe("C:/other/utils.ts");
+  });
+
+  it("Cross-drive path is treated as external", () => {
+    expect(
+      normalizeModulePath("D:/other/utils.ts", root, {}, windowsPath),
+    ).toBe("D:/other/utils.ts");
+  });
+
+  it("Relative path resolves correctly", () => {
+    expect(
+      normalizeModulePath("src/page.tsx", root, {}, windowsPath),
+    ).toBe("/src/page.tsx");
+  });
+
+  it("Windows absolute path inside project with absolute option", () => {
+    expect(
+      normalizeModulePath(
+        "C:/Projects/app/src/page.tsx",
+        root,
+        { absolute: true },
+        windowsPath,
+      ),
+    ).toBe("C:/Projects/app/src/page.tsx");
   });
 });
