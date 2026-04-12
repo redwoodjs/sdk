@@ -43,7 +43,7 @@ export const directivesFilteringPlugin = ({
 
           if (
             !info ||
-            (typeof info.isIncluded !== "undefined" && !info.isIncluded)
+            (typeof (info as any).isIncluded !== "undefined" && !(info as any).isIncluded)
           ) {
             files.delete(id);
           }

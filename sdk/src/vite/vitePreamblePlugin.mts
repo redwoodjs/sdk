@@ -17,7 +17,7 @@ import RefreshRuntime from "${refreshPath}"; RefreshRuntime.injectIntoGlobalHook
   });
 
   return {
-    ...inner,
+    ...(inner as Plugin),
     configResolved(config: ResolvedConfig) {
       base = config.base || "/";
     },
