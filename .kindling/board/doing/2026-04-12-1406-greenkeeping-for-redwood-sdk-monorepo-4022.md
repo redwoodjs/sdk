@@ -32,6 +32,11 @@ Greenkeeping for Redwood SDK monorepo
 
 
 
+
+
+- [2026-04-12T12:42:11.455Z] [harness] Auditing GreenKeeper output...
+- [2026-04-12T12:38:36.312Z] [harness] Reviewer signaled REVISE — Tier 2 scope violation found (starter/package.json updated when excluded). Looping back to GreenKeeper phase 2 to revert starter changes and regenerate lockfile.
+<<KENDLING:END_STATUS>>
 - [2026-04-12T12:38:08.624Z] [harness] Auditor: PASS (1 revision)
 - [2026-04-12T12:34:00.247Z] [harness] Auditing Reviewer output...
 - [2026-04-12T12:30:31.668Z] [harness] Auditor: REVISE — re-dispatching Reviewer (revision 1)...
