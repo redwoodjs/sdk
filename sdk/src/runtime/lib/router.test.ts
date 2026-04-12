@@ -5,6 +5,7 @@ import type { RequestInfo } from "../requestInfo/types";
 import {
   defineRoutes,
   except,
+  index,
   layout,
   matchPath,
   prefix,
@@ -1025,6 +1026,68 @@ describe("defineRoutes - Request Handling Behavior", () => {
       });
 
       expect(await response.text()).toBe("Rendered with layouts");
+    });
+
+    it("should accept child routes whose params are a superset of the layout's params", async () => {
+      let capturedLayoutProps: any = null;
+      let capturedRouteParams: any = null;
+
+      // Layout only needs { orgId }
+      const AppLayout = (props: {
+        children?: React.ReactNode;
+        requestInfo?: RequestInfo<{ orgId: string }>;
+      }) => {
+        capturedLayoutProps = props;
+        return React.createElement("div", { className: "app-layout" }, props.children);
+      };
+
+      const OrgIndex = () => {
+        return React.createElement("div", {}, "Org Index");
+      };
+
+      // Schedule needs { orgId, date } — a superset
+      const Schedule = (requestInfo: RequestInfo<{ orgId: string; date: string }>) => {
+        capturedRouteParams = requestInfo.params;
+        return React.createElement(
+          "div",
+          {},
+          `${requestInfo.params.orgId} / ${requestInfo.params.date}`,
+        );
+      };
+
+      const routes = prefix("/:orgId", [
+        layout(AppLayout, [
+          index(OrgIndex),
+          prefix("/schedule", [
+            route("/:date", Schedule),
+          ]),
+        ]),
+      ]);
+
+      const router = defineRoutes([...routes]);
+
+      const deps = createMockDependencies();
+      deps.mockRequestInfo.request = new Request(
+        "http://localhost:3000/acme/schedule/2025-01-15/",
+      );
+
+      const request = new Request(
+        "http://localhost:3000/acme/schedule/2025-01-15/",
+      );
+      const response = await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(response.status).toBe(200);
+      expect(deps.mockRequestInfo.params).toEqual({
+        orgId: "acme",
+        date: "2025-01-15",
+      });
     });
   });
 
