@@ -981,9 +981,9 @@ export const wrapHandlerToThrowResponses = <
  * ])
  */
 export function layout<
-  T extends RequestInfo = RequestInfo,
-  Routes extends readonly Route<T>[] = readonly Route<T>[],
->(LayoutComponent: React.FC<LayoutProps<T>>, routes: Routes): Routes {
+  TLayout extends RequestInfo = RequestInfo,
+  Routes extends readonly Route<any>[] = readonly Route<any>[],
+>(LayoutComponent: React.FC<LayoutProps<TLayout>>, routes: Routes): Routes {
   return routes.map((route) => {
     if (typeof route === "function") {
       // Pass through middleware as-is
@@ -1000,13 +1000,13 @@ export function layout<
     }
     if (Array.isArray(route)) {
       // Recursively process nested route arrays
-      return layout(LayoutComponent, route) as Route<T>;
+      return layout(LayoutComponent, route);
     }
-    const routeDef = route as RouteDefinition<string, T>;
+    const routeDef = route as RouteDefinition<string, any>;
     return {
       ...routeDef,
       layouts: [LayoutComponent, ...(routeDef.layouts || [])],
-    } as Route<T>;
+    };
   }) as unknown as Routes;
 }
 
