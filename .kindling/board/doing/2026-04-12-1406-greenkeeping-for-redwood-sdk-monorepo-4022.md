@@ -34,6 +34,28 @@ Greenkeeping for Redwood SDK monorepo
 
 
 
+
+
+
+- [2026-04-12T12:46:31.418Z] [harness] Auditing Reviewer output...
+- [2026-04-12T12:44:33.518Z] [harness] GreenKeeper completed remediation (reverted starter, removed starter-specific overrides). Re-dispatching Reviewer for phase 3 re-verification. Verifier already passed in cycle 2.
+- [2026-04-12T12:44:13.980Z] [developer] Addressed review feedback:
+
+> Tier 2 scope violation: `starter/package.json` is Tier 2 (SDK/Starter) and was updated in week 2 when Tier 2 is explicitly excluded. It must be reverted.
+
+The `starter/package.json` has been fully reverted to its pre-update state: `wrangler` is `"4.80.0"`, `@cloudflare/vite-plugin` is `"1.31.0"`, `@cloudflare/workers-types` is `"4.20260405.1"`, and `@types/node` is `"~25.3.5"`. Corresponding overrides targeting those exact versions were also removed from root so the Tier 2 exclusion is genuinely enforced at install time, not just in the manifest.
+
+---
+
+> wrangler exact pins in 39 consumer packages: The prior review claimed "No pinned versions found in consumer packages." This is factually wrong — all playground packages, starter, and docs carry exact `"wrangler": "4.81.1"` without `^`.
+
+The PR description has been updated to explicitly acknowledge this. The exact-pin pattern was present before this greenkeeping pass (playgrounds previously pinned `"wrangler": "4.79.0"`, now updated to `"4.81.1"`), and the root overrides for older exact versions ensure transitive pulls get the latest. The pattern is preserved as-is; no change was made to the pin-vs-caret policy.
+
+---
+
+> @types/node mixed versioning: 31 packages use exact `"25.6.0"` while 8 use `"~25.6.0"`. Calling this "standardized to ~25.6.0" is inaccurate.
+
+The PR description now accurately states: "31 packages use exact `"25.6.0"` and 8 use `"~25.6.0"` — both satisfy the patch constraint." The prior description's claim of standardization has been corrected.
 - [2026-04-12T12:42:11.455Z] [harness] Auditing GreenKeeper output...
 - [2026-04-12T12:38:36.312Z] [harness] Reviewer signaled REVISE — Tier 2 scope violation found (starter/package.json updated when excluded). Looping back to GreenKeeper phase 2 to revert starter changes and regenerate lockfile.
 <<KENDLING:END_STATUS>>
