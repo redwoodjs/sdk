@@ -12,6 +12,7 @@ export type SyncedStateClient = {
 const clientCache = new Map<string, SyncedStateClient>();
 
 // Track active subscriptions per client for cleanup on page reload
+// and for re-subscribing after reconnection
 type Subscription = {
   key: string;
   handler: (value: unknown) => void;
@@ -19,6 +20,16 @@ type Subscription = {
 };
 
 const activeSubscriptions = new Set<Subscription>();
+
+// Tracks per-endpoint reconnection backoff state
+const backoffState = new Map<string, { attempt: number; timer: ReturnType<typeof setTimeout> | null }>();
+
+const BASE_BACKOFF_MS = 1000;
+const MAX_BACKOFF_MS = 30000;
+
+function getBackoffMs(attempt: number): number {
+  return Math.min(BASE_BACKOFF_MS * 2 ** attempt, MAX_BACKOFF_MS);
+}
 
 // Set up beforeunload handler to unsubscribe all active subscriptions
 if (typeof window !== "undefined") {
@@ -43,9 +54,48 @@ if (typeof window !== "undefined") {
   window.addEventListener("beforeunload", handleBeforeUnload);
 }
 
+function reconnect(endpoint: string, deadClient: SyncedStateClient) {
+  // Don't schedule multiple reconnects for the same endpoint
+  const state = backoffState.get(endpoint) ?? { attempt: 0, timer: null };
+  if (state.timer !== null) {
+    return;
+  }
+
+  const delayMs = getBackoffMs(state.attempt);
+  state.timer = setTimeout(() => {
+    state.timer = null;
+    state.attempt++;
+    backoffState.set(endpoint, state);
+
+    // Evict the dead client so getSyncedStateClient creates a fresh one
+    clientCache.delete(endpoint);
+    const newClient = getSyncedStateClient(endpoint);
+
+    // Re-subscribe everything that was on the dead client
+    for (const sub of activeSubscriptions) {
+      if (sub.client === deadClient) {
+        sub.client = newClient;
+        void newClient.subscribe(sub.key, sub.handler);
+        // Fetch latest state since we may have missed updates while disconnected
+        void newClient.getState(sub.key).then((val) => {
+          if (val !== undefined) {
+            sub.handler(val);
+          }
+        });
+      }
+    }
+
+    // Reset backoff on successful reconnect
+    backoffState.set(endpoint, { attempt: 0, timer: null });
+  }, delayMs);
+
+  backoffState.set(endpoint, state);
+}
+
 /**
  * Returns a cached client for the provided endpoint, creating it when necessary.
  * The client is wrapped to track subscriptions for cleanup on page reload.
+ * On connection failure, automatically reconnects and re-subscribes.
  * @param endpoint Endpoint to connect to.
  * @returns RPC client instance.
  */
@@ -104,6 +154,13 @@ export const getSyncedStateClient = (
     },
   }) as SyncedStateClient;
 
+  // Listen for connection failure and trigger reconnection
+  if (typeof (baseClient as any).onRpcBroken === "function") {
+    (baseClient as any).onRpcBroken(() => {
+      reconnect(endpoint, wrappedClient);
+    });
+  }
+
   // Cache the client for this endpoint
   clientCache.set(endpoint, wrappedClient);
 
@@ -141,4 +198,20 @@ export const setSyncedStateClientForTesting = (
     clientCache.delete(endpoint);
   }
   activeSubscriptions.clear();
+  // Clear any pending reconnection timers
+  for (const [, state] of backoffState) {
+    if (state.timer !== null) {
+      clearTimeout(state.timer);
+    }
+  }
+  backoffState.clear();
+};
+
+// Exported for testing only
+export const __testing = {
+  activeSubscriptions,
+  clientCache,
+  backoffState,
+  reconnect,
+  getBackoffMs,
 };
