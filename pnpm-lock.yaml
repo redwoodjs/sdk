@@ -45,9 +45,6 @@ overrides:
   webpack@5.97.1: 5.105.4
   yaml@1.10.2: 1.10.3
   yaml@2.8.2: 2.8.3
-  wrangler@4.77.0: 4.80.0
-  wrangler@4.79.0: 4.80.0
-  '@cloudflare/vite-plugin@1.30.1': 1.31.0
   '@cloudflare/workers-types@4.20260331.1': 4.20260405.1
 
 importers:
@@ -91,7 +88,7 @@ importers:
         specifier: ^4.1.2
         version: 4.1.2(@types/node@25.5.0)(msw@2.11.3(@types/node@25.5.0)(typescript@6.0.2))(vite@7.3.2(@types/node@25.5.0)(jiti@2.6.1)(lightningcss@1.32.0)(sugarss@5.0.1(postcss@8.5.8))(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       wrangler:
-        specifier: 4.80.0
+        specifier: ^4.80.0
         version: 4.80.0(@cloudflare/workers-types@4.20260405.1)
 
   addons/passkey:
@@ -128,7 +125,7 @@ importers:
         specifier: workspace:*
         version: link:../sdk
       wrangler:
-        specifier: 4.80.0
+        specifier: ^4.80.0
         version: 4.80.0(@cloudflare/workers-types@4.20260405.1)
     devDependencies:
       '@cloudflare/workers-types':
