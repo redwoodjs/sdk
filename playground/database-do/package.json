@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "rwsdk": "workspace:*",
-    "kysely": "^0.28.15",
+    "kysely": "^0.28.16",
     "react": "19.2.5",
     "react-dom": "19.2.5",
     "react-server-dom-webpack": "19.2.5"
@@ -37,7 +37,7 @@
     "@types/react-dom": "19.2.3",
     "typescript": "6.0.2",
     "vite": "~7.3.2",
-    "vitest": "^4.1.2",
+    "vitest": "^4.1.4",
     "wrangler": "4.82.2"
   },
   "pnpm": {}
