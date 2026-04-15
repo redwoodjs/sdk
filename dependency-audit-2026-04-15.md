@@ -3,6 +3,7 @@
 **Monorepo**: Redwood SDK (rw-sdk-monorepo)
 **Audit date**: 2026-04-15 (Week 2 — Tier 1 + Tier 3)
 **pnpm version**: 10.33.0
+**PR**: https://github.com/redwoodjs/sdk/pull/1148
 **Node version**: v22.22.2 (engine requires >=24.14.0 — currently unmet, install will proceed)
 
 ---
