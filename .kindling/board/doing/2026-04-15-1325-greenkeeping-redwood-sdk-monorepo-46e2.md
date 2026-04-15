@@ -27,6 +27,16 @@ Greenkeeping Redwood SDK monorepo
 
 
 
+
+
+
+- [2026-04-15T11:47:25.574Z] [harness] Dispatching Reviewer for phase 3 (update review) of 6.
+- [2026-04-15T11:47:00.932Z] [developer] Addressed review feedback:
+
+> **Required fix**: Revert `peerDependencies["wrangler"]` in `sdk/package.json` back to `^4.77.0`. If there is a documented API or behavior incompatibility with a specific wrangler version in that range, only then should the lower bound be raised, and the rationale must be documented.
+
+Reverted. `peerDependencies["wrangler"]` is now `^4.77.0` again. The `devDependencies["wrangler"]` stays at `^4.83.0` to express what the SDK is actively built and tested against, while the peer dep lower bound correctly signals that wrangler 4.77.x through the latest remain valid for SDK consumers. Build and tests verified clean after the change.
+- [2026-04-15T11:46:59.118Z] [harness] Auditor: skipped
 - [2026-04-15T11:46:08.569Z] [harness] Dispatching GreenKeeper for phase 2 (implementation) of 6.
 - [2026-04-15T11:45:45.774Z] [harness] Auditor: skipped
 - [2026-04-15T11:41:13.639Z] [harness] Dispatching Reviewer for phase 3 (update review) of 6.
