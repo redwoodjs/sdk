@@ -183,7 +183,7 @@
     "picocolors": "~1.1.1",
     "proper-lockfile": "~4.1.2",
     "puppeteer-core": "~24.38.0",
-    "react-is": "~19.2.4",
+    "react-is": "~19.2.5",
     "rsc-html-stream": "~0.0.7",
     "server-only": "^0.0.1",
     "tmp-promise": "~3.0.3",
@@ -204,7 +204,7 @@
   "packageManager": "pnpm@10.31.0",
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.31.0",
-    "wrangler": "^4.80.0",
+    "wrangler": "^4.83.0",
     "capnweb": "~0.5.0",
     "@types/debug": "~4.1.13",
     "@types/js-beautify": "~1.14.3",

@@ -1,0 +1,10 @@
+{
+  "launch": {
+    "maxAuditIterations": 1
+  },
+  "defaultPresets": [],
+  "presets": {},
+  "llm": {
+    "defaultTransport": "claude"
+  }
+}
