@@ -1,0 +1,17 @@
+{
+  "launch": {
+    "maxAuditIterations": 1
+  },
+  "defaultPresets": [],
+  "presets": {},
+  "llm": {
+    "defaultTransport": "codex",
+    "models": {
+      "codex": {
+        "fast": "gpt-5.4-mini",
+        "default": "gpt-5.4-mini",
+        "strong": "gpt-5.4-mini"
+      }
+    }
+  }
+}
