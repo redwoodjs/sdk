@@ -175,7 +175,17 @@ export async function buildApp({
   // Single-phase mode (used by ssr/client subprocess children). The child
   // loads its inputs from the state file, runs only the named phase, and
   // exits.
+  // context(justinvdm, 22 Apr 2026): In the in-process build, buildApp sets
+  // RWSDK_BUILD_PASS="worker" at the start of worker pass 1 and never
+  // resets it. So during the SSR and Client passes the env var still reads
+  // "worker", and several rwsdk plugins depend on that (e.g.
+  // directivesFilteringPlugin, createDirectiveLookupPlugin, ssrBridgePlugin
+  // all branch on `RWSDK_BUILD_PASS === "worker"` / `!== "worker"`). A
+  // subprocess child starts with the env var unset, which would flip the
+  // branches and produce subtly-wrong bundles. Set it explicitly to
+  // mirror the in-process semantics.
   if (PHASE_ONLY === "ssr") {
+    process.env.RWSDK_BUILD_PASS = "worker";
     loadState(state);
     memSnapshot("00-ssr-start");
     console.log("Building SSR...");
@@ -184,6 +194,7 @@ export async function buildApp({
     return;
   }
   if (PHASE_ONLY === "client") {
+    process.env.RWSDK_BUILD_PASS = "worker";
     loadState(state);
     memSnapshot("00-client-start");
     log("Discovered clientEntryPoints: %O", Array.from(clientEntryPoints));
