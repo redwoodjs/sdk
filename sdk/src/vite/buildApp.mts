@@ -59,7 +59,17 @@ function memSnapshot(label: string) {
   );
 }
 
-type Phase = "plugin-setup+scan" | "worker" | "ssr" | "client" | "linker";
+// Phase grouping is constrained by the Cloudflare Vite plugin's lifecycle:
+// its writeBundle hook expects to fire after a real worker build (it needs
+// the worker's emitted wrangler.json on disk). If we ran plugin-setup or
+// the directive scan in their own subprocess that called builder.build()
+// with the temp empty entry, that hook would fire on a phase that produces
+// no real output and crash with ENOENT. So plugin-setup + directive-scan +
+// worker pass 1 are combined into a single "worker" subprocess that owns
+// the full Cloudflare-plugin worker-build lifecycle. The other consumer
+// phases (ssr, client, linker) only consume Worker Pass 1 outputs and run
+// in their own subprocesses.
+type Phase = "worker" | "ssr" | "client" | "linker";
 
 type State = {
   clientFiles: Set<string>;
@@ -204,7 +214,7 @@ export async function buildApp({
 
   const workerEnv = builder.environments.worker;
 
-  if (!PHASE_ONLY || PHASE_ONLY === "plugin-setup+scan") {
+  if (!PHASE_ONLY || PHASE_ONLY === "worker") {
     // Run a pre-scan build pass to allow plugins to set up and generate code
     // before scanning.
     console.log("Running plugin setup pass...");
@@ -251,13 +261,6 @@ export async function buildApp({
 
     memSnapshot("02-after-directive-scan");
 
-    if (PHASE_ONLY === "plugin-setup+scan") {
-      saveState(state);
-      return;
-    }
-  }
-
-  if (!PHASE_ONLY || PHASE_ONLY === "worker") {
     console.log("Building worker...");
     process.env.RWSDK_BUILD_PASS = "worker";
     await builder.build(workerEnv);
@@ -270,7 +273,7 @@ export async function buildApp({
     );
 
     if (PHASE_ONLY === "worker") {
-      // Worker pass mutates state (filters clientFiles, adds clientEntryPoints).
+      // Worker phase mutates state (filters clientFiles, adds clientEntryPoints).
       saveState(state);
       return;
     }
@@ -369,8 +372,8 @@ async function runSubprocessOrchestrator({
 
   console.log("[rwsdk] running subprocess-per-phase build (set RWSDK_SUBPROCESS_BUILD=0 to disable)");
 
-  // Sequential up to worker pass 1
-  await spawnPhase("plugin-setup+scan", stateFile);
+  // First subprocess: plugin-setup + directive-scan + worker pass 1
+  // (combined; see the Phase type comment for why these can't be split).
   await spawnPhase("worker", stateFile);
 
   // SSR and Client are independent — neither writes shared state, both only
