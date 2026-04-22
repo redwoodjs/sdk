@@ -280,6 +280,18 @@ export async function buildApp({
   }
 
   if (!PHASE_ONLY || PHASE_ONLY === "ssr") {
+    // context(justinvdm, 22 Apr 2026): In in-process mode, RWSDK_BUILD_PASS
+    // lingers as "worker" from the previous phase when SSR runs (no reset
+    // between phases). Several rwsdk plugins depend on this lingering value
+    // to apply worker-equivalent behavior during SSR build (e.g.
+    // ssrBridgePlugin, directivesFilteringPlugin, createDirectiveLookupPlugin
+    // all check RWSDK_BUILD_PASS === "worker" or !== "worker"). When SSR
+    // runs in its own subprocess that env var starts unset, breaking those
+    // plugins' module resolution (we saw "ssrWebpackRequire is not exported
+    // by no-react-server.js"). Set it explicitly to mirror the in-process
+    // behavior.
+    process.env.RWSDK_BUILD_PASS = "worker";
+
     console.log("Building SSR...");
     await builder.build(builder.environments.ssr);
 
@@ -292,6 +304,9 @@ export async function buildApp({
   }
 
   if (!PHASE_ONLY || PHASE_ONLY === "client") {
+    // Same RWSDK_BUILD_PASS lingering reason as the SSR phase above.
+    process.env.RWSDK_BUILD_PASS = "worker";
+
     log("Discovered clientEntryPoints: %O", Array.from(clientEntryPoints));
 
     console.log("Building client...");
@@ -389,6 +404,23 @@ async function runSubprocessOrchestrator({
 
   // Clean up state file but leave dist/ intact.
   await rm(stateDir, { recursive: true, force: true });
+
+  // context(justinvdm, 22 Apr 2026): Vite v7's default buildApp hook
+  // checks whether any environment was built in-process and falls back to
+  // building all environments if none were:
+  //   if (Object.values(builder.environments).every((e) => !e.isBuilt)) {
+  //     for (const e of …) await builder.build(e);
+  //   }
+  // Since we spawned subprocesses for every phase, no `builder.build()`
+  // call happened in this process and `env.isBuilt` is false on all
+  // environments — which would trigger that fallback to build everything
+  // again (and fail, because the bundles already exist on disk and the
+  // worker env can't resolve `rwsdk/__ssr_bridge` without the linker
+  // having run inline).
+  // Mark every environment as built so vite's fallback is skipped.
+  for (const environment of Object.values(builder.environments)) {
+    (environment as any).isBuilt = true;
+  }
 
   console.log("Build complete!");
 
