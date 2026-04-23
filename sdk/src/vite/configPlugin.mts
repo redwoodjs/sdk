@@ -72,6 +72,7 @@ export const configPlugin = ({
             jsx: "react-jsx",
             define: {
               "process.env.NODE_ENV": JSON.stringify(mode),
+              "__webpack_require__": "globalThis.__webpack_require__",
             },
           },
         },
@@ -128,6 +129,7 @@ export const configPlugin = ({
                 jsx: "react-jsx",
                 define: {
                   "process.env.NODE_ENV": JSON.stringify(mode),
+                  "__webpack_require__": "globalThis.__webpack_require__",
                 },
               },
             },
@@ -165,6 +167,7 @@ export const configPlugin = ({
                 jsx: "react-jsx",
                 define: {
                   "process.env.NODE_ENV": JSON.stringify(mode),
+                  "__webpack_require__": "globalThis.__webpack_require__",
                 },
               },
             },
