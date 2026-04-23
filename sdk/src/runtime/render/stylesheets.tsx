@@ -78,6 +78,18 @@ export const Stylesheets = async ({
     }
   }
 
+  for (const [, entry] of Object.entries(manifest)) {
+    if ((entry as { isEntry?: boolean }).isEntry) {
+      const css = findCssForModule(
+        (entry as { src?: string }).src ?? "",
+        manifest,
+      );
+      for (const href of css) {
+        allStylesheets.add(toAbsoluteHref(href));
+      }
+    }
+  }
+
   return (
     <>
       {Array.from(allStylesheets).map((href) => (
