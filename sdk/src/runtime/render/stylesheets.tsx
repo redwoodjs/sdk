@@ -10,7 +10,15 @@ const toManifestKey = (id: string) => (id.startsWith("/") ? id.slice(1) : id);
 
 const findCssForModule = (
   scriptId: string,
-  manifest: Record<string, { file: string; css?: string[] }>,
+  manifest: Record<
+    string,
+    {
+      file: string;
+      css?: string[];
+      imports?: string[];
+      dynamicImports?: string[];
+    }
+  >,
 ) => {
   const css = new Set<string>();
   const visited = new Set<string>();
@@ -29,6 +37,21 @@ const findCssForModule = (
     if (entry.css) {
       for (const href of entry.css) {
         css.add(href);
+      }
+    }
+
+    // context(justinvdm, 2026-04-23): Rolldown associates CSS with the
+    // chunk that imports the CSS file, which may be a dynamic import target
+    // rather than the entry chunk. Walk both static and dynamic imports to
+    // find CSS from transitive dependencies.
+    if (entry.imports) {
+      for (const importId of entry.imports) {
+        inner(importId);
+      }
+    }
+    if (entry.dynamicImports) {
+      for (const importId of entry.dynamicImports) {
+        inner(importId);
       }
     }
   };
