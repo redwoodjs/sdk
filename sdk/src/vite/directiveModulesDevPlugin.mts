@@ -158,62 +158,43 @@ export const directiveModulesDevPlugin = ({
           entries.push(APP_SERVER_BARREL_PATH);
         }
 
-        env.optimizeDeps.esbuildOptions ??= {};
-        env.optimizeDeps.esbuildOptions.plugins ??= [];
-        env.optimizeDeps.esbuildOptions.plugins.unshift({
+        const appBarrelPaths = [
+          APP_CLIENT_BARREL_PATH,
+          APP_SERVER_BARREL_PATH,
+        ];
+        const appBarrelFilter = new RegExp(
+          `(${appBarrelPaths
+            .map((p) => p.replace(/\\/g, "\\\\"))
+            .join("|")})$`,
+        );
+        const BARREL_PREFIX = "\0rwsdk-app-barrel:";
+
+        env.optimizeDeps.rolldownOptions ??= {};
+        (env.optimizeDeps.rolldownOptions as any).plugins ??= [];
+        ((env.optimizeDeps.rolldownOptions as any).plugins as any[]).unshift({
           name: "rwsdk:app-barrel-blocker",
-          setup(build) {
-            const appBarrelPaths = [
-              APP_CLIENT_BARREL_PATH,
-              APP_SERVER_BARREL_PATH,
-            ];
-            const appBarrelFilter = new RegExp(
-              `(${appBarrelPaths
-                .map((p) => p.replace(/\\/g, "\\\\"))
-                .join("|")})$`,
-            );
+          async resolveId(id: string) {
+            await scanPromise;
 
-            build.onResolve({ filter: /.*/ }, async (args: any) => {
-              // Block all resolutions until the scan is complete.
-              await scanPromise;
+            if (appBarrelFilter.test(id)) {
+              return `${BARREL_PREFIX}${id}`;
+            }
 
-              // Handle app barrel files
-              if (appBarrelFilter.test(args.path)) {
-                return {
-                  path: args.path,
-                  namespace: "rwsdk-app-barrel-ns",
-                };
-              }
-              // context(justinvdm, 11 Sep 2025): Prevent Vite from
-              // externalizing our application files. If we don't, paths
-              // imported in our application barrel files will be marked as
-              // external, and thus not scanned for dependencies.
-              if (
-                args.path.startsWith("/") &&
-                (args.path.includes("/src/") ||
-                  args.path.includes("/generated/")) &&
-                !args.path.includes("node_modules")
-              ) {
-                // By returning a result, we claim the module and prevent vite:dep-scan
-                // from marking it as external.
-                return {
-                  path: args.path,
-                };
-              }
-            });
-
-            build.onLoad(
-              { filter: /.*/, namespace: "rwsdk-app-barrel-ns" },
-              (args) => {
-                const isServerBarrel = args.path.includes("app-server-barrel");
-                const files = isServerBarrel ? serverFiles : clientFiles;
-                const content = generateAppBarrelContent(files, projectRootDir);
-                return {
-                  contents: content,
-                  loader: "js",
-                };
-              },
-            );
+            if (
+              id.startsWith("/") &&
+              (id.includes("/src/") || id.includes("/generated/")) &&
+              !id.includes("node_modules")
+            ) {
+              return id;
+            }
+          },
+          load(id: string) {
+            if (id.startsWith(BARREL_PREFIX)) {
+              const barrelPath = id.slice(BARREL_PREFIX.length);
+              const isServerBarrel = barrelPath.includes("app-server-barrel");
+              const files = isServerBarrel ? serverFiles : clientFiles;
+              return generateAppBarrelContent(files, projectRootDir);
+            }
           },
         });
       }

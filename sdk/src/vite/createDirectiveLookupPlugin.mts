@@ -2,6 +2,7 @@ import debug from "debug";
 import MagicString from "magic-string";
 import path from "path";
 import { Plugin, ViteDevServer } from "vite";
+import { addOptimizeDepsPlugin } from "./addOptimizeDepsPlugin.mjs";
 import {
   VENDOR_CLIENT_BARREL_EXPORT_PATH,
   VENDOR_SERVER_BARREL_EXPORT_PATH,
@@ -99,43 +100,30 @@ export const createDirectiveLookupPlugin = async ({
       }
       log("Configuring environment: env=%s", env);
 
-      viteConfig.optimizeDeps ??= {};
-      viteConfig.optimizeDeps.esbuildOptions ??= {};
-      viteConfig.optimizeDeps.esbuildOptions.plugins ??= [];
-      viteConfig.optimizeDeps.esbuildOptions.plugins.push({
+      const escapedVirtualModuleName = config.virtualModuleName.replace(
+        /[-\/\\^$*+?.()|[\]{}]/g,
+        "\\$&",
+      );
+      const escapedPrefixedModuleName =
+        `/@id/${config.virtualModuleName}`.replace(
+          /[-\/\\^$*+?.()|[\]{}]/g,
+          "\\$&",
+        );
+      const lookupFilter = new RegExp(
+        `^(${escapedVirtualModuleName}|${escapedPrefixedModuleName})\\.js$`,
+      );
+
+      addOptimizeDepsPlugin(viteConfig, {
         name: `rwsdk:${config.pluginName}`,
-        setup(build) {
-          log("Setting up esbuild plugin for %s", config.virtualModuleName);
-
-          // Handle both direct virtual module name and /@id/ prefixed version
-          const escapedVirtualModuleName = config.virtualModuleName.replace(
-            /[-\/\\^$*+?.()|[\]{}]/g,
-            "\\$&",
-          );
-          const escapedPrefixedModuleName =
-            `/@id/${config.virtualModuleName}`.replace(
-              /[-\/\\^$*+?.()|[\]{}]/g,
-              "\\$&",
-            );
-
-          build.onResolve(
-            {
-              filter: new RegExp(
-                `^(${escapedVirtualModuleName}|${escapedPrefixedModuleName})\\.js$`,
-              ),
-            },
-            () => {
-              process.env.VERBOSE &&
-                log(
-                  "Esbuild onResolve: marking %s as external",
-                  config.virtualModuleName,
-                );
-              return {
-                path: `${config.virtualModuleName}.js`,
-                external: true,
-              };
-            },
-          );
+        resolveId(id: string) {
+          if (lookupFilter.test(id)) {
+            process.env.VERBOSE &&
+              log("Marking %s as external", config.virtualModuleName);
+            return {
+              id: `${config.virtualModuleName}.js`,
+              external: true,
+            };
+          }
         },
       });
 
@@ -146,6 +134,7 @@ export const createDirectiveLookupPlugin = async ({
       if (shouldOptimizeForEnv) {
         log("Applying optimizeDeps and aliasing for environment: %s", env);
 
+        viteConfig.optimizeDeps ??= {};
         viteConfig.optimizeDeps.include ??= [];
 
         for (const file of files) {
