@@ -67,13 +67,11 @@ export const configPlugin = ({
         ],
         exclude: [],
         entries: [workerEntryPathname],
-        rolldownOptions: {
-          transform: {
-            jsx: "react-jsx",
-            define: {
-              "process.env.NODE_ENV": JSON.stringify(mode),
-              "__webpack_require__": "globalThis.__webpack_require__",
-            },
+        esbuildOptions: {
+          jsx: "automatic",
+          jsxImportSource: "react",
+          define: {
+            "process.env.NODE_ENV": JSON.stringify(mode),
           },
         },
       },
@@ -124,13 +122,12 @@ export const configPlugin = ({
               "rwsdk/turnstile",
             ],
             entries: [],
-            rolldownOptions: {
-              transform: {
-                jsx: "react-jsx",
-                define: {
-                  "process.env.NODE_ENV": JSON.stringify(mode),
-                  "__webpack_require__": "globalThis.__webpack_require__",
-                },
+            esbuildOptions: {
+              jsx: "automatic",
+              jsxImportSource: "react",
+              plugins: [],
+              define: {
+                "process.env.NODE_ENV": JSON.stringify(mode),
               },
             },
           },
@@ -162,13 +159,12 @@ export const configPlugin = ({
               "rwsdk/realtime/durableObject",
               "rwsdk/realtime/worker",
             ],
-            rolldownOptions: {
-              transform: {
-                jsx: "react-jsx",
-                define: {
-                  "process.env.NODE_ENV": JSON.stringify(mode),
-                  "__webpack_require__": "globalThis.__webpack_require__",
-                },
+            esbuildOptions: {
+              jsx: "automatic",
+              jsxImportSource: "react",
+              plugins: [],
+              define: {
+                "process.env.NODE_ENV": JSON.stringify(mode),
               },
             },
           },

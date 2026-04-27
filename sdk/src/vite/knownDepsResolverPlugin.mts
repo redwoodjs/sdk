@@ -159,7 +159,7 @@ export const knownDepsResolverPlugin = ({
     Object.keys(ENV_IMPORT_MAPPINGS).length,
   );
 
-  function createResolverPlugin(
+  function createEsbuildResolverPlugin(
     envName: string,
     mappings: Map<string, string>,
   ) {
@@ -167,38 +167,48 @@ export const knownDepsResolverPlugin = ({
       return null;
     }
 
+    // Create reverse mapping from slugified names to original imports
+    // Vite converts "react-dom/server.edge" -> "react-dom_server__edge"
+    // Pattern: / becomes _, . becomes __
     const slugifiedToOriginal = new Map<string, string>();
-    for (const [original] of mappings) {
+    for (const [original, resolved] of mappings) {
       const slugified = original.replace(/\//g, "_").replace(/\./g, "__");
       slugifiedToOriginal.set(slugified, original);
     }
 
     return {
-      name: `rwsdk:known-dependencies-resolver-${envName}`,
-      resolveId(id: string) {
-        let resolved: string | undefined = mappings.get(id);
+      name: `rwsdk:known-dependencies-resolver-esbuild-${envName}`,
+      setup(build: any) {
+        build.onResolve({ filter: /.*/ }, (args: any) => {
+          let resolved: string | undefined = mappings.get(args.path);
 
-        if (!resolved) {
-          const originalImport = slugifiedToOriginal.get(id);
-          if (originalImport) {
-            resolved = mappings.get(originalImport);
+          // If not found, check if it's a slugified version
+          if (!resolved) {
+            const originalImport = slugifiedToOriginal.get(args.path);
+            if (originalImport) {
+              resolved = mappings.get(originalImport);
+            }
           }
-        }
 
-        if (!resolved) {
-          resolved = resolveKnownImport(
-            id,
-            envName as keyof typeof ENV_RESOLVERS,
-            projectRootDir,
-          );
-        }
-
-        if (resolved) {
-          if (id === "react-server-dom-webpack/client.edge") {
-            return;
+          if (!resolved) {
+            resolved = resolveKnownImport(
+              args.path,
+              envName as keyof typeof ENV_RESOLVERS,
+              projectRootDir,
+            );
           }
-          return resolved;
-        }
+
+          // Resolve for both entry points (importer === '') and regular imports
+          // Entry points come from optimizeDeps.include and are critical to intercept
+          if (resolved) {
+            if (args.path === "react-server-dom-webpack/client.edge") {
+              return;
+            }
+            return {
+              path: resolved,
+            };
+          }
+        });
       },
     };
   }
@@ -233,31 +243,25 @@ export const knownDepsResolverPlugin = ({
 
           const envConfig = (config as any).environments[envName];
 
-          if (mappings) {
+          const esbuildPlugin = createEsbuildResolverPlugin(
+            envName,
+            mappings as Map<string, string>,
+          );
+          if (esbuildPlugin && mappings) {
             envConfig.optimizeDeps ??= {};
-            envConfig.optimizeDeps.rolldownOptions ??= {};
-            envConfig.optimizeDeps.rolldownOptions.transform ??= {};
-            envConfig.optimizeDeps.rolldownOptions.transform.define ??= {};
-            envConfig.optimizeDeps.rolldownOptions.transform.define[
+            envConfig.optimizeDeps.esbuildOptions ??= {};
+            envConfig.optimizeDeps.esbuildOptions.define ??= {};
+            envConfig.optimizeDeps.esbuildOptions.define[
               "process.env.NODE_ENV"
             ] = JSON.stringify(process.env.NODE_ENV);
-            envConfig.optimizeDeps.rolldownOptions.plugins ??= [];
-
-            const plugin = createResolverPlugin(
-              envName,
-              mappings as Map<string, string>,
-            );
-            if (plugin) {
-              (envConfig.optimizeDeps.rolldownOptions.plugins as any[]).push(
-                plugin,
-              );
-            }
+            envConfig.optimizeDeps.esbuildOptions.plugins ??= [];
+            envConfig.optimizeDeps.esbuildOptions.plugins.push(esbuildPlugin);
 
             envConfig.optimizeDeps.include ??= [];
             envConfig.optimizeDeps.include.push(...predefinedImports);
 
             log(
-              "Added optimizeDeps plugin and includes for environment: %s",
+              "Added esbuild plugin and optimizeDeps includes for environment: %s",
               envName,
             );
           }
