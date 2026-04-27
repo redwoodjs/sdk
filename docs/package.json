@@ -49,14 +49,14 @@
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "babel-plugin-react-compiler": "^1.0.0",
-    "oxfmt": "^0.43.0",
+    "oxfmt": "^0.46.0",
     "oxlint": "^1.61.0",
     "remark": "^15.0.1",
     "remark-mdx": "^3.1.1",
     "tailwindcss": "^4.2.4",
     "typescript": "6.0.2",
     "unist-util-visit": "^5.1.0",
-    "vite": "~7.3.2",
+    "vite": "~8.0.10",
     "wrangler": "4.85.0"
   },
   "pnpm": {}

@@ -26,7 +26,7 @@
     "react": "19.2.5",
     "react-dom": "19.2.5",
     "react-server-dom-webpack": "19.2.5",
-    "@base-ui-components/react": "^1.0.0-rc.0"
+    "@base-ui/react": "^1.4.1"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.33.2",
@@ -35,7 +35,7 @@
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "typescript": "6.0.2",
-    "vite": "~7.3.2",
+    "vite": "~8.0.10",
     "wrangler": "4.85.0"
   },
   "overrides": {
