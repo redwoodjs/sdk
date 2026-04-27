@@ -212,9 +212,9 @@ export async function transformJsxScriptTagsCode(
       const expressionText = expression.getText();
 
       if (
-        expressionText !== "jsx" &&
-        expressionText !== "jsxs" &&
-        expressionText !== "jsxDEV"
+        !expressionText.endsWith("jsx") &&
+        !expressionText.endsWith("jsxs") &&
+        !expressionText.endsWith("jsxDEV")
       ) {
         return;
       }
