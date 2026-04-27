@@ -98,30 +98,14 @@ export async function buildApp({
   clientEnv.config.build.rollupOptions ??= {};
   const clientEntryPointsArray = Array.from(clientEntryPoints);
 
-  // context(justinvdm, 2026-04-23): Vite 7's Rollup tolerated a missing
-  // src/client.tsx default input (silent empty bundle). Vite 8's Rolldown
-  // raises [UNRESOLVED_ENTRY] / [INVALID_OPTION] when input doesn't resolve
-  // or is empty. Only fall back to the default if the file actually exists,
-  // and skip the client build entirely if there's nothing to build.
-  let runClientBuild = true;
   if (clientEntryPointsArray.length === 0) {
-    const defaultClientEntry = resolve(projectRootDir, "src/client.tsx");
-    if (existsSync(defaultClientEntry)) {
-      log("No client entry points discovered, using default: src/client.tsx");
-      clientEnv.config.build.rollupOptions.input = ["src/client.tsx"];
-    } else {
-      log(
-        "No client entry points discovered and src/client.tsx not present; skipping client build",
-      );
-      runClientBuild = false;
-    }
+    log("No client entry points discovered, using default: src/client.tsx");
+    clientEnv.config.build.rollupOptions.input = ["src/client.tsx"];
   } else {
     clientEnv.config.build.rollupOptions.input = clientEntryPointsArray;
   }
 
-  if (runClientBuild) {
-    await builder.build(clientEnv);
-  }
+  await builder.build(clientEnv);
 
   console.log("Linking worker build...");
   process.env.RWSDK_BUILD_PASS = "linker";
