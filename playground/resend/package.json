@@ -22,25 +22,24 @@
     "types": "tsc"
   },
   "dependencies": {
-    "@react-email/components": "^1.0.8",
-    "@react-email/render": "^2.0.4",
-    "resend": "^6.10.0",
+    "@react-email/components": "^1.0.12",
+    "@react-email/render": "^2.0.7",
+    "resend": "^6.12.2",
     "rwsdk": "workspace:*",
     "react": "19.2.5",
     "react-dom": "19.2.5",
     "react-server-dom-webpack": "19.2.5"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.31.0",
-    "@cloudflare/workers-types": "4.20260331.1",
-    "@types/node": "24.12.0",
+    "@cloudflare/vite-plugin": "1.33.2",
+    "@cloudflare/workers-types": "4.20260426.1",
+    "@types/node": "25.6.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "typescript": "6.0.2",
+    "typescript": "6.0.3",
     "vite": "~8.0.9",
-    "vitest": "^4.1.2",
-    "wrangler": "4.80.0"
+    "vitest": "^4.1.5",
+    "wrangler": "4.85.0"
   },
-  "pnpm": {
-  }
+  "pnpm": {}
 }
