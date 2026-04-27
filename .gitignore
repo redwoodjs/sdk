@@ -215,3 +215,4 @@ starters/standard/.pnpm-store
 .agent/skills/user
 .agent/workflows/user
 .devcontainer/kindling/
+.kindling/tasks/
