@@ -207,6 +207,11 @@
     }
   },
   "packageManager": "pnpm@10.31.0",
+  "pnpm": {
+    "overrides": {
+      "vite": "7.3.2"
+    }
+  },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.33.2",
     "wrangler": "^4.85.0",

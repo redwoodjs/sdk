@@ -32,7 +32,7 @@
     "clsx": "^2.1.1",
     "fumadocs-core": "^16.8.5",
     "fumadocs-mdx": "^14.3.2",
-    "fumadocs-ui": "npm:@fumadocs/base-ui@latest",
+    "fumadocs-ui": "npm:@fumadocs/base-ui@16.8.5",
     "react": "19.2.5",
     "react-dom": "19.2.5",
     "react-server-dom-webpack": "19.2.5",
