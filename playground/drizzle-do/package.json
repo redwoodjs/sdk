@@ -36,7 +36,7 @@
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "drizzle-kit": "^0.31.9",
-    "typescript": "6.0.2",
+    "typescript": "6.0.3",
     "vite": "~8.0.10",
     "vitest": "^4.1.5",
     "wrangler": "4.85.0"
