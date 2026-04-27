@@ -163,7 +163,7 @@
     "@types/react": "~19.2.14",
     "@types/react-dom": "~19.2.3",
     "@types/react-is": "~19.2.0",
-    "@vitejs/plugin-react": "~5.1.4",
+    "@vitejs/plugin-react": "~6.0.1",
     "chokidar": "~5.0.0",
     "debug": "~4.4.3",
     "decompress": "~4.2.1",
