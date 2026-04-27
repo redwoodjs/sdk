@@ -38,7 +38,7 @@
     "typescript": "6.0.2",
     "vite": "~8.0.10",
     "wrangler": "4.85.0",
-    "@cloudflare/vitest-pool-workers": "^0.12.20",
+    "@cloudflare/vitest-pool-workers": "^0.15.0",
     "vitest": "4.1.5"
   }
 }
