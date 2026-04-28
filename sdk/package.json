@@ -194,7 +194,7 @@
   },
   "peerDependencies": {
     "@cloudflare/vite-plugin": "^1.26.1",
-    "capnweb": "~0.7.0",
+    "capnweb": "~0.5.0",
     "react": ">=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0",
     "react-dom": ">=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0",
     "react-server-dom-webpack": ">=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0",

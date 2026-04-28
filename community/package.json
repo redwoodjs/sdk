@@ -35,7 +35,7 @@
     "react": ">=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0",
     "react-dom": ">=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0",
     "rwsdk": "workspace:*",
-    "wrangler": "^4.77.0"
+    "wrangler": "^4.85.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "~4.20260426.1",
@@ -43,7 +43,7 @@
     "@types/fs-extra": "~11.0.4",
     "@types/react": "~19.2.14",
     "@types/react-dom": "~19.2.3",
-    "typescript": "~6.0.2",
+    "typescript": "~6.0.3",
     "vite": "~7.3.2",
     "vitest": "~4.1.5"
   },
