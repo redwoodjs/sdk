@@ -15,6 +15,12 @@ export type RwContext = {
   pageRouteResolved: PromiseWithResolvers<void> | undefined;
   actionResult?: unknown;
   renderError?: unknown;
+  /** Performance timings for render phases — populated by rwsdk, consumed by app instrumentation */
+  timings?: {
+    rscRenderMs?: number;
+    htmlRenderMs?: number;
+    routeHandleMs?: number;
+  };
 };
 
 export type DocumentProps<T extends RequestInfo = RequestInfo> = T & {

@@ -228,6 +228,7 @@ export const defineApp = <
 
           const { rscPayload: shouldInjectRSCPayload } = rw;
 
+          const rscStart = performance.now();
           let rscPayloadStream = renderToRscStream({
             input: {
               node: pageElement,
@@ -235,6 +236,7 @@ export const defineApp = <
             },
             onError,
           });
+          const rscEnd = performance.now();
 
           if (isRSCRequest) {
             const responseHeaders = new Headers(userResponseInit.headers);
@@ -264,7 +266,10 @@ export const defineApp = <
           }
 
           let html: ReadableStream<any>;
+          let htmlStart: number;
+          let htmlEnd: number;
           try {
+            htmlStart = performance.now();
             html = await renderDocumentHtmlStream({
               rscPayloadStream: rscPayloadStream,
               Document: rw.Document,
@@ -272,6 +277,7 @@ export const defineApp = <
               onError,
               shouldSSR: rw.ssr,
             });
+            htmlEnd = performance.now();
           } catch (renderError) {
             // context(justinvdm, 2026-03-17): If renderDocumentHtmlStream throws
             // AND we already captured the error via onError, return a minimal
@@ -289,6 +295,11 @@ export const defineApp = <
             html = html.pipeThrough(injectRSCPayloadStream);
           }
 
+          rw.timings = {
+            rscRenderMs: rscEnd - rscStart,
+            htmlRenderMs: htmlEnd - htmlStart,
+          };
+
           const responseHeaders = new Headers(userResponseInit.headers);
           responseHeaders.set("content-type", "text/html; charset=utf-8");
 
@@ -299,6 +310,7 @@ export const defineApp = <
           });
         };
 
+        const routeStart = performance.now();
         const response = await runWithRequestInfo(
           outerRequestInfo,
           () =>
@@ -311,6 +323,11 @@ export const defineApp = <
               rscActionHandler,
             }),
         );
+        const routeEnd = performance.now();
+        rw.timings = {
+          ...rw.timings,
+          routeHandleMs: routeEnd - routeStart,
+        };
 
         // context(justinvdm, 18 Mar 2025): In some cases, such as a .fetch() call to a durable object instance, or Response.redirect(),
         // we need to return a mutable response object.
