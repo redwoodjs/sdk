@@ -4,7 +4,8 @@ import mdx from "fumadocs-mdx/vite";
 import * as MdxConfig from "./source.config";
 import { redwood } from "rwsdk/vite";
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
+import babel from "@rolldown/plugin-babel";
 import path from "path";
 
 export default defineConfig({
@@ -20,11 +21,8 @@ export default defineConfig({
     },
   },
   plugins: [
-    react({
-      babel: {
-        plugins: ["babel-plugin-react-compiler"],
-      },
-    }),
+    react(),
+    babel({ presets: [reactCompilerPreset()] }),
     cloudflare({
       viteEnvironment: { name: "worker" },
     }),

@@ -90,6 +90,9 @@ export const configPlugin = ({
       appType: "custom",
       mode,
       logLevel: silent ? "silent" : "info",
+      resolve: {
+        tsconfigPaths: true,
+      },
       build: {
         minify: mode !== "development",
         sourcemap: true,

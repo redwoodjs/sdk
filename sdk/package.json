@@ -189,8 +189,7 @@
     "tmp-promise": "~3.0.3",
     "ts-morph": "~27.0.2",
     "unique-names-generator": "~4.7.1",
-    "vibe-rules": "~0.3.91",
-    "vite-tsconfig-paths": "~6.1.1"
+    "vibe-rules": "~0.3.91"
   },
   "peerDependencies": {
     "@cloudflare/vite-plugin": "^1.26.1",

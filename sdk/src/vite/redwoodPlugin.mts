@@ -8,7 +8,6 @@ import { hasOwnCloudflareVitePlugin } from "./hasOwnCloudflareVitePlugin.mjs";
 import { hasOwnReactVitePlugin } from "./hasOwnReactVitePlugin.mjs";
 
 import reactPlugin from "@vitejs/plugin-react";
-import tsconfigPaths from "vite-tsconfig-paths";
 
 import { pathExists } from "fs-extra";
 import { $ } from "../lib/$.mjs";
@@ -162,7 +161,6 @@ export const redwoodPlugin = async (
     }),
     knownDepsResolverPlugin({ projectRootDir }),
     cloudflarePreInitPlugin(),
-    tsconfigPaths({ root: projectRootDir }),
     shouldIncludeCloudflarePlugin
       ? (cloudflare({
           viteEnvironment: { name: "worker" },
