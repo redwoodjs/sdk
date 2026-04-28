@@ -5,6 +5,10 @@ import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 
 const log = debug("rwsdk:vite:directives-filtering-plugin");
 
+type ModuleInfoWithIncluded = {
+  isIncluded?: boolean | null;
+};
+
 export const directivesFilteringPlugin = ({
   clientFiles,
   serverFiles,
@@ -39,7 +43,9 @@ export const directivesFilteringPlugin = ({
           const absoluteId = normalizeModulePath(id, projectRootDir, {
             absolute: true,
           });
-          const info = this.getModuleInfo(absoluteId);
+          const info = this.getModuleInfo(absoluteId) as
+            | ModuleInfoWithIncluded
+            | null;
 
           if (
             !info ||

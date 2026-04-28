@@ -35,10 +35,9 @@
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "typescript": "5.9.3",
-    "vite": "~7.3.2",
+    "vite": "~8.0.9",
     "vitest": "^4.0.18",
     "wrangler": "4.77.0"
   },
-  "pnpm": {
-  }
+  "pnpm": {}
 }
