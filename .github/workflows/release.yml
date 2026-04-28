@@ -13,6 +13,7 @@ on:
           - minor
           - explicit
           - test
+          - canary
       version:
         description: "The explicit version to use (for 'explicit' type)"
         required: false
@@ -39,7 +40,7 @@ env:
 
 jobs:
   release:
-    if: github.ref == 'refs/heads/main' || github.event.inputs.version_type == 'test'
+    if: github.ref == 'refs/heads/main' || github.event.inputs.version_type == 'test' || github.event.inputs.version_type == 'canary'
     runs-on: ubuntu-latest
 
     steps:
@@ -115,7 +116,7 @@ jobs:
             else
               FLAGS="$FLAGS --latest"
             fi
-          elif [[ "$VERSION_TYPE" == "test" ]]; then
+          elif [[ "$VERSION_TYPE" == "test" || "$VERSION_TYPE" == "canary" ]]; then
             FLAGS="$FLAGS --prerelease"
           fi
 

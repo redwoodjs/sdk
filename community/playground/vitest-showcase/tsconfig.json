@@ -47,5 +47,5 @@
     /* Skip type checking all .d.ts files. */
     "skipLibCheck": true
   },
-  "exclude": ["node_modules", ".tmp"]
+  "exclude": ["node_modules", ".tmp", "vitest.config.ts"]
 }
