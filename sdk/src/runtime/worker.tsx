@@ -38,12 +38,19 @@ export type AppDefinition<
   __rwRoutes: Routes;
 };
 
+export interface RuntimeInstrumentation {
+  wrapRouteHandle?: <T>(fn: () => Promise<T>) => Promise<T>
+  wrapRenderRsc?: <T>(fn: () => T) => T
+  wrapRenderHtml?: <T>(fn: () => Promise<T>) => Promise<T>
+}
+
 export interface DefineAppOptions {
   // context(justinvdm, 2026-04-20): Origins that may invoke server actions on
   // this app in addition to the app's own origin. Intended for cases where a
   // trusted, separately deployed frontend legitimately calls server actions
   // cross-origin. Leave unset for the common single-origin deployment.
   allowedOrigins?: readonly string[];
+  instrumentation?: RuntimeInstrumentation
 }
 
 export const defineApp = <
@@ -229,13 +236,23 @@ export const defineApp = <
           const { rscPayload: shouldInjectRSCPayload } = rw;
 
           const rscStart = performance.now();
-          let rscPayloadStream = renderToRscStream({
-            input: {
-              node: pageElement,
-              actionResult,
-            },
-            onError,
-          });
+          let rscPayloadStream = options.instrumentation?.wrapRenderRsc
+            ? options.instrumentation.wrapRenderRsc(() =>
+                renderToRscStream({
+                  input: {
+                    node: pageElement,
+                    actionResult,
+                  },
+                  onError,
+                }),
+              )
+            : renderToRscStream({
+                input: {
+                  node: pageElement,
+                  actionResult,
+                },
+                onError,
+              });
           const rscEnd = performance.now();
 
           if (isRSCRequest) {
@@ -270,13 +287,23 @@ export const defineApp = <
           let htmlEnd: number;
           try {
             htmlStart = performance.now();
-            html = await renderDocumentHtmlStream({
-              rscPayloadStream: rscPayloadStream,
-              Document: rw.Document,
-              requestInfo: requestInfo,
-              onError,
-              shouldSSR: rw.ssr,
-            });
+            html = options.instrumentation?.wrapRenderHtml
+              ? await options.instrumentation.wrapRenderHtml(() =>
+                  renderDocumentHtmlStream({
+                    rscPayloadStream: rscPayloadStream,
+                    Document: rw.Document,
+                    requestInfo: requestInfo,
+                    onError,
+                    shouldSSR: rw.ssr,
+                  }),
+                )
+              : await renderDocumentHtmlStream({
+                  rscPayloadStream: rscPayloadStream,
+                  Document: rw.Document,
+                  requestInfo: requestInfo,
+                  onError,
+                  shouldSSR: rw.ssr,
+                });
             htmlEnd = performance.now();
           } catch (renderError) {
             // context(justinvdm, 2026-03-17): If renderDocumentHtmlStream throws
@@ -314,14 +341,27 @@ export const defineApp = <
         const response = await runWithRequestInfo(
           outerRequestInfo,
           () =>
-            router.handle({
-              request,
-              renderPage,
-              getRequestInfo: getRequestInfo as () => T,
-              runWithRequestInfoOverrides,
-              onError: () => {},
-              rscActionHandler,
-            }),
+            options.instrumentation?.wrapRouteHandle
+              ? options.instrumentation.wrapRouteHandle(() =>
+                  Promise.resolve(
+                    router.handle({
+                      request,
+                      renderPage,
+                      getRequestInfo: getRequestInfo as () => T,
+                      runWithRequestInfoOverrides,
+                      onError: () => {},
+                      rscActionHandler,
+                    }),
+                  ),
+                )
+              : router.handle({
+                  request,
+                  renderPage,
+                  getRequestInfo: getRequestInfo as () => T,
+                  runWithRequestInfoOverrides,
+                  onError: () => {},
+                  rscActionHandler,
+                }),
         );
         const routeEnd = performance.now();
         rw.timings = {
