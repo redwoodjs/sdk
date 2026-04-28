@@ -333,6 +333,32 @@ export const defineApp = <
         // we need to return a mutable response object.
         const mutableResponse = new Response(response.body, response);
 
+        // context(justinvdm, 2026-04-28): Expose SDK render timings through
+        // Server-Timing so app instrumentation can consume them without needing
+        // to thread RwContext back out through the worker boundary.
+        const sdkTimingParts = [
+          rw.timings?.rscRenderMs !== undefined
+            ? `rsc_render;dur=${Math.round(rw.timings.rscRenderMs)}`
+            : null,
+          rw.timings?.htmlRenderMs !== undefined
+            ? `html_render;dur=${Math.round(rw.timings.htmlRenderMs)}`
+            : null,
+          rw.timings?.routeHandleMs !== undefined
+            ? `route_handle;dur=${Math.round(rw.timings.routeHandleMs)}`
+            : null,
+        ].filter((p): p is string => p !== null)
+        if (sdkTimingParts.length > 0) {
+          const existingServerTiming = mutableResponse.headers.get(
+            'Server-Timing',
+          )
+          mutableResponse.headers.set(
+            'Server-Timing',
+            existingServerTiming
+              ? `${existingServerTiming}, ${sdkTimingParts.join(', ')}`
+              : sdkTimingParts.join(', '),
+          )
+        }
+
         // Merge headers from user response init (these take precedence)
         if (userResponseInit.headers) {
           const userResponseHeaders = new Headers(userResponseInit.headers);
