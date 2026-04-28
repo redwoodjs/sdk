@@ -11,7 +11,8 @@ export const pageTree: PageTree.Root = {
   children: [
     { type: "separator", name: "Get Started" },
     p("Quick Start", "getting-started/quick-start"),
-    p("Migrating to 1.x", "migrating"),
+    p("Migrating to 1.x", "migrating-to-v1"),
+    p("Migrating to Vite 8", "migrating-to-vite-8"),
 
     { type: "separator", name: "Core" },
     p("Overview", "core/overview"),

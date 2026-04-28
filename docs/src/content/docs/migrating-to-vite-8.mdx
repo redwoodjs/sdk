@@ -1,0 +1,145 @@
+---
+title: Migrating to Vite 8
+description: Upgrade your RedwoodSDK project from Vite 7 to Vite 8.
+---
+
+import { Aside } from "@/app/components/mdx";
+
+This guide is for users who have an existing RedwoodSDK project on Vite 7 and wish to upgrade to Vite 8.
+
+## Overview
+
+RedwoodSDK now supports Vite 8, which uses Rolldown (a Rust-based bundler) for dependency pre-bundling. This upgrade brings significant performance improvements — most notably, the Vite 8 + Rolldown combination eliminates the per-module AST retention that could cause out-of-memory issues during builds of large projects.
+
+This guide covers the minimal changes needed to upgrade an existing project.
+
+## Required Changes
+
+### 1. Upgrade rwsdk
+
+First, upgrade to the latest version of rwsdk:
+
+```sh
+pnpm add rwsdk@latest
+```
+
+### 2. Upgrade Vite
+
+Upgrade Vite to version 8:
+
+```sh
+pnpm add -D vite@latest
+```
+
+Your `package.json` should now resolve to `vite@^8.0.0` or later.
+
+### 3. Upgrade @vitejs/plugin-react (if used)
+
+If your project uses `@vitejs/plugin-react`, upgrade to a version that supports Vite 8:
+
+```sh
+pnpm add -D @vitejs/plugin-react@latest
+```
+
+**Breaking change in v6:** The `babel` option was removed from `@vitejs/plugin-react`. If you were using the React Compiler via the `babel` option:
+
+```ts
+// BEFORE (v5)
+react({
+  babel: {
+    plugins: ['babel-plugin-react-compiler']
+  }
+})
+```
+
+You now need to add `@rolldown/plugin-babel` separately:
+
+```ts
+// AFTER (v6)
+import react, { reactCompilerPreset } from '@vitejs/plugin-react'
+import babel from '@rolldown/plugin-babel'
+
+// In your plugins array:
+react(),
+babel({ presets: [reactCompilerPreset()] })
+```
+
+Install the babel plugin:
+
+```sh
+pnpm add -D @rolldown/plugin-babel
+```
+
+If you prefer to stay on v5 for now, version `5.2.0` adds Vite 8 support without the API break:
+
+```sh
+pnpm add -D @vitejs/plugin-react@^5.2.0
+```
+
+### 4. Remove vite-tsconfig-paths (optional)
+
+Vite 8 has native TypeScript path resolution. If you were using `vite-tsconfig-paths`, you can remove it:
+
+```sh
+pnpm remove vite-tsconfig-paths
+```
+
+No config changes are needed — rwsdk enables `resolve.tsconfigPaths: true` automatically.
+
+### 5. Upgrade @tailwindcss/vite (if used)
+
+If you use Tailwind CSS with Vite:
+
+```sh
+pnpm add -D @tailwindcss/vite@latest
+```
+
+Version `4.2.4` and later support Vite 8.
+
+## What Changed Under the Hood
+
+Vite 8 switches from esbuild to Rolldown for `optimizeDeps` (dependency pre-bundling in development). This is transparent for most projects, but the change eliminates a major source of memory pressure:
+
+- **esbuild** retains the full AST for every module in the optimizer
+- **Rolldown** uses a Rust arena allocator that frees ASTs after transformation
+
+For large projects, this can mean the difference between builds completing normally and hitting Node's heap limit.
+
+## Verifying Your Migration
+
+After upgrading, verify everything works:
+
+```sh
+# Development server
+pnpm dev
+
+# Production build
+pnpm build
+
+# Run your test suite
+pnpm test
+```
+
+## Rollback
+
+If you encounter issues, you can temporarily pin Vite 7 while keeping the latest rwsdk:
+
+```sh
+pnpm add -D vite@~7.3.2
+```
+
+rwsdk continues to support Vite 7 for production builds.
+
+## Troubleshooting
+
+### Peer dependency warnings
+
+You may see warnings from packages that haven't updated their peer ranges yet. These are usually harmless. Check that the package has a version that supports Vite 8, and upgrade if needed.
+
+### __webpack_require__ errors in development
+
+If you see `ReferenceError: __webpack_require__ is not defined` in the browser console during development, make sure you are on the latest rwsdk version. This was fixed in the Vite 8 compatibility release.
+
+### CSS not loading in development
+
+If styles fail to load during `pnpm dev`, verify you are on the latest rwsdk. A CSS discovery fix for Rolldown was included in the Vite 8 release.
