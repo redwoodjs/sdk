@@ -7,25 +7,25 @@ SUCCESS_FLAG=false # Default to failure. This will be checked by the cleanup tra
 DEPENDENCY_NAME="rwsdk"  # Replace with the actual package name
 
 show_help() {
-  echo "Usage: pnpm release <patch|minor|beta|test|explicit> [--version <string>] [--dry]"
+  echo "Usage: pnpm release <patch|minor|beta|test|canary|explicit> [--version <string>] [--dry]"
   echo
   echo "Automates version bumping, publishing, and dependency updates for $DEPENDENCY_NAME."
-  echo "For safety, only 'patch', 'minor', 'beta', and 'test' bumps can be calculated automatically."
+  echo "For safety, only 'patch', 'minor', 'beta', 'test', and 'canary' bumps can be calculated automatically."
   echo "To release a major or pre-release version, you MUST use the 'explicit' version_type and provide the exact version string with '--version'."
   echo
   echo "Arguments:"
-  echo "  patch|minor|beta|test    Calculates the next version of this type automatically."
-  echo "  explicit                 Requires the '--version' flag to specify the exact version to release."
+  echo "  patch|minor|beta|test|canary  Calculates the next version of this type automatically."
+  echo "  explicit                      Requires the '--version' flag to specify the exact version to release."
   echo ""
   echo "Process:"
-  echo "  1.  Calculates new version (for patch/minor/beta/test) or uses the manual version (for explicit), and updates package.json."
+  echo "  1.  Calculates new version (for patch/minor/beta/test/canary) or uses the manual version (for explicit), and updates package.json."
   echo "  2.  Commits the version change."
   echo "  3.  Builds the package with NODE_ENV=production."
   echo "  4.  Bundles the package into a .tgz tarball using \`npm pack\`."
   echo "  5.  Performs a comprehensive smoke test on the packed tarball:"
   echo "      - Verifies the packed \`dist\` contents match the local build via checksum."
   echo "      - Runs \`npx rw-scripts smoke-tests\` in a temporary project."
-  echo "  6.  If smoke tests pass, publishes the .tgz tarball to npm (beta versions use --tag latest, other prereleases use --tag pre, test builds use --tag test)."
+  echo "  6.  If smoke tests pass, publishes the .tgz tarball to npm (beta versions use --tag latest, other prereleases use --tag pre, test builds use --tag test, canary builds use --tag canary)."
   echo "  7.  On successful publish (for non-prereleases):"
   echo "      - Updates dependencies in the monorepo."
   echo "      - Amends the initial commit with dependency updates."
@@ -45,6 +45,7 @@ show_help() {
   echo "  pnpm release minor                    # 0.1.1 -> 0.2.0"
   echo "  pnpm release beta                     # 1.0.0-beta.27 -> 1.0.0-beta.28"
   echo "  pnpm release test                     # 1.0.0 -> 1.0.0-test.0 (published as @test)"
+  echo "  pnpm release canary                   # 1.0.0 -> 1.0.0-canary.0 (published as @canary)"
   echo "  pnpm release explicit --version 1.0.0 # Release a major version"
   echo "  pnpm release explicit --version 1.0.0-rc.0 # Release a pre-release"
   exit 0
@@ -93,7 +94,7 @@ while [[ $i -le $# ]]; do
         show_help
       fi
       ;;
-    patch|minor|beta|test|explicit)
+    patch|minor|beta|test|canary|explicit)
       VERSION_TYPE=$arg
       ;;
   esac
@@ -109,7 +110,7 @@ fi
 
 # Validate required arguments
 if [[ -z "$VERSION_TYPE" ]]; then
-  echo "Error: Version type (patch|minor|beta|test|explicit) is required."
+  echo "Error: Version type (patch|minor|beta|test|canary|explicit) is required."
   echo ""
   show_help
 fi
@@ -127,6 +128,11 @@ fi
 
 if [[ "$VERSION_TYPE" == "test" && -n "$MANUAL_VERSION" ]]; then
   echo "Error: Manual version cannot be specified for 'test' releases."
+  exit 1
+fi
+
+if [[ "$VERSION_TYPE" == "canary" && -n "$MANUAL_VERSION" ]]; then
+  echo "Error: Manual version cannot be specified for 'canary' releases."
   exit 1
 fi
 
@@ -153,9 +159,9 @@ NODE_ENV=production pnpm build
 
 CURRENT_VERSION=$(npm pkg get version | tr -d '"')
 
-# Validate that patch/minor/major cannot be used when currently in a pre-release (excluding test)
+# Validate that patch/minor/major cannot be used when currently in a pre-release (excluding test and canary)
 if [[ "$VERSION_TYPE" == "patch" || "$VERSION_TYPE" == "minor" || "$VERSION_TYPE" == "major" ]]; then
-  if [[ "$CURRENT_VERSION" == *"-"* && "$CURRENT_VERSION" != *"-test."* ]]; then
+  if [[ "$CURRENT_VERSION" == *"-"* && "$CURRENT_VERSION" != *"-test."* && "$CURRENT_VERSION" != *"-canary."* ]]; then
     echo "Error: Cannot use '$VERSION_TYPE' version type when current version is a pre-release ($CURRENT_VERSION)."
     echo "To release a major version after a pre-release, use 'explicit' version type and specify the exact version."
     exit 1
@@ -175,6 +181,18 @@ elif [[ "$VERSION_TYPE" == "test" ]]; then
     BASE_VERSION="$CURRENT_VERSION"
   fi
   NEW_VERSION="$BASE_VERSION-test.$TIMESTAMP"
+elif [[ "$VERSION_TYPE" == "canary" ]]; then
+  # Handle canary version bumping: 1.0.0-canary.0 -> 1.0.0-canary.1
+  if [[ "$CURRENT_VERSION" =~ ^(.*)-canary\.([0-9]+)$ ]]; then
+    BASE_VERSION="${BASH_REMATCH[1]}"
+    CANARY_NUMBER="${BASH_REMATCH[2]}"
+    NEW_CANARY_NUMBER=$((CANARY_NUMBER + 1))
+    NEW_VERSION="$BASE_VERSION-canary.$NEW_CANARY_NUMBER"
+  else
+    # First canary release from current version
+    BASE_VERSION="$CURRENT_VERSION"
+    NEW_VERSION="$BASE_VERSION-canary.0"
+  fi
 elif [[ "$VERSION_TYPE" == "beta" ]]; then
   # Handle beta version bumping: 1.0.0-beta.27 -> 1.0.0-beta.28
   if [[ "$CURRENT_VERSION" =~ ^(.*)-beta\.([0-9]+)$ ]]; then
@@ -267,6 +285,8 @@ echo -e "\n🚀 Publishing version $NEW_VERSION..."
 if [[ "$DRY_RUN" == true ]]; then
   if [[ "$VERSION_TYPE" == "test" ]]; then
     echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag test"
+  elif [[ "$VERSION_TYPE" == "canary" ]]; then
+    echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag canary"
   elif [[ "$NEW_VERSION" == *"-beta."* ]]; then
     echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag latest"
   elif [[ "$NEW_VERSION" == *"-"* ]]; then
@@ -278,6 +298,8 @@ else
   PUBLISH_CMD="npm publish \"$TARBALL_PATH\""
   if [[ "$VERSION_TYPE" == "test" ]]; then
     PUBLISH_CMD="$PUBLISH_CMD --tag test"
+  elif [[ "$VERSION_TYPE" == "canary" ]]; then
+    PUBLISH_CMD="$PUBLISH_CMD --tag canary"
   elif [[ "$NEW_VERSION" == *"-beta."* ]]; then
     PUBLISH_CMD="$PUBLISH_CMD --tag latest"
   elif [[ "$NEW_VERSION" == *"-"* ]]; then
@@ -296,7 +318,7 @@ fi
 echo -e "\n💾 Pushing commit and tag..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] Git operations:"
-  if [[ "$VERSION_TYPE" == "test" ]]; then
+  if [[ "$VERSION_TYPE" == "test" || "$VERSION_TYPE" == "canary" ]]; then
     echo "    - Tag: $TAG_NAME"
     echo "    - Push tag $TAG_NAME to remote"
     echo "    - Reset branch to previous commit (commit will be on remote via tag)"
@@ -306,12 +328,12 @@ if [[ "$DRY_RUN" == true ]]; then
     echo "    - Push: origin with tags"
   fi
 else
-  if [[ "$VERSION_TYPE" == "test" ]]; then
-    echo "  - Creating tag for test release..."
+  if [[ "$VERSION_TYPE" == "test" || "$VERSION_TYPE" == "canary" ]]; then
+    echo "  - Creating tag for $VERSION_TYPE release..."
     git tag "$TAG_NAME"
     echo "  - Pushing tag to remote..."
     git push origin "$TAG_NAME"
-    echo "  - Rolling back local commit for test release. The commit is available via the remote tag."
+    echo "  - Rolling back local commit for $VERSION_TYPE release. The commit is available via the remote tag."
     git reset --hard HEAD~1
   else
     # As a final safety measure, check for and discard any remaining unstaged changes
