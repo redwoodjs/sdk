@@ -59,26 +59,34 @@ Since RedwoodSDK is based on React and Vite, we can work through the ["Using Vit
 
    For JavaScript projects, create a `jsconfig.json` file with the same configuration.
 
-4. Configure the Vite Plugin
+4. Install Vite TypeScript Paths Plugin
+
+   To sync your TypeScript paths with Vite, install the `vite-tsconfig-paths` plugin:
+
+   <PackageManagers type="exec" args="install -D vite-tsconfig-paths" />
+
+5. Configure the Vite Plugin
 
    ```ts title="vite.config.mts"
    import { defineConfig } from "vite";
    import react from "@vitejs/plugin-react";
+   import tsconfigPaths from "vite-tsconfig-paths"; // [!code ++]
    import { redwood } from "rwsdk/vite";
    import { cloudflare } from "@cloudflare/vite-plugin";
 
    export default defineConfig({
-     plugins: [
+     plugins: [ // [!code ++]
        cloudflare({
          viteEnvironment: { name: "worker" },
        }),
        redwood(),
        react(),
+       tsconfigPaths(),
      ],
    });
    ```
 
-5. Set Up the Provider
+6. Set Up the Provider
 
    The Chakra UI provider needs to wrap your application. In RedwoodSDK, you'll want to add this to your root component or layout.
 
@@ -122,7 +130,7 @@ Since RedwoodSDK is based on React and Vite, we can work through the ["Using Vit
    ]);
    ```
 
-6. Test Your Installation
+7. Test Your Installation
 
    Try using some Chakra UI components in your app to verify everything is working:
 
@@ -142,7 +150,7 @@ Since RedwoodSDK is based on React and Vite, we can work through the ["Using Vit
    }
    ```
 
-7. Run Development Server
+8. Run Development Server
 
    <PackageManagers type="run" args="dev" />
 
