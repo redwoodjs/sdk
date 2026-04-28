@@ -1,6 +1,5 @@
 import { resolve } from "node:path";
 import { Plugin } from "vite";
-import { addOptimizeDepsPlugin } from "./addOptimizeDepsPlugin.mjs";
 import { checkPrismaStatus } from "./checkIsUsingPrisma.mjs";
 import { ensureAliasArray } from "./ensureAliasArray.mjs";
 import { invalidateCacheIfPrismaClientChanged } from "./invalidateCacheIfPrismaClientChanged.mjs";
@@ -35,14 +34,18 @@ export const prismaPlugin = async ({
         "node_modules/.prisma/client/wasm.js",
       );
 
-      const prismaFilter = /^.prisma\/client\/default/;
+      config.optimizeDeps ??= {};
+      config.optimizeDeps.esbuildOptions ??= {};
+      config.optimizeDeps.esbuildOptions.plugins ??= [];
 
-      addOptimizeDepsPlugin(config, {
+      config.optimizeDeps.esbuildOptions.plugins.push({
         name: "rwsdk:prisma",
-        resolveId(id: string) {
-          if (prismaFilter.test(id)) {
-            return wasmPath;
-          }
+        setup(build: any) {
+          build.onResolve({ filter: /^.prisma\/client\/default/ }, async () => {
+            return {
+              path: wasmPath,
+            };
+          });
         },
       });
 

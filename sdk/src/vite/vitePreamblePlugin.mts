@@ -1,8 +1,8 @@
 import MagicString from "magic-string";
-import type { Plugin, ResolvedConfig } from "vite";
+import type { ResolvedConfig } from "vite";
 import { virtualPlugin } from "./virtualPlugin.mjs";
 
-export const vitePreamblePlugin = (): Plugin => {
+export const vitePreamblePlugin = () => {
   let base = "/";
 
   const inner = virtualPlugin("vite-preamble", async () => {

@@ -39,15 +39,8 @@ export const directivesFilteringPlugin = ({
           const absoluteId = normalizeModulePath(id, projectRootDir, {
             absolute: true,
           });
-          const info = this.getModuleInfo(absoluteId) as
-            | (ReturnType<typeof this.getModuleInfo> & {
-                isIncluded?: boolean | null;
-              })
-            | null;
+          const info = this.getModuleInfo(absoluteId);
 
-          // context(justinvdm, 2026-04-23): Rollup exposes `isIncluded` on
-          // ModuleInfo; Rolldown (Vite 8) does not. Treat absent as "included"
-          // so we only delete on an explicit `false` from Rollup.
           if (
             !info ||
             (typeof info.isIncluded !== "undefined" && !info.isIncluded)
