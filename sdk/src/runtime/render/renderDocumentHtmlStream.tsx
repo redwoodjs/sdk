@@ -48,7 +48,7 @@ export const renderDocumentHtmlStream = async ({
         dangerouslySetInnerHTML={{
           __html: `globalThis.__RWSDK_CONTEXT = ${JSON.stringify(
             clientContext,
-          )}`,
+          )};if(!globalThis.__webpack_require__){globalThis.__webpack_require__=function(id){throw new Error("rwsdk: __webpack_require__ called before client init for: "+id)};globalThis.__webpack_require__.u=function(){}}`,
         }}
       />
       <Stylesheets requestInfo={requestInfo} />

@@ -2,6 +2,7 @@ import debug from "debug";
 import fs from "node:fs/promises";
 import type { Plugin } from "vite";
 import { RW_STATE_EXPORT_PATH } from "../lib/constants.mjs";
+import { addOptimizeDepsPlugin } from "./addOptimizeDepsPlugin.mjs";
 import { maybeResolveEnvImport } from "./envResolvers.mjs";
 
 const log = debug("rwsdk:vite:state-plugin");
@@ -34,27 +35,17 @@ export const statePlugin = ({
     },
     configEnvironment(env, config) {
       if (env === "worker") {
-        config.optimizeDeps ??= {};
-        config.optimizeDeps.esbuildOptions ??= {};
-        config.optimizeDeps.esbuildOptions.plugins ??= [];
-        config.optimizeDeps.esbuildOptions.plugins.push({
+        const stateFilter = new RegExp(
+          `^(${RW_STATE_EXPORT_PATH}|${VIRTUAL_STATE_PREFIX}.*)$`,
+        );
+
+        addOptimizeDepsPlugin(config, {
           name: "rwsdk-state-external",
-          setup(build) {
-            build.onResolve(
-              {
-                // context(justinvdm, 13 Oct 2025): Vite dep optimizer slugifies the export path
-                filter: new RegExp(
-                  `^(${RW_STATE_EXPORT_PATH}|${VIRTUAL_STATE_PREFIX}.*)$`,
-                ),
-              },
-              (args) => {
-                log("Marking as external: %s", args.path);
-                return {
-                  path: args.path,
-                  external: true,
-                };
-              },
-            );
+          resolveId(id: string) {
+            if (stateFilter.test(id)) {
+              log("Marking as external: %s", id);
+              return { id, external: true };
+            }
           },
         });
       }
