@@ -209,7 +209,16 @@ else
   NEW_VERSION=$(npx semver -i "$VERSION_TYPE" "$CURRENT_VERSION")
 fi
 
+# Detect canary versions regardless of how they were specified (e.g. explicit --version 1.3.0-canary.0)
+IS_CANARY_VERSION=false
+if [[ "$NEW_VERSION" == *"-canary."* ]]; then
+  IS_CANARY_VERSION=true
+fi
+
 echo -e "\n📦 Planning version bump to $NEW_VERSION ($VERSION_TYPE)..."
+if [[ "$IS_CANARY_VERSION" == true ]]; then
+  echo "  (Detected as canary release)"
+fi
 if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] sed -i.bak \"s/\\\"version\\\": \\\"[^\\\"]*\\\"/\\\"version\\\": \\\"$NEW_VERSION\\\"/\" package.json && rm package.json.bak"
   echo "  [DRY RUN] Git commit version change"
@@ -285,7 +294,7 @@ echo -e "\n🚀 Publishing version $NEW_VERSION..."
 if [[ "$DRY_RUN" == true ]]; then
   if [[ "$VERSION_TYPE" == "test" ]]; then
     echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag test"
-  elif [[ "$VERSION_TYPE" == "canary" ]]; then
+  elif [[ "$VERSION_TYPE" == "canary" || "$IS_CANARY_VERSION" == true ]]; then
     echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag canary"
   elif [[ "$NEW_VERSION" == *"-beta."* ]]; then
     echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag latest"
@@ -298,7 +307,7 @@ else
   PUBLISH_CMD="npm publish \"$TARBALL_PATH\""
   if [[ "$VERSION_TYPE" == "test" ]]; then
     PUBLISH_CMD="$PUBLISH_CMD --tag test"
-  elif [[ "$VERSION_TYPE" == "canary" ]]; then
+  elif [[ "$VERSION_TYPE" == "canary" || "$IS_CANARY_VERSION" == true ]]; then
     PUBLISH_CMD="$PUBLISH_CMD --tag canary"
   elif [[ "$NEW_VERSION" == *"-beta."* ]]; then
     PUBLISH_CMD="$PUBLISH_CMD --tag latest"
@@ -318,7 +327,7 @@ fi
 echo -e "\n💾 Pushing commit and tag..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] Git operations:"
-  if [[ "$VERSION_TYPE" == "test" || "$VERSION_TYPE" == "canary" ]]; then
+  if [[ "$VERSION_TYPE" == "test" || "$VERSION_TYPE" == "canary" || "$IS_CANARY_VERSION" == true ]]; then
     echo "    - Tag: $TAG_NAME"
     echo "    - Push tag $TAG_NAME to remote"
     echo "    - Reset branch to previous commit (commit will be on remote via tag)"
@@ -328,12 +337,12 @@ if [[ "$DRY_RUN" == true ]]; then
     echo "    - Push: origin with tags"
   fi
 else
-  if [[ "$VERSION_TYPE" == "test" || "$VERSION_TYPE" == "canary" ]]; then
-    echo "  - Creating tag for $VERSION_TYPE release..."
+  if [[ "$VERSION_TYPE" == "test" || "$VERSION_TYPE" == "canary" || "$IS_CANARY_VERSION" == true ]]; then
+    echo "  - Creating tag for canary release..."
     git tag "$TAG_NAME"
     echo "  - Pushing tag to remote..."
     git push origin "$TAG_NAME"
-    echo "  - Rolling back local commit for $VERSION_TYPE release. The commit is available via the remote tag."
+    echo "  - Rolling back local commit for canary release. The commit is available via the remote tag."
     git reset --hard HEAD~1
   else
     # As a final safety measure, check for and discard any remaining unstaged changes

@@ -40,7 +40,7 @@ env:
 
 jobs:
   release:
-    if: github.ref == 'refs/heads/main' || github.event.inputs.version_type == 'test' || github.event.inputs.version_type == 'canary'
+    if: github.ref == 'refs/heads/main' || github.event.inputs.version_type == 'test' || github.event.inputs.version_type == 'canary' || (github.event.inputs.version_type == 'explicit' && contains(github.event.inputs.version, '-canary.'))
     runs-on: ubuntu-latest
 
     steps:
