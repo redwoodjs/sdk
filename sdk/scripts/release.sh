@@ -159,6 +159,26 @@ NODE_ENV=production pnpm build
 
 CURRENT_VERSION=$(npm pkg get version | tr -d '"')
 
+# context(justinvdm, 2026-05-06): Canary releases roll back the version commit after publish, so package.json is not a reliable source for the next canary number.
+get_latest_canary_version() {
+  local latest_canary_tag
+  latest_canary_tag=$(git ls-remote --tags origin 'refs/tags/v*canary.*' | awk '{print $2}' | grep -v '\^{}' | sed 's#refs/tags/v##' | sort -V | tail -n 1)
+
+  if [[ -n "$latest_canary_tag" ]]; then
+    echo "$latest_canary_tag"
+  fi
+}
+
+increment_canary_version() {
+  local version="$1"
+
+  if [[ "$version" =~ ^(.*)-canary\.([0-9]+)$ ]]; then
+    local base_version="${BASH_REMATCH[1]}"
+    local canary_number="${BASH_REMATCH[2]}"
+    echo "$base_version-canary.$((canary_number + 1))"
+  fi
+}
+
 # Validate that patch/minor/major cannot be used when currently in a pre-release (excluding test and canary)
 if [[ "$VERSION_TYPE" == "patch" || "$VERSION_TYPE" == "minor" || "$VERSION_TYPE" == "major" ]]; then
   if [[ "$CURRENT_VERSION" == *"-"* && "$CURRENT_VERSION" != *"-test."* && "$CURRENT_VERSION" != *"-canary."* ]]; then
@@ -182,16 +202,27 @@ elif [[ "$VERSION_TYPE" == "test" ]]; then
   fi
   NEW_VERSION="$BASE_VERSION-test.$TIMESTAMP"
 elif [[ "$VERSION_TYPE" == "canary" ]]; then
-  # Handle canary version bumping: 1.0.0-canary.0 -> 1.0.0-canary.1
+  CURRENT_CANARY_VERSION=""
   if [[ "$CURRENT_VERSION" =~ ^(.*)-canary\.([0-9]+)$ ]]; then
-    BASE_VERSION="${BASH_REMATCH[1]}"
-    CANARY_NUMBER="${BASH_REMATCH[2]}"
-    NEW_CANARY_NUMBER=$((CANARY_NUMBER + 1))
-    NEW_VERSION="$BASE_VERSION-canary.$NEW_CANARY_NUMBER"
+    CURRENT_CANARY_VERSION="$CURRENT_VERSION"
+  fi
+
+  LATEST_CANARY_VERSION="$(get_latest_canary_version)"
+  CANDIDATE_CANARY_VERSIONS=()
+
+  if [[ -n "$CURRENT_CANARY_VERSION" ]]; then
+    CANDIDATE_CANARY_VERSIONS+=("$CURRENT_CANARY_VERSION")
+  fi
+
+  if [[ -n "$LATEST_CANARY_VERSION" ]]; then
+    CANDIDATE_CANARY_VERSIONS+=("$LATEST_CANARY_VERSION")
+  fi
+
+  if [[ ${#CANDIDATE_CANARY_VERSIONS[@]} -gt 0 ]]; then
+    NEWEST_CANARY_VERSION=$(printf '%s\n' "${CANDIDATE_CANARY_VERSIONS[@]}" | sort -V | tail -n 1)
+    NEW_VERSION="$(increment_canary_version "$NEWEST_CANARY_VERSION")"
   else
-    # First canary release from current version
-    BASE_VERSION="$CURRENT_VERSION"
-    NEW_VERSION="$BASE_VERSION-canary.0"
+    NEW_VERSION="$CURRENT_VERSION-canary.0"
   fi
 elif [[ "$VERSION_TYPE" == "beta" ]]; then
   # Handle beta version bumping: 1.0.0-beta.27 -> 1.0.0-beta.28
