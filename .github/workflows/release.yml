@@ -49,6 +49,7 @@ jobs:
         with:
           # We need to fetch all history for semver to work correctly and to push changes.
           fetch-depth: 0
+          token: ${{ secrets.GH_TOKEN_FOR_RELEASES }}
 
       - name: Set up Git user
         run: |
@@ -99,7 +100,7 @@ jobs:
       - name: Create GitHub Release
         if: success() && github.event.inputs.create_gh_release == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_RELEASES }}
         run: |
           FLAGS="--generate-notes"
           VERSION_TYPE="${{ github.event.inputs.version_type }}"
@@ -123,14 +124,6 @@ jobs:
           echo "Creating GitHub release for tag ${{ env.TAG_NAME }} with flags: $FLAGS"
           gh release create ${{ env.TAG_NAME }} $FLAGS
 
-      - name: Dispatch release-artifacts workflow
-        if: success() && env.TAG_NAME != ''
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Tag pushes made with GITHUB_TOKEN don't trigger other workflows,
-          # so we dispatch release-artifacts.yml explicitly.
-          gh workflow run release-artifacts.yml --ref "${{ env.TAG_NAME }}"
 
       - name: Prune node_modules for artifact upload
         if: failure() && steps.release_script.outputs.project-dir
