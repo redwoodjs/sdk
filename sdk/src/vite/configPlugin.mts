@@ -27,8 +27,13 @@ export const configPlugin = ({
   esbuildOptions: ConfigurableEsbuildOptions;
 }): Plugin => ({
   name: "rwsdk:config",
-  config: async (_, { command }) => {
+  config: async (config, { command }) => {
     const mode = process.env.NODE_ENV;
+
+    // context(justinvdm, 2026-05-06): Only set a sourcemap default if the user
+    // hasn't already configured it in their vite config. This lets users opt in
+    // or out explicitly while still providing a sensible mode-aware default.
+    const sourcemap = config.build?.sourcemap ?? (mode === "development");
 
     const workerConfig: InlineConfig = {
       resolve: {
@@ -90,7 +95,7 @@ export const configPlugin = ({
       logLevel: silent ? "silent" : "info",
       build: {
         minify: mode !== "development",
-        sourcemap: true,
+        sourcemap,
       },
       define: {
         "process.env.NODE_ENV": JSON.stringify(mode),
