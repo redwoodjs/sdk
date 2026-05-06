@@ -44,6 +44,7 @@ export type RedwoodPluginOptions = {
   configPath?: string;
   forceClientPaths?: string[];
   forceServerPaths?: string[];
+  sourcemaps?: boolean;
   entry?: {
     worker?: string;
   };
@@ -148,6 +149,7 @@ export const redwoodPlugin = async (
     }),
     configPlugin({
       silent: options.silent ?? false,
+      sourcemaps: options.sourcemaps,
       projectRootDir,
       workerEntryPathname,
       clientFiles,

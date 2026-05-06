@@ -11,6 +11,7 @@ import { ssrBridgeWrapPlugin } from "./ssrBridgeWrapPlugin.mjs";
 
 export const configPlugin = ({
   silent,
+  sourcemaps,
   projectRootDir,
   workerEntryPathname,
   clientFiles,
@@ -19,6 +20,7 @@ export const configPlugin = ({
   esbuildOptions,
 }: {
   silent: boolean;
+  sourcemaps: boolean | undefined;
   projectRootDir: string;
   workerEntryPathname: string;
   clientFiles: Set<string>;
@@ -90,7 +92,7 @@ export const configPlugin = ({
       logLevel: silent ? "silent" : "info",
       build: {
         minify: mode !== "development",
-        sourcemap: true,
+        sourcemap: sourcemaps ?? mode === "development",
       },
       define: {
         "process.env.NODE_ENV": JSON.stringify(mode),
