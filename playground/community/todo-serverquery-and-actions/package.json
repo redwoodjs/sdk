@@ -23,9 +23,9 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.1",
-    "react": "19.2.5",
-    "react-dom": "19.2.5",
-    "react-server-dom-webpack": "19.2.5",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "react-server-dom-webpack": "19.2.6",
     "rwsdk": "workspace:*",
     "tailwindcss": "^4.2.4"
   },
