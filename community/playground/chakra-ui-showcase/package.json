@@ -23,10 +23,10 @@
     "test": "vitest run --config ../vitest.config.mts"
   },
   "dependencies": {
-    "@chakra-ui/react": "^3.34.0",
-    "react": "19.2.5",
-    "react-dom": "19.2.5",
-    "react-server-dom-webpack": "19.2.5",
+    "@chakra-ui/react": "^3.35.0",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "react-server-dom-webpack": "19.2.6",
     "rwsdk": "workspace:*"
   },
   "devDependencies": {
