@@ -1989,5 +1989,118 @@ describe("defineRoutes - Request Handling Behavior", () => {
       expect(response.status).toBe(500);
       expect(await response.text()).toBe(`Caught: ${errorMessage}`);
     });
+
+    describe("prefix scoping", () => {
+      const makePrefixApp = () => {
+        const globalHandler = except(
+          () =>
+            new Response("[GLOBAL]", {
+              status: 500,
+            }),
+        );
+        const adminHandler = except(
+          () =>
+            new Response("[ADMIN]", {
+              status: 500,
+            }),
+        );
+        const router = defineRoutes([
+          globalHandler,
+          ...prefix("/admin", [
+            adminHandler,
+            route("/dashboard/", () => {
+              throw new Error("admin dashboard error");
+            }),
+          ]),
+          route("/", () => {
+            throw new Error("home route error");
+          }),
+        ]);
+        return router;
+      };
+
+      const handle = async (router: ReturnType<typeof defineRoutes>, path: string) => {
+        const deps = createMockDependencies();
+        deps.mockRequestInfo.request = new Request(`http://localhost:3000${path}`);
+        return router.handle({
+          request: new Request(`http://localhost:3000${path}`),
+          renderPage: deps.mockRenderPage,
+          getRequestInfo: deps.getRequestInfo,
+          onError: deps.onError,
+          runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+          rscActionHandler: deps.mockRscActionHandler,
+        });
+      };
+
+      it("an except inside prefix should NOT catch errors from routes outside the prefix", async () => {
+        const router = makePrefixApp();
+        const response = await handle(router, "/");
+        expect(await response.text()).toBe("[GLOBAL]");
+      });
+
+      it("an except inside prefix should catch errors from routes inside the prefix", async () => {
+        const router = makePrefixApp();
+        const response = await handle(router, "/admin/dashboard/");
+        expect(await response.text()).toBe("[ADMIN]");
+      });
+
+      it("an except inside prefix that returns void should bubble to the global handler", async () => {
+        const router = defineRoutes([
+          except(() => new Response("[GLOBAL]", { status: 500 })),
+          ...prefix("/admin", [
+            except(() => undefined),
+            route("/dashboard/", () => {
+              throw new Error("boom");
+            }),
+          ]),
+        ]);
+        const response = await handle(router, "/admin/dashboard/");
+        expect(await response.text()).toBe("[GLOBAL]");
+      });
+
+      it("nested prefixes compose the scope path", async () => {
+        const router = defineRoutes([
+          except(() => new Response("[GLOBAL]", { status: 500 })),
+          ...prefix("/a", [
+            ...prefix("/b", [
+              except(() => new Response("[A/B]", { status: 500 })),
+              route("/c/", () => {
+                throw new Error("a/b/c error");
+              }),
+            ]),
+          ]),
+          route("/d/", () => {
+            throw new Error("d error");
+          }),
+        ]);
+
+        const inside = await handle(router, "/a/b/c/");
+        expect(await inside.text()).toBe("[A/B]");
+
+        const outside = await handle(router, "/d/");
+        expect(await outside.text()).toBe("[GLOBAL]");
+      });
+
+      it("parameterized prefixes scope the except handler", async () => {
+        const router = defineRoutes([
+          except(() => new Response("[GLOBAL]", { status: 500 })),
+          ...prefix("/users/:id", [
+            except(() => new Response("[USER]", { status: 500 })),
+            route("/profile/", () => {
+              throw new Error("profile error");
+            }),
+          ]),
+          route("/about/", () => {
+            throw new Error("about error");
+          }),
+        ]);
+
+        const inside = await handle(router, "/users/42/profile/");
+        expect(await inside.text()).toBe("[USER]");
+
+        const outside = await handle(router, "/about/");
+        expect(await outside.text()).toBe("[GLOBAL]");
+      });
+    });
   });
 });
