@@ -120,10 +120,10 @@ importers:
     dependencies:
       react:
         specifier: '>=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0'
-        version: 19.2.4
+        version: 19.2.6
       react-dom:
         specifier: '>=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0'
-        version: 19.2.4(react@19.2.4)
+        version: 19.2.4(react@19.2.6)
       rwsdk:
         specifier: workspace:*
         version: link:../sdk
@@ -916,7 +916,7 @@ importers:
     dependencies:
       drizzle-orm:
         specifier: ^0.45.2
-        version: 0.45.2(@cloudflare/workers-types@4.20260426.1)(gel@2.2.0)(kysely@0.28.17)
+        version: 0.45.2(@cloudflare/workers-types@4.20260405.1)(gel@2.2.0)(kysely@0.28.17)
       react:
         specifier: 19.2.6
         version: 19.2.6
@@ -2261,16 +2261,16 @@ importers:
         version: 24.42.0
       react:
         specifier: '>=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0'
-        version: 19.2.4
+        version: 19.2.6
       react-dom:
         specifier: '>=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0'
-        version: 19.2.4(react@19.2.4)
+        version: 19.2.4(react@19.2.6)
       react-is:
         specifier: ~19.2.6
         version: 19.2.6
       react-server-dom-webpack:
         specifier: '>=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0'
-        version: 19.3.0-canary-4fdf7cf2-20251003(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(webpack@5.105.4(esbuild@0.27.3))
+        version: 19.2.6(react-dom@19.2.4(react@19.2.6))(react@19.2.6)(webpack@5.105.4(esbuild@0.27.3))
       rsc-html-stream:
         specifier: ~0.0.7
         version: 0.0.7
@@ -6732,10 +6732,6 @@ packages:
     peerDependencies:
       acorn: ^6.0.0 || ^7.0.0 || ^8.0.0
 
-  acorn-loose@8.4.0:
-    resolution: {integrity: sha512-M0EUka6rb+QC4l9Z3T0nJEzNOO7JcoJlYMrBlyBCiFSXRyxjLKayd4TbQs2FDRWQU1h9FR7QVNHt+PEaoNL5rQ==}
-    engines: {node: '>=0.4.0'}
-
   acorn-loose@8.5.2:
     resolution: {integrity: sha512-PPvV6g8UGMGgjrMu+n/f9E/tCSkNQ2Y97eFvuVdJfG11+xdIeDcLyNdC8SHcrHbRqkfwLASdplyR6B6sKM1U4A==}
     engines: {node: '>=0.4.0'}
@@ -9999,10 +9995,6 @@ packages:
       '@types/react':
         optional: true
 
-  react@19.2.4:
-    resolution: {integrity: sha512-9nfp2hYpCwOjAN+8TZFGhtWEwgvWHXqESH8qT89AT/lWklpLON22Lc8pEtnpsZz7VmawabSU0gCjnj8aC0euHQ==}
-    engines: {node: '>=0.10.0'}
-
   react@19.2.6:
     resolution: {integrity: sha512-sfWGGfavi0xr8Pg0sVsyHMAOziVYKgPLNrS7ig+ivMNb3wbCBw3KxtflsGBAwD3gYQlE/AEZsTLgToRrSCjb0Q==}
     engines: {node: '>=0.10.0'}
@@ -11112,10 +11104,6 @@ packages:
 
   webdriver-bidi-protocol@0.4.1:
     resolution: {integrity: sha512-ARrjNjtWRRs2w4Tk7nqrf2gBI0QXWuOmMCx2hU+1jUt6d00MjMxURrhxhGbrsoiZKJrhTSTzbIrc554iKI10qw==}
-
-  webpack-sources@3.3.3:
-    resolution: {integrity: sha512-yd1RBzSGanHkitROoPFd6qsrxt+oFhg/129YzheDGqeustzX0vTZJZsSsQjVQC4yzBQ56K55XU8gaNCtIzOnTg==}
-    engines: {node: '>=10.13.0'}
 
   webpack-sources@3.4.1:
     resolution: {integrity: sha512-eACpxRN02yaawnt+uUNIF7Qje6A9zArxBbcAJjK1PK3S9Ycg5jIuJ8pW4q8EMnwNZCEGltcjkRx1QzOxOkKD8A==}
@@ -16084,10 +16072,6 @@ snapshots:
     dependencies:
       acorn: 8.16.0
 
-  acorn-loose@8.4.0:
-    dependencies:
-      acorn: 8.15.0
-
   acorn-loose@8.5.2:
     dependencies:
       acorn: 8.16.0
@@ -16763,7 +16747,7 @@ snapshots:
       esbuild: 0.25.12
       tsx: 4.21.0
 
-  drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260426.1)(gel@2.2.0)(kysely@0.28.17):
+  drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260405.1)(gel@2.2.0)(kysely@0.28.17):
     optionalDependencies:
       '@cloudflare/workers-types': 4.20260405.1
       gel: 2.2.0
@@ -19752,9 +19736,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  react-dom@19.2.4(react@19.2.4):
+  react-dom@19.2.4(react@19.2.6):
     dependencies:
-      react: 19.2.4
+      react: 19.2.6
       scheduler: 0.27.0
 
   react-dom@19.2.6(react@19.2.6):
@@ -19826,6 +19810,15 @@ snapshots:
       react: 19.2.6
       react-dom: 19.2.6(react@19.2.6)
 
+  react-server-dom-webpack@19.2.6(react-dom@19.2.4(react@19.2.6))(react@19.2.6)(webpack@5.105.4(esbuild@0.27.3)):
+    dependencies:
+      acorn-loose: 8.5.2
+      neo-async: 2.6.2
+      react: 19.2.6
+      react-dom: 19.2.4(react@19.2.6)
+      webpack: 5.105.4(esbuild@0.27.3)
+      webpack-sources: 3.4.1
+
   react-server-dom-webpack@19.2.6(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(webpack@5.105.4(esbuild@0.27.3)):
     dependencies:
       acorn-loose: 8.5.2
@@ -19843,15 +19836,6 @@ snapshots:
       react-dom: 19.2.6(react@19.2.6)
       webpack: 5.105.4
       webpack-sources: 3.4.1
-
-  react-server-dom-webpack@19.3.0-canary-4fdf7cf2-20251003(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(webpack@5.105.4(esbuild@0.27.3)):
-    dependencies:
-      acorn-loose: 8.4.0
-      neo-async: 2.6.2
-      react: 19.2.4
-      react-dom: 19.2.4(react@19.2.4)
-      webpack: 5.105.4(esbuild@0.27.3)
-      webpack-sources: 3.3.3
 
   react-style-singleton@2.2.3(@types/react@19.2.14)(react@19.2.6):
     dependencies:
@@ -21381,8 +21365,6 @@ snapshots:
   web-streams-polyfill@3.3.3: {}
 
   webdriver-bidi-protocol@0.4.1: {}
-
-  webpack-sources@3.3.3: {}
 
   webpack-sources@3.4.1: {}
 
