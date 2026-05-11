@@ -825,8 +825,8 @@ importers:
   playground/database-do:
     dependencies:
       kysely:
-        specifier: ^0.28.16
-        version: 0.28.16
+        specifier: ^0.28.17
+        version: 0.28.17
       react:
         specifier: 19.2.6
         version: 19.2.6
@@ -915,7 +915,7 @@ importers:
     dependencies:
       drizzle-orm:
         specifier: ^0.45.2
-        version: 0.45.2(@cloudflare/workers-types@4.20260426.1)(gel@2.2.0)(kysely@0.28.16)
+        version: 0.45.2(@cloudflare/workers-types@4.20260426.1)(gel@2.2.0)(kysely@0.28.17)
       react:
         specifier: 19.2.6
         version: 19.2.6
@@ -2238,11 +2238,11 @@ importers:
         specifier: ~3.3.1
         version: 3.3.1
       kysely:
-        specifier: ~0.28.16
-        version: 0.28.16
+        specifier: ~0.28.17
+        version: 0.28.17
       kysely-do:
         specifier: ~0.0.1-rc.1
-        version: 0.0.1-rc.1(kysely@0.28.16)
+        version: 0.0.1-rc.1(kysely@0.28.17)
       lodash:
         specifier: ~4.18.1
         version: 4.18.1
@@ -9002,8 +9002,8 @@ packages:
     peerDependencies:
       kysely: '*'
 
-  kysely@0.28.16:
-    resolution: {integrity: sha512-3i5pmOiZvMDj00qhrIVbH0AnioVTx22DMP7Vn5At4yJO46iy+FM8Y/g61ltenLVSo3fiO8h8Q3QOFgf/gQ72ww==}
+  kysely@0.28.17:
+    resolution: {integrity: sha512-nbD8lB9EB3wNdMhOCdx5Li8DxnLbvKByylRLcJ1h+4SkrowVeECAyZlyiKMThF7xFdRz0jSQ2MoJr+wXux2y0Q==}
     engines: {node: '>=20.0.0'}
 
   leac@0.6.0:
@@ -10080,14 +10080,6 @@ packages:
     peerDependencies:
       react: ^19.2.6
       react-dom: ^19.2.6
-      webpack: 5.105.4
-
-  react-server-dom-webpack@19.3.0-canary-4fdf7cf2-20251003:
-    resolution: {integrity: sha512-asWkic0OmDY9JSMD8Qt4JJk2o56ycFW03yFmHvTGOP5+OW+FCnqOFqDUntPQWNdQoyA9VM87EpCO7ywg3gR+DA==}
-    engines: {node: '>=0.10.0'}
-    peerDependencies:
-      react: 19.3.0-canary-4fdf7cf2-20251003
-      react-dom: 19.3.0-canary-4fdf7cf2-20251003
       webpack: 5.105.4
 
   react-style-singleton@2.2.3:
@@ -16694,11 +16686,11 @@ snapshots:
       esbuild: 0.25.12
       tsx: 4.21.0
 
-  drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260426.1)(gel@2.2.0)(kysely@0.28.16):
+  drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260426.1)(gel@2.2.0)(kysely@0.28.17):
     optionalDependencies:
       '@cloudflare/workers-types': 4.20260426.1
       gel: 2.2.0
-      kysely: 0.28.16
+      kysely: 0.28.17
 
   dunder-proto@1.0.1:
     dependencies:
@@ -18218,11 +18210,11 @@ snapshots:
 
   ky@1.11.0: {}
 
-  kysely-do@0.0.1-rc.1(kysely@0.28.16):
+  kysely-do@0.0.1-rc.1(kysely@0.28.17):
     dependencies:
-      kysely: 0.28.16
+      kysely: 0.28.17
 
-  kysely@0.28.16: {}
+  kysely@0.28.17: {}
 
   leac@0.6.0: {}
 
@@ -19701,7 +19693,6 @@ snapshots:
       tslib: 2.8.1
     optionalDependencies:
       '@types/react': 19.2.14
-
 
   react@19.2.6: {}
 
