@@ -1,3 +1,26 @@
+# =============================================================================
+# 🚨 SECURITY CRITICAL — NEVER MOVE THIS FILE TO .github/workflows/ 🚨
+# =============================================================================
+#
+# This workflow publishes the community npm package. It MUST ONLY be run
+# locally via agent-ci by maintainers with publish permissions.
+#
+# WHY: Running releases in GitHub Actions exposes OIDC tokens and npm
+# credentials to the CI runner. A poisoned cache or compromised action
+# could steal these tokens and publish malicious packages (TanStack-style
+# supply chain attack).
+#
+# HOW TO RUN:
+#   npx agent-ci run --workflow .agent-ci/workflows/community-release.yml
+#
+# REQUIREMENTS:
+#   - You must have npm publish permissions for the community package
+#   - Your npm token must be in .env.agent-ci or your shell environment
+#
+# If a contributor opens a PR that moves this file to .github/workflows/,
+# REJECT IT IMMEDIATELY.
+# =============================================================================
+
 name: Release Community Package
 
 on:
