@@ -23,7 +23,7 @@ jobs:
   debug-session:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Dependencies
         shell: pwsh
@@ -89,4 +89,4 @@ jobs:
           pwsh -File "$env:GITHUB_WORKSPACE/scripts/setup-windows-debug-env.ps1" @params
 
       - name: Start Interactive Debug Session
-        uses: mxschmitt/action-tmate@v3
+        uses: mxschmitt/action-tmate@c0afd6f790e3a5564914980036ebf83216678101 # v3

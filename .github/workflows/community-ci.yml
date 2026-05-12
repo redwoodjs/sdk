@@ -18,9 +18,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
-env:
-  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+# Cloudflare secrets are scoped to the specific steps that need them rather
+# than the workflow env, so that earlier steps running PR-author code
+# (install/build) do not have them in process scope.
 
 jobs:
   unit-tests:
@@ -32,11 +32,11 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'pull_request_target'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Enable Corepack
         run: corepack enable
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 24.14.0
           cache: "pnpm"
@@ -93,7 +93,7 @@ jobs:
           exit 1
 
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.pull_request.head.sha || github.event.inputs.ref || github.ref }}
 
@@ -101,7 +101,7 @@ jobs:
         run: corepack enable
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 24.14.0
           cache: "pnpm"
@@ -120,12 +120,15 @@ jobs:
           pnpm build
 
       - name: Run Community E2E Tests (Dev)
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           cd community
           pnpm test:e2e
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: community-e2e-dev-artifacts-${{ matrix.os }}-${{ matrix.package-manager }}
@@ -167,7 +170,7 @@ jobs:
           exit 1
 
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.pull_request.head.sha || github.event.inputs.ref || github.ref }}
 
@@ -175,7 +178,7 @@ jobs:
         run: corepack enable
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 24.14.0
           cache: "pnpm"
@@ -194,12 +197,15 @@ jobs:
           pnpm build
 
       - name: Run Community E2E Tests (Deploy)
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           cd community
           pnpm test:e2e
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: community-e2e-deploy-artifacts-${{ matrix.os }}-${{ matrix.package-manager }}

@@ -18,16 +18,17 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Enable Corepack
         run: corepack enable
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 24.14.0
-          cache: "pnpm"
+          # Cache intentionally disabled: this workflow publishes release
+          # artifacts and must not consume a cache that fork PRs could poison.
 
       - name: Get tag or input version
         id: vars
@@ -68,7 +69,7 @@ jobs:
           done
 
       - name: Upload packaged artifacts to GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           files: output/*
           tag_name: ${{ steps.vars.outputs.version }}
