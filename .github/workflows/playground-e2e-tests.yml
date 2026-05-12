@@ -164,9 +164,6 @@ jobs:
 
       - name: Run Playground E2E Tests (Dev)
         id: tests
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           pnpm install
           pnpm test:e2e
@@ -202,32 +199,14 @@ jobs:
       RWSDK_TEST_MAX_RETRIES_PER_CODE: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '20' || '' }}
       RWSDK_SKIP_DEV: "1"
 
-    # context(justinvdm, 2025-09-20):
-    # Only run this job for PRs from the same repository and pushes to main
-    # For security, GH won't expose secrets for fork PRs
-    if: |
-      github.event_name == 'push' ||
-      github.event_name == 'schedule' ||
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'pull_request_target'
+    # context(justinvdm, 2025-05-12):
+    # Only runs on push to main / workflow_dispatch / workflow_call.
+    # Never runs on pull_request (including forks) — requires Cloudflare secrets.
+    if: github.event_name != 'pull_request'
 
     steps:
-      - name: Require approval for external contributors
-        if: |
-          github.event_name == 'pull_request_target' &&
-          github.event.pull_request.user.login != 'renovate[bot]' &&
-          github.event.pull_request.author_association != 'OWNER' &&
-          github.event.pull_request.author_association != 'MEMBER' &&
-          github.event.pull_request.author_association != 'COLLABORATOR' &&
-          !contains(github.event.pull_request.labels.*.name, 'run-secure-tests')
-        run: |
-          echo "ERROR: This PR is from an external contributor and requires the 'run-secure-tests' label."
-          exit 1
-
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.event.inputs.ref || github.ref }}
 
       - name: Enable Corepack
         run: corepack enable

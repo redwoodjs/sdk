@@ -9,8 +9,7 @@ on:
       - ".notes/**"
       - "*.md"
       - "src/**/*.test.*"
-  pull_request_target:
-    types: [opened, synchronize, reopened]
+  pull_request:
     paths-ignore:
       - "docs/**"
       - ".notes/**"
@@ -103,33 +102,17 @@ jobs:
       RWSDK_PUPPETEER_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '300000' || '' }} # 5 mins
       RWSDK_HYDRATION_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '10000' || '' }} # 10s
       RWSDK_DEV_SERVER_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '900000' || '' }} # 15 mins
+      # For pull_request (including forks), skip the release/deploy smoke test.
+      # Only run the dev server smoke test to avoid needing Cloudflare secrets.
+      RWSDK_SKIP_RELEASE: ${{ github.event_name == 'pull_request' && '1' || '' }}
 
     # context(justinvdm, 2025-05-12):
-    # Only run this job for PRs from the same repository and pushes to main
-    # For security, GH won't expose secrets for fork PRs
-    if: |
-      github.event_name == 'push' ||
-      github.event_name == 'schedule' ||
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'pull_request_target'
+    # Runs on push to main, workflow_dispatch, workflow_call, and pull_request.
+    # For pull_request (including forks), only dev smoke tests run — no secrets.
 
     steps:
-      - name: Require approval for external contributors
-        if: |
-          github.event_name == 'pull_request_target' &&
-          github.event.pull_request.user.login != 'renovate[bot]' &&
-          github.event.pull_request.author_association != 'OWNER' &&
-          github.event.pull_request.author_association != 'MEMBER' &&
-          github.event.pull_request.author_association != 'COLLABORATOR' &&
-          !contains(github.event.pull_request.labels.*.name, 'run-secure-tests')
-        run: |
-          echo "ERROR: This PR is from an external contributor and requires the 'run-secure-tests' label."
-          exit 1
-
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.event.inputs.ref || github.sha }}
 
       - name: Enable Corepack
         run: corepack enable
