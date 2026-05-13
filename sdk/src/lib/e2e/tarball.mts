@@ -3,6 +3,7 @@ import { $ } from "execa";
 import fs from "node:fs";
 import path from "node:path";
 import { ROOT_DIR } from "../constants.mjs";
+import { IS_CI } from "./constants.mjs";
 import { copyProjectToTempDir } from "./environment.mjs";
 
 const log = (message: string) => console.log(message);
@@ -84,7 +85,9 @@ async function copyWranglerCache(
       log(`  ✅ Wrangler cache copied successfully`);
     } else {
       log(
-        `  ⚠️ No wrangler cache found in monorepo, deployment tests may require authentication`,
+        IS_CI
+          ? `  ℹ️ No wrangler cache found in monorepo; CI preview tests do not require it`
+          : `  ⚠️ No wrangler cache found in monorepo, deployment tests may require authentication`,
       );
     }
   } catch (error) {

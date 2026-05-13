@@ -9,8 +9,10 @@ import {
 import debug from "debug";
 import { mkdirp, pathExists } from "fs-extra";
 import { join } from "path";
+import { chromium as playwrightChromium } from "playwright-core";
 import type { Browser } from "puppeteer-core";
 import puppeteer from "puppeteer-core";
+import { $ } from "../$.mjs";
 import { SmokeTestOptions } from "./types.mjs";
 import { ensureTmpDir } from "./utils.mjs";
 
@@ -47,6 +49,84 @@ export async function launchBrowser(
 }
 
 /**
+ * Check if a server is up, trying localhost and loopback host variants.
+ */
+export async function checkServerUp(
+  baseUrl: string,
+  customPath: string = "/",
+  retries = 30,
+  includeRoot: boolean = true,
+): Promise<string> {
+  const pathsToCheck = includeRoot ? ["/"] : [];
+  if (customPath !== "/" && customPath !== "") {
+    pathsToCheck.push(customPath);
+  }
+  if (pathsToCheck.length === 0) {
+    pathsToCheck.push("/");
+  }
+
+  for (const path of pathsToCheck) {
+    const normalizedPath = path.startsWith("/") ? path : "/" + path;
+    const baseUrlObject = new URL(baseUrl);
+    const candidateBaseUrls = Array.from(
+      new Set([
+        baseUrl,
+        `${baseUrlObject.protocol}//127.0.0.1:${baseUrlObject.port}`,
+        `${baseUrlObject.protocol}//[::1]:${baseUrlObject.port}`,
+      ]),
+    );
+    const candidateUrls = candidateBaseUrls.map(
+      (candidateBaseUrl) => candidateBaseUrl + normalizedPath,
+    );
+
+    log(
+      "Checking if server is up at %s (max retries: %d)",
+      candidateUrls[0],
+      retries,
+    );
+
+    for (let i = 0; i < retries; i++) {
+      for (const candidateUrl of candidateUrls) {
+        try {
+          log(
+            "Attempt %d/%d to check server at %s",
+            i + 1,
+            retries,
+            candidateUrl,
+          );
+          console.log(
+            `Checking if server is up at ${candidateUrl} (attempt ${i + 1}/${retries})...`,
+          );
+          await $`curl --max-time 1 -s -o /dev/null -w "%{http_code}" ${candidateUrl}`;
+          log("Server is up at %s", candidateUrl);
+          console.log(`✅ Server is up at ${candidateUrl}`);
+          return candidateUrl;
+        } catch {
+          // Try the next host variant.
+        }
+      }
+
+      if (i === retries - 1) {
+        log(
+          "ERROR: Server at %s did not become available after %d attempts",
+          candidateUrls[0],
+          retries,
+        );
+        throw new Error(
+          `Server at ${candidateUrls[0]} did not become available after ${retries} attempts`,
+        );
+      }
+
+      log("Server not up yet, retrying in 2 seconds");
+      console.log(`Server not up yet, retrying in 2 seconds...`);
+      await new Promise<void>((resolve) => setTimeout(() => resolve(), 2000));
+    }
+  }
+
+  return "";
+}
+
+/**
  * Get the browser executable path
  */
 export async function getBrowserPath(
@@ -60,6 +140,16 @@ export async function getBrowserPath(
       `Using Chrome from environment variable: ${process.env.CHROME_PATH}`,
     );
     return process.env.CHROME_PATH;
+  }
+
+  try {
+    const playwrightPath = playwrightChromium.executablePath();
+    if (await pathExists(playwrightPath)) {
+      console.log(`Found Playwright Chrome at: ${playwrightPath}`);
+      return playwrightPath;
+    }
+  } catch (error) {
+    log("Playwright browser path unavailable: %O", error);
   }
 
   // Detect platform

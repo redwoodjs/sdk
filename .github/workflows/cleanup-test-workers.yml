@@ -18,4 +18,9 @@ jobs:
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: ./scripts/cleanup-test-workers.sh
+        run: |
+          if [[ -z "${CLOUDFLARE_ACCOUNT_ID:-}" || -z "${CLOUDFLARE_API_TOKEN:-}" ]]; then
+            echo "Skipping cleanup: Cloudflare credentials are not available in this run."
+            exit 0
+          fi
+          ./scripts/cleanup-test-workers.sh

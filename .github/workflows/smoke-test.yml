@@ -54,9 +54,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
-# Cloudflare secrets are scoped to the specific steps that need them rather
-# than the workflow env, so that earlier steps running PR-author code
-# (install/build) do not have them in process scope.
+# CI uses a local preview server for the release leg, so PR-author code
+# never receives Cloudflare credentials in this workflow.
 
 jobs:
   setup-matrix:
@@ -103,6 +102,7 @@ jobs:
       RWSDK_PUPPETEER_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '300000' || '' }} # 5 mins
       RWSDK_HYDRATION_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '10000' || '' }} # 10s
       RWSDK_DEV_SERVER_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '900000' || '' }} # 15 mins
+      RWSDK_SEQUENTIAL: "1"
 
     # context(justinvdm, 2025-05-12):
     # Only run this job for PRs from the same repository and pushes to main
@@ -143,6 +143,18 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: pnpm install
+
+      - name: Cache Playwright browsers
+        if: runner.os == 'Linux'
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-${{ runner.arch }}-playwright-1.60.0
+
+      - name: Install Playwright browser
+        if: runner.os == 'Linux'
+        shell: bash
+        run: npx playwright@1.60.0 install --with-deps chromium
 
       - name: Run Smoke Tests
         id: smoke-test
