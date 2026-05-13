@@ -7,7 +7,7 @@ on:
     paths:
       - 'community/**'
       - '.github/workflows/community-ci.yml'
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened]
     paths:
       - 'community/**'
@@ -30,7 +30,7 @@ jobs:
     if: |
       github.event_name == 'push' ||
       github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'pull_request_target'
+      github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Enable Corepack
@@ -77,12 +77,12 @@ jobs:
     if: |
       github.event_name == 'push' ||
       github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'pull_request_target'
+      github.event_name == 'pull_request'
 
     steps:
       - name: Require approval for external contributors
         if: |
-          github.event_name == 'pull_request_target' &&
+          github.event_name == 'pull_request' &&
           github.event.pull_request.user.login != 'renovate[bot]' &&
           github.event.pull_request.author_association != 'OWNER' &&
           github.event.pull_request.author_association != 'MEMBER' &&
@@ -154,12 +154,12 @@ jobs:
     if: |
       github.event_name == 'push' ||
       github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'pull_request_target'
+      github.event_name == 'pull_request'
 
     steps:
       - name: Require approval for external contributors
         if: |
-          github.event_name == 'pull_request_target' &&
+          github.event_name == 'pull_request' &&
           github.event.pull_request.user.login != 'renovate[bot]' &&
           github.event.pull_request.author_association != 'OWNER' &&
           github.event.pull_request.author_association != 'MEMBER' &&

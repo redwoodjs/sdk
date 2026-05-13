@@ -10,7 +10,7 @@ on:
       - "*.md"
       - "src/**/*.test.*"
       - "playground/community/**"
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened]
     paths-ignore:
       - "docs/**"
@@ -117,12 +117,12 @@ jobs:
       github.event_name == 'push' ||
       github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'pull_request_target'
+      github.event_name == 'pull_request'
 
     steps:
       - name: Require approval for external contributors
         if: |
-          github.event_name == 'pull_request_target' &&
+          github.event_name == 'pull_request' &&
           github.event.pull_request.user.login != 'renovate[bot]' &&
           github.event.pull_request.author_association != 'OWNER' &&
           github.event.pull_request.author_association != 'MEMBER' &&
@@ -209,12 +209,12 @@ jobs:
       github.event_name == 'push' ||
       github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'pull_request_target'
+      github.event_name == 'pull_request'
 
     steps:
       - name: Require approval for external contributors
         if: |
-          github.event_name == 'pull_request_target' &&
+          github.event_name == 'pull_request' &&
           github.event.pull_request.user.login != 'renovate[bot]' &&
           github.event.pull_request.author_association != 'OWNER' &&
           github.event.pull_request.author_association != 'MEMBER' &&
