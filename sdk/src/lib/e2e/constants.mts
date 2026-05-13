@@ -11,6 +11,9 @@ export const IS_CI = !!(
   process.env.NETLIFY
 );
 
+export const IS_PULL_REQUEST =
+  process.env.GITHUB_EVENT_NAME === "pull_request";
+
 export const RWSDK_SKIP_DEV =
   Boolean(process.env.RWSDK_SKIP_DEV);
 

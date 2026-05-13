@@ -20,6 +20,7 @@ import {
   HYDRATION_TIMEOUT,
   INSTALL_DEPENDENCIES_RETRIES,
   IS_CI,
+  IS_PULL_REQUEST,
   PUPPETEER_TIMEOUT,
   SETUP_PLAYGROUND_ENV_TIMEOUT,
   SETUP_WAIT_TIMEOUT,
@@ -389,8 +390,8 @@ export function createDeployment() {
         ? match[1]
         : Math.random().toString(36).substring(2, 15);
 
-      if (IS_CI) {
-        console.log("CI mode detected — using local preview instead of deploy");
+      if (IS_PULL_REQUEST) {
+        console.log("PR mode detected — using local preview instead of deploy");
         const previewResult = await runPreviewServer(
           (process.env.PACKAGE_MANAGER as "pnpm" | "npm" | "yarn") ||
             "pnpm",

@@ -114,8 +114,8 @@ export async function runReleaseTest(
   let stopPreview: (() => Promise<void>) | undefined;
 
   try {
-    if (ci) {
-      log("CI mode detected — using local preview instead of deploy");
+    if (process.env.GITHUB_EVENT_NAME === "pull_request") {
+      log("PR mode detected — using local preview instead of deploy");
       const previewResult = await runPreviewServer(
         state.options.packageManager,
         resources.targetDir || "",
