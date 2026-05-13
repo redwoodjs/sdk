@@ -114,7 +114,7 @@ export const configPlugin = ({
           build: {
             outDir: resolve(projectRootDir, "dist", "client"),
             manifest: true,
-            rolldownOptions: {
+            rollupOptions: {
               input: [],
             },
           },
@@ -193,7 +193,7 @@ export const configPlugin = ({
               fileName: () => path.basename(INTERMEDIATE_SSR_BRIDGE_PATH),
             },
             outDir: path.dirname(INTERMEDIATE_SSR_BRIDGE_PATH),
-            rolldownOptions: {
+            rollupOptions: {
               output: {
                 // context(justinvdm, 15 Sep 2025): The SSR bundle is a
                 // pre-compiled artifact. When the linker pass bundles it into
