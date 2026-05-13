@@ -197,11 +197,10 @@ All test suites can also be run manually on any branch using the `workflow_dispa
 
 #### Handling External Contributions
 
-For security, pull requests from external contributors require manual approval before the `smoke-test` and `playground-e2e` suites will run. Because these test suites require access to secrets, they are gated to prevent malicious code from running in a trusted environment.
+Pull requests use the `pull_request` trigger, which means fork PRs run in the fork's own context without access to repository secrets. Deploy-style tests use a local preview path (build + preview server) instead of actual Cloudflare deploys, so no secrets are needed for PR checks.
 
-*   **Initial Status**: When a PR is opened by an external contributor, the `smoke-test` and `playground-e2e` jobs will fail with an error message indicating that approval is required. This is an intentional failure to signal that a maintainer's action is needed.
-*   **Maintainer's Responsibility**: A core contributor must first perform a code review. If the code is deemed safe to test, the maintainer should add the label `run-secure-tests` to the pull request.
-*   **Triggering the Tests**: Once the label is applied, the tests will run automatically on the next commit to the branch. To run the tests immediately without waiting for a new commit, a maintainer can manually re-run the failed jobs from the GitHub Actions UI. This label acts as a one-time approval for the PR; all subsequent commits will also trigger the tests.
+*   **Initial Status**: When a PR is opened by an external contributor, all jobs run automatically without requiring approval.
+*   **Maintainer's Responsibility**: A core contributor should still review the code before merging. The `run-secure-tests` label is no longer required for PR tests to run.
 
 ### Smoke Testing
 
@@ -575,48 +574,54 @@ When the smoke tests or playground E2E tests fail on a peer dependency update, i
 
 ## Releasing Versions
 
-Releases are performed via GitHub Actions workflow dispatch. To trigger a release, go to the [Release workflow](https://github.com/redwoodjs/sdk/actions/workflows/release.yml) and click "Run workflow".
+Releases are performed locally by maintainers. For security, release workflows do not run in GitHub Actions — they run via agent-ci on your local machine.
 
-The release workflow supports several version types:
+### Prerequisites
 
-- `patch`: Increments the patch version (e.g., `1.0.0` → `1.0.1`)
-- `minor`: Increments the minor version (e.g., `1.0.0` → `1.1.0`)
-- `beta`: Increments the beta number (e.g., `1.0.0-beta.27` → `1.0.0-beta.28`)
-- `test`: Creates a test version with a timestamp (e.g., `1.0.0` → `1.0.0-test.20250101120000`)
-- `explicit`: Requires manually specifying the exact version string
+- Must be authenticated with npm (logged in via `npm login` or have `~/.npmrc` configured)
+- Must have GitHub CLI (`gh`) installed and authenticated (`gh auth login`)
+- Must have publish permissions for the `@redwoodjs` scope
 
-### Releasing a Beta Version
+### Core SDK Release
 
-To release a new beta version, use the `beta` version type in the GitHub Actions workflow dispatch. This automatically increments the beta number from the current version.
+```sh
+pnpm release        # interactive — prompts for version type
+pnpm release patch  # explicit version type
+pnpm release minor
+pnpm release beta
+pnpm release test   # test release with timestamp
+pnpm release explicit --version 1.2.3
+```
 
-**Example:** If the current version is `1.0.0-beta.27`, selecting `beta` as the version type will release `1.0.0-beta.28`.
+The release script:
+1. Bumps the version in `sdk/package.json`
+2. Builds the SDK with `NODE_ENV=production`
+3. Packs the tarball and runs smoke tests
+4. Publishes to npm
+5. Creates a GitHub release
+6. Pushes the version commit and tag
 
-The beta version type requires the current version to be in beta format (`X.Y.Z-beta.N`). If the current version is not a beta version, the release will fail with an error.
+Use `pnpm release --dry` to simulate without publishing.
 
-### Releasing a Major Version After Pre-Releases
+### Community Package Release
 
-When the current version is a pre-release (e.g., `1.0.0-beta.27`, `1.0.0-rc.1`, `1.0.0-alpha.5`), the `patch`, `minor`, and `major` version types are disabled. This prevents accidentally releasing a version when transitioning from a pre-release to a stable release. Note that `test` releases are excluded from this restriction.
+```sh
+pnpm release:community        # interactive
+pnpm release:community patch  # explicit version type
+pnpm release:community minor
+pnpm release:community major
+```
 
-To release a major version after a pre-release, use the `explicit` version type and specify the exact version string.
+### Containerized Release (agent-ci)
 
-**Example:** If the current version is `1.0.0-beta.27` and you want to release `1.0.0`:
+If you prefer to run releases inside a container, use the agent-ci workflows directly:
 
-1. Select `explicit` as the version type
-2. Enter `1.0.0` as the version
+```sh
+NPM_TOKEN=<token> GH_TOKEN_FOR_RELEASES=<token> VERSION_TYPE=patch \
+  npx agent-ci run --workflow .agent-ci/workflows/release.yml
+```
 
-The release script will validate that patch/minor cannot be used when in a pre-release and will provide a clear error message directing you to use `explicit` instead.
-
-### Releasing Community Package
-
-Releases for the `rwsdk-community` package are performed manually via GitHub Actions. Unlike the core SDK, this package uses independent versioning and does not follow the same release schedule.
-
-To trigger a release:
-1. Go to the [Release Community Package workflow](https://github.com/redwoodjs/sdk/actions/workflows/community-release.yml).
-2. Click "Run workflow".
-3. Select the release type (`patch`, `minor`, or `major`).
-4. Click "Run workflow".
-
-The workflow will build the package, update its version, publish it to npm, and push the version tag to the repository.
+See `.agent-ci/workflows/release.yml` for all available parameters.
 
 ## Unreleasing a Version
 

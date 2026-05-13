@@ -16,9 +16,8 @@
     "test:e2e": "cd sdk && pnpm test:e2e",
     "setup:e2e": "cd sdk && pnpm setup:e2e",
     "unrelease": "node scripts/unrelease.mjs",
-    "release": "AI_AGENT=1 npx @redwoodjs/agent-ci run --workflow .agent-ci/workflows/release.yml",
-    "release:dry": "cd sdk && ./scripts/release.sh patch --dry",
-    "release:community": "AI_AGENT=1 npx @redwoodjs/agent-ci run --workflow .agent-ci/workflows/community-release.yml"
+    "release": "./scripts/release-agent-ci.sh",
+    "release:community": "./scripts/release-community-agent-ci.sh"
   },
   "engines": {
     "node": ">=24.14.0",
