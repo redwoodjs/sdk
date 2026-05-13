@@ -194,7 +194,7 @@ jobs:
 
     # context(justinvdm, 2025-05-12):
     # Only runs on push to main / workflow_dispatch / workflow_call.
-    # In CI this uses local preview instead of a Cloudflare deploy.
+    # For pull_request events this uses local preview instead of a Cloudflare deploy.
     if: github.event_name != 'pull_request'
 
     steps:

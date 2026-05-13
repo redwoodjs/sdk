@@ -105,8 +105,8 @@ jobs:
 
     # context(justinvdm, 2025-05-12):
     # Runs on push to main, workflow_dispatch, workflow_call, and pull_request.
-    # In CI the smoke runner uses a local preview path (build + preview) instead
-    # of a cloud deploy. Local runs still deploy to Cloudflare.
+    # For pull_request events the smoke runner uses a local preview path (build + preview)
+    # instead of a cloud deploy. Push events and local runs still deploy to Cloudflare.
 
     steps:
       - name: Checkout repository

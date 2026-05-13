@@ -145,7 +145,7 @@ jobs:
       RWSDK_SEQUENTIAL: "1"
 
     # Only runs on push to main / workflow_dispatch.
-    # In CI this uses local preview instead of a Cloudflare deploy.
+    # For pull_request events this uses local preview instead of a Cloudflare deploy.
     if: github.event_name != 'pull_request'
 
     steps:
