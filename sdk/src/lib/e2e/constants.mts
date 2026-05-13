@@ -48,6 +48,12 @@ export const DEPLOYMENT_CHECK_TIMEOUT = process.env
     ? 30 * 1000
     : 5 * 60 * 1000;
 
+export const PREVIEW_SERVER_TIMEOUT = process.env.RWSDK_PREVIEW_SERVER_TIMEOUT
+  ? parseInt(process.env.RWSDK_PREVIEW_SERVER_TIMEOUT, 10)
+  : IS_DEBUG_MODE
+    ? 60 * 1000
+    : 10 * 60 * 1000;
+
 export const PUPPETEER_TIMEOUT = process.env.RWSDK_PUPPETEER_TIMEOUT
   ? parseInt(process.env.RWSDK_PUPPETEER_TIMEOUT, 10)
   : IS_DEBUG_MODE

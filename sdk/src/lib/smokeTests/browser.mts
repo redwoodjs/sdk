@@ -1140,8 +1140,8 @@ export async function checkServerUp(
   baseUrl: string,
   customPath: string = "/",
   retries = RETRIES,
-  bail: boolean = false, // Add bail parameter
-): Promise<boolean> {
+  bail: boolean = false,
+): Promise<string> {
   // Always check root first, then custom path if different
   const pathsToCheck = ["/"];
   if (customPath !== "/" && customPath !== "") {
@@ -1168,7 +1168,6 @@ export async function checkServerUp(
       retries,
     );
 
-    let up = false;
     for (let i = 0; i < retries; i++) {
       for (const candidateUrl of candidateUrls) {
         try {
@@ -1184,15 +1183,10 @@ export async function checkServerUp(
           await $`curl --max-time 1 -s -o /dev/null -w "%{http_code}" ${candidateUrl}`;
           log("Server is up at %s", candidateUrl);
           console.log(`✅ Server is up at ${candidateUrl}`);
-          up = true;
-          break;
+          return candidateUrl;
         } catch {
           // Try the next host variant.
         }
-      }
-
-      if (up) {
-        break;
       }
 
       if (i === retries - 1) {
@@ -1211,7 +1205,7 @@ export async function checkServerUp(
             1,
             `Server Availability Check: ${candidateUrls[0]}`,
           );
-          return false; // This will never be reached due to fail() exiting
+          return ""; // This will never be reached due to fail() exiting
         } else {
           // Otherwise throw an error that can be caught by the caller
           throw new Error(errorMessage);
@@ -1222,9 +1216,8 @@ export async function checkServerUp(
       console.log(`Server not up yet, retrying in 2 seconds...`);
       await new Promise<void>((resolve) => setTimeout(() => resolve(), 2000));
     }
-    if (!up) return false;
   }
-  return true;
+  return "";
 }
 
 /**

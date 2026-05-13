@@ -56,9 +56,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
-# Cloudflare secrets are scoped to the specific steps that need them rather
-# than the workflow env, so that earlier steps running PR-author code
-# (install/build) do not have them in process scope.
+# CI uses local preview for the deploy-style tests, so PR-author code
+# never receives Cloudflare credentials in this workflow.
 
 jobs:
   setup-matrix:
@@ -130,6 +129,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Cache Playwright browsers
+        if: runner.os == 'Linux'
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-${{ runner.arch }}-playwright-1.60.0
+
+      - name: Install Playwright browser
+        if: runner.os == 'Linux'
+        shell: bash
+        run: npx playwright@1.60.0 install --with-deps chromium
+
       - name: Build SDK
         run: |
           cd sdk
@@ -179,10 +190,11 @@ jobs:
       RWSDK_TEST_MAX_RETRIES: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '12' || '' }}
       RWSDK_TEST_MAX_RETRIES_PER_CODE: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '20' || '' }}
       RWSDK_SKIP_DEV: "1"
+      RWSDK_SEQUENTIAL: "1"
 
     # context(justinvdm, 2025-05-12):
     # Only runs on push to main / workflow_dispatch / workflow_call.
-    # Never runs on pull_request (including forks) — requires Cloudflare secrets.
+    # In CI this uses local preview instead of a Cloudflare deploy.
     if: github.event_name != 'pull_request'
 
     steps:
@@ -201,6 +213,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Cache Playwright browsers
+        if: runner.os == 'Linux'
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-${{ runner.arch }}-playwright-1.60.0
+
+      - name: Install Playwright browser
+        if: runner.os == 'Linux'
+        shell: bash
+        run: npx playwright@1.60.0 install --with-deps chromium
+
       - name: Build SDK
         run: |
           cd sdk
@@ -216,9 +240,6 @@ jobs:
 
       - name: Run Playground E2E Tests (Deploy)
         id: tests
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           pnpm install
           pnpm test:e2e

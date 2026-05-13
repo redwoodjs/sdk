@@ -1,11 +1,11 @@
 import { setTimeout } from "node:timers/promises";
-import { $ } from "../$.mjs";
 import {
   $expect,
   deleteD1Database,
   deleteWorker,
   isRelatedToTest,
   listD1Databases,
+  runPreviewServer as runE2EPreviewServer,
   runRelease as runE2ERelease,
 } from "../../lib/e2e/release.mjs";
 import { checkServerUp, checkUrl } from "./browser.mjs";
@@ -39,132 +39,7 @@ export async function runPreviewServer(
   packageManager: string = "pnpm",
   cwd?: string,
 ): Promise<{ url: string; stopPreview: () => Promise<void> }> {
-  console.log("🚀 Building for production preview...");
-
-  const pm = packageManager === "yarn-classic" ? "yarn" : packageManager;
-
-  await $(pm, ["run", "build"], {
-    cwd: cwd || process.cwd(),
-    stdio: "pipe",
-    env: { ...process.env, NODE_ENV: "production" },
-  });
-
-  console.log("✅ Build complete. Starting preview server...");
-
-  let previewProcess: any = null;
-  let isErrorExpected = false;
-
-  const stopPreview = async () => {
-    isErrorExpected = true;
-    if (!previewProcess || !previewProcess.pid) {
-      return;
-    }
-    console.log("Stopping preview server...");
-    if (process.platform !== "win32") {
-      try {
-        process.kill(-previewProcess.pid, "SIGKILL");
-      } catch {}
-    }
-    await previewProcess.catch(() => {});
-    console.log("Preview server stopped");
-  };
-
-  previewProcess = $(pm, ["run", "preview"], {
-    all: true,
-    detached: process.platform !== "win32",
-    cleanup: true,
-    forceKillAfterTimeout: 2000,
-    cwd: cwd || process.cwd(),
-    env: { ...process.env, NODE_ENV: "production" },
-    stdio: "pipe",
-  });
-
-  previewProcess.catch((error: any) => {
-    if (!isErrorExpected) {
-      log("Preview server process exited unexpectedly: %O", error);
-    }
-  });
-
-  let url = "";
-  let allOutput = "";
-
-  const handleOutput = (data: Buffer) => {
-    const output = data.toString();
-    allOutput += output;
-    if (!url) {
-      const patterns = [
-        /Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
-        /[➜→]\s*Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
-        /[\u27A1\u2192\u279C]\s*Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
-        /(https?:\/\/localhost:\d+)/i,
-        /localhost:(\d+)/i,
-        /server.*ready.*localhost:(\d+)/i,
-        /dev server.*localhost:(\d+)/i,
-      ];
-      for (const pattern of patterns) {
-        const match = output.match(pattern);
-        if (match) {
-          if (match[1] && match[1].startsWith("http")) {
-            url = match[1];
-            break;
-          } else if (match[1] && /^\d+$/.test(match[1])) {
-            url = `http://localhost:${match[1]}`;
-            break;
-          }
-        }
-      }
-    }
-  };
-
-  if (previewProcess.all) {
-    previewProcess.all.on("data", (data: Buffer) => handleOutput(data));
-  } else {
-    previewProcess.stdout?.on("data", (data: Buffer) => handleOutput(data));
-    previewProcess.stderr?.on("data", (data: Buffer) => handleOutput(data));
-  }
-
-  const waitForUrl = async (): Promise<string> => {
-    const start = Date.now();
-    const timeout = 60000;
-    while (Date.now() - start < timeout) {
-      if (url) return url;
-      if (!url && allOutput) {
-        const patterns = [
-          /Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
-          /[➜→]\s*Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
-          /[\u27A1\u2192\u279C]\s*Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
-          /(https?:\/\/localhost:\d+)/i,
-          /localhost:(\d+)/i,
-        ];
-        for (const pattern of patterns) {
-          const match = allOutput.match(pattern);
-          if (match) {
-            if (match[1] && match[1].startsWith("http")) {
-              url = match[1];
-              return url;
-            } else if (match[1] && /^\d+$/.test(match[1])) {
-              url = `http://localhost:${match[1]}`;
-              return url;
-            }
-          }
-        }
-      }
-      if (previewProcess.exitCode !== null) {
-        throw new Error(
-          `Preview server process exited with code ${previewProcess.exitCode}`,
-        );
-      }
-      await setTimeout(500);
-    }
-    throw new Error("Timed out waiting for preview server URL");
-  };
-
-  const serverUrl = await waitForUrl();
-  console.log(`✅ Preview server started at ${serverUrl}`);
-
-  await checkServerUp(serverUrl, "/", 30);
-
-  return { url: serverUrl, stopPreview };
+  return runE2EPreviewServer(packageManager, cwd);
 }
 
 async function waitForDeploymentContent(

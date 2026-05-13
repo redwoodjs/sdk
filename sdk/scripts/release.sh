@@ -274,7 +274,11 @@ else
   # todo(justinvdm, 11 Aug 2025): Fix style test flakiness
   # Pass the tarball path to the smoke test environment
   export RWSKD_SMOKE_TEST_TARBALL_PATH="$TARBALL_PATH"
-  if ! pnpm smoke-test --artifact-dir="$TEMP_DIR/artifacts" --skip-style-tests; then
+  SMOKE_TEST_ARGS=(--artifact-dir="$TEMP_DIR/artifacts" --skip-style-tests)
+  if [[ "${CI:-}" == "true" || "${CI:-}" == "1" || -n "${GITHUB_ACTIONS:-}" ]]; then
+    SMOKE_TEST_ARGS+=(--ci)
+  fi
+  if ! pnpm smoke-test "${SMOKE_TEST_ARGS[@]}"; then
     echo "  ❌ Smoke tests failed."
     exit 1
   fi

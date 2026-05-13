@@ -58,10 +58,6 @@ permissions:
   contents: write
   actions: write
 
-env:
-  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-
 jobs:
   release:
     if: github.ref == 'refs/heads/main' || github.event.inputs.version_type == 'test' || github.event.inputs.version_type == 'canary'
