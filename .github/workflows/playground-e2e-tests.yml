@@ -10,7 +10,7 @@ on:
       - "*.md"
       - "src/**/*.test.*"
       - "playground/community/**"
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened]
     paths-ignore:
       - "docs/**"
@@ -110,32 +110,13 @@ jobs:
       RWSDK_SKIP_DEPLOY: "1"
       RWSDK_SEQUENTIAL: "1"
 
-    # context(justinvdm, 2025-09-20):
-    # Only run this job for PRs from the same repository and pushes to main
-    # For security, GH won't expose secrets for fork PRs
-    if: |
-      github.event_name == 'push' ||
-      github.event_name == 'schedule' ||
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'pull_request_target'
+    # context(justinvdm, 2025-05-12):
+    # Runs on all PRs (including forks), push to main, and workflow_dispatch.
+    # No secrets needed — RWSDK_SKIP_DEPLOY ensures only dev server tests run.
 
     steps:
-      - name: Require approval for external contributors
-        if: |
-          github.event_name == 'pull_request_target' &&
-          github.event.pull_request.user.login != 'renovate[bot]' &&
-          github.event.pull_request.author_association != 'OWNER' &&
-          github.event.pull_request.author_association != 'MEMBER' &&
-          github.event.pull_request.author_association != 'COLLABORATOR' &&
-          !contains(github.event.pull_request.labels.*.name, 'run-secure-tests')
-        run: |
-          echo "ERROR: This PR is from an external contributor and requires the 'run-secure-tests' label."
-          exit 1
-
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.event.inputs.ref || github.ref }}
 
       - name: Enable Corepack
         run: corepack enable

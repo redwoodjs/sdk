@@ -29,9 +29,12 @@ PACKAGE_MANAGER=""
 while [[ $# -gt 0 ]]; do
   case $1 in
     --package-manager)
+      if [[ $# -lt 2 ]]; then
+        echo "❌ --package-manager requires a value"
+        exit 1
+      fi
       PACKAGE_MANAGER="$2"
-      shift
-      shift
+      shift 2
       ;;
     *)
       echo "Unknown parameter passed: $1"
@@ -74,7 +77,7 @@ ARTIFACT_DIR="$MONOREPO_ROOT/smoke-test-artifacts/$STARTER"
 mkdir -p "$ARTIFACT_DIR"
 
 # The smoke test handles all project setup, tarball creation, and installation
-if ! pnpm smoke-test --path="$STARTER_PATH" --artifact-dir="$ARTIFACT_DIR" --skip-style-tests --package-manager="$PACKAGE_MANAGER"; then
+if ! pnpm smoke-test --path="$STARTER_PATH" --artifact-dir="$ARTIFACT_DIR" --skip-style-tests --ci --package-manager="$PACKAGE_MANAGER"; then
   echo "❌ Smoke tests failed."
   exit 1
 fi

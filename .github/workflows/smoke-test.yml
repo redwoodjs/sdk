@@ -102,13 +102,11 @@ jobs:
       RWSDK_PUPPETEER_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '300000' || '' }} # 5 mins
       RWSDK_HYDRATION_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '10000' || '' }} # 10s
       RWSDK_DEV_SERVER_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '900000' || '' }} # 15 mins
-      # For pull_request (including forks), skip the release/deploy smoke test.
-      # Only run the dev server smoke test to avoid needing Cloudflare secrets.
-      RWSDK_SKIP_RELEASE: ${{ github.event_name == 'pull_request' && '1' || '' }}
 
     # context(justinvdm, 2025-05-12):
     # Runs on push to main, workflow_dispatch, workflow_call, and pull_request.
-    # For pull_request (including forks), only dev smoke tests run — no secrets.
+    # In CI the smoke runner uses a local preview path (build + preview) instead
+    # of a cloud deploy. Local runs still deploy to Cloudflare.
 
     steps:
       - name: Checkout repository
@@ -130,11 +128,8 @@ jobs:
       - name: Run Smoke Tests
         id: smoke-test
         shell: bash
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          ./scripts/retry.sh ./sdk/scripts/ci-smoke-test.sh --package-manager "${{ matrix.package-manager }}"
+          ./scripts/retry.sh ./sdk/scripts/ci-smoke-test.sh --package-manager "${{ matrix.package-manager || 'pnpm' }}"
 
       - name: Upload starter artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
