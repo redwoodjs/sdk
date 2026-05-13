@@ -49,22 +49,22 @@ export async function buildApp({
     }
     await writeFile(tempEntryPath, "");
 
-    const originalWorkerBuildConfig = workerEnv.config.build;
-    workerEnv.config.build = {
-      ...originalWorkerBuildConfig,
-      write: false,
-      rollupOptions: {
-        ...originalWorkerBuildConfig?.rollupOptions,
-        input: {
-          index: tempEntryPath,
-        },
-      },
+    // context(justinvdm, 2026-05-13): Mutate the resolved build config in
+    // place rather than replacing the build object. Creating a new object
+    // loses Vite's rolldownOptions compat proxy, so we save and restore
+    // individual properties instead.
+    const originalWrite = workerEnv.config.build.write;
+    const originalInput = workerEnv.config.build.rolldownOptions.input;
+    workerEnv.config.build.write = false;
+    workerEnv.config.build.rolldownOptions.input = {
+      index: tempEntryPath,
     };
 
     await builder.build(workerEnv);
 
     // Restore the original config
-    workerEnv.config.build = originalWorkerBuildConfig;
+    workerEnv.config.build.write = originalWrite;
+    workerEnv.config.build.rolldownOptions.input = originalInput;
   } finally {
     await rm(tempEntryPath, { force: true });
   }
