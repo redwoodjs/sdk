@@ -53,8 +53,8 @@ export async function buildApp({
     workerEnv.config.build = {
       ...originalWorkerBuildConfig,
       write: false,
-      rollupOptions: {
-        ...originalWorkerBuildConfig?.rollupOptions,
+      rolldownOptions: {
+        ...originalWorkerBuildConfig?.rolldownOptions,
         input: {
           index: tempEntryPath,
         },
@@ -78,6 +78,21 @@ export async function buildApp({
     esbuildOptions,
   });
 
+  // context(justinvdm, 2026-05-13): In Vite 8 (Rolldown), the worker build
+  // fragments into hundreds of tiny chunks by default. Disabling code
+  // splitting forces a single consolidated intermediate worker file, matching
+  // the architecture's expectation of an intermediate `worker.js` and
+  // preventing leftover artifacts from cluttering the final output.
+  workerEnv.config.build!.rolldownOptions!.output ??= {};
+  if (Array.isArray(workerEnv.config.build!.rolldownOptions!.output)) {
+    workerEnv.config.build!.rolldownOptions!.output.forEach(
+      (o: any) => (o.codeSplitting = false),
+    );
+  } else {
+    (workerEnv.config.build!.rolldownOptions!.output as any).codeSplitting =
+      false;
+  }
+
   console.log("Building worker...");
   process.env.RWSDK_BUILD_PASS = "worker";
   await builder.build(workerEnv);
@@ -95,14 +110,14 @@ export async function buildApp({
   console.log("Building client...");
   const clientEnv = builder.environments["client"]!;
   clientEnv.config.build ??= {} as any;
-  clientEnv.config.build.rollupOptions ??= {};
+  clientEnv.config.build.rolldownOptions ??= {};
   const clientEntryPointsArray = Array.from(clientEntryPoints);
 
   if (clientEntryPointsArray.length === 0) {
     log("No client entry points discovered, using default: src/client.tsx");
-    clientEnv.config.build.rollupOptions.input = ["src/client.tsx"];
+    clientEnv.config.build.rolldownOptions.input = ["src/client.tsx"];
   } else {
-    clientEnv.config.build.rollupOptions.input = clientEntryPointsArray;
+    clientEnv.config.build.rolldownOptions.input = clientEntryPointsArray;
   }
 
   await builder.build(clientEnv);
@@ -116,15 +131,43 @@ export async function buildApp({
 
   // context(justinvdm, 22 Sep 2025): This is a workaround to satisfy the
   // Cloudflare plugin's expectation of an entry chunk named `index`. The plugin
-  // now manages the worker build, so we no longer set rollup options
+  // now manages the worker build, so we no longer set rolldown options
   // directly. Instead, we re-point the original entry to the intermediate
   // worker bundle from the first pass. This allows the linker pass to re-use
   // the same plugin-driven configuration while bundling the final worker.
-  workerConfig.build!.rollupOptions!.input = {
+  workerConfig.build!.rolldownOptions!.input = {
     index: resolve(projectRootDir, "dist", "worker", "index.js"),
   };
 
+  // context(justinvdm, 2026-05-13): In Vite 8 (Rolldown), the linker pass
+  // was producing hundreds of tiny chunks instead of a single consolidated
+  // worker bundle. Setting codeSplitting:false forces all code (including
+  // dynamic imports from the intermediate worker artifact) into the entry
+  // chunk, restoring the single-file worker output the architecture expects.
+  workerConfig.build!.rolldownOptions!.output ??= {};
+  if (Array.isArray(workerConfig.build!.rolldownOptions!.output)) {
+    workerConfig.build!.rolldownOptions!.output.forEach(
+      (o: any) => (o.codeSplitting = false),
+    );
+  } else {
+    (workerConfig.build!.rolldownOptions!.output as any).codeSplitting = false;
+  }
+
   await builder.build(workerEnv);
+
+  // Remove first-pass JS artifacts that are now inlined into the final worker
+  // bundle. Without this cleanup, ~480 leftover chunks from the first pass
+  // clutter dist/worker/assets/ and inflate deployment file counts.
+  const workerAssetsDir = resolve(projectRootDir, "dist", "worker", "assets");
+  try {
+    for (const entry of await readdir(workerAssetsDir)) {
+      if (entry.endsWith(".js") || entry.endsWith(".js.map")) {
+        await rm(join(workerAssetsDir, entry), { force: true });
+      }
+    }
+  } catch {
+    // Directory may not exist (e.g. if the app has no worker assets)
+  }
 
   console.log("Build complete!");
 
