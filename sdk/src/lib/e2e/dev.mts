@@ -275,19 +275,29 @@ export async function runDevServer(
     const serverUrl = await waitForUrl();
     console.log(`✅ Development server started at ${serverUrl}`);
 
-    // Poll the URL to ensure it's live before proceeding
+    // Poll the URL to ensure it's live before proceeding.
+    // We try a few host variants because local runner networking can differ
+    // between localhost, 127.0.0.1, and ::1.
+    const parsedUrl = new URL(serverUrl);
+    const candidateUrls = Array.from(
+      new Set([
+        serverUrl,
+        `${parsedUrl.protocol}//127.0.0.1:${parsedUrl.port}`,
+        `${parsedUrl.protocol}//[::1]:${parsedUrl.port}`,
+      ]),
+    );
+
     await poll(
       async () => {
-        try {
-          const response = await fetch(serverUrl, {
-            signal: AbortSignal.timeout(1000),
-          });
-          // We consider any response (even 4xx or 5xx) as success,
-          // as it means the worker is routable.
-          return response.status > 0;
-        } catch (e) {
-          return false;
+        for (const candidateUrl of candidateUrls) {
+          try {
+            await $`curl --max-time 1 -s -o /dev/null -w "%{http_code}" ${candidateUrl}`;
+            return true;
+          } catch {
+            // Try the next host variant.
+          }
         }
+        return false;
       },
       {
         timeout: DEV_SERVER_CHECK_TIMEOUT,
