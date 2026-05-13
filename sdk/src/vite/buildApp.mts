@@ -83,13 +83,13 @@ export async function buildApp({
   // splitting forces a single consolidated intermediate worker file, matching
   // the architecture's expectation of an intermediate `worker.js` and
   // preventing leftover artifacts from cluttering the final output.
-  workerEnv.config.build!.rollupOptions!.output ??= {};
-  if (Array.isArray(workerEnv.config.build!.rollupOptions!.output)) {
-    workerEnv.config.build!.rollupOptions!.output.forEach(
+  workerEnv.config.build.rollupOptions.output ??= {};
+  if (Array.isArray(workerEnv.config.build.rollupOptions.output)) {
+    workerEnv.config.build.rollupOptions.output.forEach(
       (o: any) => (o.codeSplitting = false),
     );
   } else {
-    (workerEnv.config.build!.rollupOptions!.output as any).codeSplitting =
+    (workerEnv.config.build.rollupOptions.output as any).codeSplitting =
       false;
   }
 
@@ -127,7 +127,7 @@ export async function buildApp({
 
   // Re-configure the worker environment for the linking pass
   const workerConfig = workerEnv.config;
-  workerConfig.build!.emptyOutDir = false;
+  workerConfig.build.emptyOutDir = false;
 
   // context(justinvdm, 22 Sep 2025): This is a workaround to satisfy the
   // Cloudflare plugin's expectation of an entry chunk named `index`. The plugin
@@ -135,7 +135,7 @@ export async function buildApp({
   // directly. Instead, we re-point the original entry to the intermediate
   // worker bundle from the first pass. This allows the linker pass to re-use
   // the same plugin-driven configuration while bundling the final worker.
-  workerConfig.build!.rollupOptions!.input = {
+  workerConfig.build.rollupOptions.input = {
     index: resolve(projectRootDir, "dist", "worker", "index.js"),
   };
 
@@ -144,13 +144,13 @@ export async function buildApp({
   // worker bundle. Setting codeSplitting:false forces all code (including
   // dynamic imports from the intermediate worker artifact) into the entry
   // chunk, restoring the single-file worker output the architecture expects.
-  workerConfig.build!.rollupOptions!.output ??= {};
-  if (Array.isArray(workerConfig.build!.rollupOptions!.output)) {
-    workerConfig.build!.rollupOptions!.output.forEach(
+  workerConfig.build.rollupOptions.output ??= {};
+  if (Array.isArray(workerConfig.build.rollupOptions.output)) {
+    workerConfig.build.rollupOptions.output.forEach(
       (o: any) => (o.codeSplitting = false),
     );
   } else {
-    (workerConfig.build!.rollupOptions!.output as any).codeSplitting = false;
+    (workerConfig.build.rollupOptions.output as any).codeSplitting = false;
   }
 
   await builder.build(workerEnv);
