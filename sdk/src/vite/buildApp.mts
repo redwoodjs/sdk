@@ -53,8 +53,8 @@ export async function buildApp({
     workerEnv.config.build = {
       ...originalWorkerBuildConfig,
       write: false,
-      rolldownOptions: {
-        ...originalWorkerBuildConfig?.rolldownOptions,
+      rollupOptions: {
+        ...originalWorkerBuildConfig?.rollupOptions,
         input: {
           index: tempEntryPath,
         },
