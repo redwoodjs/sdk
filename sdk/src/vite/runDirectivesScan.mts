@@ -170,7 +170,7 @@ export const runDirectivesScan = async ({
     };
     const esbuild = await getViteEsbuild(rootConfig.root);
     const input =
-      initialEntries ?? environments.worker.config.build.rollupOptions?.input;
+      initialEntries ?? environments.worker.config.build.rolldownOptions?.input;
     let entries: string[];
 
     if (Array.isArray(input)) {
