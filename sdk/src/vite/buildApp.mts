@@ -53,8 +53,8 @@ export async function buildApp({
     workerEnv.config.build = {
       ...originalWorkerBuildConfig,
       write: false,
-      rolldownOptions: {
-        ...originalWorkerBuildConfig?.rolldownOptions,
+      rollupOptions: {
+        ...originalWorkerBuildConfig?.rollupOptions,
         input: {
           index: tempEntryPath,
         },
@@ -83,13 +83,13 @@ export async function buildApp({
   // splitting forces a single consolidated intermediate worker file, matching
   // the architecture's expectation of an intermediate `worker.js` and
   // preventing leftover artifacts from cluttering the final output.
-  workerEnv.config.build!.rolldownOptions!.output ??= {};
-  if (Array.isArray(workerEnv.config.build!.rolldownOptions!.output)) {
-    workerEnv.config.build!.rolldownOptions!.output.forEach(
+  workerEnv.config.build!.rollupOptions!.output ??= {};
+  if (Array.isArray(workerEnv.config.build!.rollupOptions!.output)) {
+    workerEnv.config.build!.rollupOptions!.output.forEach(
       (o: any) => (o.codeSplitting = false),
     );
   } else {
-    (workerEnv.config.build!.rolldownOptions!.output as any).codeSplitting =
+    (workerEnv.config.build!.rollupOptions!.output as any).codeSplitting =
       false;
   }
 
@@ -110,14 +110,14 @@ export async function buildApp({
   console.log("Building client...");
   const clientEnv = builder.environments["client"]!;
   clientEnv.config.build ??= {} as any;
-  clientEnv.config.build.rolldownOptions ??= {};
+  clientEnv.config.build.rollupOptions ??= {};
   const clientEntryPointsArray = Array.from(clientEntryPoints);
 
   if (clientEntryPointsArray.length === 0) {
     log("No client entry points discovered, using default: src/client.tsx");
-    clientEnv.config.build.rolldownOptions.input = ["src/client.tsx"];
+    clientEnv.config.build.rollupOptions.input = ["src/client.tsx"];
   } else {
-    clientEnv.config.build.rolldownOptions.input = clientEntryPointsArray;
+    clientEnv.config.build.rollupOptions.input = clientEntryPointsArray;
   }
 
   await builder.build(clientEnv);
@@ -135,7 +135,7 @@ export async function buildApp({
   // directly. Instead, we re-point the original entry to the intermediate
   // worker bundle from the first pass. This allows the linker pass to re-use
   // the same plugin-driven configuration while bundling the final worker.
-  workerConfig.build!.rolldownOptions!.input = {
+  workerConfig.build!.rollupOptions!.input = {
     index: resolve(projectRootDir, "dist", "worker", "index.js"),
   };
 
@@ -144,13 +144,13 @@ export async function buildApp({
   // worker bundle. Setting codeSplitting:false forces all code (including
   // dynamic imports from the intermediate worker artifact) into the entry
   // chunk, restoring the single-file worker output the architecture expects.
-  workerConfig.build!.rolldownOptions!.output ??= {};
-  if (Array.isArray(workerConfig.build!.rolldownOptions!.output)) {
-    workerConfig.build!.rolldownOptions!.output.forEach(
+  workerConfig.build!.rollupOptions!.output ??= {};
+  if (Array.isArray(workerConfig.build!.rollupOptions!.output)) {
+    workerConfig.build!.rollupOptions!.output.forEach(
       (o: any) => (o.codeSplitting = false),
     );
   } else {
-    (workerConfig.build!.rolldownOptions!.output as any).codeSplitting = false;
+    (workerConfig.build!.rollupOptions!.output as any).codeSplitting = false;
   }
 
   await builder.build(workerEnv);
