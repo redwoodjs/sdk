@@ -11,7 +11,13 @@
 # supply chain attack).
 #
 # HOW TO RUN:
-#   npx agent-ci run --workflow .agent-ci/workflows/release.yml
+#   VERSION_TYPE=canary npx agent-ci run --workflow .agent-ci/workflows/release.yml
+#
+# Parameters are passed via shell environment variables (read as secrets by agent-ci):
+#   VERSION_TYPE        patch | minor | explicit | test | canary (default: patch)
+#   VERSION             Explicit version string (required when VERSION_TYPE=explicit)
+#   CREATE_GH_RELEASE   true | false (default: true)
+#   SKIP_SMOKE_TESTS    true | false (default: false)
 #
 # REQUIREMENTS:
 #   - You must have npm publish permissions for the @redwoodjs scope
@@ -24,34 +30,7 @@
 
 name: Release
 
-on:
-  workflow_dispatch:
-    inputs:
-      version_type:
-        description: "The type of version bump"
-        required: true
-        type: choice
-        default: "patch"
-        options:
-          - patch
-          - minor
-          - explicit
-          - test
-          - canary
-      version:
-        description: "The explicit version to use (for 'explicit' type)"
-        required: false
-        type: string
-      create_gh_release:
-        description: "If false, skips creating a GitHub release."
-        required: false
-        type: boolean
-        default: true
-      skip_smoke_tests:
-        description: "If true, bypasses the smoke testing step. Use with caution."
-        required: false
-        type: boolean
-        default: false
+on: workflow_dispatch
 
 permissions:
   id-token: write
@@ -60,7 +39,11 @@ permissions:
 
 jobs:
   release:
-    if: github.ref == 'refs/heads/main' || github.event.inputs.version_type == 'test' || github.event.inputs.version_type == 'canary'
+    if: |
+      github.ref == 'refs/heads/main' ||
+      github.ref == 'refs/heads/next' ||
+      secrets.VERSION_TYPE == 'test' ||
+      secrets.VERSION_TYPE == 'canary'
     runs-on: ubuntu-latest
 
     steps:
@@ -102,31 +85,31 @@ jobs:
         id: release_script
         working-directory: sdk
         run: |
-          COMMAND="./scripts/release.sh ${{ github.event.inputs.version_type }}"
-          if [[ "${{ github.event.inputs.version_type }}" == "explicit" ]]; then
-            if [[ -z "${{ github.event.inputs.version }}" ]]; then
+          COMMAND="./scripts/release.sh ${{ secrets.VERSION_TYPE }}"
+          if [[ "${{ secrets.VERSION_TYPE }}" == "explicit" ]]; then
+            if [[ -z "${{ secrets.VERSION }}" ]]; then
               echo "::error::The 'version' input is required when 'version_type' is 'explicit'."
               exit 1
             fi
-            COMMAND="$COMMAND --version ${{ github.event.inputs.version }}"
-          elif [[ -n "${{ github.event.inputs.version }}" ]]; then
+            COMMAND="$COMMAND --version ${{ secrets.VERSION }}"
+          elif [[ -n "${{ secrets.VERSION }}" ]]; then
             echo "::error::The 'version' input can only be used when 'version_type' is 'explicit'."
             exit 1
           fi
-          if [[ "${{ github.event.inputs.skip_smoke_tests }}" == "true" ]]; then
+          if [[ "${{ secrets.SKIP_SMOKE_TESTS }}" == "true" ]]; then
             COMMAND="$COMMAND --skip-smoke-tests"
           fi
           echo "Running command: $COMMAND"
           eval $COMMAND
 
       - name: Create GitHub Release
-        if: success() && github.event.inputs.create_gh_release == 'true'
+        if: success() && secrets.CREATE_GH_RELEASE != 'false'
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_RELEASES }}
         run: |
           FLAGS="--generate-notes"
-          VERSION_TYPE="${{ github.event.inputs.version_type }}"
-          VERSION="${{ github.event.inputs.version }}"
+          VERSION_TYPE="${{ secrets.VERSION_TYPE }}"
+          VERSION="${{ secrets.VERSION }}"
 
           if [[ "$VERSION_TYPE" == "patch" || "$VERSION_TYPE" == "minor" || "$VERSION_TYPE" == "beta" ]]; then
             FLAGS="$FLAGS --latest"
