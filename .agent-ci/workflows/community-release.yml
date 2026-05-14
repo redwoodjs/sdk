@@ -1,21 +1,27 @@
+# =============================================================================
+# 🚨 SECURITY CRITICAL — NEVER MOVE THIS FILE TO .github/workflows/ 🚨
+# =============================================================================
+#
+# PRIMARY RELEASE PATH: pnpm release:community
+#   Runs directly on your machine using your existing npm (~/.npmrc) auth.
+#   No env vars needed.
+#
+# ALTERNATIVE (containerized): pnpm release:community:agent-ci
+#   Runs inside an agent-ci container. Requires auth tokens as env vars:
+#     NPM_TOKEN     npm publish token
+#     VERSION_TYPE  patch | minor | major (default: patch)
+#
+# WHY agent-ci: Running releases in GitHub Actions exposes OIDC tokens and npm
+# credentials to the CI runner. A poisoned cache or compromised action could
+# steal these tokens and publish malicious packages.
+#
+# If a contributor opens a PR that moves this file to .github/workflows/,
+# REJECT IT IMMEDIATELY.
+# =============================================================================
+
 name: Release Community Package
 
-on:
-  workflow_dispatch:
-    inputs:
-      type:
-        description: 'Release type'
-        required: true
-        type: choice
-        default: 'patch'
-        options:
-          - patch
-          - minor
-          - major
-
-permissions:
-  contents: write
-  id-token: write
+on: workflow_dispatch
 
 jobs:
   release:
@@ -58,7 +64,7 @@ jobs:
       - name: Version and Publish
         working-directory: community
         run: |
-          NEW_VERSION=$(npm version ${{ inputs.type }} --no-git-tag-version)
+          NEW_VERSION=$(npm version ${{ secrets.VERSION_TYPE }} --no-git-tag-version)
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
           PACK_OUTPUT=$(pnpm pack --pack-destination . --json)
           PACKAGE_FILE=$(PACK_OUTPUT="$PACK_OUTPUT" node -e "const packed = JSON.parse(process.env.PACK_OUTPUT); const entry = Array.isArray(packed) ? packed[0] : packed; if (!entry?.filename) { throw new Error('pnpm pack did not return a filename'); } console.log(entry.filename);")

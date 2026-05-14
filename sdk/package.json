@@ -182,6 +182,7 @@
     "magic-string": "~0.30.21",
     "picocolors": "~1.1.1",
     "proper-lockfile": "~4.1.2",
+    "playwright-core": "1.60.0",
     "puppeteer-core": "~24.42.0",
     "react-is": "~19.2.6",
     "rsc-html-stream": "~0.0.7",

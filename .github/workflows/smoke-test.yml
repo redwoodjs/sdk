@@ -9,7 +9,7 @@ on:
       - ".notes/**"
       - "*.md"
       - "src/**/*.test.*"
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened]
     paths-ignore:
       - "docs/**"
@@ -51,12 +51,11 @@ on:
         default: false
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
-env:
-  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+# CI uses a local preview server for the release leg, so PR-author code
+# never receives Cloudflare credentials in this workflow.
 
 jobs:
   setup-matrix:
@@ -103,6 +102,7 @@ jobs:
       RWSDK_PUPPETEER_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '300000' || '' }} # 5 mins
       RWSDK_HYDRATION_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '10000' || '' }} # 10s
       RWSDK_DEV_SERVER_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '900000' || '' }} # 15 mins
+      RWSDK_SEQUENTIAL: "1"
 
     # context(justinvdm, 2025-05-12):
     # Only run this job for PRs from the same repository and pushes to main
@@ -111,12 +111,12 @@ jobs:
       github.event_name == 'push' ||
       github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'pull_request_target'
+      github.event_name == 'pull_request'
 
     steps:
       - name: Require approval for external contributors
         if: |
-          github.event_name == 'pull_request_target' &&
+          github.event_name == 'pull_request' &&
           github.event.pull_request.user.login != 'renovate[bot]' &&
           github.event.pull_request.author_association != 'OWNER' &&
           github.event.pull_request.author_association != 'MEMBER' &&
@@ -127,7 +127,7 @@ jobs:
           exit 1
 
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.pull_request.head.sha || github.event.inputs.ref || github.sha }}
 
@@ -135,7 +135,7 @@ jobs:
         run: corepack enable
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 24.14.0
           cache: "pnpm"
@@ -144,14 +144,29 @@ jobs:
         shell: bash
         run: pnpm install
 
+      - name: Cache Playwright browsers
+        if: runner.os == 'Linux'
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-${{ runner.arch }}-playwright-1.60.0
+
+      - name: Install Playwright browser
+        if: runner.os == 'Linux'
+        shell: bash
+        run: npx playwright@1.60.0 install --with-deps chromium
+
       - name: Run Smoke Tests
         id: smoke-test
         shell: bash
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           ./scripts/retry.sh ./sdk/scripts/ci-smoke-test.sh --package-manager "${{ matrix.package-manager }}"
 
       - name: Upload starter artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: smoke-test-artifacts-starter-${{ matrix.os }}-${{ matrix.package-manager }}

@@ -216,3 +216,4 @@ starters/standard/.pnpm-store
 .agent/workflows/user
 .devcontainer/kindling/
 .kindling/tasks/
+.env.agent-ci

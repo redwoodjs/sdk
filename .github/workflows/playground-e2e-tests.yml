@@ -53,7 +53,7 @@ on:
         default: false
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 env:
@@ -198,6 +198,7 @@ jobs:
       RWSDK_TEST_MAX_RETRIES: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '12' || '' }}
       RWSDK_TEST_MAX_RETRIES_PER_CODE: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '20' || '' }}
       RWSDK_SKIP_DEV: "1"
+      RWSDK_SEQUENTIAL: "1"
 
     # context(justinvdm, 2025-09-20):
     # Only run this job for PRs from the same repository and pushes to main

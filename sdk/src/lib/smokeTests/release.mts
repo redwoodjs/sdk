@@ -5,10 +5,12 @@ import {
   deleteWorker,
   isRelatedToTest,
   listD1Databases,
+  runPreviewServer as runE2EPreviewServer,
   runRelease as runE2ERelease,
 } from "../../lib/e2e/release.mjs";
 import { checkServerUp, checkUrl } from "./browser.mjs";
 import { log } from "./constants.mjs";
+import { state } from "./state.mjs";
 import { TestResources } from "./types.mjs";
 
 export {
@@ -28,6 +30,16 @@ export async function runRelease(
   resourceUniqueKey: string,
 ): Promise<{ url: string; workerName: string }> {
   return runE2ERelease(cwd, projectDir, resourceUniqueKey);
+}
+
+/**
+ * Run the local preview server (build + preview) and return the URL
+ */
+export async function runPreviewServer(
+  packageManager: string = "pnpm",
+  cwd?: string,
+): Promise<{ url: string; stopPreview: () => Promise<void> }> {
+  return runE2EPreviewServer(packageManager, cwd);
 }
 
 async function waitForDeploymentContent(
@@ -93,31 +105,63 @@ export async function runReleaseTest(
   realtime: boolean = false,
   skipHmr: boolean = false,
   skipStyleTests: boolean = false,
+  ci: boolean = false,
 ): Promise<void> {
   log("Starting release test");
   console.log("\n🚀 Testing production deployment");
 
+  let url: string;
+  let stopPreview: (() => Promise<void>) | undefined;
+
   try {
-    log("Running release process");
-    const { url, workerName } = await runRelease(
-      resources.targetDir || "",
-      projectDir || "",
-      resources.resourceUniqueKey,
-    );
+    if (process.env.GITHUB_EVENT_NAME === "pull_request") {
+      log("PR mode detected — using local preview instead of deploy");
+      const previewResult = await runPreviewServer(
+        state.options.packageManager,
+        resources.targetDir || "",
+      );
+      url = previewResult.url;
+      stopPreview = previewResult.stopPreview;
+    } else {
+      log("Running release process");
+      const { url: deployUrl, workerName } = await runRelease(
+        resources.targetDir || "",
+        projectDir || "",
+        resources.resourceUniqueKey,
+      );
+      url = deployUrl;
 
-    // Wait a moment before checking server availability
-    log("Waiting 1s before checking server...");
-    await setTimeout(1000);
+      // Wait a moment before checking server availability
+      log("Waiting 1s before checking server...");
+      await setTimeout(1000);
 
-    // DRY: check both root and custom path
-    await checkServerUp(url, "/");
+      // DRY: check both root and custom path
+      await checkServerUp(url, "/");
 
-    // A fresh *.workers.dev subdomain can return 200 with Cloudflare's
-    // "There is nothing here yet" placeholder before the worker code is
-    // globally propagated. Poll the URL until the response body contains
-    // an rwsdk-rendered marker so we don't run the browser tests against
-    // the placeholder.
-    await waitForDeploymentContent(url);
+      // A fresh *.workers.dev subdomain can return 200 with Cloudflare's
+      // "There is nothing here yet" placeholder before the worker code is
+      // globally propagated. Poll the URL until the response body contains
+      // an rwsdk-rendered marker so we don't run the browser tests against
+      // the placeholder.
+      await waitForDeploymentContent(url);
+
+      // Store the worker name if we didn't set it earlier
+      if (resources && !resources.workerName) {
+        log("Storing worker name: %s", workerName);
+        resources.workerName = workerName;
+      }
+
+      // Mark that we created this worker during the test
+      if (resources) {
+        log("Marking worker %s as created during this test", workerName);
+        resources.workerCreatedDuringTest = true;
+
+        // Update the global state
+        if (resources.workerCreatedDuringTest !== undefined) {
+          resources.workerCreatedDuringTest = true;
+        }
+      }
+    }
 
     // Now run the tests with the custom path
     const testUrl = new URL("/__smoke_test", url).toString();
@@ -135,25 +179,14 @@ export async function runReleaseTest(
       skipStyleTests, // Add skip style tests option
     );
     log("Release test completed successfully");
-
-    // Store the worker name if we didn't set it earlier
-    if (resources && !resources.workerName) {
-      log("Storing worker name: %s", workerName);
-      resources.workerName = workerName;
-    }
-
-    // Mark that we created this worker during the test
-    if (resources) {
-      log("Marking worker %s as created during this test", workerName);
-      resources.workerCreatedDuringTest = true;
-
-      // Update the global state
-      if (resources.workerCreatedDuringTest !== undefined) {
-        resources.workerCreatedDuringTest = true;
-      }
-    }
   } catch (error) {
     log("Error during release testing: %O", error);
     throw error;
+  } finally {
+    if (stopPreview) {
+      await stopPreview().catch((e) => {
+        log("Error stopping preview server: %O", e);
+      });
+    }
   }
 }

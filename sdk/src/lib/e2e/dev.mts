@@ -1,7 +1,7 @@
 import debug from "debug";
 import { setTimeout as sleep } from "node:timers/promises";
 import { $, $sh } from "../../lib/$.mjs";
-import { poll } from "./poll.mjs";
+import { checkServerUp } from "./browser.mjs";
 import { PackageManager } from "./types.mjs";
 import { IS_DEBUG_MODE } from "./constants.mjs";
 
@@ -275,26 +275,21 @@ export async function runDevServer(
     const serverUrl = await waitForUrl();
     console.log(`✅ Development server started at ${serverUrl}`);
 
-    // Poll the URL to ensure it's live before proceeding
-    await poll(
-      async () => {
-        try {
-          const response = await fetch(serverUrl, {
-            signal: AbortSignal.timeout(1000),
-          });
-          // We consider any response (even 4xx or 5xx) as success,
-          // as it means the worker is routable.
-          return response.status > 0;
-        } catch (e) {
-          return false;
-        }
-      },
-      {
-        timeout: DEV_SERVER_CHECK_TIMEOUT,
-      },
+    // context(justinvdm, 2026-05-13): Probe the debug endpoint instead of
+    // the app root because the root response can take several seconds to wake
+    // up even after Vite prints its local URL.
+    const readinessRetries = Math.max(
+      1,
+      Math.ceil(DEV_SERVER_CHECK_TIMEOUT / 2000),
+    );
+    const reachableDebugUrl = await checkServerUp(
+      serverUrl,
+      "/__debug",
+      readinessRetries,
+      false,
     );
 
-    return { url: serverUrl, stopDev };
+    return { url: new URL(reachableDebugUrl).origin, stopDev };
   } catch (error) {
     // Make sure to try to stop the server on error
     log("Error during dev server startup: %O", error);
