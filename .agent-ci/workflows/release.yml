@@ -64,6 +64,12 @@ jobs:
       - name: Update npm
         run: npm install -g npm@latest
 
+      - name: Install release tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh
+          npx playwright@1.60.0 install --with-deps chromium
+
       - name: Install dependencies
         run: pnpm install
 
@@ -76,6 +82,10 @@ jobs:
       - name: Run release script
         id: release_script
         working-directory: sdk
+        env:
+          CI: "1"
+          GITHUB_ACTIONS: "1"
+          GITHUB_EVENT_NAME: "pull_request"
         run: |
           VERSION_TYPE="${{ secrets.VERSION_TYPE }}"
           VERSION="${{ secrets.VERSION }}"
@@ -101,13 +111,18 @@ jobs:
           eval $COMMAND
 
       - name: Create GitHub Release
-        if: success() && secrets.CREATE_GH_RELEASE != 'false'
+        if: success()
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_RELEASES }}
+          CREATE_GH_RELEASE: ${{ secrets.CREATE_GH_RELEASE }}
+          DRY_RUN: ${{ secrets.DRY_RUN }}
         run: |
-          if ! command -v gh &> /dev/null; then
-            echo "Warning: gh CLI not found in container. Skipping GitHub release creation."
-            echo "Install gh locally or run this workflow on a runner with gh installed."
+          if [[ "${CREATE_GH_RELEASE:-true}" == "false" ]]; then
+            echo "Skipping GitHub release creation as requested."
+            exit 0
+          fi
+          if [[ "${DRY_RUN:-false}" == "true" ]]; then
+            echo "Skipping GitHub release creation for dry run."
             exit 0
           fi
 
@@ -121,7 +136,7 @@ jobs:
             # For explicit versions, we check the version string to determine if it's a pre-release
             if [[ "$VERSION" == *"-beta."* ]]; then
               FLAGS="$FLAGS --latest"
-            elif [[ "$VERSION" == *"-"* ]]; then
+            elif [[ "$VERSION" == *"-*" ]]; then
               FLAGS="$FLAGS --prerelease"
             else
               FLAGS="$FLAGS --latest"
@@ -130,9 +145,23 @@ jobs:
             FLAGS="$FLAGS --prerelease"
           fi
 
-          echo "Creating GitHub release for tag $TAG_NAME with flags: $FLAGS"
-          gh release create "$TAG_NAME" $FLAGS
+          REPO_URL="$(git remote get-url origin)"
+          case "$REPO_URL" in
+            https://github.com/*)
+              REPO="${REPO_URL#https://github.com/}"
+              REPO="${REPO%.git}"
+              ;;
+            git@github.com:*)
+              REPO="${REPO_URL#git@github.com:}"
+              REPO="${REPO%.git}"
+              ;;
+            *)
+              REPO="${GITHUB_REPOSITORY:-redwoodjs/sdk}"
+              ;;
+          esac
 
+          echo "Creating GitHub release for $REPO tag $TAG_NAME with flags: $FLAGS"
+          gh --repo "$REPO" release create "$TAG_NAME" $FLAGS
 
       - name: Prune node_modules for artifact upload
         if: failure() && steps.release_script.outputs.project-dir
