@@ -15,7 +15,9 @@
     "setup:wrangler": "./scripts/setup-wrangler-auth.sh",
     "test:e2e": "cd sdk && pnpm test:e2e",
     "setup:e2e": "cd sdk && pnpm setup:e2e",
-    "unrelease": "node scripts/unrelease.mjs"
+    "unrelease": "node scripts/unrelease.mjs",
+    "release": "./scripts/release-agent-ci.sh",
+    "release:community": "./scripts/release-community-agent-ci.sh"
   },
   "engines": {
     "node": ">=24.14.0",

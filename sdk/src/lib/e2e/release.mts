@@ -5,10 +5,11 @@ import { pathExists } from "fs-extra";
 import * as fs from "fs/promises";
 import { parse as parseJsonc } from "jsonc-parser";
 import { setTimeout } from "node:timers/promises";
-import { basename, dirname, join, resolve } from "path";
+import { basename, dirname, join, relative, resolve } from "path";
 import { $ } from "../../lib/$.mjs";
+import { checkServerUp } from "./browser.mjs";
 import { extractLastJson, parseJson } from "../../lib/jsonUtils.mjs";
-import { IS_DEBUG_MODE } from "./constants.mjs";
+import { IS_DEBUG_MODE, PREVIEW_SERVER_TIMEOUT } from "./constants.mjs";
 
 const log = debug("rwsdk:e2e:release");
 
@@ -537,6 +538,105 @@ export async function runRelease(
     log("ERROR: Failed to run release command: %O", error);
     throw error;
   }
+}
+
+/**
+ * Run a local production preview server (build + preview) and return the URL.
+ */
+export async function runPreviewServer(
+  packageManager: string = "pnpm",
+  cwd?: string,
+): Promise<{ url: string; stopPreview: () => Promise<void> }> {
+  console.log("🚀 Building for production preview...");
+
+  const pm = packageManager === "yarn-classic" ? "yarn" : packageManager;
+
+  await $(pm, ["run", "build"], {
+    cwd: cwd || process.cwd(),
+    stdio: "pipe",
+    env: { ...process.env, NODE_ENV: "production" },
+  });
+
+  console.log("✅ Build complete. Starting preview server...");
+
+  let previewProcess: any = null;
+  let isErrorExpected = false;
+
+  const stopPreview = async () => {
+    isErrorExpected = true;
+    if (!previewProcess || !previewProcess.pid) {
+      return;
+    }
+    console.log("Stopping preview server...");
+    if (process.platform !== "win32") {
+      try {
+        process.kill(-previewProcess.pid, "SIGKILL");
+      } catch {}
+    }
+    await previewProcess.catch(() => {});
+    console.log("Preview server stopped");
+  };
+
+  previewProcess = $(pm, ["run", "preview", "--", "--port", "4173", "--strictPort"], {
+    all: true,
+    detached: process.platform !== "win32",
+    cleanup: true,
+    forceKillAfterTimeout: 2000,
+    cwd: cwd || process.cwd(),
+    env: { ...process.env, NODE_ENV: "production" },
+    stdio: "pipe",
+  });
+
+  previewProcess.catch((error: any) => {
+    if (!isErrorExpected) {
+      log("Preview server process exited unexpectedly: %O", error);
+    }
+  });
+
+  const ensurePreviewDeployConfig = async () => {
+    const deployConfigPath = resolve(cwd || process.cwd(), ".wrangler/deploy/config.json");
+    if (await pathExists(deployConfigPath)) {
+      return;
+    }
+
+    let workerConfigPath: string | null = null;
+    for (const candidate of ["wrangler.jsonc", "wrangler.json"]) {
+      const resolvedCandidate = resolve(cwd || process.cwd(), candidate);
+      if (await pathExists(resolvedCandidate)) {
+        workerConfigPath = resolvedCandidate;
+        break;
+      }
+    }
+
+    if (!workerConfigPath) {
+      throw new Error(
+        `Unable to create preview deploy config because no wrangler.jsonc or wrangler.json was found in ${cwd || process.cwd()}`,
+      );
+    }
+
+    await fs.mkdir(dirname(deployConfigPath), { recursive: true });
+    const deployConfig = {
+      configPath: relative(dirname(deployConfigPath), workerConfigPath),
+      auxiliaryWorkers: [],
+    };
+    await fs.writeFile(deployConfigPath, JSON.stringify(deployConfig, null, 2));
+  };
+
+  await ensurePreviewDeployConfig();
+
+  // context(justinvdm, 2026-05-13): Give the CI preview path the same
+  // readiness budget as the dev server so local agent-ci runs can absorb build
+  // and startup latency without falling back to Cloudflare.
+  const reachableDebugUrl = await checkServerUp(
+    "http://localhost:4173",
+    "/__debug",
+    Math.max(1, Math.ceil(PREVIEW_SERVER_TIMEOUT / 2000)),
+    false,
+  );
+  const serverUrl = new URL(reachableDebugUrl).origin;
+  console.log(`✅ Preview server started at ${serverUrl}`);
+
+  return { url: serverUrl, stopPreview };
 }
 
 /**

@@ -11,6 +11,9 @@ export const IS_CI = !!(
   process.env.NETLIFY
 );
 
+export const IS_PULL_REQUEST =
+  process.env.GITHUB_EVENT_NAME === "pull_request";
+
 export const RWSDK_SKIP_DEV =
   Boolean(process.env.RWSDK_SKIP_DEV);
 
@@ -47,6 +50,12 @@ export const DEPLOYMENT_CHECK_TIMEOUT = process.env
   : IS_DEBUG_MODE
     ? 30 * 1000
     : 5 * 60 * 1000;
+
+export const PREVIEW_SERVER_TIMEOUT = process.env.RWSDK_PREVIEW_SERVER_TIMEOUT
+  ? parseInt(process.env.RWSDK_PREVIEW_SERVER_TIMEOUT, 10)
+  : IS_DEBUG_MODE
+    ? 60 * 1000
+    : 10 * 60 * 1000;
 
 export const PUPPETEER_TIMEOUT = process.env.RWSDK_PUPPETEER_TIMEOUT
   ? parseInt(process.env.RWSDK_PUPPETEER_TIMEOUT, 10)

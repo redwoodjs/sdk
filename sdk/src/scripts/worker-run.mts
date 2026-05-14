@@ -5,6 +5,7 @@ import path from "path";
 import { pathToFileURL } from "url";
 import * as vite from "vite";
 import { createLogger } from "vite";
+import { checkServerUp } from "../lib/e2e/browser.mjs";
 
 const debug = dbg("rwsdk:worker-run");
 
@@ -59,17 +60,67 @@ const main = async () => {
     await server.listen();
 
     const fileUrl = pathToFileURL(scriptPath).href;
-    const url = `http://localhost:${port}/__worker-run?script=${encodeURIComponent(
-      fileUrl,
-    )}`;
-    debug("Fetching %s", url);
+    const readyUrl = await checkServerUp(
+      `http://localhost:${port}`,
+      "/__debug",
+      30,
+      false,
+    );
+    const readyOrigin = new URL(readyUrl).origin;
+    const readyOriginUrl = new URL(readyOrigin);
+    const candidateBaseUrls = Array.from(
+      new Set([
+        readyOrigin,
+        `${readyOriginUrl.protocol}//127.0.0.1:${readyOriginUrl.port}`,
+        `${readyOriginUrl.protocol}//[::1]:${readyOriginUrl.port}`,
+      ]),
+    );
 
-    const response = await fetch(url, {
-      headers: {
-        "x-rwsdk-worker-run-token": token,
-      },
-    });
-    debug("Response from worker: %s", response);
+    let response: Response | undefined;
+    let lastFetchError: unknown;
+
+    for (const candidateBaseUrl of candidateBaseUrls) {
+      const url = `${candidateBaseUrl}/__worker-run?script=${encodeURIComponent(
+        fileUrl,
+      )}`;
+      const fetchAttempts = 5;
+      debug("Fetching %s", url);
+
+      for (let attempt = 0; attempt < fetchAttempts; attempt++) {
+        try {
+          response = await fetch(url, {
+            headers: {
+              "x-rwsdk-worker-run-token": token,
+            },
+          });
+          debug("Response from worker: %s", response);
+          break;
+        } catch (error) {
+          lastFetchError = error;
+          debug(
+            "Fetch failed for %s on attempt %d/%d: %O",
+            url,
+            attempt + 1,
+            fetchAttempts,
+            error,
+          );
+
+          if (attempt < fetchAttempts - 1) {
+            await new Promise<void>((resolve) => {
+              setTimeout(() => resolve(), 2000);
+            });
+          }
+        }
+      }
+
+      if (response) {
+        break;
+      }
+    }
+
+    if (!response) {
+      throw lastFetchError ?? new Error("worker-run fetch failed");
+    }
 
     if (!response.ok) {
       const errorText = await response.text();

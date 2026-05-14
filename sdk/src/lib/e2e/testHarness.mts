@@ -19,6 +19,8 @@ import {
   DEV_SERVER_TIMEOUT,
   HYDRATION_TIMEOUT,
   INSTALL_DEPENDENCIES_RETRIES,
+  IS_CI,
+  IS_PULL_REQUEST,
   PUPPETEER_TIMEOUT,
   SETUP_PLAYGROUND_ENV_TIMEOUT,
   SETUP_WAIT_TIMEOUT,
@@ -31,6 +33,7 @@ import {
   deleteD1Database,
   deleteWorker,
   isRelatedToTest,
+  runPreviewServer,
   runRelease,
 } from "./release.mjs";
 import { setupTarballEnvironment } from "./tarball.mjs";
@@ -377,18 +380,47 @@ export function createDeployment() {
         throw new Error("Deployment tests are skipped via RWSDK_SKIP_DEPLOY=1");
       }
 
+      const dirName = basename(projectDir);
+      // Match formats: {projectName}-t-{hash}, {projectName}-test-{hash}, or {projectName}-e2e-test-{hash}
+      const match =
+        dirName.match(/-t-([a-f0-9]+)$/) ||
+        dirName.match(/-test-([a-f0-9]+)$/) ||
+        dirName.match(/-e2e-test-([a-f0-9]+)$/);
+      const resourceUniqueKey = match
+        ? match[1]
+        : Math.random().toString(36).substring(2, 15);
+
+      if (IS_PULL_REQUEST) {
+        console.log("PR mode detected — using local preview instead of deploy");
+        const previewResult = await runPreviewServer(
+          (process.env.PACKAGE_MANAGER as "pnpm" | "npm" | "yarn") ||
+            "pnpm",
+          projectDir,
+        );
+
+        instance = {
+          url: previewResult.url,
+          workerName: `preview-${resourceUniqueKey}`,
+          resourceUniqueKey,
+          projectDir,
+          cleanup: async () => {
+            await previewResult.stopPreview().catch((error) => {
+              console.warn(
+                `Warning: Background preview cleanup failed: ${
+                  (error as Error).message
+                }`,
+              );
+            });
+            return Promise.resolve();
+          },
+        };
+
+        deploymentInstances.push(instance);
+        return instance;
+      }
+
       const newInstance = await pollValue(
         async () => {
-          const dirName = basename(projectDir);
-          // Match formats: {projectName}-t-{hash}, {projectName}-test-{hash}, or {projectName}-e2e-test-{hash}
-          const match =
-            dirName.match(/-t-([a-f0-9]+)$/) ||
-            dirName.match(/-test-([a-f0-9]+)$/) ||
-            dirName.match(/-e2e-test-([a-f0-9]+)$/);
-          const resourceUniqueKey = match
-            ? match[1]
-            : Math.random().toString(36).substring(2, 15);
-
           const deployResult = await runRelease(
             projectDir,
             projectDir,
@@ -460,6 +492,7 @@ export function createDeployment() {
           },
         },
       );
+      instance = newInstance;
       deploymentInstances.push(newInstance);
       return newInstance;
     },

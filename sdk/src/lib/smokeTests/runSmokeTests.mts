@@ -147,6 +147,7 @@ export async function runSmokeTests(
             options.realtime,
             options.skipHmr,
             options.skipStyleTests,
+            options.ci,
           );
           // Update release command status to PASSED
           updateTestStatus("production", "releaseCommand", "PASSED");

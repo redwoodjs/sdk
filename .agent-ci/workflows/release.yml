@@ -1,46 +1,40 @@
+# =============================================================================
+# 🚨 SECURITY CRITICAL — NEVER MOVE THIS FILE TO .github/workflows/ 🚨
+# =============================================================================
+#
+# PRIMARY RELEASE PATH: pnpm release
+#   Runs directly on your machine using your existing npm (~/.npmrc) and
+#   gh CLI auth. No env vars needed.
+#
+# ALTERNATIVE (containerized): pnpm release:agent-ci
+#   Runs inside an agent-ci container. Requires auth tokens as env vars:
+#     NPM_TOKEN              npm publish token
+#     GH_TOKEN_FOR_RELEASES  GitHub token for release creation
+#     VERSION_TYPE           patch | minor | explicit | test | canary
+#     VERSION                explicit version (required for VERSION_TYPE=explicit)
+#     CREATE_GH_RELEASE      true | false (default: true)
+#     SKIP_SMOKE_TESTS       true | false (default: false)
+#     DRY_RUN                true | false (default: false)
+#
+# WHY agent-ci: Running releases in GitHub Actions exposes OIDC tokens and npm
+# credentials to the CI runner. A poisoned cache or compromised action could
+# steal these tokens and publish malicious packages.
+#
+# If a contributor opens a PR that moves this file to .github/workflows/,
+# REJECT IT IMMEDIATELY.
+# =============================================================================
+
 name: Release
 
-on:
-  workflow_dispatch:
-    inputs:
-      version_type:
-        description: "The type of version bump"
-        required: true
-        type: choice
-        default: "patch"
-        options:
-          - patch
-          - minor
-          - explicit
-          - test
-          - canary
-      version:
-        description: "The explicit version to use (for 'explicit' type)"
-        required: false
-        type: string
-      create_gh_release:
-        description: "If false, skips creating a GitHub release."
-        required: false
-        type: boolean
-        default: true
-      skip_smoke_tests:
-        description: "If true, bypasses the smoke testing step. Use with caution."
-        required: false
-        type: boolean
-        default: false
-
-permissions:
-  id-token: write
-  contents: write
-  actions: write
-
-env:
-  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+on: workflow_dispatch
 
 jobs:
   release:
-    if: github.ref == 'refs/heads/main' || github.event.inputs.version_type == 'test' || github.event.inputs.version_type == 'canary'
+    if: |
+      github.ref == 'refs/heads/main' ||
+      github.ref == 'refs/heads/next' ||
+      secrets.VERSION_TYPE == 'test' ||
+      secrets.VERSION_TYPE == 'canary'
     runs-on: ubuntu-latest
 
     steps:
@@ -77,36 +71,49 @@ jobs:
         working-directory: sdk
         run: |
           echo "registry=https://registry.npmjs.org/" >> .npmrc
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> .npmrc
 
       - name: Run release script
         id: release_script
         working-directory: sdk
         run: |
-          COMMAND="./scripts/release.sh ${{ github.event.inputs.version_type }}"
-          if [[ "${{ github.event.inputs.version_type }}" == "explicit" ]]; then
-            if [[ -z "${{ github.event.inputs.version }}" ]]; then
-              echo "::error::The 'version' input is required when 'version_type' is 'explicit'."
-              exit 1
-            fi
-            COMMAND="$COMMAND --version ${{ github.event.inputs.version }}"
-          elif [[ -n "${{ github.event.inputs.version }}" ]]; then
-            echo "::error::The 'version' input can only be used when 'version_type' is 'explicit'."
-            exit 1
+          VERSION_TYPE="${{ secrets.VERSION_TYPE }}"
+          VERSION="${{ secrets.VERSION }}"
+          SKIP_SMOKE_TESTS="${{ secrets.SKIP_SMOKE_TESTS }}"
+          DRY_RUN="${{ secrets.DRY_RUN }}"
+
+          # Normalize sentinel values to empty string
+          if [[ "$VERSION" == "none" ]]; then
+            VERSION=""
           fi
-          if [[ "${{ github.event.inputs.skip_smoke_tests }}" == "true" ]]; then
+
+          COMMAND="./scripts/release.sh $VERSION_TYPE"
+          if [[ -n "$VERSION" ]]; then
+            COMMAND="$COMMAND --version $VERSION"
+          fi
+          if [[ "$SKIP_SMOKE_TESTS" == "true" ]]; then
             COMMAND="$COMMAND --skip-smoke-tests"
+          fi
+          if [[ "$DRY_RUN" == "true" ]]; then
+            COMMAND="$COMMAND --dry"
           fi
           echo "Running command: $COMMAND"
           eval $COMMAND
 
       - name: Create GitHub Release
-        if: success() && github.event.inputs.create_gh_release == 'true'
+        if: success() && secrets.CREATE_GH_RELEASE != 'false'
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_RELEASES }}
         run: |
+          if ! command -v gh &> /dev/null; then
+            echo "Warning: gh CLI not found in container. Skipping GitHub release creation."
+            echo "Install gh locally or run this workflow on a runner with gh installed."
+            exit 0
+          fi
+
           FLAGS="--generate-notes"
-          VERSION_TYPE="${{ github.event.inputs.version_type }}"
-          VERSION="${{ github.event.inputs.version }}"
+          VERSION_TYPE="${{ secrets.VERSION_TYPE }}"
+          VERSION="${{ secrets.VERSION }}"
 
           if [[ "$VERSION_TYPE" == "patch" || "$VERSION_TYPE" == "minor" || "$VERSION_TYPE" == "beta" ]]; then
             FLAGS="$FLAGS --latest"
@@ -123,8 +130,8 @@ jobs:
             FLAGS="$FLAGS --prerelease"
           fi
 
-          echo "Creating GitHub release for tag ${{ env.TAG_NAME }} with flags: $FLAGS"
-          gh release create ${{ env.TAG_NAME }} $FLAGS
+          echo "Creating GitHub release for tag $TAG_NAME with flags: $FLAGS"
+          gh release create "$TAG_NAME" $FLAGS
 
 
       - name: Prune node_modules for artifact upload
