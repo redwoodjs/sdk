@@ -230,6 +230,62 @@ increment_canary_version() {
   fi
 }
 
+PUBLISH_OTP_SIGNAL_DIR=""
+PUBLISH_OTP_REQUEST_FILE=""
+PUBLISH_OTP_RESPONSE_FILE=""
+
+build_publish_args() {
+  PUBLISH_ARGS=(npm publish "$TARBALL_PATH")
+
+  if [[ "$VERSION_TYPE" == "test" ]]; then
+    PUBLISH_ARGS+=(--tag test)
+  elif [[ "$VERSION_TYPE" == "canary" || "$IS_CANARY_VERSION" == true ]]; then
+    PUBLISH_ARGS+=(--tag canary)
+  elif [[ "$NEW_VERSION" == *"-beta."* ]]; then
+    PUBLISH_ARGS+=(--tag latest)
+  elif [[ "$NEW_VERSION" == *"-*" ]]; then
+    # Other pre-releases should use the 'pre' dist-tag
+    PUBLISH_ARGS+=(--tag pre)
+  fi
+}
+
+publish_requires_otp() {
+  local output="$1"
+  grep -qiE 'EOTP|one-time password' <<<"$output"
+}
+
+request_publish_otp() {
+  PUBLISH_OTP_SIGNAL_DIR="${__SIGNALS:-}"
+  if [[ -z "$PUBLISH_OTP_SIGNAL_DIR" || ! -d "$PUBLISH_OTP_SIGNAL_DIR" ]]; then
+    echo "  ❌ Publish requires an OTP, but the agent-ci signals directory is not mounted."
+    return 1
+  fi
+
+  PUBLISH_OTP_REQUEST_FILE="$PUBLISH_OTP_SIGNAL_DIR/publish-otp-request"
+  PUBLISH_OTP_RESPONSE_FILE="$PUBLISH_OTP_SIGNAL_DIR/publish-otp"
+  rm -f "$PUBLISH_OTP_REQUEST_FILE" "$PUBLISH_OTP_RESPONSE_FILE"
+
+  cat >"$PUBLISH_OTP_REQUEST_FILE" <<EOF
+package=$DEPENDENCY_NAME
+version=$NEW_VERSION
+tag=$TAG_NAME
+tarball=$TARBALL_PATH
+EOF
+
+  echo "  ⏳ Waiting for npm OTP from the host..."
+  while [[ ! -s "$PUBLISH_OTP_RESPONSE_FILE" ]]; do
+    sleep 1
+  done
+
+  NPM_OTP="$(tr -d '\r\n' < "$PUBLISH_OTP_RESPONSE_FILE")"
+  rm -f "$PUBLISH_OTP_RESPONSE_FILE" "$PUBLISH_OTP_REQUEST_FILE"
+
+  if [[ -z "$NPM_OTP" ]]; then
+    echo "  ❌ Received an empty npm OTP."
+    return 1
+  fi
+}
+
 # Validate that patch/minor/major cannot be used when currently in a pre-release (excluding test and canary)
 if [[ "$VERSION_TYPE" == "patch" || "$VERSION_TYPE" == "minor" || "$VERSION_TYPE" == "major" ]]; then
   if [[ "$CURRENT_VERSION" == *"-"* && "$CURRENT_VERSION" != *"-test."* && "$CURRENT_VERSION" != *"-canary."* ]]; then
@@ -386,7 +442,6 @@ else
   echo "  ✅ Smoke tests passed."
 fi
 
-echo -e "\n🚀 Publishing version $NEW_VERSION..."
 if [[ "$DRY_RUN" == true ]]; then
   if [[ "$VERSION_TYPE" == "test" ]]; then
     echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag test"
@@ -394,30 +449,45 @@ if [[ "$DRY_RUN" == true ]]; then
     echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag canary"
   elif [[ "$NEW_VERSION" == *"-beta."* ]]; then
     echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag latest"
-  elif [[ "$NEW_VERSION" == *"-"* ]]; then
+  elif [[ "$NEW_VERSION" == *"-*" ]]; then
     echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag pre"
   else
     echo "  [DRY RUN] npm publish '$TARBALL_PATH'"
   fi
 else
-  PUBLISH_CMD="npm publish \"$TARBALL_PATH\""
-  if [[ "$VERSION_TYPE" == "test" ]]; then
-    PUBLISH_CMD="$PUBLISH_CMD --tag test"
-  elif [[ "$VERSION_TYPE" == "canary" || "$IS_CANARY_VERSION" == true ]]; then
-    PUBLISH_CMD="$PUBLISH_CMD --tag canary"
-  elif [[ "$NEW_VERSION" == *"-beta."* ]]; then
-    PUBLISH_CMD="$PUBLISH_CMD --tag latest"
-  elif [[ "$NEW_VERSION" == *"-"* ]]; then
-    # Other pre-releases should use the 'pre' dist-tag
-    PUBLISH_CMD="$PUBLISH_CMD --tag pre"
-  fi
-  if ! eval $PUBLISH_CMD; then
+  build_publish_args
+
+  while true; do
+    set +e
+    if [[ -n "${NPM_OTP:-}" ]]; then
+      PUBLISH_OUTPUT="$(NPM_CONFIG_OTP="$NPM_OTP" "${PUBLISH_ARGS[@]}" 2>&1)"
+    else
+      PUBLISH_OUTPUT="$("${PUBLISH_ARGS[@]}" 2>&1)"
+    fi
+    PUBLISH_STATUS=$?
+    set -e
+
+    echo "$PUBLISH_OUTPUT"
+    if [[ $PUBLISH_STATUS -eq 0 ]]; then
+      echo "  ✅ Published successfully."
+      break
+    fi
+
+    if publish_requires_otp "$PUBLISH_OUTPUT"; then
+      if ! request_publish_otp; then
+        echo -e "\n❌ Publish failed. Rolling back version commit..."
+        git reset --hard HEAD~1
+        # The trap will clean up the tarball
+        exit 1
+      fi
+      continue
+    fi
+
     echo -e "\n❌ Publish failed. Rolling back version commit..."
     git reset --hard HEAD~1
     # The trap will clean up the tarball
     exit 1
-  fi
-  echo "  ✅ Published successfully."
+  done
 fi
 
 echo -e "\n💾 Pushing commit and tag..."
