@@ -255,7 +255,7 @@ publish_requires_otp() {
 }
 
 request_publish_otp() {
-  PUBLISH_OTP_SIGNAL_DIR="${__SIGNALS:-}"
+  PUBLISH_OTP_SIGNAL_DIR="${__SIGNALS:-/tmp/agent-ci-signals}"
   if [[ -z "$PUBLISH_OTP_SIGNAL_DIR" || ! -d "$PUBLISH_OTP_SIGNAL_DIR" ]]; then
     echo "  ❌ Publish requires an OTP, but the agent-ci signals directory is not mounted."
     return 1
