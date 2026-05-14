@@ -141,6 +141,10 @@ echo -e "\n🔄 Pulling for changes..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] git pull --rebase"
 else
+  if [[ -n "$AGENT_CI_LOCAL" ]]; then
+    echo "  [AGENT CI] Resetting tracked workspace changes before pull"
+    git reset --hard HEAD
+  fi
   git pull --rebase
 fi
 
