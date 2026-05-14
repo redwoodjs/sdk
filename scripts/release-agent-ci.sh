@@ -71,14 +71,56 @@ if [[ -z "$CURRENT_BRANCH" ]]; then
 fi
 
 CURRENT_SHA="$(git rev-parse HEAD 2>/dev/null || true)"
+NPM_TOKEN_SOURCE="NPM_TOKEN env"
 
 if [[ -z "${NPM_TOKEN:-}" ]]; then
   USER_NPMRC="$(npm config get userconfig 2>/dev/null || true)"
+  NPM_TOKEN_SOURCE="${USER_NPMRC:-~/.npmrc}"
   if [[ -n "$USER_NPMRC" && -f "$USER_NPMRC" ]]; then
     NPM_TOKEN="$(grep -E '^[[:space:]]*//registry\.npmjs\.org/:_authToken=' "$USER_NPMRC" | tail -n1 | sed 's/.*=//')"
   else
     NPM_TOKEN=""
   fi
+fi
+
+validate_npm_publish_access() {
+  local temp_dir temp_npmrc npm_username npm_owners package_name
+
+  if [[ -z "$NPM_TOKEN" ]]; then
+    echo "[Release] Error: no npm token was found in $NPM_TOKEN_SOURCE."
+    echo "Set NPM_TOKEN or sign in to npm with a publish-capable token."
+    exit 1
+  fi
+
+  package_name="$(cd sdk && npm pkg get name | tr -d '"')"
+  temp_dir="$(mktemp -d)"
+  temp_npmrc="$temp_dir/.npmrc"
+
+  cat >"$temp_npmrc" <<EOF
+registry=https://registry.npmjs.org/
+//registry.npmjs.org/:_authToken=$NPM_TOKEN
+EOF
+
+  if ! npm_username="$(NPM_CONFIG_USERCONFIG="$temp_npmrc" npm whoami --registry=https://registry.npmjs.org/ 2>/dev/null)"; then
+    rm -rf "$temp_dir"
+    echo "[Release] Error: the npm token from $NPM_TOKEN_SOURCE cannot authenticate to registry.npmjs.org."
+    echo "Run npm login or set NPM_TOKEN to a publish-capable token."
+    exit 1
+  fi
+
+  npm_owners="$(npm owner ls "$package_name" --registry=https://registry.npmjs.org/ 2>/dev/null || true)"
+  if ! grep -qE "^${npm_username}[[:space:]]" <<<"$npm_owners"; then
+    rm -rf "$temp_dir"
+    echo "[Release] Error: npm token authenticates as '$npm_username', but '$package_name' is owned by:"
+    echo "$npm_owners"
+    exit 1
+  fi
+
+  rm -rf "$temp_dir"
+}
+
+if [[ "$DRY_RUN" != true ]]; then
+  validate_npm_publish_access
 fi
 
 if [[ -z "${GH_TOKEN:-}" ]]; then
