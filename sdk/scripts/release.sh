@@ -277,6 +277,7 @@ else
   SMOKE_TEST_ARGS=(--artifact-dir="$TEMP_DIR/artifacts" --skip-style-tests)
   if [[ "${CI:-}" == "true" || "${CI:-}" == "1" || -n "${GITHUB_ACTIONS:-}" ]]; then
     SMOKE_TEST_ARGS+=(--ci)
+    export GITHUB_EVENT_NAME="pull_request"
   fi
   if ! pnpm smoke-test "${SMOKE_TEST_ARGS[@]}"; then
     echo "  ❌ Smoke tests failed."
