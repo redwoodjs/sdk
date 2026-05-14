@@ -158,6 +158,72 @@ fi
 NODE_ENV=production pnpm build
 
 CURRENT_VERSION=$(npm pkg get version | tr -d '"')
+RELEASE_BRANCH="${RWSDK_RELEASE_BRANCH:-$(git branch --show-current 2>/dev/null || true)}"
+if [[ -z "$RELEASE_BRANCH" ]]; then
+  RELEASE_BRANCH="HEAD"
+fi
+
+echo "  Release branch: $RELEASE_BRANCH"
+
+# context(justinvdm, 2026-05-06): Canary releases roll back the version commit after publish, so package.json is not a reliable source for the next canary number.
+get_latest_canary_version() {
+  local candidates=()
+  local local_tags gh_tags remote_tags repo_url repo_slug
+
+  mapfile -t local_tags < <(git tag --list 'v*canary.*' | sed 's#^v##')
+  for tag in "${local_tags[@]}"; do
+    if [[ -n "$tag" ]]; then
+      candidates+=("$tag")
+    fi
+  done
+
+  if command -v gh >/dev/null 2>&1; then
+    repo_url=$(git remote get-url origin 2>/dev/null || true)
+    case "$repo_url" in
+      https://github.com/*)
+        repo_slug="${repo_url#https://github.com/}"
+        repo_slug="${repo_slug%.git}"
+        ;;
+      git@github.com:*)
+        repo_slug="${repo_url#git@github.com:}"
+        repo_slug="${repo_slug%.git}"
+        ;;
+      *)
+        repo_slug="${GITHUB_REPOSITORY:-redwoodjs/sdk}"
+        ;;
+    esac
+
+    if [[ -n "$repo_slug" ]]; then
+      mapfile -t gh_tags < <(gh api "repos/$repo_slug/git/matching-refs/tags/v" --paginate --jq '.[].ref' | grep -- '-canary\.' | sed 's#refs/tags/v##')
+      for tag in "${gh_tags[@]}"; do
+        if [[ -n "$tag" ]]; then
+          candidates+=("$tag")
+        fi
+      done
+    fi
+  fi
+
+  mapfile -t remote_tags < <(git ls-remote --tags origin 'refs/tags/v*canary.*' | awk '{print $2}' | grep -v '\^{}' | sed 's#refs/tags/v##')
+  for tag in "${remote_tags[@]}"; do
+    if [[ -n "$tag" ]]; then
+      candidates+=("$tag")
+    fi
+  done
+
+  if [[ ${#candidates[@]} -gt 0 ]]; then
+    printf '%s\n' "${candidates[@]}" | sort -V | tail -n 1
+  fi
+}
+
+increment_canary_version() {
+  local version="$1"
+
+  if [[ "$version" =~ ^(.*)-canary\.([0-9]+)$ ]]; then
+    local base_version="${BASH_REMATCH[1]}"
+    local canary_number="${BASH_REMATCH[2]}"
+    echo "$base_version-canary.$((canary_number + 1))"
+  fi
+}
 
 # Validate that patch/minor/major cannot be used when currently in a pre-release (excluding test and canary)
 if [[ "$VERSION_TYPE" == "patch" || "$VERSION_TYPE" == "minor" || "$VERSION_TYPE" == "major" ]]; then
@@ -182,16 +248,36 @@ elif [[ "$VERSION_TYPE" == "test" ]]; then
   fi
   NEW_VERSION="$BASE_VERSION-test.$TIMESTAMP"
 elif [[ "$VERSION_TYPE" == "canary" ]]; then
-  # Handle canary version bumping: 1.0.0-canary.0 -> 1.0.0-canary.1
-  if [[ "$CURRENT_VERSION" =~ ^(.*)-canary\.([0-9]+)$ ]]; then
-    BASE_VERSION="${BASH_REMATCH[1]}"
-    CANARY_NUMBER="${BASH_REMATCH[2]}"
-    NEW_CANARY_NUMBER=$((CANARY_NUMBER + 1))
-    NEW_VERSION="$BASE_VERSION-canary.$NEW_CANARY_NUMBER"
-  else
-    # First canary release from current version
-    BASE_VERSION="$CURRENT_VERSION"
+  if [[ "$RELEASE_BRANCH" == "main" ]]; then
+    if [[ "$CURRENT_VERSION" =~ ^(.*)-canary\.([0-9]+)$ ]]; then
+      BASE_VERSION="${BASH_REMATCH[1]}"
+    else
+      BASE_VERSION="$CURRENT_VERSION"
+    fi
     NEW_VERSION="$BASE_VERSION-canary.0"
+  else
+    CURRENT_CANARY_VERSION=""
+    if [[ "$CURRENT_VERSION" =~ ^(.*)-canary\.([0-9]+)$ ]]; then
+      CURRENT_CANARY_VERSION="$CURRENT_VERSION"
+    fi
+
+    LATEST_CANARY_VERSION="$(get_latest_canary_version)"
+    CANDIDATE_CANARY_VERSIONS=()
+
+    if [[ -n "$CURRENT_CANARY_VERSION" ]]; then
+      CANDIDATE_CANARY_VERSIONS+=("$CURRENT_CANARY_VERSION")
+    fi
+
+    if [[ -n "$LATEST_CANARY_VERSION" ]]; then
+      CANDIDATE_CANARY_VERSIONS+=("$LATEST_CANARY_VERSION")
+    fi
+
+    if [[ ${#CANDIDATE_CANARY_VERSIONS[@]} -gt 0 ]]; then
+      NEWEST_CANARY_VERSION=$(printf '%s\n' "${CANDIDATE_CANARY_VERSIONS[@]}" | sort -V | tail -n 1)
+      NEW_VERSION="$(increment_canary_version "$NEWEST_CANARY_VERSION")"
+    else
+      NEW_VERSION="$CURRENT_VERSION-canary.0"
+    fi
   fi
 elif [[ "$VERSION_TYPE" == "beta" ]]; then
   # Handle beta version bumping: 1.0.0-beta.27 -> 1.0.0-beta.28
@@ -209,7 +295,16 @@ else
   NEW_VERSION=$(npx semver -i "$VERSION_TYPE" "$CURRENT_VERSION")
 fi
 
+# Detect canary versions regardless of how they were specified (e.g. explicit --version 1.3.0-canary.0)
+IS_CANARY_VERSION=false
+if [[ "$NEW_VERSION" == *"-canary."* ]]; then
+  IS_CANARY_VERSION=true
+fi
+
 echo -e "\n📦 Planning version bump to $NEW_VERSION ($VERSION_TYPE)..."
+if [[ "$IS_CANARY_VERSION" == true ]]; then
+  echo "  (Detected as canary release)"
+fi
 if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] sed -i.bak \"s/\\\"version\\\": \\\"[^\\\"]*\\\"/\\\"version\\\": \\\"$NEW_VERSION\\\"/\" package.json && rm package.json.bak"
   echo "  [DRY RUN] Git commit version change"
@@ -290,7 +385,7 @@ echo -e "\n🚀 Publishing version $NEW_VERSION..."
 if [[ "$DRY_RUN" == true ]]; then
   if [[ "$VERSION_TYPE" == "test" ]]; then
     echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag test"
-  elif [[ "$VERSION_TYPE" == "canary" ]]; then
+  elif [[ "$VERSION_TYPE" == "canary" || "$IS_CANARY_VERSION" == true ]]; then
     echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag canary"
   elif [[ "$NEW_VERSION" == *"-beta."* ]]; then
     echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag latest"
@@ -303,7 +398,7 @@ else
   PUBLISH_CMD="npm publish \"$TARBALL_PATH\""
   if [[ "$VERSION_TYPE" == "test" ]]; then
     PUBLISH_CMD="$PUBLISH_CMD --tag test"
-  elif [[ "$VERSION_TYPE" == "canary" ]]; then
+  elif [[ "$VERSION_TYPE" == "canary" || "$IS_CANARY_VERSION" == true ]]; then
     PUBLISH_CMD="$PUBLISH_CMD --tag canary"
   elif [[ "$NEW_VERSION" == *"-beta."* ]]; then
     PUBLISH_CMD="$PUBLISH_CMD --tag latest"
@@ -323,7 +418,7 @@ fi
 echo -e "\n💾 Pushing commit and tag..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] Git operations:"
-  if [[ "$VERSION_TYPE" == "test" || "$VERSION_TYPE" == "canary" ]]; then
+  if [[ "$VERSION_TYPE" == "test" || "$VERSION_TYPE" == "canary" || "$IS_CANARY_VERSION" == true ]]; then
     echo "    - Tag: $TAG_NAME"
     echo "    - Push tag $TAG_NAME to remote"
     echo "    - Reset branch to previous commit (commit will be on remote via tag)"
@@ -333,12 +428,12 @@ if [[ "$DRY_RUN" == true ]]; then
     echo "    - Push: origin with tags"
   fi
 else
-  if [[ "$VERSION_TYPE" == "test" || "$VERSION_TYPE" == "canary" ]]; then
-    echo "  - Creating tag for $VERSION_TYPE release..."
+  if [[ "$VERSION_TYPE" == "test" || "$VERSION_TYPE" == "canary" || "$IS_CANARY_VERSION" == true ]]; then
+    echo "  - Creating tag for canary release..."
     git tag "$TAG_NAME"
     echo "  - Pushing tag to remote..."
     git push origin "$TAG_NAME"
-    echo "  - Rolling back local commit for $VERSION_TYPE release. The commit is available via the remote tag."
+    echo "  - Rolling back local commit for canary release. The commit is available via the remote tag."
     git reset --hard HEAD~1
   else
     # As a final safety measure, check for and discard any remaining unstaged changes
