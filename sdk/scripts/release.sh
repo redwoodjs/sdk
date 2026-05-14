@@ -158,14 +158,60 @@ fi
 NODE_ENV=production pnpm build
 
 CURRENT_VERSION=$(npm pkg get version | tr -d '"')
+RELEASE_BRANCH="${RWSDK_RELEASE_BRANCH:-$(git branch --show-current 2>/dev/null || true)}"
+if [[ -z "$RELEASE_BRANCH" ]]; then
+  RELEASE_BRANCH="HEAD"
+fi
+
+echo "  Release branch: $RELEASE_BRANCH"
 
 # context(justinvdm, 2026-05-06): Canary releases roll back the version commit after publish, so package.json is not a reliable source for the next canary number.
 get_latest_canary_version() {
-  local latest_canary_tag
-  latest_canary_tag=$(git ls-remote --tags origin 'refs/tags/v*canary.*' | awk '{print $2}' | grep -v '\^{}' | sed 's#refs/tags/v##' | sort -V | tail -n 1)
+  local candidates=()
+  local local_tags gh_tags remote_tags repo_url repo_slug
 
-  if [[ -n "$latest_canary_tag" ]]; then
-    echo "$latest_canary_tag"
+  mapfile -t local_tags < <(git tag --list 'v*canary.*' | sed 's#^v##')
+  for tag in "${local_tags[@]}"; do
+    if [[ -n "$tag" ]]; then
+      candidates+=("$tag")
+    fi
+  done
+
+  if command -v gh >/dev/null 2>&1; then
+    repo_url=$(git remote get-url origin 2>/dev/null || true)
+    case "$repo_url" in
+      https://github.com/*)
+        repo_slug="${repo_url#https://github.com/}"
+        repo_slug="${repo_slug%.git}"
+        ;;
+      git@github.com:*)
+        repo_slug="${repo_url#git@github.com:}"
+        repo_slug="${repo_slug%.git}"
+        ;;
+      *)
+        repo_slug="${GITHUB_REPOSITORY:-redwoodjs/sdk}"
+        ;;
+    esac
+
+    if [[ -n "$repo_slug" ]]; then
+      mapfile -t gh_tags < <(gh api "repos/$repo_slug/git/matching-refs/tags/v" --paginate --jq '.[].ref' | grep -- '-canary\.' | sed 's#refs/tags/v##')
+      for tag in "${gh_tags[@]}"; do
+        if [[ -n "$tag" ]]; then
+          candidates+=("$tag")
+        fi
+      done
+    fi
+  fi
+
+  mapfile -t remote_tags < <(git ls-remote --tags origin 'refs/tags/v*canary.*' | awk '{print $2}' | grep -v '\^{}' | sed 's#refs/tags/v##')
+  for tag in "${remote_tags[@]}"; do
+    if [[ -n "$tag" ]]; then
+      candidates+=("$tag")
+    fi
+  done
+
+  if [[ ${#candidates[@]} -gt 0 ]]; then
+    printf '%s\n' "${candidates[@]}" | sort -V | tail -n 1
   fi
 }
 
@@ -202,27 +248,36 @@ elif [[ "$VERSION_TYPE" == "test" ]]; then
   fi
   NEW_VERSION="$BASE_VERSION-test.$TIMESTAMP"
 elif [[ "$VERSION_TYPE" == "canary" ]]; then
-  CURRENT_CANARY_VERSION=""
-  if [[ "$CURRENT_VERSION" =~ ^(.*)-canary\.([0-9]+)$ ]]; then
-    CURRENT_CANARY_VERSION="$CURRENT_VERSION"
-  fi
-
-  LATEST_CANARY_VERSION="$(get_latest_canary_version)"
-  CANDIDATE_CANARY_VERSIONS=()
-
-  if [[ -n "$CURRENT_CANARY_VERSION" ]]; then
-    CANDIDATE_CANARY_VERSIONS+=("$CURRENT_CANARY_VERSION")
-  fi
-
-  if [[ -n "$LATEST_CANARY_VERSION" ]]; then
-    CANDIDATE_CANARY_VERSIONS+=("$LATEST_CANARY_VERSION")
-  fi
-
-  if [[ ${#CANDIDATE_CANARY_VERSIONS[@]} -gt 0 ]]; then
-    NEWEST_CANARY_VERSION=$(printf '%s\n' "${CANDIDATE_CANARY_VERSIONS[@]}" | sort -V | tail -n 1)
-    NEW_VERSION="$(increment_canary_version "$NEWEST_CANARY_VERSION")"
+  if [[ "$RELEASE_BRANCH" == "main" ]]; then
+    if [[ "$CURRENT_VERSION" =~ ^(.*)-canary\.([0-9]+)$ ]]; then
+      BASE_VERSION="${BASH_REMATCH[1]}"
+    else
+      BASE_VERSION="$CURRENT_VERSION"
+    fi
+    NEW_VERSION="$BASE_VERSION-canary.0"
   else
-    NEW_VERSION="$CURRENT_VERSION-canary.0"
+    CURRENT_CANARY_VERSION=""
+    if [[ "$CURRENT_VERSION" =~ ^(.*)-canary\.([0-9]+)$ ]]; then
+      CURRENT_CANARY_VERSION="$CURRENT_VERSION"
+    fi
+
+    LATEST_CANARY_VERSION="$(get_latest_canary_version)"
+    CANDIDATE_CANARY_VERSIONS=()
+
+    if [[ -n "$CURRENT_CANARY_VERSION" ]]; then
+      CANDIDATE_CANARY_VERSIONS+=("$CURRENT_CANARY_VERSION")
+    fi
+
+    if [[ -n "$LATEST_CANARY_VERSION" ]]; then
+      CANDIDATE_CANARY_VERSIONS+=("$LATEST_CANARY_VERSION")
+    fi
+
+    if [[ ${#CANDIDATE_CANARY_VERSIONS[@]} -gt 0 ]]; then
+      NEWEST_CANARY_VERSION=$(printf '%s\n' "${CANDIDATE_CANARY_VERSIONS[@]}" | sort -V | tail -n 1)
+      NEW_VERSION="$(increment_canary_version "$NEWEST_CANARY_VERSION")"
+    else
+      NEW_VERSION="$CURRENT_VERSION-canary.0"
+    fi
   fi
 elif [[ "$VERSION_TYPE" == "beta" ]]; then
   # Handle beta version bumping: 1.0.0-beta.27 -> 1.0.0-beta.28
