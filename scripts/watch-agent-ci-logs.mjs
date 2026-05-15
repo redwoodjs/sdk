@@ -41,11 +41,6 @@ function discoverFiles(runDir) {
       }
     }
   }
-  for (const entry of fs.readdirSync(runDir, { withFileTypes: true })) {
-    if (entry.isFile() && (entry.name === 'debug.log' || entry.name === 'timeline.json')) {
-      candidates.push(path.join(runDir, entry.name));
-    }
-  }
   return candidates;
 }
 
@@ -71,7 +66,12 @@ function streamNewBytes(filePath) {
       currentHeader = filePath;
       process.stdout.write(`\n--- ${path.relative(logsRoot, filePath)} ---\n`);
     }
-    process.stdout.write(chunk.toString('utf8'));
+    const text = chunk.toString('utf8');
+    for (const line of text.split(/\r?\n/)) {
+      if (line.length > 0) {
+        process.stdout.write(`[${new Date().toISOString()}] ${line}\n`);
+      }
+    }
     watched.set(filePath, stat.size);
   } catch {
     // ignore transient file disappearance
