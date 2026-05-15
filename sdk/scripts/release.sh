@@ -400,30 +400,27 @@ if [[ "$DRY_RUN" == true ]]; then
     echo "  [DRY RUN] npm publish '$TARBALL_PATH'"
   fi
 else
-  PUBLISH_CMD="npm publish \"$TARBALL_PATH\""
+  PUBLISH_CMD=(env npm_config_browser=false npm publish "$TARBALL_PATH")
   if [[ "$VERSION_TYPE" == "test" ]]; then
-    PUBLISH_CMD="$PUBLISH_CMD --tag test"
+    PUBLISH_CMD+=(--tag test)
   elif [[ "$VERSION_TYPE" == "canary" || "$IS_CANARY_VERSION" == true ]]; then
-    PUBLISH_CMD="$PUBLISH_CMD --tag canary"
+    PUBLISH_CMD+=(--tag canary)
   elif [[ "$NEW_VERSION" == *"-beta."* ]]; then
-    PUBLISH_CMD="$PUBLISH_CMD --tag latest"
+    PUBLISH_CMD+=(--tag latest)
   elif [[ "$NEW_VERSION" == *"-*" ]]; then
     # Other pre-releases should use the 'pre' dist-tag
-    PUBLISH_CMD="$PUBLISH_CMD --tag pre"
+    PUBLISH_CMD+=(--tag pre)
   fi
 
-  while true; do
-    if eval $PUBLISH_CMD; then
-      echo "  ✅ Published successfully."
-      break
-    fi
-
+  if script -q -e /dev/null "${PUBLISH_CMD[@]}"; then
+    echo "  ✅ Published successfully."
+  else
     echo ""
     echo "  ❌ Publish failed."
-    echo "  If npm printed a browser URL above, open it to authenticate."
-    echo "  Retrying in 30 seconds..."
-    sleep 30
-  done
+    git reset --hard HEAD~1
+    # The trap will clean up the tarball
+    exit 1
+  fi
 fi
 
 echo -e "\n💾 Pushing commit and tag..."
