@@ -387,6 +387,11 @@ else
 fi
 
 echo -e "\n🚀 Publishing version $NEW_VERSION..."
+PUBLISH_ALREADY_DONE=false
+if npm view "${DEPENDENCY_NAME}@${NEW_VERSION}" version --registry=https://registry.npmjs.org/ >/dev/null 2>&1; then
+  PUBLISH_ALREADY_DONE=true
+  echo "  ℹ️  ${DEPENDENCY_NAME}@${NEW_VERSION} is already on npm; skipping publish."
+fi
 if [[ "$DRY_RUN" == true ]]; then
   if [[ "$VERSION_TYPE" == "test" ]]; then
     echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag test"
@@ -399,6 +404,8 @@ if [[ "$DRY_RUN" == true ]]; then
   else
     echo "  [DRY RUN] npm publish '$TARBALL_PATH'"
   fi
+elif [[ "$PUBLISH_ALREADY_DONE" == true ]]; then
+  echo "  ✅ Publish already completed earlier."
 else
   PUBLISH_CMD=(env npm_config_browser=false npm publish "$TARBALL_PATH")
   if [[ "$VERSION_TYPE" == "test" ]]; then
@@ -439,6 +446,24 @@ if [[ "$DRY_RUN" == true ]]; then
     echo "    - Push: origin with tags"
   fi
 else
+  REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+  RELEASE_REMOTE_URL_FILE="$REPO_ROOT/.agent-ci/runtime/release-remote-url"
+  RELEASE_REMOTE_URL=""
+  if [[ -f "$RELEASE_REMOTE_URL_FILE" ]]; then
+    RELEASE_REMOTE_URL="$(tr -d '\r\n' < "$RELEASE_REMOTE_URL_FILE")"
+    rm -f "$RELEASE_REMOTE_URL_FILE"
+  fi
+  if [[ -z "$RELEASE_REMOTE_URL" ]]; then
+    RELEASE_REMOTE_URL="$(git remote get-url origin 2>/dev/null || true)"
+  fi
+  if [[ -n "$RELEASE_REMOTE_URL" ]]; then
+    echo "  - Updating origin remote to $RELEASE_REMOTE_URL"
+    git remote set-url origin "$RELEASE_REMOTE_URL"
+  fi
+  if command -v gh >/dev/null 2>&1; then
+    gh auth setup-git >/dev/null 2>&1 || true
+  fi
+
   if [[ "$VERSION_TYPE" == "test" || "$VERSION_TYPE" == "canary" || "$IS_CANARY_VERSION" == true ]]; then
     echo "  - Creating tag for canary release..."
     git tag "$TAG_NAME"

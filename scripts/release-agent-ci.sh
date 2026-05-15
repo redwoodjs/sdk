@@ -66,6 +66,7 @@ if [[ -z "$CURRENT_BRANCH" ]]; then
 fi
 
 CURRENT_SHA="$(git rev-parse HEAD 2>/dev/null || true)"
+CURRENT_REMOTE_URL="$(git remote get-url origin 2>/dev/null || true)"
 
 if [[ -z "${NPM_TOKEN:-}" ]]; then
   USER_NPMRC="$(npm config get userconfig 2>/dev/null || true)"
@@ -101,11 +102,16 @@ export CREATE_GH_RELEASE="$CREATE_GH_RELEASE"
 export DRY_RUN="$DRY_RUN"
 export SKIP_SMOKE_TESTS="$SKIP_SMOKE_TESTS"
 
+REMOTE_URL_FILE=".agent-ci/runtime/release-remote-url"
+mkdir -p "$(dirname "$REMOTE_URL_FILE")"
+printf '%s\n' "$CURRENT_REMOTE_URL" > "$REMOTE_URL_FILE"
+
 LOGS_ROOT="$HOME/Library/Application Support/agent-ci/logs"
 cleanup() {
   if [[ -n "${WATCHER_PID:-}" ]]; then
     kill "$WATCHER_PID" 2>/dev/null || true
   fi
+  rm -f "$REMOTE_URL_FILE"
 }
 trap cleanup EXIT
 
