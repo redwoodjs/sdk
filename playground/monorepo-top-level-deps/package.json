@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "name": "monorepo-yarn-hoist-root",
+  "dependencies": {
+    "ui-lib": "file:./vendor/ui-lib"
+  }
+}

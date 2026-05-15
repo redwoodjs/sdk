@@ -1,0 +1,672 @@
+# Contributing
+
+This document provides context on contributing to the SDK.
+
+For context on how the system works, check out the [architecture documents](./docs/architecture/).
+
+## Policies
+
+### Contributor responsibilities
+
+You are responsible for validating the correctness of your code. Run relevant tests locally before opening a pull request. This applies to all contributions, including those assisted by AI.
+
+- **SDK Core**: Strict requirement for End-to-End (E2E) test coverage for all new features and bug fixes.
+- **Community Package**: Ideally, include unit and/or integration tests. We are more lenient with coverage here, but tests are strongly encouraged.
+- **Playground Examples**:
+    - `playground/`: Must have E2E tests.
+    - `community/playground/`: E2E tests are encouraged but not mandatory for contributions.
+
+In the pull request description, specify the commands you ran to verify your changes (for example: `pnpm test:e2e -- playground/hello-world/__tests__/e2e.test.mts`).
+
+### Playground examples
+ 
+When adding or modifying playground examples, choose the right location based on your goal:
+ 
+- **Use `playground/` for official SDK tests.**
+  These projects verify specific SDK features in isolation and serve as our primary E2E test suite. Keep them minimal. If you add or change behaviour here, you **must** include E2E tests covering the change. CI runs these tests on every commit.
+ 
+- **Use `community/playground/` for showcases and demos.**
+  These projects demonstrate how the SDK works with other libraries or in larger applications. They can be extensive and do not require E2E tests. Note that these are excluded from CI and may not be actively maintained by the core team.
+
+## Getting Started
+
+1.  Make sure you have [Node.js](https://nodejs.org) (>=22) installed.
+2.  This project uses [pnpm](https://pnpm.io) as a package manager, which is managed using [Corepack](https://nodejs.org/api/corepack.html). Enable Corepack by running:
+    ```sh
+    corepack enable
+    ```
+3.  Install dependencies from the root of the `sdk` directory:
+
+```sh
+pnpm install
+```
+
+## Development Workflow
+
+When developing the SDK, you'll typically work with either the `starter/` project or `playground/` examples to test your changes. Understanding how the SDK is linked to these projects will help you work efficiently.
+
+### Workspace Links (Monorepo Development)
+
+Within the monorepo, the SDK is automatically linked to `starter/` and `playground/` projects using pnpm workspace links. This means:
+
+- Changes to the SDK source code are immediately available to these projects
+- No manual syncing is required when working within the monorepo
+- Simply rebuild the SDK (`pnpm --filter rwsdk build`) and restart the dev server in your test project
+
+The workspace link is configured in each project's `package.json` with `"rwsdk": "workspace:*"`, which pnpm resolves automatically.
+
+### Using `rwsync` for Development
+
+`rwsync` is a development tool that syncs your local SDK changes to external projects (projects outside the monorepo). However, it can also be useful when working with `starter/` or `playground/` projects because it provides **watch mode**, which automatically rebuilds and syncs changes as you develop.
+
+The `rwsync` command provides a bridge between a local checkout of the `rwsdk` and a project that uses it, enabling a fast and efficient development workflow.
+
+#### Setting Up `rwsync`
+
+First, set the `RWSDK_REPO` environment variable in your shell's configuration file (e.g., `~/.bashrc`, `~/.zshrc`) to point to the absolute path of the monorepo root (the directory containing the `sdk/` subdirectory):
+
+```sh
+# e.g. in ~/.zshrc
+export RWSDK_REPO=/path/to/monorepo/root
+```
+
+#### One-time Sync
+
+To perform a one-time synchronization of your local SDK changes to your project, run the following command from your project's root directory:
+
+```sh
+npx rwsync
+```
+
+This will build the SDK, copy the relevant files into your project's `node_modules`, and then you can start your development server.
+
+```sh
+npx rwsync && npm run dev
+```
+
+#### Watch Mode
+
+For continuous development, you can use the watch mode. This will automatically sync changes from the SDK to your project whenever you save a file. You can also provide a command that will be automatically restarted after each sync.
+
+```sh
+# This will watch for changes, and cancel + re-run `pnpm dev` after each sync
+npx rwsync --watch "npm run dev"
+```
+
+**Note**: When `rwsync` detects a playground example within the monorepo, it will skip the file sync and rely on workspace linking instead. However, watch mode will still rebuild the SDK when changes are detected, which can speed up your development workflow.
+
+### Creating Playground Examples
+
+When creating a playground example, it's helpful to start by copying the `hello-world` example:
+
+```sh
+cp -r playground/hello-world playground/my-new-example
+cd playground/my-new-example
+# Update package.json name and other project-specific details
+```
+
+Each official playground example should include an `__tests__` directory with end-to-end tests. See the [End-to-End Tests (Playground)](#end-to-end-tests-playground) section for more details.
+
+## Debugging the Vite Plugin
+
+The RedwoodSDK Vite plugin is composed of several smaller, internal plugins. To debug them, you can use the [debug](https://www.npmjs.com/package/debug) package by setting the `DEBUG` environment variable.
+
+Each internal plugin has a unique namespace, like `rwsdk:vite:hmr-plugin`. To enable logging for a specific plugin, set the `DEBUG` variable to its namespace.
+
+For example, to see debug output from just the HMR plugin:
+```sh
+DEBUG='rwsdk:vite:hmr-plugin'
+```
+
+You can also use a wildcard to enable logging for all internal Vite plugins:
+```sh
+DEBUG='rwsdk:vite:*'
+```
+
+For more detailed "verbose" output, set the `VERBOSE` environment variable to `1`.
+
+Here is a full example command that enables verbose logging for the HMR plugin, starts `rwsync` in watch mode to sync your local SDK changes with a test project, and redirects all output to a log file for analysis:
+```sh
+VERBOSE=1 DEBUG='rwsdk:vite:hmr-plugin' npx rwsync --watch "npm run dev" 2>&1 | tee /tmp/out.log
+```
+
+## Project Structure
+
+This repository is a monorepo containing several key parts:
+
+-   `sdk/`: This is the heart of the project. It contains the source code for the `rwsdk` npm package. When you're working on the core SDK functionality, this is where you'll spend most of your time. **All commands for building, testing, or formatting the SDK should be run from within this directory.**
+-   `starter/`: This directory holds the template project that users can create with `create-rwsdk`. It is used for testing and demonstrating features.
+-   `docs/`: Contains the user-facing documentation for the SDK, which is published as a website.
+-   `docs/architecture/`: A special section within the docs that contains in-depth architecture documents. These explain the "why" behind key design decisions and provide context on how the system works under the hood. If you're making a significant change, you should read these. If you're changing the system in a significant way, check whether these docs need revising to account for the update.
+-   `community/`: Contains the `rwsdk-community` package and its specific playgrounds. This is for community-contributed extensions and showcases. It follows a more lenient testing policy than the core SDK.
+
+## Building
+
+To build the `rwsdk` package, run the following command from the root of the `sdk` directory:
+
+```sh
+pnpm --filter rwsdk build
+```
+
+## Testing
+
+To run the full test suite for the `rwsdk` package, navigate to the `sdk` directory and run the `test` script:
+
+```sh
+cd sdk
+pnpm test
+```
+
+When working on a specific feature, you'll often want to run tests only for the files you're changing. To run tests for a single file, you can pass the path to that file to `pnpm test`.
+
+For example, to run tests for `transformJsxScriptTagsPlugin.test.mts`:
+
+```sh
+# from within the sdk/ directory
+pnpm test -- src/vite/transformJsxScriptTagsPlugin.test.mts
+```
+
+If you make changes that affect test snapshots, you'll need to update them. You can do this by adding the `-u` flag.
+
+```sh
+# from within the sdk/ directory
+pnpm test -- -u src/vite/transformJsxScriptTagsPlugin.test.mts
+```
+
+Note the extra `--` before the `-u` flag. This is necessary to pass the flag to the underlying test runner (`vitest`) instead of `pnpm`.
+
+### Testing Strategy
+
+This project employs a multi-layered testing strategy to ensure code quality and stability. Tests are divided into three main categories, and our CI/CD pipeline runs different test suites depending on the context to balance development velocity with release confidence.
+
+#### Overview of Testing Layers
+
+1.  **Unit Tests**: These are the foundation of our testing pyramid. They verify the correctness of individual functions, modules, and components in isolation. They are fast, focused, and should cover as much of the core logic as possible.
+2.  **Smoke Tests**: These tests verify the critical user paths and core functionalities of our starter application. A smoke test ensures that a user can successfully install the SDK, start the dev server, build a production version, and see the application render correctly. They are designed to catch major regressions in the end-to-end user experience.
+3.  **End-to-End (E2E) Tests**: Running in the `playground`, these tests cover more nuanced, real-world user scenarios. They validate compatibility with other libraries (like UI frameworks), test specific features in a realistic application context, and confirm compatibility across different environments.
+
+#### CI/CD Testing Pipeline
+
+Our GitHub Actions workflows are configured to provide a tiered testing strategy to balance rapid feedback with comprehensive coverage.
+
+*   **On Pull Requests and Pushes to `main`**: To provide fast feedback, we run a lightweight but representative subset of our test suite. This includes all **unit tests**, plus a minimal configuration of our **smoke tests** and **E2E tests** (running on `ubuntu-latest` with `npm`). This serves as a quick health check to catch common regressions.
+
+*   **Nightly Runs**: To ensure broad compatibility, the full test matrix is run on a schedule (every 12 hours). This includes **smoke tests** and **E2E tests** across all supported operating systems (Ubuntu, macOS) and package managers (pnpm, npm, yarn, yarn-classic). These scheduled runs use more lenient timeouts and higher test retry counts to aggressively surface intermittent, flaky issues that may not appear in regular CI runs. This process catches environment-specific issues without blocking development on `main`.
+
+All test suites can also be run manually on any branch using the `workflow_dispatch` trigger in GitHub Actions, giving contributors the power to run the full suite on their changes when needed.
+
+#### Handling External Contributions
+
+Pull requests use the `pull_request` trigger, which means fork PRs run in the fork's own context without access to repository secrets. Deploy-style tests use a local preview path (build + preview server) instead of actual Cloudflare deploys, so no secrets are needed for PR checks.
+
+*   **Initial Status**: When a PR is opened by an external contributor, all jobs run automatically without requiring approval.
+*   **Maintainer's Responsibility**: A core contributor should still review the code before merging. The `run-secure-tests` label is no longer required for PR tests to run.
+
+### Smoke Testing
+
+Smoke tests check that the critical paths of the SDK work for a new project. They perform a full lifecycle test: installing dependencies, running the dev server, and creating a production build. For both dev and production environments, they verify that server and client components render correctly and that actions work as expected.
+
+#### Running Smoke Tests Locally
+
+To run smoke tests for a starter project, you can use the `ci-smoke-test.sh` script. This is the same script that runs in our CI environment.
+
+```sh
+# Run smoke test for the starter with pnpm
+./sdk/scripts/ci-smoke-test.sh --package-manager "pnpm"
+```
+
+The script will create a temporary directory, copy the starter, install dependencies using the specified package manager, and run a series of automated checks using Puppeteer. If the test fails, artifacts (including screenshots and logs) will be saved to a `smoke-test-artifacts` directory in the monorepo root.
+
+### End-to-End Tests (Playground)
+
+The monorepo includes a `playground` directory for end-to-end (E2E) tests. These tests run against a real, packed tarball of the SDK in an isolated environment to simulate a user's project accurately.
+
+Playground examples are self-contained, runnable projects designed to demonstrate and test RedwoodSDK features. Each example, modeled after `playground/hello-world`, must include an `__tests__` directory with end-to-end tests. These tests are executed from the monorepo root. For context on using the framework to build playgroud examples refer to our docs in `docs/src/content/docs`. Run the tests from monorepo root, `e.g: pnpm test:e2e playground/hello-world/__tests__/e2e.test.mts`
+
+#### Best Practices
+
+The following is an annotated example of a good E2E test that follows our best practices.
+
+```typescript
+import { expect } from "vitest";
+import { setupPlaygroundEnvironment, testDevAndDeploy, poll } from "rwsdk/e2e";
+
+// This sets up the test environment for the entire file.
+// It ensures the playground is isolated and cleaned up automatically.
+setupPlaygroundEnvironment(import.meta.url);
+
+// In most cases, you should be checking the behaviour being tested both in dev and deployments
+// Use `testDevAndDeploy` to run the same test logic against both the
+// local dev server and a temporary Cloudflare deployment.
+testDevAndDeploy("renders MDX and client component", async ({ page, url }) => {
+  await page.goto(url);
+
+  // Use helper functions to improve legibility and reduce repetition.
+  const getButton = async () => page.waitForSelector("button");
+  const getButtonText = async () =>
+    await page.evaluate((el) => el?.textContent, await getButton());
+  const getPageContent = async () => await page.content();
+
+  // Use `poll` to wait for an element or content to appear.
+  // This should be used whenever possible over arbitrary waits (e.g. `setTimeout`).
+  // Place your assertion directly inside the poll to avoid redundant checks.
+  await poll(async () => {
+    const content = await getPageContent();
+    expect(content).toContain("Hello world");
+    expect(await getButtonText()).toBe("Clicks: 0");
+    return true;
+  });
+
+  // Before interacting with the page, wait for it to be fully loaded and
+  // interactive by calling `waitForHydration`. This ensures client-side
+  // hydration is complete and event listeners are attached.
+  await waitForHydration(page);
+
+  // Re-fetch the element before interacting with it. The DOM may have been
+  // updated by a client-side render, and holding onto a stale element
+  // reference can cause flaky tests.
+  (await getButton())?.click();
+
+  // Poll again to wait for the result of the interaction.
+  await poll(async () => {
+    const buttonText = await getButtonText();
+    expect(buttonText).toBe("Clicks: 1");
+    return true;
+  });
+});
+```
+
+#### Getting Started
+
+Before running deployment tests, you need to authenticate with Cloudflare. You only need to do this once for the entire monorepo.
+
+1.  **Set up Wrangler authentication**:
+    ```sh
+    pnpm setup:e2e
+    ```
+    This script will log you in to Cloudflare and ensure the authentication cache is properly set up for all playground tests to reuse.
+
+#### Running Tests
+
+To run all playground E2E tests, use the `test:e2e` script from the monorepo root:
+
+```sh
+pnpm test:e2e
+```
+
+To run a specific test file, pass its path to the `test:e2e` script. The path can be absolute or relative to the `playground/` directory. Note the `--` before the path, which is necessary to pass the argument to the underlying test runner (`vitest`).
+
+```sh
+# Run tests for a single playground project from the monorepo root
+pnpm test:e2e hello-world/__tests__/e2e.test.mts
+```
+
+You can also specify a package manager or enable debug logging using environment variables:
+
+```sh
+# Run tests for hello-world with Yarn and enable debug logging for the e2e environment
+PACKAGE_MANAGER="yarn" DEBUG='rwsdk:e2e:environment' pnpm test:e2e hello-world/__tests__/e2e.test.mts
+```
+
+#### Local Development Performance
+
+To speed up the local test-and-debug cycle, the E2E test harness uses a caching mechanism that is **enabled by default** for local runs.
+
+-   **How it Works**: The harness creates a persistent test environment in your system's temporary directory for each playground project. On the first run, it installs all dependencies. On subsequent runs, it reuses this environment, skipping the lengthy installation step.
+-   **Disabling the Cache**: If you need to force a clean install, you can disable the cache by setting the `RWSDK_E2E_CACHE_DISABLED` environment variable:
+    ```sh
+    RWSDK_E2E_CACHE_DISABLED=1 pnpm test:e2e
+    ```
+-   **Cache Invalidation**: If you change a playground's `package.json`, you will need to manually clear the cache for that playground to force a re-installation. The cache directories are located in your system's temporary folder (e.g., `/tmp/rwsdk-e2e-cache` on Linux).
+
+#### Skipping Tests
+
+You can skip dev server or deployment tests using environment variables. This is useful for focusing on a specific part of the test suite.
+
+-   **Skip Dev Server Tests**:
+    ```sh
+    RWSDK_SKIP_DEV=1 pnpm test:e2e
+    ```
+-   **Skip Deployment Tests**:
+    ```sh
+    RWSDK_SKIP_DEPLOY=1 pnpm test:e2e
+    ```
+
+#### Test API
+
+The E2E test harness provides a set of high-level and low-level APIs to make writing tests simple and efficient.
+
+##### High-Level APIs
+
+These are the most common APIs you'll use. They automatically handle setting up and tearing down resources like dev servers, deployments, and browsers.
+
+-   `testDevServer(name, testFn)`: Runs a test against a local dev server.
+-   `testDeployment(name, testFn)`: Runs a test against a temporary Cloudflare deployment.
+
+Both functions also have a `.skip` method for skipping individual tests (e.g., `testDevServer.skip(...)`).
+
+**Example:**
+
+```typescript
+// playground/hello-world/__tests__/e2e.test.mts
+import { expect } from "vitest";
+import {
+  setupPlaygroundEnvironment,
+  testDevAndDeploy,
+  testDev,
+  testDeploy,
+  poll,
+} from "rwsdk/e2e";
+
+// Sets up the test environment for the suite (automatic cleanup)
+setupPlaygroundEnvironment(import.meta.url);
+
+// Test against both dev server and deployment
+testDevAndDeploy("renders Hello World", async ({ page, url }) => {
+  await page.goto(url);
+
+  await poll(async () => {
+    const content = await page.content();
+    return content.includes("Hello World");
+  });
+
+  const content = await page.content();
+  expect(content).toContain("Hello World");
+});
+
+// Skip both dev and deployment tests
+testDevAndDeploy.skip("skipped test", async ({ page, url }) => {
+  // This test will be skipped for both environments
+});
+
+// Run only this test (both dev and deployment)
+testDevAndDeploy.only("focused test", async ({ page, url }) => {
+  // Only this test will run
+});
+
+// You can still use individual test functions if needed
+testDev("dev-only test", async ({ page, url }) => {
+  // This only runs against dev server
+});
+
+testDeploy("deployment-only test", async ({ page, url }) => {
+  // This only runs against deployment
+});
+```
+
+##### Lower-Level APIs
+
+For more complex scenarios that require finer control, you can use these lower-level utilities. Note that with these, cleanup is still handled automatically after each test.
+
+-   `setupPlaygroundEnvironment()`: Sets up the isolated, tarball-based test environment for the entire test suite (file).
+-   `createDevServer()`: Starts a dev server.
+-   `createDeployment()`: Creates a new Cloudflare deployment.
+-   `createBrowser()`: Launches a Puppeteer browser instance.
+-   `poll(fn, options)`: A utility to retry an async function until it returns `true` or times out.
+
+## Contribution Guidelines
+
+### Dependency Injection over Mocking
+
+When writing tests, we prefer using **dependency injection** over module-level mocking (e.g., `vi.mock()`). [[memory:4223216]] This approach makes our tests more explicit, robust, and easier to maintain.
+
+The preferred pattern is to design functions to accept their dependencies as arguments. This allows you to pass in a controlled, "fake" version of the dependency during tests.
+
+**Example: What Not to Do**
+
+Let's say you have a function that calls `getStylesheetsForEntryPoint`:
+
+```typescript
+// in transformJsxScriptTagsPlugin.mts
+import { getStylesheetsForEntryPoint } from "./jsEntryPointsToStylesheetsPlugin.mjs";
+
+export async function transformJsxScriptTagsCode(code: string) {
+  // ...
+  const stylesheets = await getStylesheetsForEntryPoint(entryPoint, context);
+  // ...
+}
+```
+
+A test for this might be tempted to use `vi.mock()`:
+
+```typescript
+// in transformJsxScriptTagsPlugin.test.mts
+import { getStylesheetsForEntryPoint } from "./jsEntryPointsToStylesheetsPlugin.mjs";
+
+vi.mock("./jsEntryPointsToStylesheetsPlugin.mjs", () => ({
+  getStylesheetsForEntryPoint: vi.fn().mockResolvedValue(["/src/styles.css"]),
+}));
+
+test("injects stylesheets", async () => {
+  // ...
+});
+```
+
+**Example: The Preferred Pattern**
+
+Instead, refactor `transformJsxScriptTagsCode` to accept `getStylesheetsForEntryPoint` as an argument with a default value for production use.
+
+```typescript
+// in transformJsxScriptTagsPlugin.mts
+import {
+  getStylesheetsForEntryPoint as realGetStylesheetsForEntryPoint,
+} from "./jsEntryPointsToStylesheetsPlugin.mjs";
+
+export async function transformJsxScriptTagsCode(
+  code: string,
+  // ... other args
+  getStylesheetsForEntryPoint = realGetStylesheetsForEntryPoint,
+) {
+  // ...
+  const stylesheets = await getStylesheetsForEntryPoint(entryPoint, context);
+  // ...
+}
+```
+
+Now, your test can simply pass a fake function directly, making the dependency explicit and the test cleaner:
+
+```typescript
+// in transformJsxScriptTagsPlugin.test.mts
+test("injects stylesheets for src entry point", async () => {
+  const code = `...`;
+  const getStylesheetsForEntryPoint = async (entryPoint: string) => {
+    if (entryPoint === "/src/client.tsx") {
+      return ["/src/styles.css"];
+    }
+    return [];
+  };
+
+  const result = await transformJsxScriptTagsCode(
+    code,
+    // ... other args
+    getStylesheetsForEntryPoint,
+  );
+  // ... assertions
+});
+```
+
+This approach makes dependencies clear, avoids the pitfalls of global mocks, and leads to more resilient tests.
+
+### Options Objects for Function Parameters
+
+For functions that accept multiple arguments, prefer using a single options object instead of a long list of parameters. This improves readability and makes the function signature more maintainable, as new options can be added without changing the order of existing arguments.
+
+**Good Example:**
+
+```typescript
+function processData({ input, retries = 3, logger }: {
+  input: string;
+  retries?: number;
+  logger?: Logger;
+}) {
+  // ...
+}
+```
+
+**Bad Example:**
+
+```typescript
+function processData(input: string, retries: number = 3, logger?: Logger) {
+  // ...
+}
+```
+
+This convention is not a strict rule. For simple functions where the arguments are self-explanatory (e.g., `add(a, b)`), positional arguments are perfectly acceptable. Use your best judgment.
+
+## Formatting
+
+This project uses Prettier for code formatting. To format the code, run:
+
+```sh
+pnpm format
+```
+
+## Dependency Management and Greenkeeping
+
+This section outlines the strategy for managing dependencies to maintain stability for users while keeping the SDK's own dependencies up-to-date.
+
+### Guiding Principles
+
+1.  **User Stability First**: Changes to peer dependencies, which directly impact user projects, must be handled with the utmost care. We should never knowingly publish a version of the SDK that allows a broken peer dependency version range.
+2.  **Automation with Control**: We use [kindling](https://github.com/redwoodjs/kindling) scheduled tasks to handle routine updates, but maintain manual control over merging and releasing, especially for changes that affect peer dependencies.
+3.  **Clear Categorization**: We treat different types of dependencies with different protocols based on their potential impact.
+
+### Dependency Categories and Update Cadence
+
+We organize dependencies into a **single grouped rolling update** to balance release control with monorepo stability and noise reduction. Updates follow a "Manifest-First" strategy: `package.json` files are always edited directly (not just the lockfile). This ensures `pnpm` can correctly branch version resolutions across different workspace verticals without lockfile contradictions.
+
+A kindling cron task runs weekly and produces a single PR covering the applicable dependency tiers for that week.
+
+#### 1. Critical Dependencies (Every Week)
+
+-   **What**: The most critical shared infrastructure (`wrangler`, `react`, `vite`, etc.) that are defined as `peerDependencies` in the SDK and used across the entire monorepo.
+-   **When**: Every week.
+-   **Why**: These are the "Glue" of the repo. By moving them repo-wide in a single PR, we ensure that the manifests and the lockfile change simultaneously in every folder, preventing pnpm resolution failures.
+
+#### 2. Semantic Verticals (Rolling Schedules)
+
+We divide the product and tooling into verticals. These groups are updated on alternating weeks in lockstep with the critical dependencies to maintain a smooth flow of updates without overwhelming the PR queue.
+
+1.  **SDK & Starter**: Updates to the core `sdk/` package, `addons/`, and the template starter project. Included on the 1st and 3rd week of the month.
+2.  **Infrastructure, Playgrounds, and Community**: Shared internal tools, environments, testing projects, and community showcases. Included on the 2nd and 4th week of the month.
+
+### Triggering Updates Manually
+
+To trigger a greenkeeping run outside of the scheduled cadence, run from the repo root:
+
+```sh
+kindling launch "Run greenkeeping for the SDK" --model sonnet
+```
+
+This launches a full greenkeeping task force that audits, updates, and creates a PR.
+
+### Failure Protocol for Peer Dependencies
+
+When the smoke tests or playground E2E tests fail on a peer dependency update, it is a signal that requires manual intervention.
+
+1.  **Maintainer Investigation**: The first step is always for a maintainer to investigate **why** the test is failing. The failure can have one of two root causes:
+    *   **An Issue in Our SDK**: The dependency may have introduced a breaking change that we need to adapt to.
+    *   **A Regression in the Dependency**: The dependency may have a legitimate bug or regression.
+
+2.  **Manual Corrective Action**:
+    *   If the issue is in our SDK, a fix should be implemented and pushed directly to the greenkeeping PR branch (use `kindling resume <taskId> "Fix the CI failure"`).
+    *   If the failure is a regression in the dependency itself, a maintainer must revert the dependency version back to the previously working version in the affected `package.json` files.
+
+## Releasing Versions
+
+Releases are performed locally by maintainers. For security, release workflows do not run in GitHub Actions — they run via agent-ci on your local machine.
+
+### Prerequisites
+
+- Must be authenticated with npm (logged in via `npm login` or have `~/.npmrc` configured)
+- Must have GitHub CLI (`gh`) installed and authenticated (`gh auth login`)
+- Must have publish permissions for the `@redwoodjs` scope
+
+### Core SDK Release
+
+```sh
+pnpm release        # interactive — prompts for version type
+pnpm release patch  # explicit version type
+pnpm release minor
+pnpm release beta
+pnpm release test   # test release with timestamp
+pnpm release explicit --version 1.2.3
+```
+
+The release script:
+1. Bumps the version in `sdk/package.json`
+2. Builds the SDK with `NODE_ENV=production`
+3. Packs the tarball and runs smoke tests
+4. Publishes to npm
+5. Creates a GitHub release
+6. Pushes the version commit and tag
+
+Use `pnpm release --dry` to simulate without publishing.
+
+### Community Package Release
+
+```sh
+pnpm release:community        # interactive
+pnpm release:community patch  # explicit version type
+pnpm release:community minor
+pnpm release:community major
+```
+
+### Containerized Release (agent-ci)
+
+If you prefer to run releases inside a container, use the agent-ci workflows directly:
+
+```sh
+NPM_TOKEN=<token> GH_TOKEN_FOR_RELEASES=<token> VERSION_TYPE=patch \
+  npx agent-ci run --workflow .agent-ci/workflows/release.yml
+```
+
+See `.agent-ci/workflows/release.yml` for all available parameters.
+
+## Unreleasing a Version
+
+For security reasons, unreleasing a version must be done locally by package maintainers and cannot be performed via CI. This ensures that npm's trusted publishing workflow and repository access tokens are handled securely.
+
+### Prerequisites
+
+- Must be authenticated with npm (logged in via `npm login`)
+- Must have GitHub CLI (`gh`) installed and authenticated
+- Must have write access to the repository
+
+### Usage
+
+To unrelease a version, run the unrelease script from the monorepo root:
+
+```sh
+pnpm unrelease --version <version> [--reason <reason>] [--dry-run]
+```
+
+**Arguments:**
+
+- `--version`: The full version number to unrelease (e.g., `1.0.0-beta.25`)
+- `--reason`: Optional deprecation reason. Defaults to "This version has been unpublished due to a critical issue."
+- `--dry-run`: Run without making changes. Shows what would be done.
+
+**Example:**
+
+```sh
+# Dry run to preview changes
+pnpm unrelease --version 1.0.0-beta.25 --dry-run
+
+# Actually unrelease a version
+pnpm unrelease --version 1.0.0-beta.25 --reason "Contains a security vulnerability"
+
+# Unrelease with default reason
+pnpm unrelease --version 1.0.0-beta.25
+```
+
+### What the Script Does
+
+1. Deprecates the package version on npm using `npm deprecate`
+2. If the release is marked as latest, finds the next latest stable release and marks it as latest
+3. Deletes the GitHub release associated with the version tag
+4. Deletes the git tag from the remote repository
+
+The script requires interactive confirmation (type 'Y' and press Enter) before proceeding with any destructive operations, unless `--dry-run` is used.
+
+For details on the release process, see the [release process architecture documentation](./docs/architecture/releaseProcess.md).

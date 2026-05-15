@@ -1,0 +1,29 @@
+{
+  "entry": [
+    "sdk/src/index.ts!",
+    "sdk/src/scripts/**/*.mts!",
+    "starter/src/**/*.ts!",
+    "addons/*/src/**/*.ts!"
+  ],
+  "project": [
+    "sdk/src/**/*.ts!",
+    "sdk/src/**/*.mts!",
+    "starter/src/**/*.ts!",
+    "addons/*/src/**/*.ts!"
+  ],
+  "vite": false,
+  "ignore": [
+    "**/dist/**",
+    "**/node_modules/**",
+    "**/*.d.ts",
+    "**/vite.config.mts"
+  ],
+  "ignoreDependencies": ["virtual:use-server-lookup.js", "rwsdk/worker"],
+  "ignoreBinaries": ["build"],
+  "rules": {
+    "exports": "warn",
+    "types": "warn",
+    "dependencies": "warn",
+    "files": "warn"
+  }
+}

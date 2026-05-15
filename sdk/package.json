@@ -1,0 +1,226 @@
+{
+  "name": "rwsdk",
+  "version": "1.2.4",
+  "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime",
+  "type": "module",
+  "bin": {
+    "rw-scripts": "./bin/rw-scripts.mjs",
+    "rwsdk": "./bin/rw-scripts.mjs",
+    "rwsync": "./bin/rwsync"
+  },
+  "files": [
+    "./README.md",
+    "./dist",
+    "./bin"
+  ],
+  "scripts": {
+    "build": "tsc --build --clean && tsc",
+    "build:watch": "npm run build -- --watch",
+    "release": "./scripts/release.sh",
+    "test": "vitest --run",
+    "bench": "vitest bench --run",
+    "bench:baseline": "vitest bench --run --outputJson=benchmarks/router-bench-baseline.json",
+    "bench:compare": "vitest bench --run --compare=benchmarks/router-bench-baseline.json",
+    "test:e2e": "node scripts/test-e2e.mjs",
+    "setup:e2e": "pnpm setup:wrangler",
+    "setup:wrangler": "../../scripts/setup-wrangler-auth.sh",
+    "debug:sync": "tsx ./src/scripts/debug-sync.mts",
+    "smoke-test": "tsx ./src/scripts/smoke-test.mts"
+  },
+  "exports": {
+    "./vite": {
+      "types": "./dist/vite/index.d.mts",
+      "default": "./dist/vite/index.mjs"
+    },
+    "./worker": {
+      "react-server": "./dist/runtime/entries/worker.js",
+      "types": "./dist/runtime/entries/worker.d.ts",
+      "default": "./dist/runtime/entries/react-server-only.js"
+    },
+    "./client": {
+      "react-server": "./dist/runtime/entries/no-react-server.js",
+      "workerd": "./dist/runtime/entries/clientSSR.js",
+      "types": "./dist/runtime/entries/client.d.ts",
+      "default": "./dist/runtime/entries/client.js"
+    },
+    "./__state": {
+      "types": "./dist/runtime/state.d.ts",
+      "default": "./dist/runtime/state.js"
+    },
+    "./__ssr": {
+      "react-server": "./dist/runtime/entries/no-react-server.js",
+      "types": "./dist/runtime/entries/ssr.d.ts",
+      "default": "./dist/runtime/entries/ssr.js"
+    },
+    "./__ssr_bridge": {
+      "react-server": "./dist/runtime/entries/no-react-server.js",
+      "types": "./dist/runtime/ssrBridge.d.ts",
+      "default": "./dist/runtime/ssrBridge.js"
+    },
+    "./__vendor_client_barrel": {
+      "default": "./dist/__intermediate_builds/rwsdk-vendor-client-barrel.js"
+    },
+    "./__vendor_server_barrel": {
+      "default": "./dist/__intermediate_builds/rwsdk-vendor-server-barrel.js"
+    },
+    "./router": {
+      "types": "./dist/runtime/entries/router.d.ts",
+      "workerd": "./dist/runtime/entries/router.js",
+      "default": "./dist/runtime/entries/routerClient.js"
+    },
+    "./auth": {
+      "types": "./dist/runtime/entries/auth.d.ts",
+      "default": "./dist/runtime/entries/auth.js"
+    },
+    "./e2e": {
+      "types": "./dist/lib/e2e/index.d.mts",
+      "default": "./dist/lib/e2e/index.mjs"
+    },
+    "./e2e/setup": {
+      "types": "./dist/lib/e2e/setup.d.mts",
+      "default": "./dist/lib/e2e/setup.mjs"
+    },
+    "./db": {
+      "types": "./dist/runtime/lib/db/index.d.ts",
+      "default": "./dist/runtime/lib/db/index.js"
+    },
+    "./debug": {
+      "types": "./dist/runtime/lib/debug.d.ts",
+      "default": "./dist/runtime/lib/debug.js"
+    },
+    "./constants": {
+      "types": "./dist/runtime/constants.d.ts",
+      "default": "./dist/runtime/constants.js"
+    },
+    "./turnstile": {
+      "types": "./dist/runtime/lib/turnstile/turnstile.d.ts",
+      "default": "./dist/runtime/lib/turnstile/turnstile.js"
+    },
+    "./llms": {
+      "types": "./dist/llms/index.d.ts",
+      "default": "./dist/llms/index.js"
+    },
+    "./realtime/worker": {
+      "types": "./dist/runtime/lib/realtime/worker.d.ts",
+      "default": "./dist/runtime/lib/realtime/worker.js"
+    },
+    "./realtime/client": {
+      "types": "./dist/runtime/lib/realtime/client.d.ts",
+      "default": "./dist/runtime/lib/realtime/client.js"
+    },
+    "./realtime/durableObject": {
+      "types": "./dist/runtime/lib/realtime/durableObject.d.ts",
+      "default": "./dist/runtime/lib/realtime/durableObject.js"
+    },
+    "./use-synced-state/client": {
+      "types": "./dist/use-synced-state/client.d.ts",
+      "default": "./dist/use-synced-state/client.js"
+    },
+    "./use-synced-state/worker": {
+      "types": "./dist/use-synced-state/worker.d.mts",
+      "workerd": "./dist/use-synced-state/worker.mjs"
+    }
+  },
+  "keywords": [
+    "rwsdk",
+    "redwoodsdk",
+    "redwoodjs",
+    "redwood",
+    "react",
+    "server components",
+    "sdk",
+    "toolkit",
+    "starter-kit",
+    "typescript",
+    "vite",
+    "react",
+    "jsx",
+    "react-server-components",
+    "rsc",
+    "cloudflare",
+    "cloudflare-workers",
+    "durable-objects",
+    "edge",
+    "serverless",
+    "webapp",
+    "fullstack"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/redwoodjs/sdk",
+    "directory": "sdk"
+  },
+  "author": "RedwoodSDK <peter@redwoodjs.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@ast-grep/napi": "~0.42.1",
+    "@cloudflare/workers-types": "~4.20260405.1",
+    "@mdx-js/mdx": "~3.1.1",
+    "@puppeteer/browsers": "~2.13.0",
+    "@types/decompress": "~4.2.7",
+    "@types/fs-extra": "~11.0.4",
+    "@types/glob": "^9.0.0",
+    "@types/react": "~19.2.14",
+    "@types/react-dom": "~19.2.3",
+    "@types/react-is": "~19.2.0",
+    "@vitejs/plugin-react": "~6.0.1",
+    "chokidar": "~5.0.0",
+    "debug": "~4.4.3",
+    "decompress": "~4.2.1",
+    "enhanced-resolve": "~5.20.1",
+    "eventsource-parser": "~3.0.6",
+    "execa": "~9.6.1",
+    "find-up": "~8.0.0",
+    "fs-extra": "~11.3.4",
+    "get-port": "^7.2.0",
+    "glob": "~13.0.6",
+    "ignore": "~7.0.5",
+    "jsonc-parser": "~3.3.1",
+    "kysely": "~0.28.17",
+    "kysely-do": "~0.0.1-rc.1",
+    "lodash": "~4.18.1",
+    "magic-string": "~0.30.21",
+    "picocolors": "~1.1.1",
+    "proper-lockfile": "~4.1.2",
+    "playwright-core": "1.60.0",
+    "puppeteer-core": "~24.42.0",
+    "react-is": "~19.2.6",
+    "rsc-html-stream": "~0.0.7",
+    "server-only": "^0.0.1",
+    "tmp-promise": "~3.0.3",
+    "ts-morph": "~27.0.2",
+    "unique-names-generator": "~4.7.1",
+    "vibe-rules": "~0.3.91"
+  },
+  "peerDependencies": {
+    "@cloudflare/vite-plugin": "^1.26.1",
+    "capnweb": "~0.5.0",
+    "react": ">=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0",
+    "react-dom": ">=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0",
+    "react-server-dom-webpack": ">=19.2.0-0 <19.3.0 || >=19.3.0-0 <20.0.0",
+    "vite": "^6.2.6 || 7.x || 8.x",
+    "wrangler": "^4.77.0"
+  },
+  "peerDependenciesMeta": {
+    "capnweb": {
+      "optional": true
+    }
+  },
+  "packageManager": "pnpm@10.31.0",
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.31.0",
+    "wrangler": "^4.80.0",
+    "capnweb": "~0.5.0",
+    "@types/debug": "~4.1.13",
+    "@types/js-beautify": "~1.14.3",
+    "@types/lodash": "~4.17.24",
+    "@types/node": "~25.3.5",
+    "@types/proper-lockfile": "~4.1.4",
+    "js-beautify": "~1.15.4",
+    "semver": "~7.7.4",
+    "tsx": "~4.21.0",
+    "typescript": "~6.0.2",
+    "vite": "~8.0.9",
+    "vitest": "~4.1.2"
+  }
+}

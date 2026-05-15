@@ -1,0 +1,11 @@
+{
+  "plugins": ["prettier-plugin-organize-imports"],
+  "overrides": [
+    {
+      "files": "*.jsonc",
+      "options": {
+        "trailingComma": "none"
+      }
+    }
+  ]
+}

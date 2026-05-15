@@ -1,0 +1,40 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Vite App (Client)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}",
+      "sourceMaps": true,
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Attach to Worker",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "address": "localhost",
+      "restart": false,
+      "protocol": "inspector",
+      "skipFiles": ["<node_internals>/**"],
+      "localRoot": "${workspaceFolder}",
+      "remoteRoot": "${workspaceFolder}",
+      "sourceMaps": true
+    },
+    {
+      "name": "Attach to Worker (Port 9299)",
+      "type": "node",
+      "request": "attach",
+      "port": 9299,
+      "address": "localhost",
+      "restart": false,
+      "protocol": "inspector",
+      "skipFiles": ["<node_internals>/**"],
+      "localRoot": "${workspaceFolder}",
+      "remoteRoot": "${workspaceFolder}",
+      "sourceMaps": true
+    }
+  ]
+}

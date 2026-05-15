@@ -1,0 +1,543 @@
+---
+title: Request Handling & Routing
+description: Like air traffic control, but for requests.
+---
+
+import { Aside, Tabs, TabItem, LinkCard } from "@/app/components/mdx";
+
+The request/response paradigm is at the heart of web development - when a browser makes a request, your server needs to respond with content. RedwoodSDK makes this easy with the `defineApp` function, which lets you elegantly handle incoming requests and return the right responses.
+
+```tsx title="src/worker.tsx"
+import { defineApp } from "rwsdk/worker";
+import { route } from "rwsdk/router";
+import { env } from "cloudflare:workers";
+
+export default defineApp([
+  // Middleware
+  function middleware({ request, ctx }) {
+    /* Modify context */
+  },
+  function middleware({ request, ctx }) {
+    /* Modify context */
+  },
+  // Request Handlers
+  route("/", function handler({ request, ctx }) {
+    return new Response("Hello, world!");
+  }),
+  route("/ping", function handler({ request, ctx }) {
+    return new Response("Pong!");
+  }),
+  route("/api/users", {
+    get: () => new Response(JSON.stringify(users)),
+    post: () => new Response("Created", { status: 201 }),
+  }),
+]);
+```
+
+---
+
+The `defineApp` function takes an array of middleware and route handlers that are executed in the order they are defined. In this example the request is passed through two middleware functions before being "matched" by the route handlers.
+
+---
+
+## Matching Patterns
+
+Routes are matched in the order they are defined. You define routes using the `route` function. Trailing slashes are optional and normalized internally.
+
+```tsx title="src/worker.tsx"
+import { route } from "rwsdk/router";
+
+defineApp([route("/match-this", () => new Response("Hello, world!"))]); // [!code highlight]
+```
+
+---
+
+`route` parameters:
+
+1. The matching pattern string
+2. The request handler function
+
+---
+
+There are three matching patterns:
+
+#### Static
+
+Match exact pathnames.
+
+```tsx
+route("/", ...)
+route("/about", ...)
+route("/contact", ...)
+```
+
+#### Parameter
+
+Match dynamic segments marked with a colon (`:`). The values are available in the route handler via `params` (`params.id` and `params.groupId`).
+
+```tsx
+route("/users/:id", ...)
+route("/users/:id/edit", ...)
+route("/users/:id/addToGroup/:groupId", ...)
+```
+
+#### Wildcard
+
+Match all remaining segments after the prefix, the values are available in the route handler via `params.$0`, `params.$1`, etc.
+
+```tsx
+route("/files/*", ...)
+route("/files/*/preview", ...)
+route("/files/*/download/*", ...)
+```
+
+---
+
+## Query Parameters
+
+RedwoodSDK uses the standard Web [Request](https://developer.mozilla.org/en-US/docs/Web/API/Request) object. To access query parameters, you can use the standard `URL` API:
+
+```tsx
+route("/search", ({ request }) => {
+  const url = new URL(request.url);
+  const name = url.searchParams.get("name");
+
+  return <div>Hello, {name}!</div>;
+});
+```
+
+To get multiple values for a single key (e.g., `?tag=js&tag=react`):
+
+```tsx
+route("/posts", ({ request }) => {
+  const url = new URL(request.url);
+  const tags = url.searchParams.getAll("tag"); // ["js", "react"]
+
+  return <div>Filtering by tags: {tags.join(", ")}</div>;
+});
+```
+
+---
+
+## Request Handlers
+
+The request handler is a function, or array of functions (See [Interrupters](#interrupters)), that are executed when a request is matched.
+
+```tsx title="src/worker.tsx"
+import { route } from "rwsdk/router";
+
+defineApp([
+  route("/a-standard-response", ({ request, params, ctx }) => { // [!code highlight:6]
+    return new Response("Hello, world!");
+  }),
+  route("/a-jsx-response", () => {
+    return <div>Hello, JSX world!</div>;
+  }),
+]);
+```
+
+---
+
+The request handler function takes a [RequestInfo](#request-info) object as its parameter.
+
+Return values:
+
+- `Response`: A standard response object.
+- `JSX`: A React component, which is rendered to HTML on the server and **streamed** to the client. This allows the browser to progressively render the page before it is hydrated on the client side.
+
+---
+
+## HTTP Method Routing
+
+You can handle different HTTP methods (GET, POST, PUT, DELETE, etc.) on the same path by passing an object with method keys:
+
+```tsx
+route("/api/users", {
+  get: () => new Response(JSON.stringify(users)),
+  post: ({ request }) => new Response("User created", { status: 201 }),
+  delete: () => new Response("User deleted", { status: 204 }),
+});
+```
+
+Method handlers can also be arrays of functions, allowing you to use [interrupters](#interrupters) per method:
+
+```tsx
+route("/api/users", {
+  get: [isAuthenticated, () => new Response(JSON.stringify(users))],
+  post: [isAuthenticated, validateUser, createUserHandler],
+});
+```
+
+**Standard HTTP Methods**: `delete`, `get`, `head`, `patch`, `post`, `put`
+
+**Custom Methods**: Use the `custom` key for non-standard methods (case-insensitive):
+
+```tsx
+route("/api/search", {
+  custom: {
+    report: () => new Response("Report data"),
+  },
+});
+```
+
+**Automatic OPTIONS & 405 Support**: By default, OPTIONS requests return `204 No Content` with an `Allow` header, and unsupported methods return `405 Method Not Allowed`.
+
+**Configuration**: Disable automatic behaviors:
+
+```tsx
+route("/api/users", {
+  get: () => new Response("OK"),
+  config: {
+    disableOptions: true, // OPTIONS returns 405
+    disable405: true, // Unsupported methods fall through to 404
+  },
+});
+```
+
+<Aside type="note" title="HEAD Requests">
+  Unlike in Express.js, you must explicitly provide a HEAD handler. HEAD requests are not automatically mapped to GET handlers:
+
+```tsx
+route("/api/users", {
+  get: getHandler,
+  head: getHandler, // Explicitly reuse handler
+});
+```
+
+</Aside>
+
+---
+
+### Interrupters
+
+Interrupters are an array of functions that are executed in sequence for each matched request. They can be used to modify the request, context, or to short-circuit the response. A typical use-case is to check for authentication on a per-request basis, as an example you're trying to ensure that a specific user can access a specific resource.
+
+```tsx title="src/worker.tsx" collapse={1-2}
+import { defineApp } from "rwsdk/worker";
+import { route } from "rwsdk/router";
+import { EditBlogPage } from "src/pages/blog/EditBlogPage";
+
+function isAuthenticated({ request, ctx }) { // [!code highlight:6]
+  // Ensure that this user is authenticated
+  if (!ctx.user) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+}
+
+defineApp([route("/blog/:slug/edit", [isAuthenticated, EditBlogPage])]); // [!code highlight]
+```
+
+---
+
+For the `/blog/:slug/edit` route, the `isAuthenticated` function will be executed first, if the user is not authenticated, the response will be a 401 Unauthorized. If the user is authenticated, the `EditBlogPage` component will be rendered. Therefore the flow is interrupted. The `isAuthenticated` function can be shared across multiple routes.
+
+---
+
+## Middleware & Context
+
+The context object (`ctx`) is a mutable object that is passed to each request handler, interrupters, and React Server Functions. It's used to share data between the different parts of your application. You populate the context on a per-request basis via Middleware.
+
+Middleware runs before the request is matched to a route. You can specify multiple middleware functions, they'll be executed in the order they are defined.
+
+<Aside type="note" title="Server Actions">
+  Requests made by Server Actions also pass through the middleware pipeline.
+  This means you can rely on middleware to populate context or perform checks
+  for your actions, just as you would for page requests.
+</Aside>
+
+```tsx title="src/worker.tsx"
+import { defineApp } from "rwsdk/worker";
+import { route } from "rwsdk/router";
+import { env } from "cloudflare:workers";
+
+defineApp([ // [!code highlight:6]
+  sessionMiddleware,
+  async function getUserMiddleware({ request, ctx }) {
+    if (ctx.session.userId) {
+      ctx.user = await db.user.find({ where: { id: ctx.session.userId } });
+    }
+  },
+  route("/hello", [
+    function ({ ctx }) {
+      if (!ctx.user) {
+        return new Response("Unauthorized", { status: 401 });
+      }
+    },
+    function ({ ctx }) {
+      return new Response(`Hello ${ctx.user.username}!`);
+    },
+  ]),
+]);
+```
+
+---
+
+The context object:
+
+1. `sessionMiddleware` is a function that is used to populate the `ctx.session` object
+2. `getUserMiddleware` is a middleware function that is used to populate the `ctx.user` object
+3. `"/hello"` is a an array of route handlers that are executed when "/hello" is matched:
+
+- if the user is not authenticated the request will be interrupted and a 401 Unauthorized response will be returned
+- if the user is authenticated the request will be passed to the next request handler and `"Hello {ctx.user.username}!"` will be returned
+
+---
+
+### Extending App Context Types
+
+To get full type safety for your custom context data (like `ctx.user`), you can extend the `DefaultAppContext` interface in a `global.d.ts` file in your project's root.
+
+```typescript title="global.d.ts"
+import { User } from "@db/index";
+import { DefaultAppContext } from "rwsdk/worker";
+
+interface AppContext {
+  user?: User;
+  session?: { userId: string | null };
+}
+
+declare module "rwsdk/worker" {
+  interface DefaultAppContext extends AppContext {}
+}
+```
+
+Now, whenever you access `ctx` in your handlers or via `getRequestInfo().ctx`, TypeScript will know about the `user` and `session` properties without needing manual casting.
+
+---
+
+## Documents
+
+Documents are how you define the "shell" of your application's html: the `<html>`, `<head>`, `<meta>` tags, scripts, stylesheets, `<body>`, and where in the `<body>` your actual page content is rendered. In RedwoodSDK, you tell it which document to use with the `render()` function in `defineApp`. In other words, you're asking RedwoodSDK to "render" the document.
+
+```tsx title="src/worker.tsx"
+// [!code word:Document]
+import { defineApp } from "rwsdk/worker";
+import { route, render } from "rwsdk/router";
+
+import { Document } from "@/pages/document";
+import { HomePage } from "@/pages/home-page";
+
+export default defineApp([render(Document, [route("/", HomePage)])]);
+```
+
+---
+
+The `render` function takes a React component and an array of route handlers. The document will be applied to all the routes that are passed to it.
+
+This component will be rendered on the server side when the page loads. When defining this component, you'd add:
+
+- Your application's stylesheets and scripts
+
+
+---
+
+```tsx title="src/pages/document.tsx"
+export const Document = ({ children }) => (
+  <html lang="en">
+    <head>
+      <meta charSet="utf-8" />
+      <script type="module" src="/src/client.tsx"></script>
+    </head>
+    // [!code highlight:1]
+    <body>
+      {children}
+    </body>
+  </html>
+);
+```
+
+<Aside type="caution" title="Client Side Hydration">
+  You must include the client side hydration script in your document, otherwise
+  the React components will not be hydrated.
+</Aside>
+
+## Request Info
+
+The `requestInfo` object and `getRequestInfo()` function are available in server functions and provide access to the current request's context. Import them from `rwsdk/worker`:
+
+```tsx
+import { requestInfo, getRequestInfo } from "rwsdk/worker";
+
+export async function myServerFunction() {
+  // Option 1: Using the requestInfo object
+  const { request, response, ctx } = requestInfo;
+
+  // Option 2: Using the getRequestInfo() function (recommended for actions)
+  const info = getRequestInfo();
+  // info.request, info.response, info.ctx.user
+}
+```
+
+<Aside type="note">
+  `getRequestInfo()` will throw an error if called outside of a request lifecycle, whereas `requestInfo` will return `undefined` for its properties.
+</Aside>
+
+---
+
+The `requestInfo` object contains:
+
+- `request`: The incoming HTTP [Request](https://developer.mozilla.org/en-US/docs/Web/API/Request) object
+- `response`: A [ResponseInit](https://fetch.spec.whatwg.org/#responseinit) object used to configure the status and headers of the response
+- `ctx`: The app context (same as what's passed to components)
+- `rw`: RedwoodSDK-specific context
+- `cf`: Cloudflare's Execution Context API
+
+You can mutate the `response` object to configure the status and headers. For example:
+
+```tsx
+import { requestInfo } from "rwsdk/worker";
+import { route } from "rwsdk/router";
+
+const NotFound = () => <div>Not Found</div>;
+
+export default defineApp([
+  route("/some-resource", async () => {
+    // some logic to determine if the resource is not found
+
+    response.status = 404;
+    response.headers.set("Cache-Control", "no-store");
+
+    return <NotFound />;
+  }),
+]);
+```
+
+---
+
+## Generating Links
+
+Use `linkFor` to derive a strongly typed helper from your `defineApp` export. The helper works anywhere you can import types, including client code, because the call only depends on the app type.
+
+```ts title="src/app/shared/links.ts"
+import { linkFor } from "rwsdk/router";
+
+// Recommended: type-only import to avoid bundling worker code
+import type * as Worker from "../../worker";
+type App = typeof Worker.default;
+
+export const link = linkFor<App>();
+```
+
+`linkFor` exposes the full set of routes discovered inside `defineApp`. TypeScript verifies that the path you pass exists and that you provide the required parameters. Using a type-only import ensures bundlers do not include the worker code in client bundles while preserving full types.
+
+<Aside type="note" title="Alternative import pattern">
+  If your tooling supports it, you can also use:
+
+```ts
+type App = typeof import("../../worker").default;
+```
+
+Some environments do not allow `import()` in types; in that case, prefer the type-only import shown above.
+
+</Aside>
+
+### When using Cron, Queues, etc.
+
+When using `ExportedHandler` to support Cron, Queues, etc. you need to export the `app` object using the `defineApp` function.
+
+```tsx title="src/worker.tsx"
+export const app = defineApp([
+  // <-- Note: `export const app = ...`>
+  setCommonHeaders(),
+  ({ ctx }) => {
+    // setup ctx here
+    ctx;
+  },
+  render(Document, [route("/", Home)]),
+]);
+
+export default {
+  fetch: app.fetch,
+} satisfies ExportedHandler<Env>;
+```
+
+Then you can use the `link` function to generate links to your routes, but instead of `default` you need to pass the exported `app` object.
+
+```tsx title="src/app/shared/links.ts"
+import { linkFor } from "rwsdk/router";
+
+// Recommended: type-only import to avoid bundling worker code
+import type * as Worker from "../../worker";
+type App = typeof Worker.app; // <-- Note: `.app`>
+
+export const link = linkFor<App>();
+```
+
+### Examples
+
+```tsx title="Anywhere in your app (client or server)"
+import { link } from "@/shared/links";
+
+// Static route
+const accountsHref = link("/accounts");
+// <a href={accountsHref}>View Accounts</a>
+
+// Dynamic route with params (fully typed)
+const callDetailsHref = link("/calls/details/:id", { id: call.id });
+// <a href={callDetailsHref}>View Call</a>
+
+// Building currentPath for list pages or search components
+const currentPath = link("/settings/users");
+```
+
+- Typing `link("` in your editor will autocomplete all valid route patterns from your app.
+- Passing a path that does not exist in your route tree, or omitting required params, produces a compile-time type error.
+
+### Prefetching pages with `<link rel="x-prefetch">`
+
+When client-side navigation is enabled via `initClientNavigation`, you can hint
+future navigations using the browser's [Cache API](https://developer.mozilla.org/en-US/docs/Web/API/Cache):
+
+```tsx title="In a route or layout component (React 19)"
+import { link } from "@/shared/links";
+
+export function AboutPageLayout() {
+  const aboutHref = link("/about/");
+
+  return (
+    <>
+      {/* React 19 will hoist this <link> into <head> */}
+      <link rel="x-prefetch" href={aboutHref} />
+      {/* ...rest of your page... */}
+    </>
+  );
+}
+```
+
+After each client navigation, RedwoodSDK scans `link[rel="x-prefetch"][href]` elements
+and issues background `GET` requests for those route-like URLs with the `__rsc`
+query parameter set and an `x-prefetch: true` header. Successful responses are stored in a generation-based `Cache`
+using `cache.put`, following the semantics described in the MDN Cache
+documentation.
+
+When navigating to a prefetched route, the cached response is used instead of
+making a network request, improving navigation performance. Cache entries are
+automatically evicted after each navigation to ensure fresh content, using a
+generation-based pattern that avoids races with in-flight prefetches and
+isolates cache entries per browser tab.
+
+### Migration tips (from route constants)
+
+If you previously used route constant helpers (e.g. `ROUTES` or `ADMIN_ROUTES`), you can migrate incrementally:
+
+```ts
+// Before
+// ROUTES.CALLS.INDEX
+// ROUTES.CALLS.DETAILS(id)
+// ADMIN_ROUTES.COMPANIES.USERS(id)
+
+// After
+link("/calls");
+link("/calls/details/:id", { id });
+link("/admin/companies/:id/users", { id });
+```
+
+Notes:
+
+- The accepted patterns are exactly those declared in your route tree in `@/worker`.
+- For routes with optional query strings, build them as needed:
+
+```ts
+const base = link("/admin/companies/calls/details/:id", { id: callId });
+const href = companyId ? `${base}?companyId=${companyId}` : base;
+```

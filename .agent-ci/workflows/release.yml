@@ -1,0 +1,190 @@
+# =============================================================================
+# 🚨 SECURITY CRITICAL — NEVER MOVE THIS FILE TO .github/workflows/ 🚨
+# =============================================================================
+#
+# PRIMARY RELEASE PATH: pnpm release
+#   Runs directly on your machine using your existing npm (~/.npmrc) and
+#   gh CLI auth. No env vars needed.
+#
+# ALTERNATIVE (containerized): pnpm release:agent-ci
+#   Runs inside an agent-ci container. Requires auth tokens as env vars:
+#     NPM_TOKEN              npm publish token
+#     GH_TOKEN_FOR_RELEASES  GitHub token for release creation
+#     VERSION_TYPE           patch | minor | explicit | test | canary
+#     VERSION                explicit version (required for VERSION_TYPE=explicit)
+#     CREATE_GH_RELEASE      true | false (default: true)
+#     SKIP_SMOKE_TESTS       true | false (default: false)
+#     DRY_RUN                true | false (default: false)
+#
+# WHY agent-ci: Running releases in GitHub Actions exposes OIDC tokens and npm
+# credentials to the CI runner. A poisoned cache or compromised action could
+# steal these tokens and publish malicious packages.
+#
+# If a contributor opens a PR that moves this file to .github/workflows/,
+# REJECT IT IMMEDIATELY.
+# =============================================================================
+
+name: Release
+
+on: workflow_dispatch
+
+jobs:
+  release:
+    if: |
+      secrets.RWSDK_RELEASE_BRANCH == 'main' ||
+      secrets.RWSDK_RELEASE_BRANCH == 'next' ||
+      secrets.VERSION_TYPE == 'test' ||
+      secrets.VERSION_TYPE == 'canary'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # We need to fetch all history for semver to work correctly and to push changes.
+          fetch-depth: 0
+          fetch-tags: true
+          token: ${{ secrets.GH_TOKEN_FOR_RELEASES }}
+
+      - name: Set up Git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24.14.0
+          # Cache intentionally disabled: a poisoned Actions cache from a
+          # pull_request_target run could otherwise be restored here under
+          # id-token: write and GH_TOKEN_FOR_RELEASES.
+
+      - name: Update npm
+        run: npm install -g npm@latest
+
+      - name: Install release tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh
+          npx playwright@1.60.0 install --with-deps chromium
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Setup .npmrc for publishing
+        working-directory: sdk
+        run: |
+          echo "registry=https://registry.npmjs.org/" >> .npmrc
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> .npmrc
+
+      - name: Run release script
+        id: release_script
+        working-directory: sdk
+        env:
+          CI: "1"
+          GITHUB_ACTIONS: "1"
+          GITHUB_EVENT_NAME: "pull_request"
+          GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_RELEASES }}
+          RWSDK_RELEASE_BRANCH: ${{ secrets.RWSDK_RELEASE_BRANCH }}
+        run: |
+          VERSION_TYPE="${{ secrets.VERSION_TYPE }}"
+          VERSION="${{ secrets.VERSION }}"
+          SKIP_SMOKE_TESTS="${{ secrets.SKIP_SMOKE_TESTS }}"
+          DRY_RUN="${{ secrets.DRY_RUN }}"
+
+          # Normalize sentinel values to empty string
+          if [[ "$VERSION" == "none" ]]; then
+            VERSION=""
+          fi
+
+          COMMAND="./scripts/release.sh $VERSION_TYPE"
+          if [[ -n "$VERSION" ]]; then
+            COMMAND="$COMMAND --version $VERSION"
+          fi
+          if [[ "$SKIP_SMOKE_TESTS" == "true" ]]; then
+            COMMAND="$COMMAND --skip-smoke-tests"
+          fi
+          if [[ "$DRY_RUN" == "true" ]]; then
+            COMMAND="$COMMAND --dry"
+          fi
+          echo "Release branch: ${RWSDK_RELEASE_BRANCH:-unknown}"
+          echo "Running command: $COMMAND"
+          eval $COMMAND
+
+      - name: Create GitHub Release
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_RELEASES }}
+          CREATE_GH_RELEASE: ${{ secrets.CREATE_GH_RELEASE }}
+          DRY_RUN: ${{ secrets.DRY_RUN }}
+        run: |
+          if [[ "${CREATE_GH_RELEASE:-true}" == "false" ]]; then
+            echo "Skipping GitHub release creation as requested."
+            exit 0
+          fi
+          if [[ "${DRY_RUN:-false}" == "true" ]]; then
+            echo "Skipping GitHub release creation for dry run."
+            exit 0
+          fi
+
+          FLAGS="--generate-notes"
+          VERSION_TYPE="${{ secrets.VERSION_TYPE }}"
+          VERSION="${{ secrets.VERSION }}"
+
+          if [[ "$VERSION_TYPE" == "patch" || "$VERSION_TYPE" == "minor" || "$VERSION_TYPE" == "beta" ]]; then
+            FLAGS="$FLAGS --latest"
+          elif [[ "$VERSION_TYPE" == "explicit" ]]; then
+            # For explicit versions, we check the version string to determine if it's a pre-release
+            if [[ "$VERSION" == *"-beta."* ]]; then
+              FLAGS="$FLAGS --latest"
+            elif [[ "$VERSION" == *"-*" ]]; then
+              FLAGS="$FLAGS --prerelease"
+            else
+              FLAGS="$FLAGS --latest"
+            fi
+          elif [[ "$VERSION_TYPE" == "test" || "$VERSION_TYPE" == "canary" ]]; then
+            FLAGS="$FLAGS --prerelease"
+          fi
+
+          REPO_URL="$(git remote get-url origin)"
+          case "$REPO_URL" in
+            https://github.com/*)
+              REPO="${REPO_URL#https://github.com/}"
+              REPO="${REPO%.git}"
+              ;;
+            git@github.com:*)
+              REPO="${REPO_URL#git@github.com:}"
+              REPO="${REPO%.git}"
+              ;;
+            *)
+              REPO="${GITHUB_REPOSITORY:-redwoodjs/sdk}"
+              ;;
+          esac
+
+          echo "Creating GitHub release for $REPO tag $TAG_NAME with flags: $FLAGS"
+          gh --repo "$REPO" release create "$TAG_NAME" $FLAGS
+
+      - name: Prune node_modules for artifact upload
+        if: failure() && steps.release_script.outputs.project-dir
+        run: |
+          echo "Pruning node_modules to reduce artifact size..."
+          find ${{ steps.release_script.outputs.project-dir }}/node_modules -mindepth 1 -maxdepth 1 -not -name "rwsdk" -exec rm -rf {} +
+          echo "Pruning complete."
+
+      - name: Upload logs on failure
+        if: failure() && steps.release_script.outputs.project-dir
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: smoke-test-failure-logs
+          path: ${{ steps.release_script.outputs.project-dir }}
+
+      - name: Upload smoke test artifacts
+        if: always() && steps.release_script.outputs.project-dir
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-smoke-test-artifacts
+          path: ${{ steps.release_script.outputs.project-dir }}/artifacts
+          retention-days: 7

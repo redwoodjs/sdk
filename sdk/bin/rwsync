@@ -1,0 +1,12 @@
+#!/bin/sh
+set -e
+
+# This script is a lightweight wrapper that passes all arguments to the underlying
+# debug:sync Node.js script.
+# The RWSDK_REPO env var should point to the root of the sdk repo.
+
+# Capture the current directory *before* changing it
+TARGET_DIR=$PWD
+
+cd "${RWSDK_REPO}/sdk"
+pnpm debug:sync "$TARGET_DIR" "$@"

@@ -1,0 +1,36 @@
+.content-collections/*
+.source/
+
+# Node modules
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Environment variables
+.env
+.dev.vars
+
+# Build output
+dist/
+
+# TypeScript
+*.tsbuildinfo
+
+# IDEs
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+
+# Vite cache
+.vite
+
+# Wrangler
+.wrangler
+
+# Legacy Astro
+.astro/

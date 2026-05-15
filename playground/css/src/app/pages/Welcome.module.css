@@ -1,0 +1,17 @@
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.title {
+  font-size: 2rem;
+  color: #1a1a2e;
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  font-size: 1.1rem;
+  color: #555;
+}

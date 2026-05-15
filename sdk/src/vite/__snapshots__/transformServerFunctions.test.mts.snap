@@ -1,0 +1,512 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`useServerPlugin > TRANSFORMS > ARROW_FUNCTION_EXPORT_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+export let sum = createServerReference("/test.tsx", "sum");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > ARROW_FUNCTION_EXPORT_CODE > SSR 1`] = `
+"import { createServerReference } from "rwsdk/__ssr";
+
+export let sum = createServerReference("/test.tsx", "sum");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > ARROW_FUNCTION_EXPORT_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+export const sum = () => {
+  return 1 + 1
+}
+registerServerReference(sum, "/test.tsx", "sum")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > ASYNC_FUNCTION_EXPORT_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+export let sum = createServerReference("/test.tsx", "sum");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > ASYNC_FUNCTION_EXPORT_CODE > SSR 1`] = `
+"import { createServerReference } from "rwsdk/__ssr";
+
+export let sum = createServerReference("/test.tsx", "sum");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > ASYNC_FUNCTION_EXPORT_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+export async function sum() {
+  return 1 + 1
+}
+registerServerReference(sum, "/test.tsx", "sum")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > COMMENT_BLOCK_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+export let sum = createServerReference("/test.tsx", "sum");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > COMMENT_BLOCK_CODE > SSR 1`] = `
+"import { createServerReference } from "rwsdk/__ssr";
+
+export let sum = createServerReference("/test.tsx", "sum");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > COMMENT_BLOCK_CODE > WORKER 1`] = `
+"
+/* Giant
+ * Comment
+ * Block
+ */
+import { registerServerReference } from "rwsdk/worker";
+
+export function sum() {
+  return 1 + 1
+}
+registerServerReference(sum, "/test.tsx", "sum")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > COMMENT_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+export let sum = createServerReference("/test.tsx", "sum");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > COMMENT_CODE > SSR 1`] = `
+"import { createServerReference } from "rwsdk/__ssr";
+
+export let sum = createServerReference("/test.tsx", "sum");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > COMMENT_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+// Comment
+
+export function sum() {
+  return 1 + 1;
+}
+registerServerReference(sum, "/test.tsx", "sum")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > DEFAULT_AND_NAMED_EXPORTS_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+
+export default createServerReference("/test.tsx", "default");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > DEFAULT_AND_NAMED_EXPORTS_CODE > SSR 1`] = `
+"import { createServerReference } from "rwsdk/__ssr";
+
+
+export default createServerReference("/test.tsx", "default");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > DEFAULT_AND_NAMED_EXPORTS_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+export function sum() {
+  return 1 + 1;
+}
+
+function __defaultServerFunction__() {
+  return 1 + 2;
+}
+
+export default __defaultServerFunction__;
+registerServerReference(__defaultServerFunction__, "/test.tsx", "default")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > DEFAULT_EXPORT_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+
+export default createServerReference("/test.tsx", "default");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > DEFAULT_EXPORT_CODE > SSR 1`] = `
+"import { createServerReference } from "rwsdk/__ssr";
+
+
+export default createServerReference("/test.tsx", "default");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > DEFAULT_EXPORT_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+function __defaultServerFunction__() {
+  return 1 + 1;
+}
+
+export default __defaultServerFunction__;
+registerServerReference(__defaultServerFunction__, "/test.tsx", "default")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > EXPORT_DEFAULT_FUNCTION_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+
+export default createServerReference("/test.tsx", "default");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > EXPORT_DEFAULT_FUNCTION_CODE > SSR 1`] = `
+"import { createServerReference } from "rwsdk/__ssr";
+
+
+export default createServerReference("/test.tsx", "default");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > EXPORT_DEFAULT_FUNCTION_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+function __defaultServerFunction__() {
+  return 1 + 1;
+}
+
+export default __defaultServerFunction__;
+registerServerReference(__defaultServerFunction__, "/test.tsx", "default")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > MULTI_LINE_COMMENT_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+export let sum = createServerReference("/test.tsx", "sum");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > MULTI_LINE_COMMENT_CODE > SSR 1`] = `
+"import { createServerReference } from "rwsdk/__ssr";
+
+export let sum = createServerReference("/test.tsx", "sum");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > MULTI_LINE_COMMENT_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+// Multi-line
+// Comment
+
+export function sum() {
+  return 1 + 1
+}
+registerServerReference(sum, "/test.tsx", "sum")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > NAMED_EXPORT_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+export let sum = createServerReference("/test.tsx", "sum");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > NAMED_EXPORT_CODE > SSR 1`] = `
+"import { createServerReference } from "rwsdk/__ssr";
+
+export let sum = createServerReference("/test.tsx", "sum");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > NAMED_EXPORT_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+export function sum() {
+  return 1 + 1
+}
+registerServerReference(sum, "/test.tsx", "sum")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > PREDEFINED_DEFAULT_EXPORT_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+
+export default createServerReference("/test.tsx", "default");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > PREDEFINED_DEFAULT_EXPORT_CODE > SSR 1`] = `
+"import { createServerReference } from "rwsdk/__ssr";
+
+
+export default createServerReference("/test.tsx", "default");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > PREDEFINED_DEFAULT_EXPORT_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+const sum = () => {
+  return 1 + 1;
+}
+
+export default sum;
+const __defaultServerFunction__ = sum;
+registerServerReference(__defaultServerFunction__, "/test.tsx", "default")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > RE_EXPORT_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+export let sum = createServerReference("/test.tsx", "sum");
+export let multiply = createServerReference("/test.tsx", "multiply");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > RE_EXPORT_CODE > SSR 1`] = `
+"import { createServerReference } from "rwsdk/__ssr";
+
+export let sum = createServerReference("/test.tsx", "sum");
+export let multiply = createServerReference("/test.tsx", "multiply");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > RE_EXPORT_CODE > WORKER 1`] = `
+"import { sum } from "./math";
+import { default as multiply } from "./multiply";
+import { registerServerReference } from "rwsdk/worker";
+
+export { sum } from './math';
+export { default as multiply } from './multiply';
+export * from './utils';
+registerServerReference(sum, "/test.tsx", "sum")
+registerServerReference(multiply, "/test.tsx", "multiply")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > SERVER_ACTION_ARRAY_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+export let upvote = createServerReference("/test.tsx", "upvote", "POST");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > SERVER_ACTION_ARRAY_CODE > SSR 1`] = `
+"import { createServerReference } from "rwsdk/__ssr";
+
+export let upvote = createServerReference("/test.tsx", "upvote", "POST");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > SERVER_ACTION_ARRAY_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+export const upvote = serverAction([
+  auth,
+  async (id) => {
+    return { id, count: 1 };
+  }
+]);
+registerServerReference(upvote, "/test.tsx", "upvote")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > SERVER_ACTION_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+export let upvote = createServerReference("/test.tsx", "upvote", "POST");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > SERVER_ACTION_CODE > SSR 1`] = `
+"import { createServerReference } from "rwsdk/__ssr";
+
+export let upvote = createServerReference("/test.tsx", "upvote", "POST");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > SERVER_ACTION_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+export const upvote = serverAction(async (id) => {
+  return { id, count: 1 };
+});
+registerServerReference(upvote, "/test.tsx", "upvote")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > SERVER_ACTION_DEFAULT_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+
+export default createServerReference("/test.tsx", "default", "POST");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > SERVER_ACTION_DEFAULT_CODE > SSR 1`] = `
+"import { createServerReference } from "rwsdk/__ssr";
+
+
+export default createServerReference("/test.tsx", "default", "POST");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > SERVER_ACTION_DEFAULT_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+export default serverAction(async (id) => {
+  return { id, name: "Project X" };
+});
+const __defaultServerFunction__ = serverAction(async (id) => {
+  return { id, name: "Project X" };
+});
+registerServerReference(__defaultServerFunction__, "/test.tsx", "default")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > SERVER_QUERY_ARRAY_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+export let getProject = createServerReference("/test.tsx", "getProject", "GET", "query");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > SERVER_QUERY_ARRAY_CODE > SSR 1`] = `
+"import { createServerReference } from "rwsdk/__ssr";
+
+export let getProject = createServerReference("/test.tsx", "getProject", "GET", "query");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > SERVER_QUERY_ARRAY_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+export const getProject = serverQuery([
+  auth,
+  async (id) => {
+    return { id, name: "Project X" };
+  }
+]);
+registerServerReference(getProject, "/test.tsx", "getProject")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > SERVER_QUERY_ARRAY_POST_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+export let getProject = createServerReference("/test.tsx", "getProject", "POST", "query");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > SERVER_QUERY_ARRAY_POST_CODE > SSR 1`] = `
+"import { createServerReference } from "rwsdk/__ssr";
+
+export let getProject = createServerReference("/test.tsx", "getProject", "POST", "query");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > SERVER_QUERY_ARRAY_POST_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+export const getProject = serverQuery([
+  auth,
+  async (id) => {
+    return { id, name: "Project X" };
+  }
+], { method: "POST" });
+registerServerReference(getProject, "/test.tsx", "getProject")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > SERVER_QUERY_DEFAULT_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+
+export default createServerReference("/test.tsx", "default", "GET", "query");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > SERVER_QUERY_DEFAULT_CODE > SSR 1`] = `
+"import { createServerReference } from "rwsdk/__ssr";
+
+
+export default createServerReference("/test.tsx", "default", "GET", "query");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > SERVER_QUERY_DEFAULT_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+export default serverQuery(async (id) => {
+  return { id, name: "Project X" };
+});
+const __defaultServerFunction__ = serverQuery(async (id) => {
+  return { id, name: "Project X" };
+});
+registerServerReference(__defaultServerFunction__, "/test.tsx", "default")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > SERVER_QUERY_GET_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+export let getProject = createServerReference("/test.tsx", "getProject", "GET", "query");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > SERVER_QUERY_GET_CODE > SSR 1`] = `
+"import { createServerReference } from "rwsdk/__ssr";
+
+export let getProject = createServerReference("/test.tsx", "getProject", "GET", "query");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > SERVER_QUERY_GET_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+export const getProject = serverQuery(async (id) => {
+  return { id, name: "Project X" };
+});
+registerServerReference(getProject, "/test.tsx", "getProject")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > SERVER_QUERY_POST_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+export let getProject = createServerReference("/test.tsx", "getProject", "POST", "query");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > SERVER_QUERY_POST_CODE > SSR 1`] = `
+"import { createServerReference } from "rwsdk/__ssr";
+
+export let getProject = createServerReference("/test.tsx", "getProject", "POST", "query");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > SERVER_QUERY_POST_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+export const getProject = serverQuery(async (id) => {
+  return { id, name: "Project X" };
+}, { method: "POST" });
+registerServerReference(getProject, "/test.tsx", "getProject")
+"
+`;

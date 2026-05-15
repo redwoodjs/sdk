@@ -1,0 +1,4 @@
+{
+  "files": [],
+  "references": [{ "path": "sdk" }, { "path": "addons/passkey" }]
+}

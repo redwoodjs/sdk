@@ -1,0 +1,17 @@
+{
+  "name": "ui-lib",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    "./client": {
+      "types": "./client.d.ts",
+      "default": "./client.mjs"
+    },
+    "./server": {
+      "types": "./server.d.ts",
+      "default": "./server.mjs"
+    }
+  }
+}

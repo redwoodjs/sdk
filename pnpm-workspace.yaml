@@ -1,0 +1,9 @@
+packages:
+  - "sdk"
+  - "starter"
+  - "examples/*"
+  - "docs"
+  - "playground/**"
+  - "community"
+  - "community/playground/**"
+  - "addons/*"

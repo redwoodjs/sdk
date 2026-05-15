@@ -1,0 +1,269 @@
+---
+title: Client Side Navigation (Single Page Apps)
+description: Implement client side navigation in your RedwoodSDK project
+---
+
+import { Aside, Badge } from "@/app/components/mdx";
+
+## What is Client Side Navigation?
+
+Client-side navigation is a technique that allows users to move between pages without a full-page reload. Instead of the browser reloading the entire HTML document, the JavaScript runtime intercepts navigation events (like link clicks), fetches the next page's content (usually as JavaScript modules or RSC payload), and updates the current view.
+
+This approach is commonly referred to as a Single Page App (SPA). In RedwoodSDK, you get SPA-like navigation with server-fetched React Server Components (RSC), so it's fast and dynamic, but still uses the server for rendering. RedwoodSDK uses **RSC RPC** to emulate client-side navigation.
+
+```tsx title="src/client.tsx"
+// [!code word:initClientNavigation]
+import { initClient, initClientNavigation } from "rwsdk/client";
+
+const { handleResponse, onHydrated } = initClientNavigation();
+initClient({ handleResponse, onHydrated });
+```
+
+<Aside type="note">
+  <strong>Note:</strong> The <code>onHydrated</code> callback is optional but
+  recommended. It's required if you're using prefetching (see the{" "}
+  <a href="#prefetching-routes">Prefetching Routes</a> section), and it also
+  handles cache eviction which helps prevent memory bloat. If you're not using
+  prefetching, you can omit it and only pass <code>handleResponse</code> to{" "}
+  <code>initClient</code>.
+</Aside>
+
+Once this is initialized, internal `<a href="/some-path">` links will no longer trigger full-page reloads. Instead, the SDK will:
+
+1. Intercept the link click,
+2. Push the new URL to the browser's history,
+3. Fetch the new page's RSC payload from the server using a **GET** request to the current URL with a `?__rsc` query parameter (making it cache-friendly for browsers and CDNs),
+4. And hydrate it on the client.
+
+RedwoodSDK keeps everything minimal and transparent. No magic routing system. No nested router contexts. You get the benefits of a modern SPA without giving up control.
+
+## Transitions and View Animations
+
+Client-side navigation enables you to animate between pages without jank. Pair it with View Transitions in React 19 to create seamless visual transitions.
+
+## Caveats
+
+No routing system is included: RedwoodSDK doesn't provide a client-side router. You can layer your own state management or page transitions as needed.
+
+Only internal links are intercepted: RedwoodSDK will only handle links pointing to the same origin. External links (https://example.com) or those with `target="\_blank"` behave normally.
+
+Middleware still runs: Every navigation hits your server again — so auth checks, headers, and streaming behavior remain intact.
+
+## Configuring Scroll Behaviour
+
+By default RedwoodSDK jumps to the **top** of the new page the moment the
+content finishes rendering – just like a traditional full page load.
+
+If you would like a different experience you can adjust it with
+`initClientNavigation`:
+
+```tsx title="Smooth scroll"
+import { initClientNavigation } from "rwsdk/client";
+
+initClientNavigation({
+  scrollBehavior: "smooth",
+});
+```
+
+### Disable automatic scrolling
+
+For infinite-scroll feeds or chat applications you might want to _keep_ the user
+exactly where they were, by setting `history.scrollRestoration` to `"manual"` before each navigation action you'll disable the automatic scrolling.
+
+```tsx title="src/client.tsx"
+history.scrollRestoration = "manual"; // [!code highlight]
+```
+
+Alternatively you can set `scrollToTop: false` to disable it completely.
+
+```tsx title="src/client.tsx"
+initClientNavigation({
+  scrollToTop: false, // [!code highlight]
+});
+```
+
+### Advanced: custom navigation callback
+
+Need to run analytics or state updates before the request is sent? Provide your
+own `onNavigate` handler:
+
+```tsx
+initClientNavigation({
+  scrollBehavior: "auto",
+  onNavigate: async () => {
+    await analytics.track("page_view", { path: window.location.pathname });
+  },
+});
+```
+
+### Best Practices
+
+- Use the default instant jump for content-heavy pages – it feels identical to a
+  classic navigation and is the least surprising.
+- Prefer `scrollBehavior: "smooth"` for marketing sites where visual polish is
+  important.
+- Set `scrollToTop: false` for timelines or lists that the user is expected to
+  scroll through continuously.
+
+That’s it! No additional code or router configuration required – RedwoodSDK
+watches for DOM updates and performs the scroll automatically.
+
+## Programmatic Navigation
+
+While intercepting link clicks covers most navigation needs, you sometimes need to navigate programmatically - after a form submission, login event, or other user action.
+
+The `navigate` function allows you to trigger navigation from anywhere in your code:
+
+```tsx title="Navigate after form submission"
+import { navigate } from "rwsdk/client";
+
+function handleFormSubmit(event: FormEvent) {
+  event.preventDefault();
+
+  navigate("/dashboard");
+}
+```
+
+```tsx title="Redirect after login, replacing history"
+import { navigate } from "rwsdk/client";
+
+async function handleLogin(credentials: Credentials) {
+  await loginUser(credentials);
+
+  navigate("/account", { history: "replace" });
+}
+```
+
+```tsx title="Navigate with custom scroll behavior"
+import { navigate } from "rwsdk/client";
+
+function handleSpecialAction() {
+  navigate("/results", {
+    info: {
+      scrollBehavior: "smooth",
+      scrollToTop: true,
+    },
+  });
+}
+```
+
+The `navigate` function accepts two parameters:
+
+- `href`: The destination path
+- `options`: An optional configuration object with:
+  - `history`: Either `'push'` (default) to add a new history entry, or `'replace'` to replace the current one
+  - `info.scrollToTop`: Whether to scroll to the top after navigation (default: `true`)
+  - `info.scrollBehavior`: How to scroll - `'instant'` (default), `'smooth'`, or `'auto'`
+
+## Prefetching Routes
+
+You can improve navigation performance by prefetching routes that users are likely to visit next. RedwoodSDK automatically detects `<link rel="x-prefetch">` elements in your pages and fetches those routes in the background.
+
+### How it Works
+
+After each client-side navigation, RedwoodSDK scans the document for `<link rel="x-prefetch" href="...">` elements that point to same-origin routes. For each x-prefetch link found, it issues a background GET request with the `__rsc` query parameter and an `x-prefetch: true` header. Successful responses are stored in the browser's Cache API.
+
+When a user navigates to a prefetched route, the cached response is used instead of making a network request, resulting in instant navigation.
+
+### Basic Usage
+
+Add `<link rel="x-prefetch">` tags to your pages or layouts to hint at likely next destinations:
+
+```tsx title="In a route or layout component (React 19)"
+import { link } from "@/shared/links";
+
+export function HomePage() {
+  const aboutHref = link("/about");
+  const contactHref = link("/contact");
+
+  return (
+    <>
+      {/* React 19 will hoist these <link> tags into <head> */}
+      <link rel="x-prefetch" href={aboutHref} />
+      <link rel="x-prefetch" href={contactHref} />
+
+      <h1>Welcome</h1>
+      <nav>
+        <a href={aboutHref}>About</a>
+        <a href={contactHref}>Contact</a>
+      </nav>
+    </>
+  );
+}
+```
+
+### Prefetching from Navigation Links
+
+A common pattern is to prefetch routes that are linked from the current page:
+
+```tsx title="Prefetching linked routes"
+import { link } from "@/shared/links";
+
+export function BlogListPage({ posts }) {
+  return (
+    <>
+      {posts.map((post) => {
+        const postHref = link("/blog/:slug", { slug: post.slug });
+        return (
+          <article key={post.id}>
+            <link rel="x-prefetch" href={postHref} />
+            <a href={postHref}>
+              <h2>{post.title}</h2>
+            </a>
+          </article>
+        );
+      })}
+    </>
+  );
+}
+```
+
+### Cache Management
+
+RedwoodSDK uses a generation-based cache eviction pattern:
+
+- Cache entries are automatically cleaned up after each navigation to ensure fresh content
+- Each browser tab maintains its own cache namespace
+- The system avoids races with in-flight prefetch requests
+- Cache entries are stored using the browser's Cache API, following standard web platform semantics
+
+This ensures that prefetched content stays fresh while providing the performance benefits of cached navigation.
+
+## API Reference
+
+### `initClientNavigation(options?)` <Badge text="Experimental" type="caution" />
+
+Initializes the client-side navigation. Call this function from your `client.tsx` entry point.
+
+**Returns:** An object with two properties that should be passed to `initClient`:
+
+- `handleResponse`: A function that handles navigation responses and errors (required for error handling)
+- `onHydrated`: A function that runs after each hydration to manage cache eviction and prefetching (optional but recommended; required if using prefetching)
+
+**Parameters:**
+
+- `options` (optional): A `ClientNavigationOptions` object:
+  - `scrollToTop` (boolean, default: `true`): Whether to scroll to the top after navigation
+  - `scrollBehavior` (`'instant' | 'smooth' | 'auto'`, default: `'instant'`): How scrolling happens
+  - `onNavigate` (function, optional): Callback executed after history push but before RSC fetch
+
+**Example:**
+
+```tsx title="src/client.tsx"
+import { initClient, initClientNavigation } from "rwsdk/client";
+
+const { handleResponse, onHydrated } = initClientNavigation();
+initClient({ handleResponse, onHydrated });
+```
+
+**Example with options:**
+
+```tsx title="src/client.tsx"
+import { initClient, initClientNavigation } from "rwsdk/client";
+
+const { handleResponse, onHydrated } = initClientNavigation({
+  scrollBehavior: "smooth",
+  scrollToTop: true,
+});
+initClient({ handleResponse, onHydrated });
+```
