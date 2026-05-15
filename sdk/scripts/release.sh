@@ -412,7 +412,10 @@ else
     PUBLISH_CMD+=(--tag pre)
   fi
 
-  if script -q -e /dev/null "${PUBLISH_CMD[@]}"; then
+  printf '  [PUBLISH] %q ' "${PUBLISH_CMD[@]}"
+  printf '\n'
+  PUBLISH_CMD_STR=$(printf '%q ' "${PUBLISH_CMD[@]}")
+  if script -q -e -c "$PUBLISH_CMD_STR" /dev/null; then
     echo "  ✅ Published successfully."
   else
     echo ""

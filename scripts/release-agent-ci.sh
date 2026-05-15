@@ -100,4 +100,19 @@ export VERSION="$VERSION"
 export CREATE_GH_RELEASE="$CREATE_GH_RELEASE"
 export DRY_RUN="$DRY_RUN"
 export SKIP_SMOKE_TESTS="$SKIP_SMOKE_TESTS"
-exec npx --yes @redwoodjs/agent-ci "${AGENT_CI_ARGS[@]}"
+
+LOGS_ROOT="$HOME/Library/Application Support/agent-ci/logs"
+cleanup() {
+  if [[ -n "${WATCHER_PID:-}" ]]; then
+    kill "$WATCHER_PID" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT
+
+node "$SCRIPT_DIR/watch-agent-ci-logs.mjs" "$LOGS_ROOT" &
+WATCHER_PID=$!
+
+npx --yes @redwoodjs/agent-ci "${AGENT_CI_ARGS[@]}"
+EXIT_CODE=$?
+cleanup
+exit "$EXIT_CODE"
