@@ -228,7 +228,9 @@ export default defineApp([
 In this example:
 - An error in `/admin/dashboard` is first checked by the admin-specific handler
 - If the admin handler doesn't handle it (returns `void`), the error bubbles up to the global handler
-- Errors in other routes (like `/`) are handled by the global handler
+- Errors in other routes (like `/`) are handled by the global handler — the admin handler is path-scoped to `/admin/*` and is skipped for requests outside it
+
+If you want a handler that runs for every error (regardless of which route threw), define it at the top level of `defineApp([...])` rather than inside a `prefix(...)`. Top-level `except` handlers are not path-scoped and fire for any route declared after them.
 
 ### Error Bubbling
 
