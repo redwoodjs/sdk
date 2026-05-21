@@ -18,6 +18,10 @@ export type ExceptHandler<T extends RequestInfo = RequestInfo> = {
     error: unknown,
     requestInfo: T,
   ) => MaybePromise<React.JSX.Element | Response | void>;
+  // Set by `prefix(...)` when this handler is nested inside one. The handler
+  // only runs for requests whose path is under this prefix. Top-level
+  // `except` handlers leave this undefined and run for every route.
+  pathPattern?: string;
 };
 
 type RouteFunction<T extends RequestInfo = RequestInfo> = BivariantRouteHandler<
@@ -426,6 +430,26 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
         return route.type === "except";
       }
 
+      function isPathInExceptScope(
+        pathPattern: string,
+        requestPath: string,
+      ): boolean {
+        const normalized = pathPattern.endsWith("/")
+          ? pathPattern
+          : pathPattern + "/";
+        const hasParams = normalized.includes(":") || normalized.includes("*");
+        if (hasParams) {
+          const wildcardPattern = normalized.slice(0, -1) + "/*";
+          return (
+            matchPath(wildcardPattern, requestPath) !== null ||
+            matchPath(normalized.slice(0, -1), requestPath) !== null
+          );
+        }
+        return (
+          requestPath === normalized || requestPath.startsWith(normalized)
+        );
+      }
+
       async function executeExceptHandlers(
         error: unknown,
         startIndex: number,
@@ -434,6 +458,13 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
         for (let i = startIndex; i >= 0; i--) {
           const route = compiledRoutes[i];
           if (isExceptHandler(route)) {
+            const pattern = route.handler.pathPattern;
+            if (
+              pattern &&
+              !isPathInExceptScope(pattern, getRequestInfo().path)
+            ) {
+              continue;
+            }
             try {
               const result = await route.handler.handler(
                 error,
@@ -871,8 +902,16 @@ export function prefix<
       "__rwExcept" in r &&
       r.__rwExcept === true
     ) {
-      // Pass through ExceptHandler as-is
-      return r as PrefixedRouteValue<Prefix, typeof r>;
+      const existing = (r as ExceptHandler<T>).pathPattern;
+      const combined = existing
+        ? joinPaths(normalizedPrefix, existing)
+        : normalizedPrefix;
+      const scoped: ExceptHandler<T> = {
+        __rwExcept: true,
+        handler: (r as ExceptHandler<T>).handler,
+        pathPattern: combined,
+      };
+      return scoped as PrefixedRouteValue<Prefix, typeof r>;
     }
     if (Array.isArray(r)) {
       // Recursively process nested route arrays
