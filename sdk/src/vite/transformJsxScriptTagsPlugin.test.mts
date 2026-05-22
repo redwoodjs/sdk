@@ -1,11 +1,19 @@
-import jsBeautify from "js-beautify";
+import ts from "typescript";
 import { beforeEach, describe, expect, it } from "vitest";
 import stubEnvVars from "../lib/testUtils/stubEnvVars.mjs";
 import { transformJsxScriptTagsCode } from "./transformJsxScriptTagsPlugin.mjs";
 
-// Helper function to normalize code formatting for test comparisons
+// Helper function to normalize code formatting for test comparisons.
 function normalizeCode(code: string): string {
-  return jsBeautify(code, { indent_size: 2 });
+  const source = ts.createSourceFile(
+    "test.tsx",
+    code,
+    ts.ScriptTarget.Latest,
+    false,
+    ts.ScriptKind.TSX,
+  );
+
+  return ts.createPrinter({ removeComments: false }).printFile(source).trim();
 }
 
 stubEnvVars();

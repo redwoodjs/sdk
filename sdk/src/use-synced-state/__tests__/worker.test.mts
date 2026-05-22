@@ -10,11 +10,16 @@ vi.mock("capnweb", () => ({
   newWorkersRpcResponse: vi.fn(),
 }));
 
-vi.mock("../runtime/entries/router", () => ({
+vi.mock("../../runtime/entries/router", () => ({
   route: vi.fn((path: string, handler: any) => ({ path, handler })),
 }));
 
-import { SyncedStateServer } from "../SyncedStateServer.mjs";
+vi.mock("../../runtime/requestInfo/worker", () => ({
+  runWithRequestInfo: (_requestInfo: unknown, fn: () => unknown) => fn(),
+}));
+
+import { newWorkersRpcResponse } from "capnweb";
+import { syncedStateRoutes, SyncedStateServer } from "../worker.mjs";
 
 describe("SyncedStateProxy", () => {
   let mockCoordinator: SyncedStateServer;
@@ -26,6 +31,7 @@ describe("SyncedStateProxy", () => {
   const mockStub = {} as any;
 
   afterEach(() => {
+    vi.mocked(newWorkersRpcResponse).mockReset();
     SyncedStateServer.registerKeyHandler(async (key, stub) => key);
   });
 
@@ -73,6 +79,46 @@ describe("SyncedStateProxy", () => {
     SyncedStateServer.registerKeyHandler(handler);
 
     await expect(handler("test", mockStub)).rejects.toThrow("Handler error");
+  });
+
+  it("uses the subscribed duplicated RPC client when unsubscribing (#1207)", async () => {
+    const coordinator = {
+      _setStub: vi.fn(),
+      subscribe: vi.fn().mockResolvedValue(undefined),
+      unsubscribe: vi.fn().mockResolvedValue(undefined),
+    };
+    const namespace = {
+      idFromName: vi.fn(() => "synced-state-id"),
+      get: vi.fn(() => coordinator),
+    };
+    let proxy: any;
+    vi.mocked(newWorkersRpcResponse).mockImplementation(async (_request, api) => {
+      proxy = api;
+      return new Response(null, { status: 204 });
+    });
+    SyncedStateServer.registerKeyHandler(async (key) => key);
+
+    const [baseRoute] = syncedStateRoutes(() => namespace as any);
+    await (baseRoute.handler as any)({
+      request: new Request("https://example.com/__synced-state"),
+      params: {},
+    });
+
+    const duplicatedClient = Object.assign(vi.fn(), {
+      dup: vi.fn(() => duplicatedClient),
+    });
+    const originalClient = Object.assign(vi.fn(), {
+      dup: vi.fn(() => duplicatedClient),
+    });
+
+    await proxy.subscribe("notifications", originalClient);
+    await proxy.unsubscribe("notifications", originalClient);
+
+    const subscribeClient = coordinator.subscribe.mock.calls[0][1];
+    const unsubscribeClient = coordinator.unsubscribe.mock.calls[0][1];
+
+    expect(subscribeClient).not.toBe(originalClient);
+    expect(unsubscribeClient).toBe(subscribeClient);
   });
 
   it("handles async operations in handler", async () => {

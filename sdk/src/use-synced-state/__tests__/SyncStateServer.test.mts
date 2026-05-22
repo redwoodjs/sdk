@@ -11,15 +11,18 @@ import { SyncedStateServer } from "../SyncedStateServer.mjs";
 const createStub = (
   onInvoke: (value: unknown) => Promise<void> | void,
 ): RpcStub<(value: unknown) => void> => {
-  const fn = Object.assign(
-    async (value: unknown) => {
-      await onInvoke(value);
-    },
-    {
-      dup: () => fn,
-    },
-  );
-  return fn as unknown as RpcStub<(value: unknown) => void>;
+  const makeStub = (): RpcStub<(value: unknown) => void> => {
+    const fn = Object.assign(
+      async (value: unknown) => {
+        await onInvoke(value);
+      },
+      {
+        dup: () => makeStub(),
+      },
+    );
+    return fn as unknown as RpcStub<(value: unknown) => void>;
+  };
+  return makeStub();
 };
 
 describe("SyncedStateServer", () => {
@@ -39,13 +42,17 @@ describe("SyncedStateServer", () => {
 
   it("removes subscriptions on unsubscribe", () => {
     const coordinator = new SyncedStateServer({} as any, {} as any);
-    const stub = createStub(() => {});
+    const received: unknown[] = [];
+    const stub = createStub((value) => {
+      received.push(value);
+    });
 
     coordinator.subscribe("counter", stub);
     coordinator.unsubscribe("counter", stub);
     coordinator.setState(1, "counter");
 
     expect(coordinator.getState("counter")).toBe(1);
+    expect(received).toEqual([]);
   });
 
   it("drops failing subscribers", async () => {
