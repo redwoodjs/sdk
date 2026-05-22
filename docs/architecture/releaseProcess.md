@@ -35,6 +35,19 @@ This is the primary, manually-triggered event that kicks off a release. It deter
     -   **Stable & Beta versions** get the `--latest` flag, making them the primary release.
     -   **Pre-releases (alphas, etc.) and Test versions** get the `--prerelease` flag, marking them as such on GitHub.
 
+#### Local release preflight
+
+The supported release entrypoint is `pnpm release`. Before starting agent-ci, it checks that:
+
+- Docker is running.
+- The release is being run from an allowed branch (`main` or `next`, except `test`/`canary`).
+- npm auth is available through `NPM_TOKEN` or `~/.npmrc`.
+- npm package access can be confirmed when npm allows it. Granular publish tokens may not be able to list collaborators, so this check is informational and `npm publish` remains the final permission check.
+- GitHub auth is available through `GH_TOKEN_FOR_RELEASES`, `GH_TOKEN`, or `gh auth token`.
+- the GitHub token can read and push to `redwoodjs/sdk`.
+
+For real publishes, use an npm Automation/granular token with publish access. If npm asks for browser auth during publish, the token is not suitable for the containerized release.
+
 ### Stage 3: Artifact Release (`release-artifacts.yml`)
 
 The push of any new git tag automatically triggers this final stage, which prepares the starter and addon artifacts.

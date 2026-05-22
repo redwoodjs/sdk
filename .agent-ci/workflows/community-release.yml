@@ -8,7 +8,7 @@
 #
 # ALTERNATIVE (containerized): pnpm release:community:agent-ci
 #   Runs inside an agent-ci container. Requires auth tokens as env vars:
-#     NPM_TOKEN     npm publish token
+#     NPM_TOKEN     npm Automation/granular token with publish access
 #     VERSION_TYPE  patch | minor | major (default: patch)
 #
 # WHY agent-ci: Running releases in GitHub Actions exposes OIDC tokens and npm

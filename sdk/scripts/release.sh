@@ -142,8 +142,11 @@ if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] git pull --rebase"
 else
   if [[ -n "$AGENT_CI_LOCAL" ]]; then
-    echo "  [AGENT CI] Resetting tracked workspace changes and skipping pull"
+    echo "  [AGENT CI] Resetting tracked workspace changes and checking out origin/${RWSDK_RELEASE_BRANCH:-main}"
     git reset --hard HEAD
+    RELEASE_BRANCH_FOR_CHECKOUT="${RWSDK_RELEASE_BRANCH:-main}"
+    git fetch origin "$RELEASE_BRANCH_FOR_CHECKOUT" --tags
+    git checkout -B "$RELEASE_BRANCH_FOR_CHECKOUT" "origin/$RELEASE_BRANCH_FOR_CHECKOUT"
   else
     git pull --rebase
   fi
@@ -427,6 +430,9 @@ else
   else
     echo ""
     echo "  ❌ Publish failed."
+    echo "  Hint: If npm printed an auth URL or returned E401/E404 from /-/v1/done,"
+    echo "  verify NPM_TOKEN is an npm automation/granular token with publish access"
+    echo "  to $DEPENDENCY_NAME. Interactive/2FA tokens cannot publish from agent-ci."
     git reset --hard HEAD~1
     # The trap will clean up the tarball
     exit 1
@@ -448,10 +454,21 @@ if [[ "$DRY_RUN" == true ]]; then
 else
   REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
   RELEASE_REMOTE_URL_FILE="$REPO_ROOT/.agent-ci/runtime/release-remote-url"
+  RELEASE_GH_TOKEN_FILE="$REPO_ROOT/.agent-ci/runtime/release-gh-token"
+  RELEASE_SIGNAL_DIR="${AGENT_CI_SIGNAL_DIR:-/tmp/agent-ci-signals}"
+  RELEASE_SIGNAL_REMOTE_URL_FILE="$RELEASE_SIGNAL_DIR/release-remote-url"
+  RELEASE_SIGNAL_GH_TOKEN_FILE="$RELEASE_SIGNAL_DIR/release-gh-token"
   RELEASE_REMOTE_URL=""
   if [[ -f "$RELEASE_REMOTE_URL_FILE" ]]; then
     RELEASE_REMOTE_URL="$(tr -d '\r\n' < "$RELEASE_REMOTE_URL_FILE")"
     rm -f "$RELEASE_REMOTE_URL_FILE"
+  elif [[ -f "$RELEASE_SIGNAL_REMOTE_URL_FILE" ]]; then
+    RELEASE_REMOTE_URL="$(tr -d '\r\n' < "$RELEASE_SIGNAL_REMOTE_URL_FILE")"
+  fi
+  if [[ -s "$RELEASE_GH_TOKEN_FILE" ]]; then
+    export GH_TOKEN="$(< "$RELEASE_GH_TOKEN_FILE")"
+  elif [[ -s "$RELEASE_SIGNAL_GH_TOKEN_FILE" ]]; then
+    export GH_TOKEN="$(< "$RELEASE_SIGNAL_GH_TOKEN_FILE")"
   fi
   if [[ -z "$RELEASE_REMOTE_URL" ]]; then
     RELEASE_REMOTE_URL="$(git remote get-url origin 2>/dev/null || true)"
@@ -462,6 +479,23 @@ else
   fi
   if command -v gh >/dev/null 2>&1; then
     gh auth setup-git >/dev/null 2>&1 || true
+  fi
+  if [[ -n "${GH_TOKEN:-}" ]]; then
+    # actions/checkout can leave an http.extraheader with a short-lived local
+    # token. That header takes precedence over gh's credential helper and causes
+    # authenticated pushes to fail in agent-ci, so remove checkout credentials
+    # and set an explicit authenticated push URL for GitHub remotes.
+    git config --local --get-regexp '^includeif\..*\.path$' 2>/dev/null | while read -r key _; do
+      git config --local --unset-all "$key" || true
+    done
+    git config --local --unset-all http.https://github.com/.extraheader 2>/dev/null || true
+    git config --global --unset-all http.https://github.com/.extraheader 2>/dev/null || true
+    case "$RELEASE_REMOTE_URL" in
+      https://github.com/*)
+        RELEASE_PUSH_URL="https://x-access-token:${GH_TOKEN}@${RELEASE_REMOTE_URL#https://}"
+        git remote set-url --push origin "$RELEASE_PUSH_URL"
+        ;;
+    esac
   fi
 
   if [[ "$VERSION_TYPE" == "test" || "$VERSION_TYPE" == "canary" || "$IS_CANARY_VERSION" == true ]]; then

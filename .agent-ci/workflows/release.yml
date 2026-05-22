@@ -7,9 +7,12 @@
 #   gh CLI auth. No env vars needed.
 #
 # ALTERNATIVE (containerized): pnpm release:agent-ci
-#   Runs inside an agent-ci container. Requires auth tokens as env vars:
-#     NPM_TOKEN              npm publish token
-#     GH_TOKEN_FOR_RELEASES  GitHub token for release creation
+#   Runs inside an agent-ci container. The pnpm release wrapper runs preflight
+#   checks, reads local auth, and writes temporary credential files:
+#     NPM_TOKEN              npm Automation/granular token with publish access
+#                            (or ~/.npmrc auth)
+#     GH_TOKEN_FOR_RELEASES  GitHub token for push + release creation
+#                            (or GH_TOKEN / gh auth token)
 #     VERSION_TYPE           patch | minor | explicit | test | canary
 #     VERSION                explicit version (required for VERSION_TYPE=explicit)
 #     CREATE_GH_RELEASE      true | false (default: true)
@@ -44,7 +47,9 @@ jobs:
           # We need to fetch all history for semver to work correctly and to push changes.
           fetch-depth: 0
           fetch-tags: true
-          token: ${{ secrets.GH_TOKEN_FOR_RELEASES }}
+          # The release script configures its own push auth. Persisted checkout
+          # credentials can override gh's credential helper and break pushes.
+          persist-credentials: false
 
       - name: Set up Git user
         run: |
@@ -77,8 +82,28 @@ jobs:
       - name: Setup .npmrc for publishing
         working-directory: sdk
         run: |
+          TOKEN_FILE="$GITHUB_WORKSPACE/.agent-ci/runtime/release-npm-token"
+          SIGNAL_TOKEN_FILE="/tmp/agent-ci-signals/release-npm-token"
+          DRY_RUN_VALUE="${{ secrets.DRY_RUN }}"
           echo "registry=https://registry.npmjs.org/" >> .npmrc
-          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> .npmrc
+
+          for _ in {1..120}; do
+            if [[ -s "$TOKEN_FILE" || -s "$SIGNAL_TOKEN_FILE" ]]; then
+              break
+            fi
+            sleep 0.5
+          done
+
+          if [[ -s "$TOKEN_FILE" ]]; then
+            printf '//registry.npmjs.org/:_authToken=%s\n' "$(< "$TOKEN_FILE")" >> .npmrc
+          elif [[ -s "$SIGNAL_TOKEN_FILE" ]]; then
+            printf '//registry.npmjs.org/:_authToken=%s\n' "$(< "$SIGNAL_TOKEN_FILE")" >> .npmrc
+          elif [[ "$DRY_RUN_VALUE" == "true" ]]; then
+            echo "No npm token file found; continuing because this is a dry run."
+          else
+            echo "::error::Missing npm token file. Run releases through pnpm release so preflight can prepare credentials."
+            exit 1
+          fi
 
       - name: Run release script
         id: release_script
@@ -87,7 +112,6 @@ jobs:
           CI: "1"
           GITHUB_ACTIONS: "1"
           GITHUB_EVENT_NAME: "pull_request"
-          GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_RELEASES }}
           RWSDK_RELEASE_BRANCH: ${{ secrets.RWSDK_RELEASE_BRANCH }}
         run: |
           VERSION_TYPE="${{ secrets.VERSION_TYPE }}"
@@ -117,7 +141,6 @@ jobs:
       - name: Create GitHub Release
         if: success()
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_RELEASES }}
           CREATE_GH_RELEASE: ${{ secrets.CREATE_GH_RELEASE }}
           DRY_RUN: ${{ secrets.DRY_RUN }}
         run: |
@@ -128,6 +151,18 @@ jobs:
           if [[ "${DRY_RUN:-false}" == "true" ]]; then
             echo "Skipping GitHub release creation for dry run."
             exit 0
+          fi
+
+          GH_TOKEN_FILE="$GITHUB_WORKSPACE/.agent-ci/runtime/release-gh-token"
+          SIGNAL_GH_TOKEN_FILE="/tmp/agent-ci-signals/release-gh-token"
+          if [[ -s "$GH_TOKEN_FILE" ]]; then
+            export GH_TOKEN="$(< "$GH_TOKEN_FILE")"
+          elif [[ -s "$SIGNAL_GH_TOKEN_FILE" ]]; then
+            export GH_TOKEN="$(< "$SIGNAL_GH_TOKEN_FILE")"
+          fi
+          if [[ -z "${GH_TOKEN:-}" ]]; then
+            echo "::error::Missing GitHub token. Run releases through pnpm release so preflight can prepare credentials."
+            exit 1
           fi
 
           FLAGS="--generate-notes"
