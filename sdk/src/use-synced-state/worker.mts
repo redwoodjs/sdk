@@ -41,6 +41,9 @@ async function getSyncedStateProxy(): Promise<{
       #stub: DurableObjectStub<SyncedStateServer>;
       #keyHandler: KeyHandler | null;
       #requestInfo: RequestInfo | null;
+      // Map original RPC callbacks to the duplicated callbacks sent to the DO
+      // so unsubscribe uses the same identity that subscribe registered.
+      #subscriptionClients = new Map<string, Map<unknown, unknown>>();
 
       constructor(
         stub: DurableObjectStub<SyncedStateServer>,
@@ -117,7 +120,23 @@ async function getSyncedStateProxy(): Promise<{
         // this is because the client is a WebSocketRpcSession, and we need to pass a new instance of the client to the DO;
         const clientToPass =
           typeof client.dup === "function" ? client.dup() : client;
-        return this.#stub.subscribe(transformedKey, clientToPass);
+        let clientsForKey = this.#subscriptionClients.get(transformedKey);
+        if (!clientsForKey) {
+          clientsForKey = new Map();
+          this.#subscriptionClients.set(transformedKey, clientsForKey);
+        }
+        clientsForKey.set(client, clientToPass);
+        try {
+          return await this.#stub.subscribe(transformedKey, clientToPass);
+        } catch (error) {
+          if (clientsForKey.get(client) === clientToPass) {
+            clientsForKey.delete(client);
+            if (clientsForKey.size === 0) {
+              this.#subscriptionClients.delete(transformedKey);
+            }
+          }
+          throw error;
+        }
       }
 
       async unsubscribe(key: string, client: any): Promise<void> {
@@ -131,11 +150,21 @@ async function getSyncedStateProxy(): Promise<{
           this.#callHandler(unsubscribeHandler, transformedKey, this.#stub);
         }
 
+        const clientsForKey = this.#subscriptionClients.get(transformedKey);
+        const clientToPass = clientsForKey?.get(client) ?? client;
+
         try {
-          await this.#stub.unsubscribe(transformedKey, client);
+          await this.#stub.unsubscribe(transformedKey, clientToPass);
         } catch (error) {
           // Ignore errors during unsubscribe - handler has already been called
           // This prevents RPC stub disposal errors from propagating
+        } finally {
+          if (clientsForKey && clientsForKey.get(client) === clientToPass) {
+            clientsForKey.delete(client);
+            if (clientsForKey.size === 0) {
+              this.#subscriptionClients.delete(transformedKey);
+            }
+          }
         }
       }
     } as unknown as SyncedStateProxyCtor;
