@@ -1,0 +1,11 @@
+{
+  "jobId": "1779456826107-cy97me",
+  "pid": 7685,
+  "command": "AI_AGENT=1 npx @redwoodjs/agent-ci run --all",
+  "cwd": "/Users/justin/.kindling/drive/worktrees/drive-1779455985519-7pqpgt",
+  "startedAt": "2026-05-22T13:33:46.127Z",
+  "stdoutPath": "/Users/justin/.kindling/drive/worktrees/drive-1779455985519-7pqpgt/.kindling/noctx-jobs/1779456826107-cy97me.stdout.log",
+  "stderrPath": "/Users/justin/.kindling/drive/worktrees/drive-1779455985519-7pqpgt/.kindling/noctx-jobs/1779456826107-cy97me.stderr.log",
+  "statusPath": "/Users/justin/.kindling/drive/worktrees/drive-1779455985519-7pqpgt/.kindling/noctx-jobs/1779456826107-cy97me.status",
+  "scriptPath": "/Users/justin/.kindling/drive/worktrees/drive-1779455985519-7pqpgt/.kindling/noctx-jobs/1779456826107-cy97me.sh"
+}

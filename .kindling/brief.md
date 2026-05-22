@@ -1,0 +1,1 @@
+Create PR to mitigate CVE-2026-46625 by updating transitive js-cookie via js-beautify or overriding dependency to patched js-cookie (>=3.0.7), adjusting package manager/lockfile accordingly and ensuring build/test unaffected.

@@ -1,0 +1,11 @@
+{
+  "jobId": "1779456707651-xlg3e3",
+  "pid": 5295,
+  "command": "pnpm install",
+  "cwd": "/Users/justin/.kindling/drive/worktrees/drive-1779455985519-7pqpgt",
+  "startedAt": "2026-05-22T13:31:47.672Z",
+  "stdoutPath": "/Users/justin/.kindling/drive/worktrees/drive-1779455985519-7pqpgt/.kindling/noctx-jobs/1779456707651-xlg3e3.stdout.log",
+  "stderrPath": "/Users/justin/.kindling/drive/worktrees/drive-1779455985519-7pqpgt/.kindling/noctx-jobs/1779456707651-xlg3e3.stderr.log",
+  "statusPath": "/Users/justin/.kindling/drive/worktrees/drive-1779455985519-7pqpgt/.kindling/noctx-jobs/1779456707651-xlg3e3.status",
+  "scriptPath": "/Users/justin/.kindling/drive/worktrees/drive-1779455985519-7pqpgt/.kindling/noctx-jobs/1779456707651-xlg3e3.sh"
+}
