@@ -1,11 +1,18 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { validateClickEvent, initClientNavigation } from "./navigation";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+import { initClientNavigation, validateClickEvent } from "./navigation";
 
 // Mocking browser globals
 vi.stubGlobal("window", {
   location: { href: "http://localhost/" },
   addEventListener: vi.fn(),
-  history: { scrollRestoration: "auto" },
+  history: {
+    scrollRestoration: "auto",
+    pushState: vi.fn(),
+    replaceState: vi.fn(),
+    state: {},
+  },
+  scrollX: 0,
+  scrollY: 0,
 });
 
 vi.stubGlobal("document", {
@@ -131,6 +138,8 @@ describe("onNavigate callback (issue #1123 regression)", () => {
         replaceState: vi.fn(),
         state: {},
       },
+      scrollX: 0,
+      scrollY: 0,
       scrollTo: vi.fn(),
     });
     vi.stubGlobal("history", {
@@ -139,12 +148,15 @@ describe("onNavigate callback (issue #1123 regression)", () => {
       replaceState: vi.fn(),
       state: {},
     });
-    vi.stubGlobal("URL", class {
-      href: string;
-      constructor(path: string, base: string) {
-        this.href = base.replace(/\/$/, "") + path;
-      }
-    });
+    vi.stubGlobal(
+      "URL",
+      class {
+        href: string;
+        constructor(path: string, base: string) {
+          this.href = base.replace(/\/$/, "") + path;
+        }
+      },
+    );
     // Assign directly to globalThis without replacing it (avoids breaking Vitest internals)
     (globalThis as any).__rsc_callServer = vi.fn().mockResolvedValue(undefined);
   });
@@ -194,7 +206,9 @@ describe("onNavigate callback (issue #1123 regression)", () => {
 
   it("onNavigate fires after pushState but before RSC fetch", async () => {
     const callOrder: string[] = [];
-    const onNavigate = vi.fn(() => { callOrder.push("onNavigate"); });
+    const onNavigate = vi.fn(() => {
+      callOrder.push("onNavigate");
+    });
     (globalThis as any).__rsc_callServer = vi.fn(() => {
       callOrder.push("rscCallServer");
       return Promise.resolve();
@@ -231,6 +245,9 @@ describe("onNavigate callback (issue #1123 regression)", () => {
 describe("initClientNavigation", () => {
   beforeEach(() => {
     window.location.href = "http://localhost/";
+    (window.history as unknown as { state: unknown }).state = {};
+    window.scrollX = 0;
+    window.scrollY = 0;
     vi.clearAllMocks();
   });
 
@@ -267,5 +284,30 @@ describe("initClientNavigation", () => {
     history.scrollRestoration = "auto";
     initClientNavigation();
     expect(history.scrollRestoration).toBe("manual");
+  });
+
+  it("does not write to history state on scroll", () => {
+    const capturedScrollHandler: { current: (() => void) | null } = {
+      current: null,
+    };
+    (window.addEventListener as unknown as Mock).mockImplementation(
+      (event: string, handler: () => void) => {
+        if (event === "scroll") {
+          capturedScrollHandler.current = handler;
+        }
+      },
+    );
+
+    initClientNavigation();
+    expect(window.history.replaceState).toHaveBeenCalledTimes(1);
+    expect(capturedScrollHandler.current).not.toBeNull();
+
+    const scrollHandler = capturedScrollHandler.current as () => void;
+    window.scrollY = 100;
+    scrollHandler();
+    window.scrollY = 200;
+    scrollHandler();
+
+    expect(window.history.replaceState).toHaveBeenCalledTimes(1);
   });
 });
