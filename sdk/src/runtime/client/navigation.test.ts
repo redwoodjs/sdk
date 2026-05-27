@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { initClientNavigation, validateClickEvent } from "./navigation";
+import { HISTORY_STATE_SCROLL_KEY } from "./scrollRestoration";
 
 // Mocking browser globals
 vi.stubGlobal("window", {
@@ -121,8 +122,12 @@ describe("onNavigate callback (issue #1123 regression)", () => {
     capturedPopstateHandler = null;
     vi.clearAllMocks();
 
+    let historyState: Record<string, unknown> = {};
+
     // Capture registered event listeners so we can invoke them manually
     vi.stubGlobal("document", {
+      visibilityState: "visible",
+      querySelectorAll: vi.fn().mockReturnValue([]),
       addEventListener: vi.fn((event: string, handler: any) => {
         if (event === "click") capturedClickHandler = handler;
       }),
@@ -134,9 +139,15 @@ describe("onNavigate callback (issue #1123 regression)", () => {
       }),
       history: {
         scrollRestoration: "auto",
-        pushState: vi.fn(),
-        replaceState: vi.fn(),
-        state: {},
+        get state() {
+          return historyState;
+        },
+        pushState: vi.fn((state: Record<string, unknown>) => {
+          historyState = state;
+        }),
+        replaceState: vi.fn((state: Record<string, unknown>) => {
+          historyState = state;
+        }),
       },
       scrollX: 0,
       scrollY: 0,
@@ -243,12 +254,58 @@ describe("onNavigate callback (issue #1123 regression)", () => {
 });
 
 describe("initClientNavigation", () => {
+  let historyState: Record<string, unknown>;
+  let capturedScrollHandler: (() => void) | null = null;
+  let capturedPagehideHandler: (() => void) | null = null;
+  let capturedVisibilityChangeHandler: (() => void) | null = null;
+
   beforeEach(() => {
-    window.location.href = "http://localhost/";
-    (window.history as unknown as { state: unknown }).state = {};
-    window.scrollX = 0;
-    window.scrollY = 0;
+    historyState = {};
+    capturedScrollHandler = null;
+    capturedPagehideHandler = null;
+    capturedVisibilityChangeHandler = null;
     vi.clearAllMocks();
+
+    const mockHistory = {
+      scrollRestoration: "auto",
+      get state() {
+        return historyState;
+      },
+      pushState: vi.fn((state: Record<string, unknown>) => {
+        historyState = state;
+      }),
+      replaceState: vi.fn((state: Record<string, unknown>) => {
+        historyState = state;
+      }),
+    };
+
+    vi.stubGlobal("document", {
+      visibilityState: "visible",
+      querySelectorAll: vi.fn().mockReturnValue([]),
+      addEventListener: vi.fn((event: string, handler: () => void) => {
+        if (event === "visibilitychange") {
+          capturedVisibilityChangeHandler = handler;
+        }
+      }),
+    });
+
+    vi.stubGlobal("window", {
+      location: { href: "http://localhost/" },
+      addEventListener: vi.fn((event: string, handler: () => void) => {
+        if (event === "scroll") {
+          capturedScrollHandler = handler;
+        }
+        if (event === "pagehide") {
+          capturedPagehideHandler = handler;
+        }
+      }),
+      history: mockHistory,
+      fetch: vi.fn(),
+      scrollX: 0,
+      scrollY: 0,
+      scrollTo: vi.fn(),
+    });
+    vi.stubGlobal("history", mockHistory);
   });
 
   it("handleResponse should follow redirects", () => {
@@ -287,27 +344,100 @@ describe("initClientNavigation", () => {
   });
 
   it("does not write to history state on scroll", () => {
-    const capturedScrollHandler: { current: (() => void) | null } = {
-      current: null,
-    };
-    (window.addEventListener as unknown as Mock).mockImplementation(
-      (event: string, handler: () => void) => {
-        if (event === "scroll") {
-          capturedScrollHandler.current = handler;
-        }
-      },
-    );
-
     initClientNavigation();
-    expect(window.history.replaceState).toHaveBeenCalledTimes(1);
-    expect(capturedScrollHandler.current).not.toBeNull();
+    expect(capturedScrollHandler).not.toBeNull();
+    vi.mocked(window.history.replaceState).mockClear();
 
-    const scrollHandler = capturedScrollHandler.current as () => void;
     window.scrollY = 100;
-    scrollHandler();
+    capturedScrollHandler!();
     window.scrollY = 200;
-    scrollHandler();
+    capturedScrollHandler!();
 
-    expect(window.history.replaceState).toHaveBeenCalledTimes(1);
+    expect(window.history.replaceState).not.toHaveBeenCalled();
+  });
+
+  it("restores scroll from persisted history state after reload", () => {
+    historyState = {
+      [HISTORY_STATE_SCROLL_KEY]: "entry:1",
+      scrollX: 9,
+      scrollY: 321,
+    };
+
+    const { onHydrated } = initClientNavigation();
+    onHydrated();
+
+    expect(window.scrollTo).toHaveBeenCalledWith({
+      left: 9,
+      top: 321,
+      behavior: "instant",
+    });
+  });
+
+  it("migrates legacy scrollX/scrollY state on boot", () => {
+    historyState = { scrollX: 11, scrollY: 432 };
+
+    const { onHydrated } = initClientNavigation();
+    onHydrated();
+
+    expect(window.history.replaceState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        [HISTORY_STATE_SCROLL_KEY]: expect.any(String),
+        scrollX: 11,
+        scrollY: 432,
+      }),
+      "",
+      "http://localhost/",
+    );
+    expect(window.scrollTo).toHaveBeenCalledWith({
+      left: 11,
+      top: 432,
+      behavior: "instant",
+    });
+  });
+
+  it("flushes the latest scroll position on pagehide for reload restoration", () => {
+    initClientNavigation();
+    expect(capturedScrollHandler).not.toBeNull();
+    expect(capturedPagehideHandler).not.toBeNull();
+    vi.mocked(window.history.replaceState).mockClear();
+
+    window.scrollX = 3;
+    window.scrollY = 250;
+    capturedScrollHandler!();
+    capturedPagehideHandler!();
+
+    expect(window.history.replaceState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        [HISTORY_STATE_SCROLL_KEY]: expect.any(String),
+        scrollX: 3,
+        scrollY: 250,
+      }),
+      "",
+      "http://localhost/",
+    );
+  });
+
+  it("flushes the latest scroll position when the page is hidden", () => {
+    initClientNavigation();
+    expect(capturedVisibilityChangeHandler).not.toBeNull();
+    vi.mocked(window.history.replaceState).mockClear();
+
+    window.scrollX = 5;
+    window.scrollY = 275;
+    Object.defineProperty(document, "visibilityState", {
+      value: "hidden",
+      configurable: true,
+    });
+    capturedVisibilityChangeHandler!();
+
+    expect(window.history.replaceState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        [HISTORY_STATE_SCROLL_KEY]: expect.any(String),
+        scrollX: 5,
+        scrollY: 275,
+      }),
+      "",
+      "http://localhost/",
+    );
   });
 });
