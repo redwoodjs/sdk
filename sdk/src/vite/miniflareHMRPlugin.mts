@@ -14,7 +14,7 @@ import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { hasDirective as sourceHasDirective } from "./hasDirective.mjs";
 import { invalidateModule } from "./invalidateModule.mjs";
 import { isJsFile } from "./isJsFile.mjs";
-import { VIRTUAL_SSR_PREFIX } from "./ssrBridgePlugin.mjs";
+import { VIRTUAL_SSR_PREFIX } from "./ssrVirtualModule.mjs";
 
 const log = debug("rwsdk:vite:hmr-plugin");
 

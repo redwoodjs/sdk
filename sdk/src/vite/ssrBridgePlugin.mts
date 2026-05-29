@@ -4,10 +4,13 @@ import type { Plugin, ViteDevServer } from "vite";
 import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import { externalModulesSet } from "./constants.mjs";
 import { findSsrImportCallSites } from "./findSsrSpecifiers.mjs";
+import {
+  isVirtualSsrModuleId,
+  normalizeVirtualSsrModuleId,
+  VIRTUAL_SSR_PREFIX,
+} from "./ssrVirtualModule.mjs";
 
 const log = debug("rwsdk:vite:ssr-bridge-plugin");
-
-export const VIRTUAL_SSR_PREFIX = "virtual:rwsdk:ssr:";
 
 export const ssrBridgePlugin = ({
   clientFiles,
@@ -100,11 +103,13 @@ export const ssrBridgePlugin = ({
 
               if (
                 args.path === "rwsdk/__ssr_bridge" ||
-                args.path.startsWith(VIRTUAL_SSR_PREFIX)
+                isVirtualSsrModuleId(args.path)
               ) {
-                log("Marking as external: %s", args.path);
+                const path =
+                  normalizeVirtualSsrModuleId(args.path) ?? args.path;
+                log("Marking as external: %s", path);
                 return {
-                  path: args.path,
+                  path,
                   external: true,
                 };
               }
@@ -139,9 +144,10 @@ export const ssrBridgePlugin = ({
         // context(justinvdm, 27 May 2025): In dev, we need to dynamically load
         // SSR modules, so we return the virtual id so that the dynamic loading
         // can happen in load()
-        if (id.startsWith(VIRTUAL_SSR_PREFIX)) {
-          if (id.endsWith(".css")) {
-            const newId = id + ".js";
+        const virtualSsrId = normalizeVirtualSsrModuleId(id);
+        if (virtualSsrId) {
+          if (virtualSsrId.endsWith(".css")) {
+            const newId = virtualSsrId + ".js";
             log(
               "Virtual CSS module, adding .js suffix. old: %s, new: %s",
               id,
@@ -150,8 +156,8 @@ export const ssrBridgePlugin = ({
             return newId;
           }
 
-          log("Returning virtual SSR id for dev: %s", id);
-          return id;
+          log("Returning virtual SSR id for dev: %s", virtualSsrId);
+          return virtualSsrId;
         }
 
         // context(justinvdm, 28 May 2025): The SSR bridge module is a special case -
@@ -170,12 +176,13 @@ export const ssrBridgePlugin = ({
         }
       } else {
         // In build mode, the behavior depends on the build pass
-        if (id.startsWith(VIRTUAL_SSR_PREFIX)) {
+        const virtualSsrId = normalizeVirtualSsrModuleId(id);
+        if (virtualSsrId) {
           if (this.environment.name === "worker") {
             log(
               "Virtual SSR module case (build-worker pass): resolving to external",
             );
-            return { id, external: true };
+            return { id: virtualSsrId, external: true };
           }
         }
 
@@ -198,11 +205,9 @@ export const ssrBridgePlugin = ({
       }
     },
     async load(id) {
-      if (
-        id.startsWith(VIRTUAL_SSR_PREFIX) &&
-        this.environment.name === "worker"
-      ) {
-        const realId = id.slice(VIRTUAL_SSR_PREFIX.length);
+      const virtualSsrId = normalizeVirtualSsrModuleId(id);
+      if (virtualSsrId && this.environment.name === "worker") {
+        const realId = virtualSsrId.slice(VIRTUAL_SSR_PREFIX.length);
         let idForFetch = realId.endsWith(".css.js")
           ? realId.slice(0, -3)
           : realId;
