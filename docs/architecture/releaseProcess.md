@@ -27,6 +27,7 @@ This is the primary, manually-triggered event that kicks off a release. It deter
     -   **Stable & Beta versions** (e.g., `v1.2.3`, `v1.3.0-beta.0`) get the `latest` npm tag.
     -   **Pre-releases** (e.g., `v1.3.0-alpha.0`) get the `pre` npm tag.
     -   **Test releases** (e.g., `v1.3.0-alpha.0-test.12345`) get the `test` npm tag.
+    -   When the script runs under agent-ci, it first resets tracked changes and checks out `origin/$RWSDK_RELEASE_BRANCH` so the release starts from the remote branch tip instead of a stale workspace.
 3.  **Build & Pack**: The SDK is built and packed into a `.tgz` tarball.
 4.  **Smoke Test**: A comprehensive smoke test is performed against the packed tarball to ensure it works correctly in a fresh project.
 5.  **Publish to npm**: If tests pass, the tarball is published to npm with the appropriate tag.
