@@ -2,13 +2,15 @@ import debug from "debug";
 import MagicString from "magic-string";
 import type { Plugin, ViteDevServer } from "vite";
 import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
-import { addOptimizeDepsPlugin } from "./addOptimizeDepsPlugin.mjs";
 import { externalModulesSet } from "./constants.mjs";
 import { findSsrImportCallSites } from "./findSsrSpecifiers.mjs";
+import {
+  isVirtualSsrModuleId,
+  normalizeVirtualSsrModuleId,
+  VIRTUAL_SSR_PREFIX,
+} from "./ssrVirtualModule.mjs";
 
 const log = debug("rwsdk:vite:ssr-bridge-plugin");
-
-export const VIRTUAL_SSR_PREFIX = "virtual:rwsdk:ssr:";
 
 export const ssrBridgePlugin = ({
   clientFiles,
@@ -78,21 +80,44 @@ export const ssrBridgePlugin = ({
       log("Configuring environment: env=%s", env);
 
       if (env === "worker") {
+        // Configure esbuild to mark rwsdk/__ssr paths as external for worker environment
+        log("Configuring esbuild options for worker environment");
         config.optimizeDeps ??= {};
+        config.optimizeDeps.esbuildOptions ??= {};
+        config.optimizeDeps.esbuildOptions.plugins ??= [];
         config.optimizeDeps.include ??= [];
 
-        addOptimizeDepsPlugin(config, {
+        config.optimizeDeps.esbuildOptions.plugins.push({
           name: "rwsdk-ssr-external",
-          resolveId(id: string) {
-            if (
-              id === "rwsdk/__ssr_bridge" ||
-              id.startsWith(VIRTUAL_SSR_PREFIX)
-            ) {
-              log("Marking as external: %s", id);
-              return { id, external: true };
-            }
+          setup(build) {
+            log(
+              "Setting up esbuild plugin to mark rwsdk/__ssr paths as external for worker",
+            );
+            build.onResolve({ filter: /.*$/ }, (args) => {
+              process.env.VERBOSE &&
+                log(
+                  "Esbuild onResolve called for path=%s, args=%O",
+                  args.path,
+                  args,
+                );
+
+              if (
+                args.path === "rwsdk/__ssr_bridge" ||
+                isVirtualSsrModuleId(args.path)
+              ) {
+                const path =
+                  normalizeVirtualSsrModuleId(args.path) ?? args.path;
+                log("Marking as external: %s", path);
+                return {
+                  path,
+                  external: true,
+                };
+              }
+            });
           },
         });
+
+        log("Worker environment esbuild configuration complete");
       }
     },
     async resolveId(id, importer, options?: { custom?: any }) {
@@ -119,9 +144,10 @@ export const ssrBridgePlugin = ({
         // context(justinvdm, 27 May 2025): In dev, we need to dynamically load
         // SSR modules, so we return the virtual id so that the dynamic loading
         // can happen in load()
-        if (id.startsWith(VIRTUAL_SSR_PREFIX)) {
-          if (id.endsWith(".css")) {
-            const newId = id + ".js";
+        const virtualSsrId = normalizeVirtualSsrModuleId(id);
+        if (virtualSsrId) {
+          if (virtualSsrId.endsWith(".css")) {
+            const newId = virtualSsrId + ".js";
             log(
               "Virtual CSS module, adding .js suffix. old: %s, new: %s",
               id,
@@ -130,8 +156,8 @@ export const ssrBridgePlugin = ({
             return newId;
           }
 
-          log("Returning virtual SSR id for dev: %s", id);
-          return id;
+          log("Returning virtual SSR id for dev: %s", virtualSsrId);
+          return virtualSsrId;
         }
 
         // context(justinvdm, 28 May 2025): The SSR bridge module is a special case -
@@ -150,12 +176,13 @@ export const ssrBridgePlugin = ({
         }
       } else {
         // In build mode, the behavior depends on the build pass
-        if (id.startsWith(VIRTUAL_SSR_PREFIX)) {
+        const virtualSsrId = normalizeVirtualSsrModuleId(id);
+        if (virtualSsrId) {
           if (this.environment.name === "worker") {
             log(
               "Virtual SSR module case (build-worker pass): resolving to external",
             );
-            return { id, external: true };
+            return { id: virtualSsrId, external: true };
           }
         }
 
@@ -178,11 +205,9 @@ export const ssrBridgePlugin = ({
       }
     },
     async load(id) {
-      if (
-        id.startsWith(VIRTUAL_SSR_PREFIX) &&
-        this.environment.name === "worker"
-      ) {
-        const realId = id.slice(VIRTUAL_SSR_PREFIX.length);
+      const virtualSsrId = normalizeVirtualSsrModuleId(id);
+      if (virtualSsrId && this.environment.name === "worker") {
+        const realId = virtualSsrId.slice(VIRTUAL_SSR_PREFIX.length);
         let idForFetch = realId.endsWith(".css.js")
           ? realId.slice(0, -3)
           : realId;

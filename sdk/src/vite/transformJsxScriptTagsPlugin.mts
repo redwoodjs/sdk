@@ -11,6 +11,7 @@ import {
 import { type Plugin } from "vite";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { stripBase } from "../lib/stripBase.mjs";
+import { isVirtualSsrModuleId } from "./ssrVirtualModule.mjs";
 
 const log = debug("rwsdk:vite:transform-jsx-script-tags");
 
@@ -533,7 +534,6 @@ export const transformJsxScriptTagsPlugin = ({
       base = config.base || "/";
     },
     async transform(code, id) {
-
       if (
         isBuild &&
         this.environment?.name === "worker" &&
@@ -544,6 +544,10 @@ export const transformJsxScriptTagsPlugin = ({
 
       if (
         this.environment?.name === "worker" &&
+        // context(peterp, 29 May 2026): SSR bridge modules are already
+        // transformed by the `ssr` environment; rerunning script-tag discovery
+        // in the worker injects duplicate imports into virtual SSR modules.
+        !isVirtualSsrModuleId(id) &&
         id.endsWith(".tsx") &&
         hasJsxFunctions(code)
       ) {
