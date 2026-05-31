@@ -2,6 +2,7 @@ import debug from "debug";
 import MagicString from "magic-string";
 import type { Plugin, ViteDevServer } from "vite";
 import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
+import { addOptimizeDepsPlugin } from "./addOptimizeDepsPlugin.mjs";
 import { externalModulesSet } from "./constants.mjs";
 import { findSsrImportCallSites } from "./findSsrSpecifiers.mjs";
 import {
@@ -80,44 +81,25 @@ export const ssrBridgePlugin = ({
       log("Configuring environment: env=%s", env);
 
       if (env === "worker") {
-        // Configure esbuild to mark rwsdk/__ssr paths as external for worker environment
-        log("Configuring esbuild options for worker environment");
+        log("Configuring rolldown options for worker environment");
         config.optimizeDeps ??= {};
-        config.optimizeDeps.esbuildOptions ??= {};
-        config.optimizeDeps.esbuildOptions.plugins ??= [];
         config.optimizeDeps.include ??= [];
 
-        config.optimizeDeps.esbuildOptions.plugins.push({
+        addOptimizeDepsPlugin(config, {
           name: "rwsdk-ssr-external",
-          setup(build) {
-            log(
-              "Setting up esbuild plugin to mark rwsdk/__ssr paths as external for worker",
-            );
-            build.onResolve({ filter: /.*$/ }, (args) => {
-              process.env.VERBOSE &&
-                log(
-                  "Esbuild onResolve called for path=%s, args=%O",
-                  args.path,
-                  args,
-                );
-
-              if (
-                args.path === "rwsdk/__ssr_bridge" ||
-                isVirtualSsrModuleId(args.path)
-              ) {
-                const path =
-                  normalizeVirtualSsrModuleId(args.path) ?? args.path;
-                log("Marking as external: %s", path);
-                return {
-                  path,
-                  external: true,
-                };
-              }
-            });
+          resolveId(id: string) {
+            if (
+              id === "rwsdk/__ssr_bridge" ||
+              isVirtualSsrModuleId(id)
+            ) {
+              const path = normalizeVirtualSsrModuleId(id) ?? id;
+              log("Marking as external: %s", path);
+              return { id: path, external: true };
+            }
           },
         });
 
-        log("Worker environment esbuild configuration complete");
+        log("Worker environment rolldown configuration complete");
       }
     },
     async resolveId(id, importer, options?: { custom?: any }) {
