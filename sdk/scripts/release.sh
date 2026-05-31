@@ -142,8 +142,13 @@ if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] git pull --rebase"
 else
   if [[ -n "$AGENT_CI_LOCAL" ]]; then
-    echo "  [AGENT CI] Resetting tracked workspace changes and skipping pull"
+    # context(justinvdm, 2026-05-31): agent-ci releases must start from the remote branch tip so we do not
+    # publish from a stale checkout and then lose the final push to a fetch-first rejection.
+    RELEASE_BRANCH_FOR_CHECKOUT="${RWSDK_RELEASE_BRANCH:-main}"
+    echo "  [AGENT CI] Resetting tracked workspace changes and checking out origin/${RELEASE_BRANCH_FOR_CHECKOUT}"
     git reset --hard HEAD
+    git fetch origin "$RELEASE_BRANCH_FOR_CHECKOUT" --tags
+    git checkout -B "$RELEASE_BRANCH_FOR_CHECKOUT" "origin/$RELEASE_BRANCH_FOR_CHECKOUT"
   else
     git pull --rebase
   fi
