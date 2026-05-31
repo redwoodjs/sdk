@@ -153,6 +153,21 @@ else
     if [[ -x /usr/bin/git.real ]]; then
       GIT_REAL="/usr/bin/git.real"
     fi
+    # The container's origin remote points at a localhost mirror. Set it to the
+    # real GitHub URL so fetch and push work against the actual remote.
+    REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+    RELEASE_REMOTE_URL_FILE="$REPO_ROOT/.agent-ci/runtime/release-remote-url"
+    RELEASE_REMOTE_URL=""
+    if [[ -f "$RELEASE_REMOTE_URL_FILE" ]]; then
+      RELEASE_REMOTE_URL="$(tr -d '\r\n' < "$RELEASE_REMOTE_URL_FILE")"
+    fi
+    if [[ -z "$RELEASE_REMOTE_URL" ]]; then
+      RELEASE_REMOTE_URL="$($GIT_REAL remote get-url origin 2>/dev/null || true)"
+    fi
+    if [[ -n "$RELEASE_REMOTE_URL" ]]; then
+      echo "  - Updating origin remote to $RELEASE_REMOTE_URL"
+      $GIT_REAL remote set-url origin "$RELEASE_REMOTE_URL"
+    fi
     $GIT_REAL fetch origin "$RELEASE_BRANCH_FOR_CHECKOUT" --tags
     $GIT_REAL checkout -B "$RELEASE_BRANCH_FOR_CHECKOUT" "origin/$RELEASE_BRANCH_FOR_CHECKOUT"
   else
