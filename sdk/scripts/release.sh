@@ -147,8 +147,14 @@ else
     RELEASE_BRANCH_FOR_CHECKOUT="${RWSDK_RELEASE_BRANCH:-main}"
     echo "  [AGENT CI] Resetting tracked workspace changes and checking out origin/${RELEASE_BRANCH_FOR_CHECKOUT}"
     git reset --hard HEAD
-    git fetch origin "$RELEASE_BRANCH_FOR_CHECKOUT" --tags
-    git checkout -B "$RELEASE_BRANCH_FOR_CHECKOUT" "origin/$RELEASE_BRANCH_FOR_CHECKOUT"
+    # agent-ci installs a git shim that intercepts fetch/checkout. Use the real git
+    # binary so we can pull the actual remote branch history into the container.
+    GIT_REAL="git"
+    if [[ -x /usr/bin/git.real ]]; then
+      GIT_REAL="/usr/bin/git.real"
+    fi
+    $GIT_REAL fetch origin "$RELEASE_BRANCH_FOR_CHECKOUT" --tags
+    $GIT_REAL checkout -B "$RELEASE_BRANCH_FOR_CHECKOUT" "origin/$RELEASE_BRANCH_FOR_CHECKOUT"
   else
     git pull --rebase
   fi
@@ -486,7 +492,7 @@ else
       git stash drop
     fi
     git tag "$TAG_NAME"
-    git push origin main
+    git push origin "$RELEASE_BRANCH"
     git push origin "$TAG_NAME"
   fi
 fi
