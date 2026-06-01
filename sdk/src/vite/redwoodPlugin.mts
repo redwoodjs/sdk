@@ -1,6 +1,6 @@
 import { cloudflare } from "@cloudflare/vite-plugin";
 import { resolve } from "node:path";
-import { InlineConfig, normalizePath, Plugin } from "vite";
+import { normalizePath, type Plugin } from "vite";
 import { unstable_readConfig } from "wrangler";
 
 import { devServerConstantPlugin } from "./devServerConstant.mjs";
@@ -76,7 +76,7 @@ const clientEntryPoints = new Set<string>();
 
 export const redwoodPlugin = async (
   options: RedwoodPluginOptions = {},
-): Promise<InlineConfig["plugins"]> => {
+): Promise<any[]> => {
   const projectRootDir = process.cwd();
   const esbuildOptions = options.esbuildOptions ?? {};
 
