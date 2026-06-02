@@ -133,7 +133,7 @@ describe("onNavigate callback (issue #1123 regression)", () => {
       }),
     });
     vi.stubGlobal("window", {
-      location: { href: "http://localhost/" },
+      location: { href: "http://localhost/", pathname: "/", search: "" },
       addEventListener: vi.fn((event: string, handler: any) => {
         if (event === "popstate") capturedPopstateHandler = handler;
       }),
@@ -210,6 +210,7 @@ describe("onNavigate callback (issue #1123 regression)", () => {
 
     expect(capturedPopstateHandler).not.toBeNull();
 
+    (window.location as unknown as { pathname: string }).pathname = "/about";
     await capturedPopstateHandler!();
 
     expect(onNavigate).toHaveBeenCalled();
@@ -258,12 +259,14 @@ describe("initClientNavigation", () => {
   let capturedScrollHandler: (() => void) | null = null;
   let capturedPagehideHandler: (() => void) | null = null;
   let capturedVisibilityChangeHandler: (() => void) | null = null;
+  let capturedPopstateHandler: (() => Promise<void>) | null = null;
 
   beforeEach(() => {
     historyState = {};
     capturedScrollHandler = null;
     capturedPagehideHandler = null;
     capturedVisibilityChangeHandler = null;
+    capturedPopstateHandler = null;
     vi.clearAllMocks();
 
     const mockHistory = {
@@ -290,13 +293,16 @@ describe("initClientNavigation", () => {
     });
 
     vi.stubGlobal("window", {
-      location: { href: "http://localhost/" },
+      location: { href: "http://localhost/", pathname: "/", search: "" },
       addEventListener: vi.fn((event: string, handler: () => void) => {
         if (event === "scroll") {
           capturedScrollHandler = handler;
         }
         if (event === "pagehide") {
           capturedPagehideHandler = handler;
+        }
+        if (event === "popstate") {
+          capturedPopstateHandler = handler as () => Promise<void>;
         }
       }),
       history: mockHistory,
@@ -341,6 +347,27 @@ describe("initClientNavigation", () => {
     history.scrollRestoration = "auto";
     initClientNavigation();
     expect(history.scrollRestoration).toBe("manual");
+  });
+
+  it("ignores hash-only popstate events so anchor links keep their native scroll", async () => {
+    const onNavigate = vi.fn();
+    (globalThis as any).__rsc_callServer = vi.fn().mockResolvedValue(undefined);
+
+    const { onHydrated } = initClientNavigation({ onNavigate });
+    expect(capturedPopstateHandler).not.toBeNull();
+
+    (window.location as unknown as { hash: string; href: string }).hash =
+      "#heading";
+    (window.location as unknown as { hash: string; href: string }).href =
+      "http://localhost/#heading";
+    window.scrollY = 500;
+
+    await capturedPopstateHandler!();
+    onHydrated();
+
+    expect(onNavigate).not.toHaveBeenCalled();
+    expect((globalThis as any).__rsc_callServer).not.toHaveBeenCalled();
+    expect(window.scrollTo).not.toHaveBeenCalled();
   });
 
   it("does not write to history state on scroll", () => {

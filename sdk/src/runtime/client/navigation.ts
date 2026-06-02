@@ -63,6 +63,15 @@ export function validateClickEvent(event: MouseEvent, target: HTMLElement) {
 let IS_CLIENT_NAVIGATION = false;
 
 let scrollRestoration: ScrollRestorationController | null = null;
+let currentPathKey: string | null = null;
+
+function getLocationPathKey() {
+  return `${window.location.pathname ?? ""}${window.location.search ?? ""}`;
+}
+
+function getUrlPathKey(url: URL) {
+  return `${url.pathname ?? ""}${url.search ?? ""}` || getLocationPathKey();
+}
 
 export interface NavigateOptions {
   history?: "push" | "replace";
@@ -96,6 +105,7 @@ export async function navigate(
   } else {
     scrollRestoration?.replaceEntry(href, url, nextScrollPosition);
   }
+  currentPathKey = getUrlPathKey(url);
 
   if (scrollToTop) {
     scrollRestoration?.setPendingScroll({
@@ -156,6 +166,7 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
   IS_CLIENT_NAVIGATION = true;
   scrollRestoration = createScrollRestoration();
   scrollRestoration.initialize();
+  currentPathKey = getLocationPathKey();
 
   document.addEventListener(
     "click",
@@ -176,6 +187,14 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
   );
 
   window.addEventListener("popstate", async function handlePopState() {
+    const nextPathKey = getLocationPathKey();
+    const isHashOnlyChange = nextPathKey === currentPathKey;
+    currentPathKey = nextPathKey;
+
+    if (isHashOnlyChange) {
+      return;
+    }
+
     scrollRestoration?.restorePopStateScroll();
     await opts.onNavigate?.();
     await globalThis.__rsc_callServer(null, null, "navigation");
