@@ -272,18 +272,14 @@ registerServerReference(__defaultServerFunction__, "/test.tsx", "default")
 `;
 
 exports[`useServerPlugin > TRANSFORMS > RE_EXPORT_CODE > CLIENT 1`] = `
-"import { createServerReference } from "rwsdk/client";
-
-export let sum = createServerReference("/test.tsx", "sum");
-export let multiply = createServerReference("/test.tsx", "multiply");
+"export { sum } from "./math";
+export { default as multiply } from "./multiply";
 "
 `;
 
 exports[`useServerPlugin > TRANSFORMS > RE_EXPORT_CODE > SSR 1`] = `
-"import { createServerReference } from "rwsdk/__ssr";
-
-export let sum = createServerReference("/test.tsx", "sum");
-export let multiply = createServerReference("/test.tsx", "multiply");
+"export { sum } from "./math";
+export { default as multiply } from "./multiply";
 "
 `;
 

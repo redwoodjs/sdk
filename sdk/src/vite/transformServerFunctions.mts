@@ -159,10 +159,12 @@ export const transformServerFunctions = (
       );
 
     const exportInfo = findExportInfo(code, normalizedId);
-    const allExports = new Set([
-      ...exportInfo.localFunctions,
-      ...exportInfo.reExports.map((r) => r.localName),
-    ]);
+    const reExportNames = new Set(exportInfo.reExports.map((r) => r.localName));
+    const allExports = new Set(
+      Array.from(exportInfo.localFunctions).filter(
+        (name) => !reExportNames.has(name),
+      ),
+    );
 
     // Check for default function exports that should also be named exports
     const defaultFunctionName = findDefaultFunctionName(code, normalizedId);
@@ -172,14 +174,40 @@ export const transformServerFunctions = (
 
     // Generate completely new code for SSR
     const s = new MagicString("");
-    if (environment === "ssr") {
-      s.append('import { createServerReference } from "rwsdk/__ssr";\n\n');
-    } else {
-      s.append('import { createServerReference } from "rwsdk/client";\n\n');
+    const hasDefExport = hasDefaultExport(code, normalizedId);
+    if (allExports.size > 0 || hasDefExport) {
+      if (environment === "ssr") {
+        s.append('import { createServerReference } from "rwsdk/__ssr";\n\n');
+      } else {
+        s.append('import { createServerReference } from "rwsdk/client";\n\n');
+      }
+    }
+
+    for (const reExport of exportInfo.reExports) {
+      const reExportStatement =
+        reExport.originalName === "default"
+          ? `export { default as ${reExport.localName} } from ${JSON.stringify(reExport.moduleSpecifier)};\n`
+          : reExport.originalName === reExport.localName
+            ? `export { ${reExport.originalName} } from ${JSON.stringify(reExport.moduleSpecifier)};\n`
+            : `export { ${reExport.originalName} as ${reExport.localName} } from ${JSON.stringify(reExport.moduleSpecifier)};\n`;
+
+      s.append(reExportStatement);
+      log(
+        `Preserved ${environment} re-export for function: %s (original: %s) from %s in normalizedId=%s`,
+        reExport.localName,
+        reExport.originalName,
+        reExport.moduleSpecifier,
+        normalizedId,
+      );
+    }
+
+    if (exportInfo.reExports.length > 0 && allExports.size > 0) {
+      s.append("\n");
     }
 
     const ext = path.extname(normalizedId).toLowerCase();
-    const lang = ext === ".tsx" || ext === ".jsx" ? Lang.Tsx : SgLang.TypeScript;
+    const lang =
+      ext === ".tsx" || ext === ".jsx" ? Lang.Tsx : SgLang.TypeScript;
     const root = sgParse(lang, code);
 
     for (const name of allExports) {
@@ -230,7 +258,7 @@ export const transformServerFunctions = (
     }
 
     // Check for default export in the actual module (not re-exports)
-    if (hasDefaultExport(code, normalizedId)) {
+    if (hasDefExport) {
       let method: string | undefined;
       let source: "action" | "query" = "action";
       const patterns = [
