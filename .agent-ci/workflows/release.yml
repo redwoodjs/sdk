@@ -149,6 +149,24 @@ jobs:
             FLAGS="$FLAGS --prerelease"
           fi
 
+          if [[ "$VERSION_TYPE" == "canary" ]]; then
+            # context(justinvdm, 2026-06-04): canary notes should compare against the previous canary tag so the
+            # public "What's changed" section stays on the same prerelease line.
+            BASE_TAG="${TAG_NAME#v}"
+            BASE_TAG="${BASE_TAG%-canary.*}"
+            PREVIOUS_CANARY_TAG=""
+            mapfile -t CANARY_TAGS < <(git tag --list "v${BASE_TAG}-canary.*" --sort=-v:refname)
+            for CANDIDATE_TAG in "${CANARY_TAGS[@]}"; do
+              if [[ "$CANDIDATE_TAG" != "$TAG_NAME" ]]; then
+                PREVIOUS_CANARY_TAG="$CANDIDATE_TAG"
+                break
+              fi
+            done
+            if [[ -n "$PREVIOUS_CANARY_TAG" ]]; then
+              FLAGS="$FLAGS --notes-start-tag $PREVIOUS_CANARY_TAG"
+            fi
+          fi
+
           REPO_URL="$(git remote get-url origin)"
           case "$REPO_URL" in
             https://github.com/*)
