@@ -190,6 +190,37 @@ export const getProject = serverQuery([
   };
 
   describe("TRANSFORMS", () => {
+    it("preserves client re-exports so serverQuery metadata comes from the defining module", () => {
+      const barrelResult = transformServerFunctions(
+        `
+"use server";
+
+export { getProject } from "./queries";
+`,
+        "/actions.ts",
+        "client",
+        new Set(),
+      );
+
+      expect(barrelResult?.code).toContain(
+        `export { getProject } from "./queries";`,
+      );
+      expect(barrelResult?.code).not.toContain(
+        `createServerReference("/actions.ts", "getProject")`,
+      );
+
+      const queryResult = transformServerFunctions(
+        SERVER_QUERY_GET_CODE,
+        "/queries.ts",
+        "client",
+        new Set(),
+      );
+
+      expect(queryResult?.code).toContain(
+        `createServerReference("/queries.ts", "getProject", "GET", "query")`,
+      );
+    });
+
     for (const [key, CODE] of Object.entries(TEST_CASES)) {
       describe(key, () => {
         it(`CLIENT`, () => {
