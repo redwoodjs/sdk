@@ -121,7 +121,7 @@ describe("onNavigate callback (issue #1123 regression)", () => {
       }),
     });
     vi.stubGlobal("window", {
-      location: { href: "http://localhost/" },
+      location: { href: "http://localhost/", pathname: "/", search: "" },
       addEventListener: vi.fn((event: string, handler: any) => {
         if (event === "popstate") capturedPopstateHandler = handler;
       }),
@@ -187,6 +187,7 @@ describe("onNavigate callback (issue #1123 regression)", () => {
 
     expect(capturedPopstateHandler).not.toBeNull();
 
+    (window.location as unknown as { pathname: string }).pathname = "/about";
     await capturedPopstateHandler!();
 
     expect(onNavigate).toHaveBeenCalled();
@@ -225,6 +226,22 @@ describe("onNavigate callback (issue #1123 regression)", () => {
 
     expect(callOrder).toEqual(["onNavigate", "rscCallServer"]);
     expect(window.history.pushState).toHaveBeenCalled();
+  });
+
+  it("ignores hash-only popstate events so anchor links keep their native scroll", async () => {
+    const onNavigate = vi.fn();
+    (globalThis as any).__rsc_callServer = vi.fn().mockResolvedValue(undefined);
+
+    initClientNavigation({ onNavigate });
+
+    expect(capturedPopstateHandler).not.toBeNull();
+
+    (window.location as unknown as { hash: string }).hash = "#heading";
+
+    await capturedPopstateHandler!();
+
+    expect(onNavigate).not.toHaveBeenCalled();
+    expect((globalThis as any).__rsc_callServer).not.toHaveBeenCalled();
   });
 });
 

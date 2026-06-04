@@ -68,6 +68,15 @@ type PendingScroll = {
 // onHydrated, so the new scroll position aligns with the new DOM rather
 // than flashing on top of the old one.
 let pendingScroll: PendingScroll | null = null;
+let currentPathKey: string | null = null;
+
+function getLocationPathKey() {
+  return `${window.location.pathname ?? ""}${window.location.search ?? ""}`;
+}
+
+function getUrlPathKey(url: URL) {
+  return `${url.pathname ?? ""}${url.search ?? ""}` || getLocationPathKey();
+}
 
 export interface NavigateOptions {
   history?: "push" | "replace";
@@ -96,6 +105,8 @@ export async function navigate(
   } else {
     window.history.replaceState({ path: href }, "", url);
   }
+
+  currentPathKey = getUrlPathKey(url);
 
   const scrollToTop = options.info?.scrollToTop ?? true;
   const scrollBehavior = (options.info?.scrollBehavior ??
@@ -193,6 +204,7 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
       behavior: "instant",
     };
   }
+  currentPathKey = getLocationPathKey();
 
   document.addEventListener(
     "click",
@@ -213,6 +225,14 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
   );
 
   window.addEventListener("popstate", async function handlePopState() {
+    const nextPathKey = getLocationPathKey();
+    const isHashOnlyChange = nextPathKey === currentPathKey;
+    currentPathKey = nextPathKey;
+
+    if (isHashOnlyChange) {
+      return;
+    }
+
     const state = window.history.state ?? {};
     pendingScroll = {
       x: typeof state.scrollX === "number" ? state.scrollX : 0,
