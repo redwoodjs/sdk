@@ -35,13 +35,14 @@
     "@types/node": "~25.6.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "~5.1.4",
+    "postcss": "^8.5.12",
+    "postcss-preset-mantine": "^1.18.0",
+    "postcss-simple-vars": "^7.0.1",
     "typescript": "6.0.3",
     "vite": "~7.3.2",
     "vitest": "^4.1.2",
-    "wrangler": "4.85.0",
-    "postcss": "^8.5.12",
-    "postcss-preset-mantine": "^1.18.0",
-    "postcss-simple-vars": "^7.0.1"
+    "wrangler": "4.85.0"
   },
   "overrides": {
     "react": "19.2.6",
