@@ -2194,9 +2194,6 @@ importers:
       '@types/react-is':
         specifier: ~19.2.0
         version: 19.2.0
-      '@vitejs/plugin-react':
-        specifier: ~5.1.4
-        version: 5.1.4(vite@7.3.2(@types/node@25.6.1)(jiti@2.6.1)(lightningcss@1.32.0)(sugarss@5.0.1(postcss@8.5.12))(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3))
       chokidar:
         specifier: ~5.0.0
         version: 5.0.0
@@ -2306,6 +2303,9 @@ importers:
       '@types/proper-lockfile':
         specifier: ~4.1.4
         version: 4.1.4
+      '@vitejs/plugin-react':
+        specifier: ~5.1.4
+        version: 5.1.4(vite@7.3.2(@types/node@25.6.1)(jiti@2.6.1)(lightningcss@1.32.0)(sugarss@5.0.1(postcss@8.5.12))(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3))
       capnweb:
         specifier: ~0.5.0
         version: 0.5.0
@@ -2358,6 +2358,9 @@ importers:
       '@types/react-dom':
         specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.14)
+      '@vitejs/plugin-react':
+        specifier: ~5.1.4
+        version: 5.1.4(vite@7.3.2(@types/node@25.6.1)(jiti@2.6.1)(lightningcss@1.32.0)(sugarss@5.0.1(postcss@8.5.12))(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3))
       typescript:
         specifier: 6.0.3
         version: 6.0.3

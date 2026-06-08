@@ -1,13 +1,11 @@
 import { cloudflare } from "@cloudflare/vite-plugin";
 import { resolve } from "node:path";
-import { normalizePath, type Plugin } from "vite";
+import { type InlineConfig, normalizePath, type Plugin } from "vite";
 import { unstable_readConfig } from "wrangler";
 
 import { devServerConstantPlugin } from "./devServerConstant.mjs";
 import { hasOwnCloudflareVitePlugin } from "./hasOwnCloudflareVitePlugin.mjs";
-import { hasOwnReactVitePlugin } from "./hasOwnReactVitePlugin.mjs";
 
-import reactPlugin from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 import { pathExists } from "fs-extra";
@@ -74,9 +72,23 @@ const clientFiles = new Set<string>();
 const serverFiles = new Set<string>();
 const clientEntryPoints = new Set<string>();
 
+const loadReactPlugin = async () => {
+  try {
+    return (await import("@vitejs/plugin-react")).default;
+  } catch (error) {
+    if ((error as { code?: string }).code === "ERR_MODULE_NOT_FOUND") {
+      throw new Error(
+        "RedwoodSDK needs @vitejs/plugin-react to include the default React Vite plugin. Install @vitejs/plugin-react or set includeReactPlugin: false.",
+      );
+    }
+
+    throw error;
+  }
+};
+
 export const redwoodPlugin = async (
   options: RedwoodPluginOptions = {},
-): Promise<any[]> => {
+): Promise<InlineConfig["plugins"]> => {
   const projectRootDir = process.cwd();
   const esbuildOptions = options.esbuildOptions ?? {};
 
@@ -116,9 +128,7 @@ export const redwoodPlugin = async (
     options.includeCloudflarePlugin ??
     !(await hasOwnCloudflareVitePlugin({ rootProjectDir: projectRootDir }));
 
-  const shouldIncludeReactPlugin =
-    options.includeReactPlugin ??
-    !(await hasOwnReactVitePlugin({ rootProjectDir: projectRootDir }));
+  const shouldIncludeReactPlugin = options.includeReactPlugin ?? true;
 
   // context(justinvdm, 31 Mar 2025): We assume that if there is no .wrangler directory,
   // then this is fresh install, and we run `npm run dev:init` here.
@@ -176,7 +186,7 @@ export const redwoodPlugin = async (
       viteEnvironment: { name: "worker" },
       workerEntryPathname,
     }),
-    shouldIncludeReactPlugin ? reactPlugin() : [],
+    shouldIncludeReactPlugin ? (await loadReactPlugin())() : [],
     directivesPlugin({
       projectRootDir,
       clientFiles,
