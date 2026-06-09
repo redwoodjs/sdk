@@ -9,7 +9,17 @@ import {
   QueryResult,
 } from "kysely";
 import debug from "../debug.js";
+import { DOSqliteIntrospector } from "./DOSqliteIntrospector.js";
 import { createMigrator } from "./index.js";
+
+// context(justinvdm, 9 Jun 2026): Wrapper around kysely-do's DODialect that
+// uses our custom introspector to avoid SQLITE_AUTH on Cloudflare internal
+// _cf_* tables. See DOSqliteIntrospector for details.
+class DODialectWithCustomIntrospector extends DODialect {
+  createIntrospector(db: Kysely<any>) {
+    return new DOSqliteIntrospector(db);
+  }
+}
 
 const log = debug("sdk:do-db");
 
@@ -32,7 +42,7 @@ export class SqliteDurableObject<T = any> extends DurableObject {
     this.migrationTableName = migrationTableName;
 
     this.kysely = new Kysely<T>({
-      dialect: new DODialect({ ctx }),
+      dialect: new DODialectWithCustomIntrospector({ ctx }),
       plugins: plugins,
     });
   }

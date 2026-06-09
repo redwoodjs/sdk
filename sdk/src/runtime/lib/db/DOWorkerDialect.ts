@@ -3,10 +3,10 @@ import {
   Driver,
   QueryResult,
   SqliteAdapter,
-  SqliteIntrospector,
   SqliteQueryCompiler,
 } from "kysely";
 import debug from "../debug";
+import { DOSqliteIntrospector } from "./DOSqliteIntrospector.js";
 
 const log = debug("sdk:db:do-worker-dialect");
 
@@ -37,7 +37,7 @@ export class DOWorkerDialect {
   }
 
   createIntrospector(db: any) {
-    return new SqliteIntrospector(db);
+    return new DOSqliteIntrospector(db);
   }
 }
 
