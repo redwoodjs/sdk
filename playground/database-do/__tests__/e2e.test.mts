@@ -3,6 +3,7 @@ import {
   createDevServer,
   poll,
   setupPlaygroundEnvironment,
+  testDev,
   testDevAndDeploy,
   testSDK,
   waitForHydration,
@@ -62,6 +63,42 @@ testDevAndDeploy(
     await poll(async () => {
       const content = await getPageContent();
       expect(content).toContain(todoText);
+      return true;
+    });
+  },
+);
+
+testDev(
+  "migrates successfully when Cloudflare internal _cf_* tables are present",
+  async ({ page, devServer }) => {
+    if (!devServer) {
+      throw new Error("Dev server not available");
+    }
+
+    // Trigger creation of Cloudflare internal _cf_* tables by calling
+    // storage.put on the DO. This mimics what happens on the real platform
+    // when alarms or KV storage are used. We do this BEFORE any database
+    // query so that the DO is still uninitialized. When the next DB query
+    // triggers initialize() → migrateToLatest(), the introspector must skip
+    // _cf_* tables to avoid SQLITE_AUTH.
+    const setupResponse = await fetch(
+      new URL("/__test/setup-cf-tables", devServer.url),
+    );
+    expect(setupResponse.status).toBe(200);
+
+    // Load the home page. This triggers the first DB query on this DO
+    // instance, which calls initialize() → migrator.migrateToLatest() →
+    // ensureMigrationTableExists() → getTables(). The introspector must
+    // skip _cf_* tables to avoid SQLITE_AUTH.
+    await page.goto(devServer.url);
+    await waitForHydration(page);
+
+    const getPageContent = () => page.content();
+
+    // Verify the page loaded successfully (no migrations error).
+    await poll(async () => {
+      const content = await getPageContent();
+      expect(content).toContain("Todo List");
       return true;
     });
   },
