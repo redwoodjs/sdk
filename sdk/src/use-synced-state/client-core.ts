@@ -1,5 +1,7 @@
 import { loadCapnweb } from "./capnweb-loader.mjs";
 import { DEFAULT_SYNCED_STATE_PATH } from "./constants.mjs";
+import { getClientBuildVersion } from "../runtime/client/stale.js";
+import { withClientVersionQuery } from "../runtime/lib/stale.js";
 
 export type SyncedStateStatus = "connected" | "disconnected" | "reconnecting";
 export type StatusChangeCallback = (status: SyncedStateStatus) => void;
@@ -20,6 +22,13 @@ function normalizeEndpoint(endpoint: string): string {
     return `${protocol}//${window.location.host}${endpoint}`;
   }
   return endpoint;
+}
+
+function getEndpointKey(endpoint: string): string {
+  return withClientVersionQuery(
+    normalizeEndpoint(endpoint),
+    getClientBuildVersion(),
+  );
 }
 
 // Map of endpoint URLs to their respective clients
@@ -63,7 +72,7 @@ export const onStatusChange = (
   endpoint: string,
   callback: StatusChangeCallback,
 ): (() => void) => {
-  const normalized = normalizeEndpoint(endpoint);
+  const normalized = getEndpointKey(endpoint);
   let listeners = statusListeners.get(normalized);
   if (!listeners) {
     listeners = [];
@@ -186,7 +195,7 @@ export const getSyncedStateClient = (
   endpoint: string = DEFAULT_SYNCED_STATE_PATH,
 ): SyncedStateClient => {
   // Convert relative endpoint to absolute URL for environments like WKWebView
-  endpoint = normalizeEndpoint(endpoint);
+  endpoint = getEndpointKey(endpoint);
 
   // Return existing client if already cached for this endpoint
   const existingClient = clientCache.get(endpoint);
@@ -291,10 +300,11 @@ export const setSyncedStateClientForTesting = (
   client: SyncedStateClient | null,
   endpoint: string = DEFAULT_SYNCED_STATE_PATH,
 ) => {
+  const normalized = getEndpointKey(endpoint);
   if (client) {
-    clientCache.set(endpoint, client);
+    clientCache.set(normalized, client);
   } else {
-    clientCache.delete(endpoint);
+    clientCache.delete(normalized);
   }
   baseClientPromiseByEndpoint.delete(endpoint);
   activeSubscriptions.clear();
@@ -321,7 +331,7 @@ export const __testing = {
   // (or after a reconnect) when they need the underlying session to exist
   // before asserting on it.
   async warmUp(endpoint: string = DEFAULT_SYNCED_STATE_PATH): Promise<void> {
-    const normalized = normalizeEndpoint(endpoint);
+    const normalized = getEndpointKey(endpoint);
     const promise = baseClientPromiseByEndpoint.get(normalized);
     if (promise) {
       await promise.catch(() => {});

@@ -24,6 +24,12 @@ export { initClientNavigation, navigate } from "./navigation.js";
 export type { ActionResponseData } from "./types";
 
 import { getCachedNavigationResponse } from "./navigationCache.js";
+import {
+  CLIENT_VERSION_HEADER,
+  clearStaleReloadGuard,
+  getClientBuildVersion,
+  handleStaleResponse,
+} from "./stale.js";
 import type {
   ActionResponseData,
   HydrationOptions,
@@ -63,13 +69,24 @@ export const fetchTransport: Transport = (transportContext) => {
         fetchPromise = Promise.resolve(cachedResponse);
       } else {
         // Fall back to network fetch on cache miss
+        const headers = new Headers();
+        const clientBuildVersion = getClientBuildVersion();
+        if (clientBuildVersion) {
+          headers.set(CLIENT_VERSION_HEADER, clientBuildVersion);
+        }
+
         fetchPromise = fetch(url, {
           method: "GET",
+          headers,
           redirect: "manual",
         });
       }
     } else {
       const headers = new Headers();
+      const clientBuildVersion = getClientBuildVersion();
+      if (clientBuildVersion) {
+        headers.set(CLIENT_VERSION_HEADER, clientBuildVersion);
+      }
       // Add x-rsc-data-only header if we want to skip the React tree render on the server
       if (source === "query") {
         headers.set("x-rsc-data-only", "true");
@@ -123,6 +140,9 @@ export const fetchTransport: Transport = (transportContext) => {
     // If there's a response handler, check the response first
     if (transportContext.handleResponse) {
       const response = await fetchPromise;
+      if (handleStaleResponse(response)) {
+        return undefined as any;
+      }
       const shouldContinue = transportContext.handleResponse(response);
       if (!shouldContinue) {
         return undefined as any;
@@ -144,6 +164,9 @@ export const fetchTransport: Transport = (transportContext) => {
 
     // Original behavior when no handler is present
     const response = await fetchPromise;
+    if (handleStaleResponse(response)) {
+      return undefined as any;
+    }
     const location = response.headers.get("Location");
 
     if (response.status >= 300 && response.status < 400 && location) {
@@ -293,6 +316,7 @@ export const initClient = async ({
 
     React.useEffect(() => {
       if (!streamData) return;
+      clearStaleReloadGuard();
       transportContext.onHydrated?.();
     }, [streamData]);
     return (

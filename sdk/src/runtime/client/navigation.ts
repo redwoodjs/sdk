@@ -4,6 +4,7 @@ import {
   type NavigationCache,
   type NavigationCacheStorage,
 } from "./navigationCache.js";
+import { handleStaleResponse } from "./stale.js";
 import {
   createScrollRestoration,
   type ScrollRestorationController,
@@ -232,6 +233,10 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
   });
 
   function handleResponse(response: Response): boolean {
+    if (handleStaleResponse(response)) {
+      return false;
+    }
+
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get("Location");
       if (location) {

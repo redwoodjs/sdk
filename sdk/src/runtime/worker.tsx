@@ -15,6 +15,11 @@ import {
 
 import { ssrWebpackRequire } from "./imports/worker";
 import { Route, defineRoutes } from "./lib/router";
+import {
+  createStaleReloadResponse,
+  getStaleEvent,
+  type StaleEvent,
+} from "./lib/stale.js";
 import type { RwContext } from "./lib/types.js";
 import { generateNonce } from "./lib/utils";
 
@@ -38,12 +43,19 @@ export type AppDefinition<
   __rwRoutes: Routes;
 };
 
+type StalePolicy =
+  | "reload"
+  | ((event: StaleEvent) => Response | void | Promise<Response | void>);
+
 export interface DefineAppOptions {
   // context(justinvdm, 2026-04-20): Origins that may invoke server actions on
   // this app in addition to the app's own origin. Intended for cases where a
   // trusted, separately deployed frontend legitimately calls server actions
   // cross-origin. Leave unset for the common single-origin deployment.
   allowedOrigins?: readonly string[];
+  stale?: {
+    onStale?: StalePolicy;
+  };
 }
 
 export const defineApp = <
@@ -57,6 +69,28 @@ export const defineApp = <
   const rscActionHandler = createRscActionHandler({
     allowedOrigins: options.allowedOrigins,
   });
+  const stalePolicy = options.stale?.onStale ?? "reload";
+
+  const handleStaleRequest = async (
+    request: Request,
+    source: "core" | "asset",
+  ): Promise<Response | null> => {
+    const event = getStaleEvent(
+      request,
+      source,
+      import.meta.env.VITE_RWSDK_BUILD_ID,
+    );
+    if (!event) {
+      return null;
+    }
+
+    if (stalePolicy === "reload") {
+      return createStaleReloadResponse();
+    }
+
+    const response = await stalePolicy(event);
+    return response ?? createStaleReloadResponse();
+  };
 
   return {
     __rwRoutes: routes,
@@ -73,6 +107,14 @@ export const defineApp = <
           url.pathname = "/" + url.pathname.slice(base.length);
           request = new Request(url.toString(), request);
         }
+      }
+
+      const staleResponse = await handleStaleRequest(
+        request,
+        request.url.includes("/assets/") ? "asset" : "core",
+      );
+      if (staleResponse) {
+        return staleResponse;
       }
 
       // context(justinvdm, 5 Feb 2025): Serve assets requests using the assets service binding

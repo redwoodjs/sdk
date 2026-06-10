@@ -2,10 +2,24 @@ import debug from "debug";
 import fsp from "node:fs/promises";
 import path from "node:path";
 import type { Plugin, ResolvedConfig } from "vite";
+import { CLIENT_VERSION_QUERY } from "../runtime/lib/stale.js";
 import { CLIENT_MANIFEST_RELATIVE_PATH } from "../lib/constants.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 
 const log = debug("rwsdk:vite:linker-plugin");
+
+function appendBuildVersionQuery(
+  assetPath: string,
+  buildId: string | undefined,
+): string {
+  if (!buildId) {
+    return assetPath;
+  }
+
+  const url = new URL(assetPath, "http://rwsdk.local");
+  url.searchParams.set(CLIENT_VERSION_QUERY, buildId);
+  return `${url.pathname}${url.search}${url.hash}`;
+}
 
 export function linkWorkerBundle({
   code,
@@ -18,6 +32,7 @@ export function linkWorkerBundle({
   projectRootDir: string;
   base?: string;
 }) {
+  const buildId = process.env.VITE_RWSDK_BUILD_ID;
   let newCode = code;
   const manifest = JSON.parse(manifestContent);
 
@@ -38,8 +53,9 @@ export function linkWorkerBundle({
     // If base is provided, prepend it with the final hashed path.
     // Base is assumed to have a trailing "/".
     const assetPath = (base ? base : "/") + (value as { file: string }).file;
+    const assetUrl = appendBuildVersionQuery(assetPath, buildId);
 
-    newCode = newCode.replaceAll(`rwsdk_asset:${normalizedKey}`, assetPath);
+    newCode = newCode.replaceAll(`rwsdk_asset:${normalizedKey}`, assetUrl);
   }
 
   // 3. Deprefix any remaining placeholders that were not in the manifest.

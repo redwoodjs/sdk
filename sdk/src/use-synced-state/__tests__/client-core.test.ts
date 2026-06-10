@@ -68,6 +68,7 @@ describe("client-core reconnection", () => {
     __testing.backoffState.clear();
     __testing.statusListeners.clear();
     vi.useRealTimers();
+    vi.unstubAllEnvs();
   });
 
   it("registers onRpcBroken callback when creating a client", async () => {
@@ -227,6 +228,17 @@ describe("client-core reconnection", () => {
     expect(client1).toBe(client2);
     await __testing.warmUp(ENDPOINT);
     expect(mockClients).toHaveLength(1);
+  });
+
+  it("appends the build id query to the websocket endpoint", async () => {
+    vi.stubEnv("VITE_RWSDK_BUILD_ID", "test-build");
+
+    getSyncedStateClient(ENDPOINT);
+    await __testing.warmUp(ENDPOINT);
+
+    expect(newWebSocketRpcSession).toHaveBeenCalledWith(
+      `${ENDPOINT}?__rwsdk_client_version=test-build`,
+    );
   });
 
   it("re-subscribes multiple subscriptions after reconnect", async () => {

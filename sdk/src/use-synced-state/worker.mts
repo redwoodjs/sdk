@@ -1,5 +1,9 @@
 import { env } from "cloudflare:workers";
 import { route } from "../runtime/entries/router";
+import {
+  createStaleReloadResponse,
+  getStaleEvent,
+} from "../runtime/lib/stale.js";
 import type { RequestInfo } from "../runtime/requestInfo/types";
 import { runWithRequestInfo } from "../runtime/requestInfo/worker";
 import { loadCapnweb } from "./capnweb-loader.mjs";
@@ -192,6 +196,15 @@ export const syncedStateRoutes = (
     options.durableObjectName ?? DEFAULT_SYNC_STATE_NAME;
 
   const forwardRequest = async (request: Request, requestInfo: RequestInfo) => {
+    const staleEvent = getStaleEvent(
+      request,
+      "synced-state",
+      import.meta.env.VITE_RWSDK_BUILD_ID,
+    );
+    if (staleEvent) {
+      return createStaleReloadResponse();
+    }
+
     const namespace = getNamespace(env);
     // Register the namespace and DO name so handlers can access it
     SyncedStateServer.registerNamespace(namespace, durableObjectName);

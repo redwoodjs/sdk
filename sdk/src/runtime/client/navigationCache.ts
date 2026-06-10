@@ -1,3 +1,8 @@
+import {
+  CLIENT_VERSION_HEADER,
+} from "../lib/stale.js";
+import { getClientBuildVersion } from "./stale.js";
+
 export interface NavigationCacheEnvironment {
   isSecureContext: boolean;
   origin: string;
@@ -35,7 +40,7 @@ interface NavigationCacheState {
 }
 
 const TAB_ID_STORAGE_KEY = "rwsdk-navigation-tab-id";
-const BUILD_ID = "rwsdk"; // Stable build identifier
+const DEFAULT_BUILD_ID = "rwsdk";
 
 let cacheState: NavigationCacheState | null = null;
 
@@ -62,7 +67,7 @@ function getOrInitializeCacheState(): NavigationCacheState {
   cacheState = {
     tabId: tabId || "1",
     generation: 0,
-    buildId: BUILD_ID,
+    buildId: getClientBuildVersion() ?? DEFAULT_BUILD_ID,
   };
 
   return cacheState;
@@ -196,12 +201,18 @@ export async function preloadNavigationUrl(
     // Ensure we are fetching the RSC navigation response.
     url.searchParams.set("__rsc", "");
 
+    const headers = new Headers({
+      "x-prefetch": "true",
+    });
+    const clientBuildVersion = getClientBuildVersion();
+    if (clientBuildVersion) {
+      headers.set(CLIENT_VERSION_HEADER, clientBuildVersion);
+    }
+
     const request = new Request(url.toString(), {
       method: "GET",
       redirect: "manual",
-      headers: {
-        "x-prefetch": "true",
-      },
+      headers,
     });
 
     const cacheName = getCurrentCacheName();
