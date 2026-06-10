@@ -50,7 +50,7 @@ describe("linkWorkerBundle", () => {
     expect(result.code).toContain(`const logo = "/assets/logo.abc.svg";`);
   });
 
-  it("should append the build id query to hashed asset paths when present", () => {
+  it("should not append a build id query to hashed asset paths", () => {
     process.env.VITE_RWSDK_BUILD_ID = "test-build";
 
     const code = `
@@ -63,11 +63,10 @@ describe("linkWorkerBundle", () => {
       projectRootDir,
     });
     expect(result.code).toContain(
-      `const stylesheet = "/assets/styles.123.css?__rwsdk_client_version=test-build";`,
+      `const stylesheet = "/assets/styles.123.css";`,
     );
-    expect(result.code).toContain(
-      `const logo = "/assets/logo.abc.svg?__rwsdk_client_version=test-build";`,
-    );
+    expect(result.code).toContain(`const logo = "/assets/logo.abc.svg";`);
+    expect(result.code).not.toContain("__rwsdk_client_version");
   });
 
   it("should replace asset placeholder with a base + hashed paths from the manifest if base is provided", () => {
