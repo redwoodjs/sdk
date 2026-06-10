@@ -14,7 +14,7 @@ export function withClientVersionQueryString(urlLike: string): string {
 }
 
 export function isStaleReloadResponse(response: Response): boolean {
-  return response.headers.get(STALE_RESPONSE_HEADER) === STALE_RESPONSE_VALUE_RELOAD;
+  return response.headers?.get(STALE_RESPONSE_HEADER) === STALE_RESPONSE_VALUE_RELOAD;
 }
 
 const STALE_RELOAD_KEY = "rwsdk:stale-reload";
