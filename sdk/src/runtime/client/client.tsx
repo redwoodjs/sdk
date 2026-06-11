@@ -136,16 +136,19 @@ export const fetchTransport: Transport = (transportContext) => {
       return rawActionResult as Result;
     };
 
+    const response = await fetchPromise;
+
+    // Single place where stale reload happens
+    if (isStaleReloadResponse(response)) {
+      window.location.reload();
+      return undefined;
+    }
+
     // If there's a response handler, check the response first
     if (transportContext.handleResponse) {
-      const response = await fetchPromise;
-      if (isStaleReloadResponse(response)) {
-        window.location.reload();
-        return undefined;
-      }
       const shouldContinue = transportContext.handleResponse(response);
       if (!shouldContinue) {
-        return undefined as any;
+        return undefined;
       }
 
       // Continue with the response if handler returned true
@@ -162,17 +165,12 @@ export const fetchTransport: Transport = (transportContext) => {
       );
     }
 
-    // Original behavior when no handler is present
-    const response = await fetchPromise;
-    if (isStaleReloadResponse(response)) {
-      window.location.reload();
-      return undefined;
-    }
+    // Fallback when no handler is present
     const location = response.headers.get("Location");
 
     if (response.status >= 300 && response.status < 400 && location) {
       window.location.href = location;
-      return undefined as any;
+      return undefined;
     }
 
     const streamData = createFromFetch(Promise.resolve(response), {
