@@ -4,7 +4,7 @@ import {
   type NavigationCache,
   type NavigationCacheStorage,
 } from "./navigationCache.js";
-import { handleStaleResponse } from "./stale.js";
+import { isStaleReloadResponse } from "./stale.js";
 import {
   createScrollRestoration,
   type ScrollRestorationController,
@@ -233,7 +233,8 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
   });
 
   function handleResponse(response: Response): boolean {
-    if (handleStaleResponse(response)) {
+    if (isStaleReloadResponse(response)) {
+      window.location.reload();
       return false;
     }
 

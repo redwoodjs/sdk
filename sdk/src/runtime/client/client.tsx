@@ -26,9 +26,8 @@ export type { ActionResponseData } from "./types";
 import { getCachedNavigationResponse } from "./navigationCache.js";
 import {
   CLIENT_VERSION_HEADER,
-  clearStaleReloadGuard,
   getClientBuildVersion,
-  handleStaleResponse,
+  isStaleReloadResponse,
 } from "./stale.js";
 import type {
   ActionResponseData,
@@ -140,8 +139,9 @@ export const fetchTransport: Transport = (transportContext) => {
     // If there's a response handler, check the response first
     if (transportContext.handleResponse) {
       const response = await fetchPromise;
-      if (handleStaleResponse(response)) {
-        return undefined as any;
+      if (isStaleReloadResponse(response)) {
+        window.location.reload();
+        return undefined;
       }
       const shouldContinue = transportContext.handleResponse(response);
       if (!shouldContinue) {
@@ -164,8 +164,9 @@ export const fetchTransport: Transport = (transportContext) => {
 
     // Original behavior when no handler is present
     const response = await fetchPromise;
-    if (handleStaleResponse(response)) {
-      return undefined as any;
+    if (isStaleReloadResponse(response)) {
+      window.location.reload();
+      return undefined;
     }
     const location = response.headers.get("Location");
 
@@ -316,7 +317,6 @@ export const initClient = async ({
 
     React.useEffect(() => {
       if (!streamData) return;
-      clearStaleReloadGuard();
       transportContext.onHydrated?.();
     }, [streamData]);
     return (
