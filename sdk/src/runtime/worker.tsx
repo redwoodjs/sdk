@@ -16,8 +16,9 @@ import {
 import { ssrWebpackRequire } from "./imports/worker";
 import { Route, defineRoutes } from "./lib/router";
 import {
+  buildStaleEvent,
   createStaleReloadResponse,
-  getStaleEvent,
+  isStaleRequest,
   type StaleEvent,
 } from "./lib/stale.js";
 import type { RwContext } from "./lib/types.js";
@@ -75,12 +76,9 @@ export const defineApp = <
     request: Request,
     source: "core" | "asset",
   ): Promise<Response | null> => {
-    const event = getStaleEvent(
-      request,
-      source,
-      import.meta.env.VITE_RWSDK_BUILD_ID,
-    );
-    if (!event) {
+    if (
+      !isStaleRequest(request, source, import.meta.env.VITE_RWSDK_BUILD_ID)
+    ) {
       return null;
     }
 
@@ -88,6 +86,11 @@ export const defineApp = <
       return createStaleReloadResponse();
     }
 
+    const event = buildStaleEvent(
+      request,
+      source,
+      import.meta.env.VITE_RWSDK_BUILD_ID,
+    );
     const response = await stalePolicy(event);
     return response ?? createStaleReloadResponse();
   };

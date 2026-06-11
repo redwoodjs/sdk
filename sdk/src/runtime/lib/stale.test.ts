@@ -2,41 +2,44 @@ import { describe, expect, it } from "vitest";
 import {
   CLIENT_VERSION_HEADER,
   CLIENT_VERSION_QUERY,
+  addClientVersionToUrl,
+  buildStaleEvent,
   createStaleReloadResponse,
-  getStaleEvent,
-  withClientVersionQuery,
+  isStaleRequest,
 } from "./stale.js";
 
 describe("stale helpers", () => {
   it("does not mark a request stale when the client version is missing", () => {
     const request = new Request("http://localhost/");
 
-    expect(getStaleEvent(request, "core", "new-build")).toBeUndefined();
+    expect(isStaleRequest(request, "core", "new-build")).toBe(false);
   });
 
-  it("returns a stale event when the request header version mismatches", () => {
+  it("returns true when the request header version mismatches", () => {
     const request = new Request("http://localhost/__rsc", {
       headers: {
         [CLIENT_VERSION_HEADER]: "old-build",
       },
     });
 
-    const event = getStaleEvent(request, "core", "new-build");
+    expect(isStaleRequest(request, "core", "new-build")).toBe(true);
 
-    expect(event?.reason).toBe("client-version-mismatch");
-    expect(event?.clientVersion).toBe("old-build");
-    expect(event?.currentVersion).toBe("new-build");
+    const event = buildStaleEvent(request, "core", "new-build");
+    expect(event.reason).toBe("client-version-mismatch");
+    expect(event.clientVersion).toBe("old-build");
+    expect(event.currentVersion).toBe("new-build");
   });
 
-  it("returns a stale event when the request query version mismatches", () => {
+  it("returns true when the request query version mismatches", () => {
     const request = new Request(
       `http://localhost/assets/chunk.js?${CLIENT_VERSION_QUERY}=old-build`,
     );
 
-    const event = getStaleEvent(request, "asset", "new-build");
+    expect(isStaleRequest(request, "asset", "new-build")).toBe(true);
 
-    expect(event?.reason).toBe("asset-version-mismatch");
-    expect(event?.clientVersion).toBe("old-build");
+    const event = buildStaleEvent(request, "asset", "new-build");
+    expect(event.reason).toBe("asset-version-mismatch");
+    expect(event.clientVersion).toBe("old-build");
   });
 
   it("returns a reload response for stale requests", () => {
@@ -48,7 +51,7 @@ describe("stale helpers", () => {
   });
 
   it("appends the client version query to a url", () => {
-    const url = withClientVersionQuery("/assets/chunk.js", "build-123");
+    const url = addClientVersionToUrl("/assets/chunk.js", "build-123");
 
     expect(url).toContain("/assets/chunk.js");
     expect(url).toContain(`${CLIENT_VERSION_QUERY}=build-123`);

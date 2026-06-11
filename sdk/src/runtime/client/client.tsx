@@ -25,8 +25,7 @@ export type { ActionResponseData } from "./types";
 
 import { getCachedNavigationResponse } from "./navigationCache.js";
 import {
-  CLIENT_VERSION_HEADER,
-  getClientBuildVersion,
+  createClientVersionHeaders,
   isStaleReloadResponse,
 } from "./stale.js";
 import type {
@@ -68,39 +67,28 @@ export const fetchTransport: Transport = (transportContext) => {
         fetchPromise = Promise.resolve(cachedResponse);
       } else {
         // Fall back to network fetch on cache miss
-        const headers = new Headers();
-        const clientBuildVersion = getClientBuildVersion();
-        if (clientBuildVersion) {
-          headers.set(CLIENT_VERSION_HEADER, clientBuildVersion);
-        }
-
         fetchPromise = fetch(url, {
           method: "GET",
-          headers,
+          headers: createClientVersionHeaders(),
           redirect: "manual",
         });
       }
     } else {
-      const headers = new Headers();
-      const clientBuildVersion = getClientBuildVersion();
-      if (clientBuildVersion) {
-        headers.set(CLIENT_VERSION_HEADER, clientBuildVersion);
-      }
-      // Add x-rsc-data-only header if we want to skip the React tree render on the server
+      const extraHeaders: Record<string, string> = {};
       if (source === "query") {
-        headers.set("x-rsc-data-only", "true");
+        extraHeaders["x-rsc-data-only"] = "true";
       }
 
       if (method === "GET") {
         fetchPromise = fetch(url, {
           method: "GET",
-          headers,
+          headers: createClientVersionHeaders(extraHeaders),
           redirect: "manual",
         });
       } else {
         fetchPromise = fetch(url, {
           method: "POST",
-          headers,
+          headers: createClientVersionHeaders(extraHeaders),
           redirect: "manual",
           body: args != null ? await encodeReply(args) : null,
         });

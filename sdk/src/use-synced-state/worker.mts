@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { route } from "../runtime/entries/router";
 import {
   createStaleReloadResponse,
-  getStaleEvent,
+  isStaleRequest,
 } from "../runtime/lib/stale.js";
 import type { RequestInfo } from "../runtime/requestInfo/types";
 import { runWithRequestInfo } from "../runtime/requestInfo/worker";
@@ -196,12 +196,13 @@ export const syncedStateRoutes = (
     options.durableObjectName ?? DEFAULT_SYNC_STATE_NAME;
 
   const forwardRequest = async (request: Request, requestInfo: RequestInfo) => {
-    const staleEvent = getStaleEvent(
-      request,
-      "synced-state",
-      import.meta.env.VITE_RWSDK_BUILD_ID,
-    );
-    if (staleEvent) {
+    if (
+      isStaleRequest(
+        request,
+        "synced-state",
+        import.meta.env.VITE_RWSDK_BUILD_ID,
+      )
+    ) {
       return createStaleReloadResponse();
     }
 

@@ -32,19 +32,25 @@ export function getClientVersionFromRequest(
   }
 }
 
-export function getStaleEvent(
+export function isStaleRequest(
   request: Request,
   source: StaleSource,
   currentVersion: string | undefined,
-): StaleEvent | undefined {
+): boolean {
   if (!currentVersion) {
-    return;
+    return false;
   }
 
   const clientVersion = getClientVersionFromRequest(request);
-  if (!clientVersion || clientVersion === currentVersion) {
-    return;
-  }
+  return !!clientVersion && clientVersion !== currentVersion;
+}
+
+export function buildStaleEvent(
+  request: Request,
+  source: StaleSource,
+  currentVersion: string,
+): StaleEvent {
+  const clientVersion = getClientVersionFromRequest(request)!;
 
   const reason: StaleReason =
     source === "asset"
@@ -72,7 +78,7 @@ export function createStaleReloadResponse(): Response {
   });
 }
 
-export function withClientVersionQuery(
+export function addClientVersionToUrl(
   urlLike: string,
   clientVersion: string | undefined,
 ): string {

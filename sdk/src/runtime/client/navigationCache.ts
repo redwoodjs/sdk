@@ -1,7 +1,7 @@
 import {
-  CLIENT_VERSION_HEADER,
-} from "../lib/stale.js";
-import { getClientBuildVersion } from "./stale.js";
+  createClientVersionHeaders,
+  getClientBuildVersion,
+} from "./stale.js";
 
 export interface NavigationCacheEnvironment {
   isSecureContext: boolean;
@@ -201,18 +201,10 @@ export async function preloadNavigationUrl(
     // Ensure we are fetching the RSC navigation response.
     url.searchParams.set("__rsc", "");
 
-    const headers = new Headers({
-      "x-prefetch": "true",
-    });
-    const clientBuildVersion = getClientBuildVersion();
-    if (clientBuildVersion) {
-      headers.set(CLIENT_VERSION_HEADER, clientBuildVersion);
-    }
-
     const request = new Request(url.toString(), {
       method: "GET",
       redirect: "manual",
-      headers,
+      headers: createClientVersionHeaders({ "x-prefetch": "true" }),
     });
 
     const cacheName = getCurrentCacheName();
