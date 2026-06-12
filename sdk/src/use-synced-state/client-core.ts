@@ -1,7 +1,10 @@
+import {
+  getClientBuildVersion,
+  isStaleClientError,
+} from "../runtime/client/stale.js";
+import { addClientVersionToUrl } from "../runtime/lib/stale.js";
 import { loadCapnweb } from "./capnweb-loader.mjs";
 import { DEFAULT_SYNCED_STATE_PATH } from "./constants.mjs";
-import { getClientBuildVersion } from "../runtime/client/stale.js";
-import { addClientVersionToUrl } from "../runtime/lib/stale.js";
 
 export type SyncedStateStatus = "connected" | "disconnected" | "reconnecting";
 export type StatusChangeCallback = (status: SyncedStateStatus) => void;
@@ -91,7 +94,10 @@ export const onStatusChange = (
 };
 
 // Tracks per-endpoint reconnection backoff state
-const backoffState = new Map<string, { attempt: number; timer: ReturnType<typeof setTimeout> | null }>();
+const backoffState = new Map<
+  string,
+  { attempt: number; timer: ReturnType<typeof setTimeout> | null }
+>();
 
 const BASE_BACKOFF_MS = 1000;
 const MAX_BACKOFF_MS = 30000;
@@ -222,6 +228,23 @@ export const getSyncedStateClient = (
     return baseClientPromise;
   };
 
+  const handleStaleError = (error: unknown): void => {
+    if (isStaleClientError(error)) {
+      window.location.reload();
+    }
+  };
+
+  const wrapRpcCall = async <T>(
+    call: () => Promise<T>,
+  ): Promise<T | undefined> => {
+    try {
+      return await call();
+    } catch (error) {
+      handleStaleError(error);
+      throw error;
+    }
+  };
+
   wrappedClient = new Proxy({} as SyncedStateClient, {
     get(_target, prop) {
       if (prop === "subscribe") {
@@ -233,7 +256,7 @@ export const getSyncedStateClient = (
           };
           activeSubscriptions.add(subscription);
           const base = await getBaseClient();
-          return base[prop](key, handler);
+          return wrapRpcCall(() => base[prop](key, handler));
         };
       }
       if (prop === "unsubscribe") {
@@ -250,13 +273,13 @@ export const getSyncedStateClient = (
             }
           }
           const base = await getBaseClient();
-          return base[prop](key, handler);
+          return wrapRpcCall(() => base[prop](key, handler));
         };
       }
       // Pass through all other properties/methods
       return async (...args: unknown[]) => {
         const base = await getBaseClient();
-        return base[prop as string](...args);
+        return wrapRpcCall(() => base[prop as string](...args));
       };
     },
   }) as SyncedStateClient;

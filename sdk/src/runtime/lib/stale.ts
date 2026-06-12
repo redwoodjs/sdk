@@ -92,3 +92,18 @@ export function addClientVersionToUrl(
   url.searchParams.set(CLIENT_VERSION_QUERY, clientVersion);
   return url.toString();
 }
+
+export const STALE_CLIENT_ERROR_MESSAGE =
+  "[RWSDK_STALE_CLIENT] This client is out of date. Please reload the page.";
+
+export class StaleClientError extends Error {
+  readonly name = "StaleClientError";
+
+  constructor() {
+    super(STALE_CLIENT_ERROR_MESSAGE);
+  }
+}
+
+export function isStaleClientError(error: unknown): error is StaleClientError {
+  return error instanceof Error && error.message === STALE_CLIENT_ERROR_MESSAGE;
+}

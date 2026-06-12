@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   CLIENT_VERSION_HEADER,
   CLIENT_VERSION_QUERY,
+  STALE_CLIENT_ERROR_MESSAGE,
+  StaleClientError,
   addClientVersionToUrl,
   buildStaleEvent,
   createStaleReloadResponse,
+  isStaleClientError,
   isStaleRequest,
 } from "./stale.js";
 
@@ -55,5 +58,16 @@ describe("stale helpers", () => {
 
     expect(url).toContain("/assets/chunk.js");
     expect(url).toContain(`${CLIENT_VERSION_QUERY}=build-123`);
+  });
+
+  it("identifies StaleClientError instances by message", () => {
+    const error = new StaleClientError();
+
+    expect(isStaleClientError(error)).toBe(true);
+    expect(isStaleClientError(new Error(STALE_CLIENT_ERROR_MESSAGE))).toBe(
+      true,
+    );
+    expect(isStaleClientError(new Error("other"))).toBe(false);
+    expect(isStaleClientError("string")).toBe(false);
   });
 });

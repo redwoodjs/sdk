@@ -60,6 +60,36 @@ A stale reload is a full page load. The browser fetches fresh HTML from the work
 
 For `use-synced-state`, the WebSocket handshake response is checked and the same reload is triggered.
 
+## Stale Detection for Active `use-synced-state` Sessions
+
+The WebSocket handshake check catches stale clients when they first connect or reconnect, but it does not catch a tab that stays connected across a deployment. Once capnweb has established an RPC session, subsequent messages travel over the open WebSocket without passing through the worker's request handler again.
+
+To handle this, `SyncedStateProxy` stores the client's reported build ID from the handshake request. Before forwarding any RPC call (`getState`, `setState`, `subscribe`, `unsubscribe`) to the Durable Object, the proxy compares the stored build ID against the worker's current build ID. If they differ, it throws a `StaleClientError`.
+
+```ts
+async getState(key: string): Promise<SyncedStateValue> {
+  this.#assertClientVersionCurrent();
+  const transformedKey = await this.#transformKey(key);
+  return this.#stub.getState(transformedKey);
+}
+```
+
+The client-side proxy in `client-core.ts` wraps every RPC promise. When a call rejects with `StaleClientError`, the client reloads the page:
+
+```ts
+try {
+  return await base[prop as string](...args);
+} catch (error) {
+  if (isStaleClientError(error)) {
+    window.location.reload();
+    return;
+  }
+  throw error;
+}
+```
+
+This ensures that a stale client cannot keep interacting with a new server build through an already-open WebSocket.
+
 ## Custom Stale Policy
 
 `defineApp` accepts an optional `stale` configuration for applications that need custom behavior:

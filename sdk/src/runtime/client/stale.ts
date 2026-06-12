@@ -2,6 +2,7 @@ import {
   CLIENT_VERSION_HEADER,
   STALE_RESPONSE_HEADER,
   STALE_RESPONSE_VALUE_RELOAD,
+  isStaleClientError,
 } from "../lib/stale.js";
 
 export function getClientBuildVersion(): string | undefined {
@@ -30,4 +31,4 @@ export function createClientVersionHeaders(
   return headers;
 }
 
-export { CLIENT_VERSION_HEADER };
+export { CLIENT_VERSION_HEADER, isStaleClientError };

@@ -1,11 +1,4 @@
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockClients: Array<Record<string, any>> = [];
 
@@ -18,6 +11,8 @@ const { newWebSocketRpcSession } = vi.hoisted(() => {
 vi.mock("capnweb", () => ({
   newWebSocketRpcSession,
 }));
+
+const reloadMock = vi.fn();
 
 function makeMockClient() {
   let brokenCb: ((error: any) => void) | null = null;
@@ -38,11 +33,11 @@ function makeMockClient() {
   return client;
 }
 
+import { StaleClientError } from "../../runtime/lib/stale";
 import {
-  getSyncedStateClient,
-  setSyncedStateClientForTesting,
-  onStatusChange,
   __testing,
+  getSyncedStateClient,
+  onStatusChange,
 } from "../client-core";
 
 const ENDPOINT = "wss://test.example.com/__synced-state";
@@ -60,6 +55,11 @@ describe("client-core reconnection", () => {
       if (state.timer !== null) clearTimeout(state.timer);
     }
     __testing.backoffState.clear();
+    // Provide a minimal window so client-core can call location.reload().
+    vi.stubGlobal("window", {
+      location: { protocol: "https:", host: "example.com", reload: reloadMock },
+      addEventListener: () => {},
+    });
   });
 
   afterEach(() => {
@@ -69,6 +69,8 @@ describe("client-core reconnection", () => {
     __testing.statusListeners.clear();
     vi.useRealTimers();
     vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+    reloadMock.mockClear();
   });
 
   it("registers onRpcBroken callback when creating a client", async () => {
@@ -214,9 +216,9 @@ describe("client-core reconnection", () => {
     const inRange = (val: number, min: number, max: number) =>
       val >= min && val <= max;
 
-    expect(inRange(__testing.getBackoffMs(0), 750, 1250)).toBe(true);   // base 1000
-    expect(inRange(__testing.getBackoffMs(1), 1500, 2500)).toBe(true);  // base 2000
-    expect(inRange(__testing.getBackoffMs(2), 3000, 5000)).toBe(true);  // base 4000
+    expect(inRange(__testing.getBackoffMs(0), 750, 1250)).toBe(true); // base 1000
+    expect(inRange(__testing.getBackoffMs(1), 1500, 2500)).toBe(true); // base 2000
+    expect(inRange(__testing.getBackoffMs(2), 3000, 5000)).toBe(true); // base 4000
     expect(inRange(__testing.getBackoffMs(3), 6000, 10000)).toBe(true); // base 8000
     expect(inRange(__testing.getBackoffMs(5), 22500, 30000)).toBe(true); // capped at 30000
     expect(inRange(__testing.getBackoffMs(10), 22500, 30000)).toBe(true); // still capped
@@ -258,6 +260,20 @@ describe("client-core reconnection", () => {
     expect(newClient.subscribe).toHaveBeenCalledWith("score", handler2);
     expect(newClient.getState).toHaveBeenCalledWith("counter");
     expect(newClient.getState).toHaveBeenCalledWith("score");
+  });
+
+  it("reloads the page when an RPC call rejects with StaleClientError", async () => {
+    const staleClient = makeMockClient();
+    staleClient.setState.mockRejectedValue(new StaleClientError());
+    newWebSocketRpcSession.mockImplementationOnce(() => staleClient);
+
+    const client = getSyncedStateClient(ENDPOINT);
+    await __testing.warmUp(ENDPOINT);
+
+    await expect(client.setState(1, "counter")).rejects.toBeInstanceOf(
+      StaleClientError,
+    );
+    expect(reloadMock).toHaveBeenCalledTimes(1);
   });
 
   describe("onStatusChange", () => {
@@ -356,8 +372,6 @@ describe("client-core reconnection", () => {
       // reconnect notifies using "wss://example.com/__synced-state"
       // but the listener is stored under "/__synced-state".
       expect(statusCb).toHaveBeenCalledWith("disconnected");
-
-      vi.unstubAllGlobals();
     });
 
     it("BUG: unsubscribing one of two instances of the same callback removes it for all", async () => {
@@ -407,7 +421,9 @@ describe("client-core reconnection", () => {
       // Expected: on failure, we should NOT claim connected and NOT reset backoff.
       // Actual: "connected" fires and backoff resets to 0 despite the failure.
       expect(statuses).not.toContain("connected");
-      expect(__testing.backoffState.get(ENDPOINT)?.attempt ?? 0).toBeGreaterThan(0);
+      expect(
+        __testing.backoffState.get(ENDPOINT)?.attempt ?? 0,
+      ).toBeGreaterThan(0);
     });
   });
 });
