@@ -1,4 +1,5 @@
 import { cloudflare } from "@cloudflare/vite-plugin";
+import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { InlineConfig, normalizePath, Plugin } from "vite";
 import { unstable_readConfig } from "wrangler";
@@ -77,6 +78,8 @@ const clientEntryPoints = new Set<string>();
 export const redwoodPlugin = async (
   options: RedwoodPluginOptions = {},
 ): Promise<InlineConfig["plugins"]> => {
+  process.env.VITE_RWSDK_BUILD_ID ??= randomUUID();
+
   const projectRootDir = process.cwd();
   const esbuildOptions = options.esbuildOptions ?? {};
 

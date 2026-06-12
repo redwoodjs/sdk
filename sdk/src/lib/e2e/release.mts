@@ -7,8 +7,8 @@ import { parse as parseJsonc } from "jsonc-parser";
 import { setTimeout } from "node:timers/promises";
 import { basename, dirname, join, relative, resolve } from "path";
 import { $ } from "../../lib/$.mjs";
-import { checkServerUp } from "./browser.mjs";
 import { extractLastJson, parseJson } from "../../lib/jsonUtils.mjs";
+import { checkServerUp } from "./browser.mjs";
 import { IS_DEBUG_MODE, PREVIEW_SERVER_TIMEOUT } from "./constants.mjs";
 
 const log = debug("rwsdk:e2e:release");
@@ -542,6 +542,8 @@ export async function runRelease(
 
 /**
  * Run a local production preview server (build + preview) and return the URL.
+ * Uses port 0 so concurrent tests in the same playground do not collide on
+ * the fixed 4173 port.
  */
 export async function runPreviewServer(
   packageManager: string = "pnpm",
@@ -577,7 +579,12 @@ export async function runPreviewServer(
     console.log("Preview server stopped");
   };
 
-  previewProcess = $(pm, ["run", "preview", "--", "--port", "4173", "--strictPort"], {
+  let serverUrlResolver: (url: string) => void;
+  const serverUrlPromise = new Promise<string>((resolve) => {
+    serverUrlResolver = resolve;
+  });
+
+  previewProcess = $(pm, ["run", "preview", "--port", "0", "--strictPort"], {
     all: true,
     detached: process.platform !== "win32",
     cleanup: true,
@@ -587,6 +594,20 @@ export async function runPreviewServer(
     stdio: "pipe",
   });
 
+  // Vite prints the local URL once it has bound to a port, e.g.
+  // "  ➜  Local:   http://localhost:55271/"
+  const urlPattern = /Local:\s+(http:\/\/localhost:\d+)/i;
+  previewProcess.all?.on("data", (data: Buffer) => {
+    const chunk = data.toString();
+    if (IS_DEBUG_MODE) {
+      process.stdout.write(chunk);
+    }
+    const match = chunk.match(urlPattern);
+    if (match && match[1]) {
+      serverUrlResolver(match[1]);
+    }
+  });
+
   previewProcess.catch((error: any) => {
     if (!isErrorExpected) {
       log("Preview server process exited unexpectedly: %O", error);
@@ -594,7 +615,10 @@ export async function runPreviewServer(
   });
 
   const ensurePreviewDeployConfig = async () => {
-    const deployConfigPath = resolve(cwd || process.cwd(), ".wrangler/deploy/config.json");
+    const deployConfigPath = resolve(
+      cwd || process.cwd(),
+      ".wrangler/deploy/config.json",
+    );
     if (await pathExists(deployConfigPath)) {
       return;
     }
@@ -624,19 +648,18 @@ export async function runPreviewServer(
 
   await ensurePreviewDeployConfig();
 
-  // context(justinvdm, 2026-05-13): Give the CI preview path the same
-  // readiness budget as the dev server so local agent-ci runs can absorb build
-  // and startup latency without falling back to Cloudflare.
+  const serverUrl = await serverUrlPromise;
   const reachableDebugUrl = await checkServerUp(
-    "http://localhost:4173",
+    serverUrl,
     "/__debug",
     Math.max(1, Math.ceil(PREVIEW_SERVER_TIMEOUT / 2000)),
     false,
   );
-  const serverUrl = new URL(reachableDebugUrl).origin;
-  console.log(`✅ Preview server started at ${serverUrl}`);
+  console.log(
+    `✅ Preview server started at ${new URL(reachableDebugUrl).origin}`,
+  );
 
-  return { url: serverUrl, stopPreview };
+  return { url: new URL(reachableDebugUrl).origin, stopPreview };
 }
 
 /**

@@ -1,5 +1,20 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { linkWorkerBundle } from "./linkerPlugin.mjs";
+
+let previousBuildId: string | undefined;
+
+beforeEach(() => {
+  previousBuildId = process.env.VITE_RWSDK_BUILD_ID;
+  delete process.env.VITE_RWSDK_BUILD_ID;
+});
+
+afterEach(() => {
+  if (previousBuildId === undefined) {
+    delete process.env.VITE_RWSDK_BUILD_ID;
+  } else {
+    process.env.VITE_RWSDK_BUILD_ID = previousBuildId;
+  }
+});
 
 describe("linkWorkerBundle", () => {
   const projectRootDir = "/test/project";
@@ -33,6 +48,25 @@ describe("linkWorkerBundle", () => {
       `const stylesheet = "/assets/styles.123.css";`,
     );
     expect(result.code).toContain(`const logo = "/assets/logo.abc.svg";`);
+  });
+
+  it("should not append a build id query to hashed asset paths", () => {
+    process.env.VITE_RWSDK_BUILD_ID = "test-build";
+
+    const code = `
+      const stylesheet = "rwsdk_asset:/src/styles.css";
+      const logo = "rwsdk_asset:/src/logo.svg";
+    `;
+    const result = linkWorkerBundle({
+      code,
+      manifestContent,
+      projectRootDir,
+    });
+    expect(result.code).toContain(
+      `const stylesheet = "/assets/styles.123.css";`,
+    );
+    expect(result.code).toContain(`const logo = "/assets/logo.abc.svg";`);
+    expect(result.code).not.toContain("__rwsdk_client_version");
   });
 
   it("should replace asset placeholder with a base + hashed paths from the manifest if base is provided", () => {

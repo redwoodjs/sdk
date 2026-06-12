@@ -1,13 +1,17 @@
 import { env } from "cloudflare:workers";
 import { route } from "../runtime/entries/router";
+import {
+  StaleClientError,
+  getClientVersionFromRequest,
+} from "../runtime/lib/stale.js";
 import type { RequestInfo } from "../runtime/requestInfo/types";
 import { runWithRequestInfo } from "../runtime/requestInfo/worker";
 import { loadCapnweb } from "./capnweb-loader.mjs";
+import { DEFAULT_SYNCED_STATE_PATH } from "./constants.mjs";
 import {
   SyncedStateServer,
   type SyncedStateValue,
 } from "./SyncedStateServer.mjs";
-import { DEFAULT_SYNCED_STATE_PATH } from "./constants.mjs";
 
 export { SyncedStateServer };
 
@@ -27,6 +31,7 @@ type SyncedStateProxyCtor = new (
   stub: DurableObjectStub<SyncedStateServer>,
   keyHandler: KeyHandler | null,
   requestInfo: RequestInfo | null,
+  clientVersion: string | undefined,
 ) => unknown;
 
 let SyncedStateProxyClass: SyncedStateProxyCtor | null = null;
@@ -41,6 +46,10 @@ async function getSyncedStateProxy(): Promise<{
       #stub: DurableObjectStub<SyncedStateServer>;
       #keyHandler: KeyHandler | null;
       #requestInfo: RequestInfo | null;
+      // The client build ID captured from the WebSocket handshake request.
+      // Compared against the worker's current build ID on every RPC message so
+      // established connections that outlive a deployment are rejected.
+      #clientVersion: string | undefined;
       // Map original RPC callbacks to the duplicated callbacks sent to the DO
       // so unsubscribe uses the same identity that subscribe registered.
       #subscriptionClients = new Map<string, Map<unknown, unknown>>();
@@ -49,14 +58,33 @@ async function getSyncedStateProxy(): Promise<{
         stub: DurableObjectStub<SyncedStateServer>,
         keyHandler: KeyHandler | null,
         requestInfo: RequestInfo | null,
+        clientVersion: string | undefined,
       ) {
         super();
         this.#stub = stub;
         this.#keyHandler = keyHandler;
         this.#requestInfo = requestInfo;
+        this.#clientVersion = clientVersion;
         // Set stub in DO instance so handlers can access it
         if (stub && typeof (stub as any)._setStub === "function") {
           void (stub as any)._setStub(stub);
+        }
+      }
+
+      /**
+       * Throws if the client's build version is older than the worker's current
+       * build. Checked on every RPC message so already-established WebSocket
+       * sessions are rejected after a deployment.
+       */
+      #assertClientVersionCurrent(): void {
+        const currentVersion =
+          (globalThis as any).__rwsdk_stale_build_id_override ??
+          import.meta.env.VITE_RWSDK_BUILD_ID;
+        if (!currentVersion || !this.#clientVersion) {
+          return;
+        }
+        if (this.#clientVersion !== currentVersion) {
+          throw new StaleClientError();
         }
       }
 
@@ -99,16 +127,19 @@ async function getSyncedStateProxy(): Promise<{
       }
 
       async getState(key: string): Promise<SyncedStateValue> {
+        this.#assertClientVersionCurrent();
         const transformedKey = await this.#transformKey(key);
         return this.#stub.getState(transformedKey);
       }
 
       async setState(value: SyncedStateValue, key: string): Promise<void> {
+        this.#assertClientVersionCurrent();
         const transformedKey = await this.#transformKey(key);
         return this.#stub.setState(value, transformedKey);
       }
 
       async subscribe(key: string, client: any): Promise<void> {
+        this.#assertClientVersionCurrent();
         const transformedKey = await this.#transformKey(key);
 
         const subscribeHandler = SyncedStateServer.getSubscribeHandler();
@@ -140,6 +171,7 @@ async function getSyncedStateProxy(): Promise<{
       }
 
       async unsubscribe(key: string, client: any): Promise<void> {
+        this.#assertClientVersionCurrent();
         const transformedKey = await this.#transformKey(key);
 
         // Call unsubscribe handler before unsubscribe, similar to subscribe handler
@@ -222,7 +254,13 @@ export const syncedStateRoutes = (
     const coordinator = namespace.get(id);
     const { SyncedStateProxy, newWorkersRpcResponse } =
       await getSyncedStateProxy();
-    const proxy = new SyncedStateProxy(coordinator, keyHandler, requestInfo);
+    const clientVersion = getClientVersionFromRequest(request);
+    const proxy = new SyncedStateProxy(
+      coordinator,
+      keyHandler,
+      requestInfo,
+      clientVersion,
+    );
 
     return newWorkersRpcResponse(request, proxy);
   };

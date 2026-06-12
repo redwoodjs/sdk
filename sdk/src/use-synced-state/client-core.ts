@@ -1,3 +1,8 @@
+import {
+  getClientBuildVersion,
+  isStaleClientError,
+} from "../runtime/client/stale.js";
+import { addClientVersionToUrl } from "../runtime/lib/stale.js";
 import { loadCapnweb } from "./capnweb-loader.mjs";
 import { DEFAULT_SYNCED_STATE_PATH } from "./constants.mjs";
 
@@ -20,6 +25,13 @@ function normalizeEndpoint(endpoint: string): string {
     return `${protocol}//${window.location.host}${endpoint}`;
   }
   return endpoint;
+}
+
+function getEndpointKey(endpoint: string): string {
+  return addClientVersionToUrl(
+    normalizeEndpoint(endpoint),
+    getClientBuildVersion(),
+  );
 }
 
 // Map of endpoint URLs to their respective clients
@@ -63,7 +75,7 @@ export const onStatusChange = (
   endpoint: string,
   callback: StatusChangeCallback,
 ): (() => void) => {
-  const normalized = normalizeEndpoint(endpoint);
+  const normalized = getEndpointKey(endpoint);
   let listeners = statusListeners.get(normalized);
   if (!listeners) {
     listeners = [];
@@ -82,10 +94,19 @@ export const onStatusChange = (
 };
 
 // Tracks per-endpoint reconnection backoff state
-const backoffState = new Map<string, { attempt: number; timer: ReturnType<typeof setTimeout> | null }>();
+const backoffState = new Map<
+  string,
+  { attempt: number; timer: ReturnType<typeof setTimeout> | null }
+>();
 
-const BASE_BACKOFF_MS = 1000;
-const MAX_BACKOFF_MS = 30000;
+const BASE_BACKOFF_MS = import.meta.env
+  .VITE_RWSDK_SYNCED_STATE_TEST_FAST_RECONNECT
+  ? 50
+  : 1000;
+const MAX_BACKOFF_MS = import.meta.env
+  .VITE_RWSDK_SYNCED_STATE_TEST_FAST_RECONNECT
+  ? 200
+  : 30000;
 
 function getBackoffMs(attempt: number): number {
   const base = Math.min(BASE_BACKOFF_MS * 2 ** attempt, MAX_BACKOFF_MS);
@@ -134,8 +155,11 @@ function reconnect(endpoint: string, deadClient: SyncedStateClient) {
 
     notifyStatusChange(endpoint, "reconnecting");
 
-    // Evict the dead client so getSyncedStateClient creates a fresh one
+    // Evict the dead client and its underlying capnweb session so the
+    // replacement gets a fresh WebSocket connection instead of reusing the
+    // broken one.
     clientCache.delete(endpoint);
+    baseClientPromiseByEndpoint.delete(endpoint);
     const newClient = getSyncedStateClient(endpoint);
 
     // Re-subscribe everything that was on the dead client. Kick off both
@@ -186,7 +210,7 @@ export const getSyncedStateClient = (
   endpoint: string = DEFAULT_SYNCED_STATE_PATH,
 ): SyncedStateClient => {
   // Convert relative endpoint to absolute URL for environments like WKWebView
-  endpoint = normalizeEndpoint(endpoint);
+  endpoint = getEndpointKey(endpoint);
 
   // Return existing client if already cached for this endpoint
   const existingClient = clientCache.get(endpoint);
@@ -213,6 +237,23 @@ export const getSyncedStateClient = (
     return baseClientPromise;
   };
 
+  const handleStaleError = (error: unknown): void => {
+    if (isStaleClientError(error)) {
+      window.location.reload();
+    }
+  };
+
+  const wrapRpcCall = async <T>(
+    call: () => Promise<T>,
+  ): Promise<T | undefined> => {
+    try {
+      return await call();
+    } catch (error) {
+      handleStaleError(error);
+      throw error;
+    }
+  };
+
   wrappedClient = new Proxy({} as SyncedStateClient, {
     get(_target, prop) {
       if (prop === "subscribe") {
@@ -224,7 +265,7 @@ export const getSyncedStateClient = (
           };
           activeSubscriptions.add(subscription);
           const base = await getBaseClient();
-          return base[prop](key, handler);
+          return wrapRpcCall(() => base[prop](key, handler));
         };
       }
       if (prop === "unsubscribe") {
@@ -241,13 +282,13 @@ export const getSyncedStateClient = (
             }
           }
           const base = await getBaseClient();
-          return base[prop](key, handler);
+          return wrapRpcCall(() => base[prop](key, handler));
         };
       }
       // Pass through all other properties/methods
       return async (...args: unknown[]) => {
         const base = await getBaseClient();
-        return base[prop as string](...args);
+        return wrapRpcCall(() => base[prop as string](...args));
       };
     },
   }) as SyncedStateClient;
@@ -291,10 +332,11 @@ export const setSyncedStateClientForTesting = (
   client: SyncedStateClient | null,
   endpoint: string = DEFAULT_SYNCED_STATE_PATH,
 ) => {
+  const normalized = getEndpointKey(endpoint);
   if (client) {
-    clientCache.set(endpoint, client);
+    clientCache.set(normalized, client);
   } else {
-    clientCache.delete(endpoint);
+    clientCache.delete(normalized);
   }
   baseClientPromiseByEndpoint.delete(endpoint);
   activeSubscriptions.clear();
@@ -321,7 +363,7 @@ export const __testing = {
   // (or after a reconnect) when they need the underlying session to exist
   // before asserting on it.
   async warmUp(endpoint: string = DEFAULT_SYNCED_STATE_PATH): Promise<void> {
-    const normalized = normalizeEndpoint(endpoint);
+    const normalized = getEndpointKey(endpoint);
     const promise = baseClientPromiseByEndpoint.get(normalized);
     if (promise) {
       await promise.catch(() => {});

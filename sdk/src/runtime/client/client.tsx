@@ -24,6 +24,10 @@ export { initClientNavigation, navigate } from "./navigation.js";
 export type { ActionResponseData } from "./types";
 
 import { getCachedNavigationResponse } from "./navigationCache.js";
+import {
+  createClientVersionHeaders,
+  isStaleReloadResponse,
+} from "./stale.js";
 import type {
   ActionResponseData,
   HydrationOptions,
@@ -65,26 +69,26 @@ export const fetchTransport: Transport = (transportContext) => {
         // Fall back to network fetch on cache miss
         fetchPromise = fetch(url, {
           method: "GET",
+          headers: createClientVersionHeaders(),
           redirect: "manual",
         });
       }
     } else {
-      const headers = new Headers();
-      // Add x-rsc-data-only header if we want to skip the React tree render on the server
+      const extraHeaders: Record<string, string> = {};
       if (source === "query") {
-        headers.set("x-rsc-data-only", "true");
+        extraHeaders["x-rsc-data-only"] = "true";
       }
 
       if (method === "GET") {
         fetchPromise = fetch(url, {
           method: "GET",
-          headers,
+          headers: createClientVersionHeaders(extraHeaders),
           redirect: "manual",
         });
       } else {
         fetchPromise = fetch(url, {
           method: "POST",
-          headers,
+          headers: createClientVersionHeaders(extraHeaders),
           redirect: "manual",
           body: args != null ? await encodeReply(args) : null,
         });
@@ -120,12 +124,19 @@ export const fetchTransport: Transport = (transportContext) => {
       return rawActionResult as Result;
     };
 
+    const response = await fetchPromise;
+
+    // Single place where stale reload happens
+    if (isStaleReloadResponse(response)) {
+      window.location.reload();
+      return undefined;
+    }
+
     // If there's a response handler, check the response first
     if (transportContext.handleResponse) {
-      const response = await fetchPromise;
       const shouldContinue = transportContext.handleResponse(response);
       if (!shouldContinue) {
-        return undefined as any;
+        return undefined;
       }
 
       // Continue with the response if handler returned true
@@ -142,13 +153,12 @@ export const fetchTransport: Transport = (transportContext) => {
       );
     }
 
-    // Original behavior when no handler is present
-    const response = await fetchPromise;
+    // Fallback when no handler is present
     const location = response.headers.get("Location");
 
     if (response.status >= 300 && response.status < 400 && location) {
       window.location.href = location;
-      return undefined as any;
+      return undefined;
     }
 
     const streamData = createFromFetch(Promise.resolve(response), {

@@ -19,6 +19,7 @@ vi.mock("../../runtime/requestInfo/worker", () => ({
 }));
 
 import { newWorkersRpcResponse } from "capnweb";
+import { StaleClientError } from "../../runtime/lib/stale.js";
 import { syncedStateRoutes, SyncedStateServer } from "../worker.mjs";
 
 describe("SyncedStateProxy", () => {
@@ -92,10 +93,12 @@ describe("SyncedStateProxy", () => {
       get: vi.fn(() => coordinator),
     };
     let proxy: any;
-    vi.mocked(newWorkersRpcResponse).mockImplementation(async (_request, api) => {
-      proxy = api;
-      return new Response(null, { status: 204 });
-    });
+    vi.mocked(newWorkersRpcResponse).mockImplementation(
+      async (_request, api) => {
+        proxy = api;
+        return new Response(null, { status: 204 });
+      },
+    );
     SyncedStateServer.registerKeyHandler(async (key) => key);
 
     const [baseRoute] = syncedStateRoutes(() => namespace as any);
@@ -119,6 +122,54 @@ describe("SyncedStateProxy", () => {
 
     expect(subscribeClient).not.toBe(originalClient);
     expect(unsubscribeClient).toBe(subscribeClient);
+  });
+
+  it("throws StaleClientError when the client version mismatches on RPC calls", async () => {
+    vi.stubEnv("VITE_RWSDK_BUILD_ID", "initial-build");
+
+    const coordinator = {
+      _setStub: vi.fn(),
+      getState: vi.fn(),
+      setState: vi.fn(),
+      subscribe: vi.fn(),
+      unsubscribe: vi.fn(),
+    };
+    const namespace = {
+      idFromName: vi.fn(() => "synced-state-id"),
+      get: vi.fn(() => coordinator),
+    };
+    let proxy: any;
+    vi.mocked(newWorkersRpcResponse).mockImplementation(
+      async (_request, api) => {
+        proxy = api;
+        return new Response(null, { status: 204 });
+      },
+    );
+    SyncedStateServer.registerKeyHandler(async (key) => key);
+
+    const [baseRoute] = syncedStateRoutes(() => namespace as any);
+    await (baseRoute.handler as any)({
+      request: new Request(
+        "https://example.com/__synced-state?__rwsdk_client_version=initial-build",
+      ),
+      params: {},
+    });
+
+    expect(proxy).toBeDefined();
+
+    // Simulate a deployment that changes the worker build ID while the
+    // WebSocket session remains open.
+    vi.stubEnv("VITE_RWSDK_BUILD_ID", "new-build");
+
+    await expect(proxy.getState("counter")).rejects.toBeInstanceOf(
+      StaleClientError,
+    );
+    await expect(proxy.setState(1, "counter")).rejects.toBeInstanceOf(
+      StaleClientError,
+    );
+
+    expect(coordinator.getState).not.toHaveBeenCalled();
+    expect(coordinator.setState).not.toHaveBeenCalled();
   });
 
   it("handles async operations in handler", async () => {

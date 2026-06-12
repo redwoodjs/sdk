@@ -1,3 +1,8 @@
+import {
+  createClientVersionHeaders,
+  getClientBuildVersion,
+} from "./stale.js";
+
 export interface NavigationCacheEnvironment {
   isSecureContext: boolean;
   origin: string;
@@ -35,7 +40,7 @@ interface NavigationCacheState {
 }
 
 const TAB_ID_STORAGE_KEY = "rwsdk-navigation-tab-id";
-const BUILD_ID = "rwsdk"; // Stable build identifier
+const DEFAULT_BUILD_ID = "rwsdk";
 
 let cacheState: NavigationCacheState | null = null;
 
@@ -62,7 +67,7 @@ function getOrInitializeCacheState(): NavigationCacheState {
   cacheState = {
     tabId: tabId || "1",
     generation: 0,
-    buildId: BUILD_ID,
+    buildId: getClientBuildVersion() ?? DEFAULT_BUILD_ID,
   };
 
   return cacheState;
@@ -199,9 +204,7 @@ export async function preloadNavigationUrl(
     const request = new Request(url.toString(), {
       method: "GET",
       redirect: "manual",
-      headers: {
-        "x-prefetch": "true",
-      },
+      headers: createClientVersionHeaders({ "x-prefetch": "true" }),
     });
 
     const cacheName = getCurrentCacheName();

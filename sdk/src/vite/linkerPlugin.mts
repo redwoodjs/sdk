@@ -37,9 +37,9 @@ export function linkWorkerBundle({
 
     // If base is provided, prepend it with the final hashed path.
     // Base is assumed to have a trailing "/".
-    const assetPath = (base ? base : "/") + (value as { file: string }).file;
+    const assetUrl = (base ? base : "/") + (value as { file: string }).file;
 
-    newCode = newCode.replaceAll(`rwsdk_asset:${normalizedKey}`, assetPath);
+    newCode = newCode.replaceAll(`rwsdk_asset:${normalizedKey}`, assetUrl);
   }
 
   // 3. Deprefix any remaining placeholders that were not in the manifest.
