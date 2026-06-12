@@ -32,7 +32,26 @@ const ssrCallServer = async (id: string, args: any) => {
   return action(...args);
 };
 
-export const createServerReference = (id: string, name: string) => {
+export const createServerReference = (
+  id: string,
+  name: string,
+  _method?: "GET" | "POST",
+  _source: "action" | "query" = "action",
+) => {
   id = id + "#" + name;
-  return baseCreateServerReference(id, ssrCallServer);
+  const reference = baseCreateServerReference(id, ssrCallServer);
+  (reference as Function & { method?: "GET" | "POST"; source?: "action" | "query" }).method = _method;
+  (reference as Function & { method?: "GET" | "POST"; source?: "action" | "query" }).source = _source;
+  return reference;
+};
+
+export const createRedwoodServerReference = (
+  id: string,
+  name: string,
+  options: {
+    method?: "GET" | "POST";
+    source?: "action" | "query";
+  } = {},
+) => {
+  return createServerReference(id, name, options.method, options.source ?? "action");
 };

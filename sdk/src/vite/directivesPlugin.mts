@@ -34,10 +34,14 @@ export const directivesPlugin = ({
   projectRootDir,
   clientFiles,
   serverFiles,
+  experimentalUseViteRscClientReferences = false,
+  experimentalViteRscServerReferences = false,
 }: {
   projectRootDir: string;
   clientFiles: Set<string>;
   serverFiles: Set<string>;
+  experimentalUseViteRscClientReferences?: boolean;
+  experimentalViteRscServerReferences?: boolean;
 }): Plugin => {
   let devServer: ViteDevServer;
   let isAfterFirstResponse = false;
@@ -79,10 +83,18 @@ export const directivesPlugin = ({
       }
       const normalizedId = normalizeModulePath(id, projectRootDir);
 
-      const clientResult = await transformClientComponents(code, normalizedId, {
-        environmentName: this.environment.name,
-        clientFiles,
-      });
+      const pluginRscHandledClientReference =
+        experimentalUseViteRscClientReferences &&
+        this.environment.name === "worker" &&
+        clientFiles.has(normalizedId) &&
+        code.includes("registerClientReference");
+
+      const clientResult = pluginRscHandledClientReference
+        ? undefined
+        : await transformClientComponents(code, normalizedId, {
+            environmentName: this.environment.name,
+            clientFiles,
+          });
 
       if (clientResult) {
         process.env.VERBOSE &&
@@ -93,12 +105,20 @@ export const directivesPlugin = ({
         };
       }
 
-      const serverResult = transformServerFunctions(
-        code,
-        normalizedId,
-        this.environment.name as "client" | "worker" | "ssr",
-        serverFiles,
-      );
+      const pluginRscHandledServerReference =
+        experimentalViteRscServerReferences &&
+        serverFiles.has(normalizedId) &&
+        (code.includes("createRedwoodServerReference") ||
+          code.includes("registerServerReference"));
+
+      const serverResult = pluginRscHandledServerReference
+        ? undefined
+        : transformServerFunctions(
+            code,
+            normalizedId,
+            this.environment.name as "client" | "worker" | "ssr",
+            serverFiles,
+          );
 
       if (serverResult) {
         process.env.VERBOSE &&

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getGreetingReExported } from "../actionReexports";
 import defaultAction, {
   getGreeting,
   getGreetingWithInterruptors,
@@ -53,6 +54,9 @@ export function ServerFunctionsDemo() {
             </button>
             <button id="query-greeting-interruptors" onClick={() => run(() => getGreetingWithInterruptors("World"))}>
               getGreeting (Interruptors)
+            </button>
+            <button id="query-greeting-reexport" onClick={() => run(() => getGreetingReExported("World"))}>
+              getGreeting (Re-export)
             </button>
             <button id="query-greeting-redirect" onClick={() => run(() => getGreetingWithRedirect())}>
               getGreeting (Redirect)

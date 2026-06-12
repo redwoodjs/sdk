@@ -18,3 +18,14 @@ export const createServerReference = (
 
   return proxy;
 };
+
+export const createRedwoodServerReference = (
+  id: string,
+  name: string,
+  options: {
+    method?: "GET" | "POST";
+    source?: "action" | "query";
+  } = {},
+) => {
+  return createServerReference(id, name, options.method, options.source ?? "action");
+};

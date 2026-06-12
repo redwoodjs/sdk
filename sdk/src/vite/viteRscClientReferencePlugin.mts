@@ -1,0 +1,167 @@
+import { getPluginApi } from "@vitejs/plugin-rsc/plugin";
+import debug from "debug";
+import type { Plugin, ResolvedConfig, ViteDevServer } from "vite";
+import {
+  generateViteRscClientReferenceLookupEntries,
+  type ViteRscClientReferenceMeta,
+} from "./viteRscClientReferenceAdapter.mjs";
+
+const VIRTUAL_MODULE = "virtual:use-client-lookup.js";
+const RESOLVED_VIRTUAL_MODULE = "\0rwsdk:vite-rsc-use-client-lookup";
+const ENCODED_RESOLVED_VIRTUAL_MODULE = "__x00__rwsdk:vite-rsc-use-client-lookup";
+
+type ClientReferenceMetaMap = Record<string, ViteRscClientReferenceMeta>;
+
+const log = debug("rwsdk:vite:vite-rsc-client-reference");
+const persistedClientReferenceMetaMaps = new Map<string, ClientReferenceMetaMap>();
+
+export const generateViteRscClientReferenceLookupCode = ({
+  clientReferenceMetaMap,
+  projectRootDir,
+}: {
+  clientReferenceMetaMap: ClientReferenceMetaMap;
+  projectRootDir: string;
+}) => {
+  const entries = generateViteRscClientReferenceLookupEntries({
+    clientReferenceMetaMap,
+    projectRootDir,
+  });
+  const lines = entries.map(
+    ({ key, importId }) =>
+      `  ${JSON.stringify(key)}: () => import(${JSON.stringify(importId)}),`,
+  );
+
+  return `export const useClientLookup = {\n${lines.join("\n")}\n};\n`;
+};
+
+export const viteRscClientReferencePlugin = ({
+  projectRootDir,
+}: {
+  projectRootDir: string;
+}): Plugin => {
+  let config: ResolvedConfig;
+  let devServer: ViteDevServer | undefined;
+
+  const liveClientReferenceMetaMap = () =>
+    (getPluginApi(config)?.manager.clientReferenceMetaMap ?? {}) as ClientReferenceMetaMap;
+
+  const currentClientReferenceMetaMap = () => {
+    const live = liveClientReferenceMetaMap();
+    return Object.keys(live).length > 0
+      ? live
+      : (persistedClientReferenceMetaMaps.get(projectRootDir) ?? {});
+  };
+
+  const persistIfPresent = () => {
+    const live = liveClientReferenceMetaMap();
+    if (Object.keys(live).length > 0) {
+      const snapshot = { ...live };
+      persistedClientReferenceMetaMaps.set(projectRootDir, snapshot);
+      log(
+        "persisted %d client reference metadata records",
+        Object.keys(snapshot).length,
+      );
+    }
+  };
+
+  const invalidateVirtualModule = () => {
+    if (!devServer) {
+      return;
+    }
+
+    const module =
+      devServer.moduleGraph.getModuleById(RESOLVED_VIRTUAL_MODULE) ??
+      devServer.moduleGraph.getModuleById(VIRTUAL_MODULE);
+
+    if (module) {
+      devServer.moduleGraph.invalidateModule(module);
+      log("invalidated %s", RESOLVED_VIRTUAL_MODULE);
+    }
+  };
+
+  return {
+    name: "rwsdk:vite-rsc-client-reference-lookup",
+    configResolved(resolvedConfig) {
+      config = resolvedConfig;
+    },
+    configureServer(server) {
+      devServer = server;
+    },
+    configEnvironment(_env, viteConfig) {
+      viteConfig.optimizeDeps ??= {};
+      viteConfig.optimizeDeps.esbuildOptions ??= {};
+      viteConfig.optimizeDeps.esbuildOptions.plugins ??= [];
+      viteConfig.optimizeDeps.esbuildOptions.plugins.push({
+        name: "rwsdk:vite-rsc-client-reference-lookup",
+        setup(build) {
+          const escapedVirtualModule = VIRTUAL_MODULE.replace(
+            /[-\/\\^$*+?.()|[\]{}]/g,
+            "\\$&",
+          );
+          const escapedPrefixedVirtualModule = `/@id/${VIRTUAL_MODULE}`.replace(
+            /[-\/\\^$*+?.()|[\]{}]/g,
+            "\\$&",
+          );
+
+          build.onResolve(
+            {
+              filter: new RegExp(
+                `^(${escapedVirtualModule}|${escapedPrefixedVirtualModule})$`,
+              ),
+            },
+            () => ({
+              path: VIRTUAL_MODULE,
+              external: true,
+            }),
+          );
+        },
+      });
+    },
+    resolveId(source) {
+      if (source === VIRTUAL_MODULE || source === ENCODED_RESOLVED_VIRTUAL_MODULE) {
+        return RESOLVED_VIRTUAL_MODULE;
+      }
+
+      return null;
+    },
+    load(id) {
+      if (id !== RESOLVED_VIRTUAL_MODULE && id !== ENCODED_RESOLVED_VIRTUAL_MODULE) {
+        return null;
+      }
+
+      persistIfPresent();
+      const clientReferenceMetaMap = currentClientReferenceMetaMap();
+      log(
+        "loading use-client lookup for %s with %d client reference metadata records",
+        this.environment?.name ?? "unknown",
+        Object.keys(clientReferenceMetaMap).length,
+      );
+
+      return generateViteRscClientReferenceLookupCode({
+        clientReferenceMetaMap,
+        projectRootDir,
+      });
+    },
+    transform: {
+      order: "post",
+      handler(code, id) {
+        if (
+          this.environment?.name === "worker" &&
+          code.includes("registerClientReference")
+        ) {
+          persistIfPresent();
+          const meta = currentClientReferenceMetaMap()[id];
+          if (meta) {
+            log("metadata for %s exports: %o", id, meta.exportNames);
+          }
+          invalidateVirtualModule();
+        }
+      },
+    },
+    generateBundle() {
+      if (this.environment?.name === "worker") {
+        persistIfPresent();
+      }
+    },
+  };
+};

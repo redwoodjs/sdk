@@ -1,6 +1,57 @@
 import { join } from "node:path/posix";
 import { describe, expect, it } from "vitest";
-import { determineWorkerEntryPathname } from "./redwoodPlugin.mjs";
+import {
+  determineRscFeatureFlags,
+  determineWorkerEntryPathname,
+} from "./redwoodPlugin.mjs";
+
+describe("determineRscFeatureFlags", () => {
+  it("uses plugin-rsc client references and manifest metadata by default while keeping server references off", () => {
+    expect(determineRscFeatureFlags()).toEqual({
+      shouldUseViteRscClientReferences: true,
+      shouldUseViteRscManifestAdapter: true,
+      shouldUseViteRscServerReferences: false,
+    });
+  });
+
+  it("keeps the legacy client-reference lookup path available as explicit rollback", () => {
+    expect(
+      determineRscFeatureFlags({
+        experimentalUseViteRscClientReferences: false,
+        experimentalUseViteRscManifestAdapter: true,
+        experimentalViteRscServerReferences: true,
+      }),
+    ).toEqual({
+      shouldUseViteRscClientReferences: false,
+      shouldUseViteRscManifestAdapter: false,
+      shouldUseViteRscServerReferences: false,
+    });
+  });
+
+  it("can disable only the manifest adapter while keeping plugin-rsc client references", () => {
+    expect(
+      determineRscFeatureFlags({
+        experimentalUseViteRscManifestAdapter: false,
+      }),
+    ).toEqual({
+      shouldUseViteRscClientReferences: true,
+      shouldUseViteRscManifestAdapter: false,
+      shouldUseViteRscServerReferences: false,
+    });
+  });
+
+  it("keeps plugin-rsc server references opt-in", () => {
+    expect(
+      determineRscFeatureFlags({
+        experimentalViteRscServerReferences: true,
+      }),
+    ).toEqual({
+      shouldUseViteRscClientReferences: true,
+      shouldUseViteRscManifestAdapter: true,
+      shouldUseViteRscServerReferences: true,
+    });
+  });
+});
 
 describe("determineWorkerEntryPathname", () => {
   const projectRootDir = "/test/project";

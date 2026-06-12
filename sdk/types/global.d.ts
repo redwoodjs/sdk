@@ -2,6 +2,7 @@ import { ViteHotContext } from "vite/types/hot";
 
 declare global {
   var __webpack_require__: (id: string) => unknown;
+  var __vite_rsc_require__: (id: string) => unknown;
   interface ImportMeta {
     hot?: ViteHotContext;
   }

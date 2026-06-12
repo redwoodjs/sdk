@@ -17,8 +17,17 @@ export function registerServerReference(
     return action;
   }
 
-  // Note: We no longer need to register in a Map since we use virtual lookup
-  return baseRegisterServerReference(action, id, name);
+  // Note: We no longer need to register in a Map since we use virtual lookup.
+  // Preserve Redwood method metadata when plugin-rsc wraps a serverQuery or
+  // serverAction with React's server-reference marker; the action handler uses
+  // this metadata for GET/POST enforcement.
+  const reference = baseRegisterServerReference(action, id, name);
+  const method = (action as Function & { method?: string }).method;
+  if (typeof reference === "function" && method) {
+    (reference as Function & { method?: string }).method = method;
+  }
+
+  return reference;
 }
 
 const isComponent = (target: unknown) =>
@@ -51,7 +60,7 @@ export function registerClientReference<Target extends Record<string, unknown>>(
       };
     }
 
-    finalDescriptors.$$async = { value: true };
+    finalDescriptors.$$async = { value: false };
     finalDescriptors.$$isClientReference = { value: true };
 
     // context(justinvdm, 25 Sep 2025): We create a wrapper function to avoid
