@@ -30,6 +30,42 @@ const hasDirective = async (filepath: string, directive: string) => {
   return sourceHasDirective(content, directive);
 };
 
+export const extractImportSpecifiers = (code: string): string[] => {
+  const specifiers = new Set<string>();
+  const importSpecifierRE =
+    /\bimport\s+(?:[^'";]*?\s+from\s*)?["']([^"']+)["']|\bexport\s+[^'";]*?\s+from\s*["']([^"']+)["']|\bimport\s*\(\s*["']([^"']+)["']\s*\)/g;
+
+  for (const match of code.matchAll(importSpecifierRE)) {
+    const specifier = match[1] ?? match[2] ?? match[3];
+    if (specifier) {
+      specifiers.add(specifier);
+    }
+  }
+
+  return Array.from(specifiers);
+};
+
+export const moduleImportsKnownClientFile = ({
+  module,
+  clientFiles,
+  rootDir,
+}: {
+  module: { importedModules: Iterable<{ file: string | null }> };
+  clientFiles: Set<string>;
+  rootDir: string;
+}) => {
+  for (const imported of module.importedModules) {
+    if (
+      imported.file &&
+      clientFiles.has(normalizeModulePath(imported.file, rootDir))
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
 export const hasEntryAsAncestor = ({
   module,
   entryFile,
@@ -158,19 +194,21 @@ export const miniflareHMRPlugin = (givenOptions: {
       let clientDirectiveChanged = false;
       let serverDirectiveChanged = false;
 
-      if (!clientFiles.has(ctx.file) && hasClientDirective) {
-        clientFiles.add(normalizeModulePath(ctx.file, givenOptions.rootDir));
+      const normalizedHotFile = normalizeModulePath(ctx.file, givenOptions.rootDir);
+
+      if (!clientFiles.has(normalizedHotFile) && hasClientDirective) {
+        clientFiles.add(normalizedHotFile);
         clientDirectiveChanged = true;
-      } else if (clientFiles.has(ctx.file) && !hasClientDirective) {
-        clientFiles.delete(normalizeModulePath(ctx.file, givenOptions.rootDir));
+      } else if (clientFiles.has(normalizedHotFile) && !hasClientDirective) {
+        clientFiles.delete(normalizedHotFile);
         clientDirectiveChanged = true;
       }
 
-      if (!serverFiles.has(ctx.file) && hasServerDirective) {
-        serverFiles.add(normalizeModulePath(ctx.file, givenOptions.rootDir));
+      if (!serverFiles.has(normalizedHotFile) && hasServerDirective) {
+        serverFiles.add(normalizedHotFile);
         serverDirectiveChanged = true;
-      } else if (serverFiles.has(ctx.file) && !hasServerDirective) {
-        serverFiles.delete(normalizeModulePath(ctx.file, givenOptions.rootDir));
+      } else if (serverFiles.has(normalizedHotFile) && !hasServerDirective) {
+        serverFiles.delete(normalizedHotFile);
         serverDirectiveChanged = true;
       }
 
@@ -220,7 +258,14 @@ export const miniflareHMRPlugin = (givenOptions: {
         ) ?? [],
       );
 
-      const isWorkerUpdate = Boolean(modules);
+      const isWorkerUpdate = Boolean(modules.length);
+      const previouslyImportedKnownClientFile = modules.some((module) =>
+        moduleImportsKnownClientFile({
+          module,
+          clientFiles,
+          rootDir: givenOptions.rootDir,
+        }),
+      );
 
       // The worker needs an update, but this is the client environment
       // => Notify for HMR update of any css files imported by in worker, that are also in the client module graph
@@ -261,6 +306,45 @@ export const miniflareHMRPlugin = (givenOptions: {
             timestamp: true,
           },
         );
+
+        const currentCode = isJsFile(ctx.file)
+          ? await readFile(ctx.file, "utf-8").catch(() => "")
+          : "";
+        let nowImportsKnownClientFile = false;
+
+        for (const specifier of extractImportSpecifiers(currentCode)) {
+          const resolved = await ctx.server.environments[
+            environment
+          ].pluginContainer.resolveId(specifier, ctx.file);
+          const resolvedId = resolved?.id?.split("?", 1)[0];
+
+          if (
+            resolvedId &&
+            clientFiles.has(normalizeModulePath(resolvedId, givenOptions.rootDir))
+          ) {
+            nowImportsKnownClientFile = true;
+            break;
+          }
+        }
+
+        if (nowImportsKnownClientFile && !previouslyImportedKnownClientFile) {
+          ["client", "ssr", environment].forEach((environment) => {
+            invalidateModule(
+              ctx.server,
+              environment,
+              "virtual:use-client-lookup.js",
+            );
+          });
+          ctx.server.environments.client.hot.send({
+            type: "full-reload",
+            path: "*",
+          });
+          log(
+            "hmr: full reload after %s started importing a client directive module",
+            ctx.file,
+          );
+          return [];
+        }
 
         const m = ctx.server.environments.client.moduleGraph
           .getModulesByFile(

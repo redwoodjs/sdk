@@ -1,14 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { hasEntryAsAncestor } from "./miniflareHMRPlugin.mjs";
+import {
+  extractImportSpecifiers,
+  hasEntryAsAncestor,
+  moduleImportsKnownClientFile,
+} from "./miniflareHMRPlugin.mjs";
 
 interface MockModule {
   file: string;
   importers: Set<MockModule>;
+  importedModules: Set<MockModule>;
 }
 
 const createModule = (file: string): MockModule => ({
   file,
   importers: new Set(),
+  importedModules: new Set(),
 });
 
 describe("hasEntryAsAncestor", () => {
@@ -66,5 +72,50 @@ describe("hasEntryAsAncestor", () => {
     expect(hasEntryAsAncestor({ module: mod, entryFile: "entry.js" })).toBe(
       false,
     );
+  });
+});
+
+describe("extractImportSpecifiers", () => {
+  it("extracts static, side-effect, export, and dynamic import specifiers", () => {
+    expect(
+      extractImportSpecifiers(`
+        import React from "react";
+        import "./style.css";
+        export { Thing } from "./Thing";
+        const Lazy = import("./Lazy");
+      `),
+    ).toEqual(["react", "./style.css", "./Thing", "./Lazy"]);
+  });
+});
+
+describe("moduleImportsKnownClientFile", () => {
+  it("matches imported modules against normalized client files", () => {
+    const mod = createModule("/repo/app/src/components/ComponentA.tsx");
+    mod.importedModules.add(
+      createModule("/repo/app/src/components/ComponentB.tsx"),
+    );
+
+    expect(
+      moduleImportsKnownClientFile({
+        module: mod,
+        clientFiles: new Set(["/src/components/ComponentB.tsx"]),
+        rootDir: "/repo/app",
+      }),
+    ).toBe(true);
+  });
+
+  it("returns false when the old graph did not import a known client file", () => {
+    const mod = createModule("/repo/app/src/components/ComponentA.tsx");
+    mod.importedModules.add(
+      createModule("/repo/app/src/components/ServerOnly.tsx"),
+    );
+
+    expect(
+      moduleImportsKnownClientFile({
+        module: mod,
+        clientFiles: new Set(["/src/components/ComponentB.tsx"]),
+        rootDir: "/repo/app",
+      }),
+    ).toBe(false);
   });
 });
