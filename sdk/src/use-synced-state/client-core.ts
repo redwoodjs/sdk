@@ -1,8 +1,4 @@
-import {
-  getClientBuildVersion,
-  isStaleClientError,
-} from "../runtime/client/stale.js";
-import { addClientVersionToUrl } from "../runtime/lib/stale.js";
+import { isStaleClientError } from "../runtime/client/stale.js";
 import { loadCapnweb } from "./capnweb-loader.mjs";
 import { DEFAULT_SYNCED_STATE_PATH } from "./constants.mjs";
 
@@ -28,10 +24,7 @@ function normalizeEndpoint(endpoint: string): string {
 }
 
 function getEndpointKey(endpoint: string): string {
-  return addClientVersionToUrl(
-    normalizeEndpoint(endpoint),
-    getClientBuildVersion(),
-  );
+  return normalizeEndpoint(endpoint);
 }
 
 // Map of endpoint URLs to their respective clients

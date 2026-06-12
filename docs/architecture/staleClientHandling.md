@@ -23,9 +23,10 @@ This value is exposed to both the worker and the client through `import.meta.env
 The client sends its build ID on every server-bound request that is issued by RedwoodSDK's own runtime:
 
 - **RSC, action, and navigation fetches** send the build ID in the `x-rwsdk-client-version` request header.
-- **`use-synced-state` WebSocket connections** send the build ID in the `__rwsdk_client_version` query parameter.
 
 Asset requests do not carry an explicit version signal. Their filenames already contain content hashes, so a stale client that requests an old asset receives a 404 from `env.ASSETS.fetch`.
+
+`use-synced-state` WebSocket connections do not send an explicit build ID. A fresh page load after a deployment always loads the new client bundle, which connects with the current build embedded in its code. The only stale case that matters is a long-lived WebSocket session that was established before the deployment; that is handled by the per-message check in `SyncedStateProxy`.
 
 ## The Server-Side Contract: Detecting and Signaling Staleness
 
@@ -58,13 +59,13 @@ if (isStaleReloadResponse(response)) {
 
 A stale reload is a full page load. The browser fetches fresh HTML from the worker and fresh content-hashed assets. The new client bundle has no stale state, so the framework does not maintain a session-level guard against reload loops.
 
-For `use-synced-state`, the WebSocket handshake response is checked and the same reload is triggered.
+For `use-synced-state`, the per-message check in `SyncedStateProxy` triggers the reload.
 
 ## Stale Detection for Active `use-synced-state` Sessions
 
 The WebSocket handshake check catches stale clients when they first connect or reconnect, but it does not catch a tab that stays connected across a deployment. Once capnweb has established an RPC session, subsequent messages travel over the open WebSocket without passing through the worker's request handler again.
 
-To handle this, `SyncedStateProxy` stores the client's reported build ID from the handshake request. Before forwarding any RPC call (`getState`, `setState`, `subscribe`, `unsubscribe`) to the Durable Object, the proxy compares the stored build ID against the worker's current build ID. If they differ, it throws a `StaleClientError`.
+To handle this, `SyncedStateProxy` stores the worker build ID that was current when the WebSocket session was established. Before forwarding any RPC call (`getState`, `setState`, `subscribe`, `unsubscribe`) to the Durable Object, the proxy compares the stored build ID against the worker's current build ID. If they differ, it throws a `StaleClientError`.
 
 ```ts
 async getState(key: string): Promise<SyncedStateValue> {

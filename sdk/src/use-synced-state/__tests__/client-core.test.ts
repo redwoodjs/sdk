@@ -232,15 +232,13 @@ describe("client-core reconnection", () => {
     expect(mockClients).toHaveLength(1);
   });
 
-  it("appends the build id query to the websocket endpoint", async () => {
+  it("does not append a build id query to the websocket endpoint", async () => {
     vi.stubEnv("VITE_RWSDK_BUILD_ID", "test-build");
 
     getSyncedStateClient(ENDPOINT);
     await __testing.warmUp(ENDPOINT);
 
-    expect(newWebSocketRpcSession).toHaveBeenCalledWith(
-      `${ENDPOINT}?__rwsdk_client_version=test-build`,
-    );
+    expect(newWebSocketRpcSession).toHaveBeenCalledWith(ENDPOINT);
   });
 
   it("re-subscribes multiple subscriptions after reconnect", async () => {
