@@ -37,7 +37,7 @@ export const viteRscRuntimeBridgePlugin = (): Plugin => ({
     // plugin-rsc server-reference/client-reader path is accidentally exercised.
     return `
 import {
-  registerClientReference,
+  registerClientReference as baseRegisterClientReference,
   registerServerReference as baseRegisterServerReference,
   decodeReply,
   decodeAction,
@@ -45,6 +45,20 @@ import {
   renderToReadableStream,
   createTemporaryReferenceSet,
 } from "react-server-dom-webpack/server.edge";
+
+export const registerClientReference = (proxy, id, name) => {
+  const reference = baseRegisterClientReference(proxy, id, name);
+
+  // Redwood's router/worker runtime needs to recognize plugin-rsc client
+  // references so it can pass safe route props and avoid invoking route-level
+  // use-client components as normal server functions.
+  Object.defineProperties(reference, {
+    $$async: { value: false },
+    $$isClientReference: { value: true },
+  });
+
+  return reference;
+};
 
 export const registerServerReference = (action, id, name) => {
   const reference = baseRegisterServerReference(action, id, name);
@@ -55,7 +69,6 @@ export const registerServerReference = (action, id, name) => {
 };
 
 export {
-  registerClientReference,
   decodeReply,
   decodeAction,
   decodeFormState,
