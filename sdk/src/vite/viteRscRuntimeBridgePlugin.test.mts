@@ -25,6 +25,8 @@ describe("viteRscRuntimeBridgePlugin", () => {
 
     expect(code).toContain("react-server-dom-webpack/server.edge");
     expect(code).toContain("registerClientReference");
+    expect(code).toContain('import { requestInfo } from "rwsdk/worker"');
+    expect(code).toContain("requestInfo.rw.scriptsToBeLoaded.add(id)");
     expect(code).toContain("$$isClientReference");
     expect(code).toContain("registerServerReference");
     expect(code).toContain("reference.method = action.method");

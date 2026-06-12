@@ -10,7 +10,10 @@ const toManifestKey = (id: string) => (id.startsWith("/") ? id.slice(1) : id);
 
 const findCssForModule = (
   scriptId: string,
-  manifest: Record<string, { file: string; css?: string[] }>,
+  manifest: Record<
+    string,
+    { file: string; css?: string[]; imports?: string[]; dynamicImports?: string[] }
+  >,
 ) => {
   const css = new Set<string>();
   const visited = new Set<string>();
@@ -30,6 +33,10 @@ const findCssForModule = (
       for (const href of entry.css) {
         css.add(href);
       }
+    }
+
+    for (const importedId of [...(entry.imports ?? []), ...(entry.dynamicImports ?? [])]) {
+      inner(importedId);
     }
   };
 

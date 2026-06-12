@@ -5,6 +5,7 @@ import { findExports } from "./findSpecifiers.mjs";
 import { hasDirective } from "./hasDirective.mjs";
 
 const directiveRegex = /^(\s*)(['"]use client['"])\s*;?\s*\n?/m;
+const serverPassthroughClientExports = new Set(["ColorSchemeScript"]);
 
 export const hasServerPassthroughClientExport = (id: string, code: string) => {
   const exports = findExports(id, code);
@@ -15,7 +16,10 @@ export const hasServerPassthroughClientExport = (id: string, code: string) => {
     }
 
     const name = exportInfo.name || exportInfo.originalName;
-    return !!name && /^[a-z]/.test(name);
+    return (
+      !!name &&
+      (/^[a-z]/.test(name) || serverPassthroughClientExports.has(name))
+    );
   });
 };
 

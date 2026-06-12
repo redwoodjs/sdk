@@ -11,6 +11,15 @@ describe("hasServerPassthroughClientExport", () => {
     ).toBe(true);
   });
 
+  it("detects known server-safe package components", () => {
+    expect(
+      hasServerPassthroughClientExport(
+        "/node_modules/@mantine/core/esm/index.mjs",
+        `"use client";\nexport function ColorSchemeScript() { return null; }`,
+      ),
+    ).toBe(true);
+  });
+
   it("does not mark component-only modules as server passthrough", () => {
     expect(
       hasServerPassthroughClientExport(

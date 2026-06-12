@@ -45,19 +45,37 @@ import {
   renderToReadableStream,
   createTemporaryReferenceSet,
 } from "react-server-dom-webpack/server.edge";
+import { requestInfo } from "rwsdk/worker";
 
 export const registerClientReference = (proxy, id, name) => {
   const reference = baseRegisterClientReference(proxy, id, name);
+  const descriptors = Object.getOwnPropertyDescriptors(reference);
+  const idDescriptor = descriptors.$$id;
+
+  if (idDescriptor) {
+    const originalValue = idDescriptor.value;
+    descriptors.$$id = {
+      enumerable: idDescriptor.enumerable,
+      configurable: idDescriptor.configurable,
+      get() {
+        requestInfo.rw.scriptsToBeLoaded.add(id);
+        return originalValue;
+      },
+    };
+  }
 
   // Redwood's router/worker runtime needs to recognize plugin-rsc client
   // references so it can pass safe route props and avoid invoking route-level
   // use-client components as normal server functions.
-  Object.defineProperties(reference, {
-    $$async: { value: false },
-    $$isClientReference: { value: true },
-  });
+  descriptors.$$async = { value: false };
+  descriptors.$$isClientReference = { value: true };
 
-  return reference;
+  const fn =
+    typeof reference === "function"
+      ? (...args) => reference(...args)
+      : () => null;
+
+  return Object.defineProperties(fn, descriptors);
 };
 
 export const registerServerReference = (action, id, name) => {
