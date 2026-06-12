@@ -67,7 +67,20 @@ testSDK.deploy(
 
     await navigationPromise;
 
-    // 5. After reload the page should have rehydrated successfully.
+    // 5. Clear the simulated deployment so the reloaded client does not
+    // keep tripping the stale check and reloading in a loop.
+    const clearBuildIdUrl = new URL("/__stale-test/set-build-id/", deployment.url);
+    const clearResponse = await page.evaluate(
+      async (targetUrl) => {
+        const response = await fetch(targetUrl);
+        return { status: response.status, text: await response.text() };
+      },
+      clearBuildIdUrl.toString(),
+    );
+    expect(clearResponse.status).toBe(200);
+    expect(clearResponse.text).toBe("ok");
+
+    // 6. After reload the page should have rehydrated successfully.
     await waitForHydration(page);
     await page.waitForSelector(".counter-display");
   },

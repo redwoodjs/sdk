@@ -584,19 +584,15 @@ export async function runPreviewServer(
     serverUrlResolver = resolve;
   });
 
-  previewProcess = $(
-    pm,
-    ["run", "preview", "--", "--port", "0", "--strictPort"],
-    {
-      all: true,
-      detached: process.platform !== "win32",
-      cleanup: true,
-      forceKillAfterTimeout: 2000,
-      cwd: cwd || process.cwd(),
-      env: { ...process.env, NODE_ENV: "production" },
-      stdio: "pipe",
-    },
-  );
+  previewProcess = $(pm, ["run", "preview", "--port", "0", "--strictPort"], {
+    all: true,
+    detached: process.platform !== "win32",
+    cleanup: true,
+    forceKillAfterTimeout: 2000,
+    cwd: cwd || process.cwd(),
+    env: { ...process.env, NODE_ENV: "production" },
+    stdio: "pipe",
+  });
 
   // Vite prints the local URL once it has bound to a port, e.g.
   // "  ➜  Local:   http://localhost:55271/"
