@@ -1,6 +1,9 @@
 import { env } from "cloudflare:workers";
 import { route } from "../runtime/entries/router";
-import { StaleClientError } from "../runtime/lib/stale.js";
+import {
+  StaleClientError,
+  getClientVersionFromRequest,
+} from "../runtime/lib/stale.js";
 import type { RequestInfo } from "../runtime/requestInfo/types";
 import { runWithRequestInfo } from "../runtime/requestInfo/worker";
 import { loadCapnweb } from "./capnweb-loader.mjs";
@@ -28,6 +31,7 @@ type SyncedStateProxyCtor = new (
   stub: DurableObjectStub<SyncedStateServer>,
   keyHandler: KeyHandler | null,
   requestInfo: RequestInfo | null,
+  clientVersion: string | undefined,
 ) => unknown;
 
 let SyncedStateProxyClass: SyncedStateProxyCtor | null = null;
@@ -42,9 +46,9 @@ async function getSyncedStateProxy(): Promise<{
       #stub: DurableObjectStub<SyncedStateServer>;
       #keyHandler: KeyHandler | null;
       #requestInfo: RequestInfo | null;
-      // The worker build ID that was current when this WebSocket session was
-      // established. Compared against the current build ID on every RPC message
-      // so established connections that outlive a deployment are rejected.
+      // The client build ID captured from the WebSocket handshake request.
+      // Compared against the worker's current build ID on every RPC message so
+      // established connections that outlive a deployment are rejected.
       #clientVersion: string | undefined;
       // Map original RPC callbacks to the duplicated callbacks sent to the DO
       // so unsubscribe uses the same identity that subscribe registered.
@@ -54,15 +58,13 @@ async function getSyncedStateProxy(): Promise<{
         stub: DurableObjectStub<SyncedStateServer>,
         keyHandler: KeyHandler | null,
         requestInfo: RequestInfo | null,
+        clientVersion: string | undefined,
       ) {
         super();
         this.#stub = stub;
         this.#keyHandler = keyHandler;
         this.#requestInfo = requestInfo;
-        // Store the build ID current at session creation time. Fresh page loads
-        // after a deployment will always carry the new build ID, so this only
-        // matters for long-lived WebSocket sessions.
-        this.#clientVersion = import.meta.env.VITE_RWSDK_BUILD_ID;
+        this.#clientVersion = clientVersion;
         // Set stub in DO instance so handlers can access it
         if (stub && typeof (stub as any)._setStub === "function") {
           void (stub as any)._setStub(stub);
@@ -78,7 +80,7 @@ async function getSyncedStateProxy(): Promise<{
         const currentVersion =
           (globalThis as any).__rwsdk_stale_build_id_override ??
           import.meta.env.VITE_RWSDK_BUILD_ID;
-        if (!currentVersion) {
+        if (!currentVersion || !this.#clientVersion) {
           return;
         }
         if (this.#clientVersion !== currentVersion) {
@@ -252,7 +254,13 @@ export const syncedStateRoutes = (
     const coordinator = namespace.get(id);
     const { SyncedStateProxy, newWorkersRpcResponse } =
       await getSyncedStateProxy();
-    const proxy = new SyncedStateProxy(coordinator, keyHandler, requestInfo);
+    const clientVersion = getClientVersionFromRequest(request);
+    const proxy = new SyncedStateProxy(
+      coordinator,
+      keyHandler,
+      requestInfo,
+      clientVersion,
+    );
 
     return newWorkersRpcResponse(request, proxy);
   };

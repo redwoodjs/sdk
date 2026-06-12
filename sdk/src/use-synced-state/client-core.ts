@@ -1,4 +1,8 @@
-import { isStaleClientError } from "../runtime/client/stale.js";
+import {
+  getClientBuildVersion,
+  isStaleClientError,
+} from "../runtime/client/stale.js";
+import { addClientVersionToUrl } from "../runtime/lib/stale.js";
 import { loadCapnweb } from "./capnweb-loader.mjs";
 import { DEFAULT_SYNCED_STATE_PATH } from "./constants.mjs";
 
@@ -24,7 +28,10 @@ function normalizeEndpoint(endpoint: string): string {
 }
 
 function getEndpointKey(endpoint: string): string {
-  return normalizeEndpoint(endpoint);
+  return addClientVersionToUrl(
+    normalizeEndpoint(endpoint),
+    getClientBuildVersion(),
+  );
 }
 
 // Map of endpoint URLs to their respective clients
@@ -92,8 +99,14 @@ const backoffState = new Map<
   { attempt: number; timer: ReturnType<typeof setTimeout> | null }
 >();
 
-const BASE_BACKOFF_MS = 1000;
-const MAX_BACKOFF_MS = 30000;
+const BASE_BACKOFF_MS = import.meta.env
+  .VITE_RWSDK_SYNCED_STATE_TEST_FAST_RECONNECT
+  ? 50
+  : 1000;
+const MAX_BACKOFF_MS = import.meta.env
+  .VITE_RWSDK_SYNCED_STATE_TEST_FAST_RECONNECT
+  ? 200
+  : 30000;
 
 function getBackoffMs(attempt: number): number {
   const base = Math.min(BASE_BACKOFF_MS * 2 ** attempt, MAX_BACKOFF_MS);
@@ -142,8 +155,11 @@ function reconnect(endpoint: string, deadClient: SyncedStateClient) {
 
     notifyStatusChange(endpoint, "reconnecting");
 
-    // Evict the dead client so getSyncedStateClient creates a fresh one
+    // Evict the dead client and its underlying capnweb session so the
+    // replacement gets a fresh WebSocket connection instead of reusing the
+    // broken one.
     clientCache.delete(endpoint);
+    baseClientPromiseByEndpoint.delete(endpoint);
     const newClient = getSyncedStateClient(endpoint);
 
     // Re-subscribe everything that was on the dead client. Kick off both

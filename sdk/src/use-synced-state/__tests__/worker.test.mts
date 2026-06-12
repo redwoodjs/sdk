@@ -149,7 +149,9 @@ describe("SyncedStateProxy", () => {
 
     const [baseRoute] = syncedStateRoutes(() => namespace as any);
     await (baseRoute.handler as any)({
-      request: new Request("https://example.com/__synced-state"),
+      request: new Request(
+        "https://example.com/__synced-state?__rwsdk_client_version=initial-build",
+      ),
       params: {},
     });
 

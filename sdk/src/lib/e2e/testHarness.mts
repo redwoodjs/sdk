@@ -19,7 +19,6 @@ import {
   DEV_SERVER_TIMEOUT,
   HYDRATION_TIMEOUT,
   INSTALL_DEPENDENCIES_RETRIES,
-  IS_CI,
   IS_PULL_REQUEST,
   PUPPETEER_TIMEOUT,
   SETUP_PLAYGROUND_ENV_TIMEOUT,
@@ -371,130 +370,161 @@ export function createDeployment() {
   const { projectDir } = globalDeployPlaygroundEnv;
   let instance: DeploymentInstance | null = null;
 
+  const dirName = basename(projectDir);
+  // Match formats: {projectName}-t-{hash}, {projectName}-test-{hash}, or {projectName}-e2e-test-{hash}
+  const match =
+    dirName.match(/-t-([a-f0-9]+)$/) ||
+    dirName.match(/-test-([a-f0-9]+)$/) ||
+    dirName.match(/-e2e-test-([a-f0-9]+)$/);
+  const resourceUniqueKey = match
+    ? match[1]
+    : Math.random().toString(36).substring(2, 15);
+
+  if (SKIP_DEPLOYMENT_TESTS) {
+    return {
+      projectDir,
+      start: async () => {
+        throw new Error("Deployment tests are skipped via RWSDK_SKIP_DEPLOY=1");
+      },
+      redeploy: async () => {
+        throw new Error("Deployment tests are skipped via RWSDK_SKIP_DEPLOY=1");
+      },
+    };
+  }
+
+  const deployToCloudflare = async (): Promise<DeploymentInstance> => {
+    const newInstance = await pollValue(
+      async () => {
+        const deployResult = await runRelease(
+          projectDir,
+          projectDir,
+          resourceUniqueKey,
+        );
+
+        // A fresh *.workers.dev subdomain can return 200 with Cloudflare's
+        // "There is nothing here yet" placeholder before the worker code
+        // propagates globally. Wait until the response body contains the
+        // rwsdk-rendered marker so tests don't run against the placeholder.
+        await poll(
+          async () => {
+            try {
+              const response = await fetch(deployResult.url);
+              const body = await response.text();
+              return body.includes("__RWSDK_CONTEXT");
+            } catch (e) {
+              return false;
+            }
+          },
+          {
+            timeout: DEPLOYMENT_CHECK_TIMEOUT,
+          },
+        );
+
+        const cleanup = async () => {
+          const performCleanup = async () => {
+            if (isRelatedToTest(deployResult.workerName, resourceUniqueKey)) {
+              await deleteWorker(
+                deployResult.workerName,
+                projectDir,
+                resourceUniqueKey,
+              );
+            }
+            await deleteD1Database(
+              resourceUniqueKey,
+              projectDir,
+              resourceUniqueKey,
+            );
+          };
+
+          performCleanup().catch((error) => {
+            console.warn(
+              `Warning: Background deployment cleanup failed: ${
+                (error as Error).message
+              }`,
+            );
+          });
+          return Promise.resolve();
+        };
+
+        return {
+          url: deployResult.url,
+          workerName: deployResult.workerName,
+          resourceUniqueKey,
+          projectDir: projectDir,
+          cleanup,
+        };
+      },
+      {
+        timeout: DEPLOYMENT_TIMEOUT,
+        minTries: DEPLOYMENT_MIN_TRIES,
+        onRetry: (error, tries) => {
+          console.log(
+            `Retrying deployment creation (attempt ${tries})... Error: ${
+              (error as Error).message
+            }`,
+          );
+        },
+      },
+    );
+    return newInstance;
+  };
+
+  const startPreview = async (): Promise<DeploymentInstance> => {
+    console.log("PR mode detected — using local preview instead of deploy");
+    const previewResult = await runPreviewServer(
+      (process.env.PACKAGE_MANAGER as "pnpm" | "npm" | "yarn") || "pnpm",
+      projectDir,
+    );
+
+    return {
+      url: previewResult.url,
+      workerName: `preview-${resourceUniqueKey}`,
+      resourceUniqueKey,
+      projectDir,
+      cleanup: async () => {
+        await previewResult.stopPreview().catch((error) => {
+          console.warn(
+            `Warning: Background preview cleanup failed: ${
+              (error as Error).message
+            }`,
+          );
+        });
+        return Promise.resolve();
+      },
+    };
+  };
+
   return {
     projectDir,
     start: async () => {
       if (instance) return instance;
 
-      if (SKIP_DEPLOYMENT_TESTS) {
-        throw new Error("Deployment tests are skipped via RWSDK_SKIP_DEPLOY=1");
+      instance = IS_PULL_REQUEST
+        ? await startPreview()
+        : await deployToCloudflare();
+      deploymentInstances.push(instance);
+      return instance;
+    },
+    redeploy: async () => {
+      // Stop/clean up the previous preview instance so the new one can bind
+      // to the same port. For real Cloudflare deploys the worker is updated
+      // in place, so no intermediate cleanup is needed.
+      if (instance) {
+        const oldInstance = instance;
+        const index = deploymentInstances.indexOf(oldInstance);
+        if (index !== -1) {
+          deploymentInstances.splice(index, 1);
+        }
+        if (IS_PULL_REQUEST) {
+          await oldInstance.cleanup();
+        }
       }
 
-      const dirName = basename(projectDir);
-      // Match formats: {projectName}-t-{hash}, {projectName}-test-{hash}, or {projectName}-e2e-test-{hash}
-      const match =
-        dirName.match(/-t-([a-f0-9]+)$/) ||
-        dirName.match(/-test-([a-f0-9]+)$/) ||
-        dirName.match(/-e2e-test-([a-f0-9]+)$/);
-      const resourceUniqueKey = match
-        ? match[1]
-        : Math.random().toString(36).substring(2, 15);
-
-      if (IS_PULL_REQUEST) {
-        console.log("PR mode detected — using local preview instead of deploy");
-        const previewResult = await runPreviewServer(
-          (process.env.PACKAGE_MANAGER as "pnpm" | "npm" | "yarn") ||
-            "pnpm",
-          projectDir,
-        );
-
-        instance = {
-          url: previewResult.url,
-          workerName: `preview-${resourceUniqueKey}`,
-          resourceUniqueKey,
-          projectDir,
-          cleanup: async () => {
-            await previewResult.stopPreview().catch((error) => {
-              console.warn(
-                `Warning: Background preview cleanup failed: ${
-                  (error as Error).message
-                }`,
-              );
-            });
-            return Promise.resolve();
-          },
-        };
-
-        deploymentInstances.push(instance);
-        return instance;
-      }
-
-      const newInstance = await pollValue(
-        async () => {
-          const deployResult = await runRelease(
-            projectDir,
-            projectDir,
-            resourceUniqueKey,
-          );
-
-          // A fresh *.workers.dev subdomain can return 200 with Cloudflare's
-          // "There is nothing here yet" placeholder before the worker code
-          // propagates globally. Wait until the response body contains the
-          // rwsdk-rendered marker so tests don't run against the placeholder.
-          await poll(
-            async () => {
-              try {
-                const response = await fetch(deployResult.url);
-                const body = await response.text();
-                return body.includes("__RWSDK_CONTEXT");
-              } catch (e) {
-                return false;
-              }
-            },
-            {
-              timeout: DEPLOYMENT_CHECK_TIMEOUT,
-            },
-          );
-
-          const cleanup = async () => {
-            const performCleanup = async () => {
-              if (isRelatedToTest(deployResult.workerName, resourceUniqueKey)) {
-                await deleteWorker(
-                  deployResult.workerName,
-                  projectDir,
-                  resourceUniqueKey,
-                );
-              }
-              await deleteD1Database(
-                resourceUniqueKey,
-                projectDir,
-                resourceUniqueKey,
-              );
-            };
-
-            performCleanup().catch((error) => {
-              console.warn(
-                `Warning: Background deployment cleanup failed: ${
-                  (error as Error).message
-                }`,
-              );
-            });
-            return Promise.resolve();
-          };
-
-          return {
-            url: deployResult.url,
-            workerName: deployResult.workerName,
-            resourceUniqueKey,
-            projectDir: projectDir,
-            cleanup,
-          };
-        },
-        {
-          timeout: DEPLOYMENT_TIMEOUT,
-          minTries: DEPLOYMENT_MIN_TRIES,
-          onRetry: (error, tries) => {
-            console.log(
-              `Retrying deployment creation (attempt ${tries})... Error: ${
-                (error as Error).message
-              }`,
-            );
-          },
-        },
-      );
-      instance = newInstance;
-      deploymentInstances.push(newInstance);
-      return newInstance;
+      instance = IS_PULL_REQUEST
+        ? await startPreview()
+        : await deployToCloudflare();
+      deploymentInstances.push(instance);
+      return instance;
     },
   };
 }
