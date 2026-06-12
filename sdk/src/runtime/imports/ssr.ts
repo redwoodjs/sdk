@@ -1,10 +1,13 @@
 import { memoizeOnId } from "../lib/memoizeOnId";
+import { getLookupCandidates } from "./lookupCandidates";
 
 export const ssrLoadModule = memoizeOnId(async (id: string) => {
   const { useClientLookup } = await import(
     "virtual:use-client-lookup.js" as string
   );
-  const moduleFn = useClientLookup[id] ?? useClientLookup[id.split("?", 1)[0]];
+  const moduleFn = getLookupCandidates(id)
+    .map((candidate) => useClientLookup[candidate])
+    .find(Boolean);
 
   if (!moduleFn) {
     throw new Error(

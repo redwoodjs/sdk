@@ -25,4 +25,19 @@ describe("generateViteRscClientReferenceLookupCode", () => {
       '"/src/app/client/Named.tsx#NamedLabel": () => import("/repo/app/src/app/client/Named.tsx")',
     );
   });
+
+  it("keeps directive-scan client files in the plugin-rsc lookup fallback", () => {
+    const code = generateViteRscClientReferenceLookupCode({
+      projectRootDir: "/repo/app",
+      isDev: true,
+      legacyClientFiles: [
+        "/node_modules/.pnpm/ui-lib@file+packages+ui-lib/node_modules/ui-lib/client.mjs",
+      ],
+      clientReferenceMetaMap: {},
+    });
+
+    expect(code).toContain(
+      '"/node_modules/.pnpm/ui-lib@file+packages+ui-lib/node_modules/ui-lib/client.mjs": () => import("rwsdk/__vendor_client_barrel").then(m => m.default["/node_modules/.pnpm/ui-lib@file+packages+ui-lib/node_modules/ui-lib/client.mjs"])',
+    );
+  });
 });

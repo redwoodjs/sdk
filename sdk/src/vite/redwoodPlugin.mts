@@ -35,6 +35,7 @@ import { transformJsxScriptTagsPlugin } from "./transformJsxScriptTagsPlugin.mjs
 import { useClientLookupPlugin } from "./useClientLookupPlugin.mjs";
 import { useServerLookupPlugin } from "./useServerLookupPlugin.mjs";
 import { vitePreamblePlugin } from "./vitePreamblePlugin.mjs";
+import { viteRscClientReferencePassthroughPlugin } from "./viteRscClientReferencePassthroughPlugin.mjs";
 import { viteRscClientReferencePlugin } from "./viteRscClientReferencePlugin.mjs";
 import { viteRscClientReferencePlugins } from "./viteRscClientPlugins.mjs";
 import { viteRscRuntimeBridgePlugin } from "./viteRscRuntimeBridgePlugin.mjs";
@@ -203,12 +204,15 @@ export const redwoodPlugin = async (
       ? viteRscServerReferenceBridgePlugin({ projectRootDir })
       : [],
     shouldUseViteRscClientReferences
+      ? viteRscClientReferencePassthroughPlugin({ clientFiles, projectRootDir })
+      : [],
+    shouldUseViteRscClientReferences
       ? viteRscClientReferencePlugins({
           experimentalServerReferences: shouldUseViteRscServerReferences,
         })
       : [],
     shouldUseViteRscClientReferences
-      ? viteRscClientReferencePlugin({ projectRootDir })
+      ? viteRscClientReferencePlugin({ clientFiles, projectRootDir })
       : [],
     shouldUseViteRscManifestAdapter
       ? viteRscManifestDataPlugin({ projectRootDir })

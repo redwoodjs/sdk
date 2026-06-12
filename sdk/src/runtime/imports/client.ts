@@ -1,12 +1,15 @@
 import React from "react";
 import { ClientOnly } from "../client/client";
 import { memoizeOnId } from "../lib/memoizeOnId";
+import { getLookupCandidates } from "./lookupCandidates";
 
 // @ts-ignore
 import { useClientLookup } from "virtual:use-client-lookup.js";
 
 export const loadModule = memoizeOnId(async (id: string) => {
-  const moduleFn = useClientLookup[id] ?? useClientLookup[id.split("?", 1)[0]];
+  const moduleFn = getLookupCandidates(id)
+    .map((candidate) => useClientLookup[candidate])
+    .find(Boolean);
 
   if (!moduleFn) {
     throw new Error(

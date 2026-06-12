@@ -1,6 +1,7 @@
 import { getPluginApi } from "@vitejs/plugin-rsc/plugin";
 import debug from "debug";
 import type { Plugin, ResolvedConfig, ViteDevServer } from "vite";
+import { VENDOR_CLIENT_BARREL_EXPORT_PATH } from "../lib/constants.mjs";
 import {
   generateViteRscClientReferenceLookupEntries,
   type ViteRscClientReferenceMeta,
@@ -17,26 +18,38 @@ const persistedClientReferenceMetaMaps = new Map<string, ClientReferenceMetaMap>
 
 export const generateViteRscClientReferenceLookupCode = ({
   clientReferenceMetaMap,
+  legacyClientFiles,
   projectRootDir,
+  isDev = false,
 }: {
   clientReferenceMetaMap: ClientReferenceMetaMap;
+  legacyClientFiles?: Iterable<string>;
   projectRootDir: string;
+  isDev?: boolean;
 }) => {
   const entries = generateViteRscClientReferenceLookupEntries({
     clientReferenceMetaMap,
+    legacyClientFiles,
     projectRootDir,
   });
-  const lines = entries.map(
-    ({ key, importId }) =>
-      `  ${JSON.stringify(key)}: () => import(${JSON.stringify(importId)}),`,
-  );
+  const lines = entries.map(({ key, importId }) => {
+    if (isDev && importId.includes("node_modules")) {
+      return `  ${JSON.stringify(key)}: () => import(${JSON.stringify(
+        VENDOR_CLIENT_BARREL_EXPORT_PATH,
+      )}).then(m => m.default[${JSON.stringify(importId)}]),`;
+    }
+
+    return `  ${JSON.stringify(key)}: () => import(${JSON.stringify(importId)}),`;
+  });
 
   return `export const useClientLookup = {\n${lines.join("\n")}\n};\n`;
 };
 
 export const viteRscClientReferencePlugin = ({
+  clientFiles,
   projectRootDir,
 }: {
+  clientFiles?: Set<string>;
   projectRootDir: string;
 }): Plugin => {
   let config: ResolvedConfig;
@@ -132,14 +145,17 @@ export const viteRscClientReferencePlugin = ({
       persistIfPresent();
       const clientReferenceMetaMap = currentClientReferenceMetaMap();
       log(
-        "loading use-client lookup for %s with %d client reference metadata records",
+        "loading use-client lookup for %s with %d client reference metadata records and %d directive client files",
         this.environment?.name ?? "unknown",
         Object.keys(clientReferenceMetaMap).length,
+        clientFiles?.size ?? 0,
       );
 
       return generateViteRscClientReferenceLookupCode({
         clientReferenceMetaMap,
+        legacyClientFiles: clientFiles,
         projectRootDir,
+        isDev: config.command === "serve",
       });
     },
     transform: {
