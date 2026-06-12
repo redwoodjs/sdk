@@ -14,6 +14,49 @@ import {
   registerServerFunctionWrap,
   __resetServerFunctionWrap,
 } from "./server";
+import { getServerFunctionMetadata } from "./serverFunctionMetadata";
+
+describe("server function metadata", () => {
+  beforeEach(() => {
+    mockRequestInfo = {
+      request: new Request("https://test.example/"),
+      ctx: {},
+    };
+  });
+
+  it("marks serverAction as POST action", () => {
+    const action = serverAction(async () => "ok");
+
+    expect(action.method).toBe("POST");
+    expect(action.source).toBe("action");
+    expect(getServerFunctionMetadata(action)).toEqual({
+      method: "POST",
+      source: "action",
+    });
+  });
+
+  it("marks serverQuery as GET query by default", () => {
+    const query = serverQuery(async () => "ok");
+
+    expect(query.method).toBe("GET");
+    expect(query.source).toBe("query");
+    expect(getServerFunctionMetadata(query)).toEqual({
+      method: "GET",
+      source: "query",
+    });
+  });
+
+  it("marks serverQuery with method POST as POST query", () => {
+    const query = serverQuery(async () => "ok", { method: "POST" });
+
+    expect(query.method).toBe("POST");
+    expect(query.source).toBe("query");
+    expect(getServerFunctionMetadata(query)).toEqual({
+      method: "POST",
+      source: "query",
+    });
+  });
+});
 
 describe("registerServerFunctionWrap", () => {
   beforeEach(() => {

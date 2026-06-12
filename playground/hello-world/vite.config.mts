@@ -8,6 +8,10 @@ const useLegacyClientReferences =
 const disableManifestAdapter =
   process.env.RWSDK_EXPERIMENTAL_VITE_RSC_MANIFEST_ADAPTER === "0";
 
+const useLegacyServerReferences =
+  process.env.RWSDK_LEGACY_RSC_SERVER_REFERENCES === "1" ||
+  process.env.RWSDK_EXPERIMENTAL_VITE_RSC_SERVER_REFERENCES === "0";
+
 export default defineConfig({
   plugins: [
     redwood({
@@ -17,8 +21,9 @@ export default defineConfig({
       experimentalUseViteRscManifestAdapter: disableManifestAdapter
         ? false
         : undefined,
-      experimentalViteRscServerReferences:
-        process.env.RWSDK_EXPERIMENTAL_VITE_RSC_SERVER_REFERENCES === "1",
+      experimentalViteRscServerReferences: useLegacyServerReferences
+        ? false
+        : undefined,
       includeCloudflarePlugin: true,
     }),
   ],

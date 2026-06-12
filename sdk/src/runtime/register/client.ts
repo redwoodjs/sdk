@@ -1,4 +1,5 @@
 import { createServerReference as baseCreateServerReference } from "react-server-dom-webpack/client.browser";
+import { setServerFunctionMetadata } from "../serverFunctionMetadata.js";
 
 export const createServerReference = (
   id: string,
@@ -11,10 +12,12 @@ export const createServerReference = (
     return globalThis.__rsc_callServer(id, args, source, method);
   });
 
-  // Attach metadata that hooks like useQuery can use
+  // Attach metadata that hooks like useQuery can use.
   (proxy as any).id = fullId;
-  (proxy as any).method = method;
-  (proxy as any).source = source;
+  setServerFunctionMetadata(proxy as Function, {
+    method: method ?? "POST",
+    source,
+  });
 
   return proxy;
 };

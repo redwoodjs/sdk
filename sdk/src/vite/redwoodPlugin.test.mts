@@ -1,16 +1,20 @@
 import { join } from "node:path/posix";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   determineRscFeatureFlags,
   determineWorkerEntryPathname,
 } from "./redwoodPlugin.mjs";
 
 describe("determineRscFeatureFlags", () => {
-  it("uses plugin-rsc client references and manifest metadata by default while keeping server references off", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("uses plugin-rsc client references, manifest metadata, and server references by default", () => {
     expect(determineRscFeatureFlags()).toEqual({
       shouldUseViteRscClientReferences: true,
       shouldUseViteRscManifestAdapter: true,
-      shouldUseViteRscServerReferences: false,
+      shouldUseViteRscServerReferences: true,
     });
   });
 
@@ -28,7 +32,7 @@ describe("determineRscFeatureFlags", () => {
     });
   });
 
-  it("can disable only the manifest adapter while keeping plugin-rsc client references", () => {
+  it("can disable only the manifest adapter while keeping plugin-rsc client and server references", () => {
     expect(
       determineRscFeatureFlags({
         experimentalUseViteRscManifestAdapter: false,
@@ -36,19 +40,39 @@ describe("determineRscFeatureFlags", () => {
     ).toEqual({
       shouldUseViteRscClientReferences: true,
       shouldUseViteRscManifestAdapter: false,
-      shouldUseViteRscServerReferences: false,
+      shouldUseViteRscServerReferences: true,
     });
   });
 
-  it("keeps plugin-rsc server references opt-in", () => {
+  it("can explicitly disable plugin-rsc server references", () => {
     expect(
       determineRscFeatureFlags({
-        experimentalViteRscServerReferences: true,
+        experimentalViteRscServerReferences: false,
       }),
     ).toEqual({
       shouldUseViteRscClientReferences: true,
       shouldUseViteRscManifestAdapter: true,
-      shouldUseViteRscServerReferences: true,
+      shouldUseViteRscServerReferences: false,
+    });
+  });
+
+  it("keeps the legacy server-reference transform available as env rollback", () => {
+    vi.stubEnv("RWSDK_LEGACY_RSC_SERVER_REFERENCES", "1");
+
+    expect(determineRscFeatureFlags()).toEqual({
+      shouldUseViteRscClientReferences: true,
+      shouldUseViteRscManifestAdapter: true,
+      shouldUseViteRscServerReferences: false,
+    });
+  });
+
+  it("keeps the old experimental server-reference env disable as rollback", () => {
+    vi.stubEnv("RWSDK_EXPERIMENTAL_VITE_RSC_SERVER_REFERENCES", "0");
+
+    expect(determineRscFeatureFlags()).toEqual({
+      shouldUseViteRscClientReferences: true,
+      shouldUseViteRscManifestAdapter: true,
+      shouldUseViteRscServerReferences: false,
     });
   });
 });

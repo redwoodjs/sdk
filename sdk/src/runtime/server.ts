@@ -1,5 +1,6 @@
 
 import { requestInfo } from "./requestInfo/worker";
+import { setServerFunctionMetadata } from "./serverFunctionMetadata.js";
 
 type Interruptor<TArgs extends any[] = any[]> = (
   context: { request: Request; ctx: Record<string, any>; args: TArgs },
@@ -16,6 +17,7 @@ type ServerFunctionOptions = {
 type WrappedServerFunction<TArgs extends any[] = any[], TResult = any> = {
   (...args: TArgs): Promise<TResult>;
   method?: "GET" | "POST";
+  source?: "action" | "query";
 };
 
 export type ServerFunctionWrap = (
@@ -86,7 +88,10 @@ function createServerFunction<TArgs extends any[] = any[], TResult = any>(
     return mainFn(...args);
   };
 
-  wrapped.method = options?.method ?? "POST";
+  setServerFunctionMetadata(wrapped, {
+    method: options?.method ?? "POST",
+    source: options?.__type ?? "action",
+  });
 
   return wrapped;
 }
@@ -126,9 +131,11 @@ export function serverQuery<TArgs extends any[], TResult>(
   }
 
   const method = options?.method ?? "GET"; // Default to GET for query
-  const wrapped = createServerFunction(fns, mainFn, { ...options, method, __type: "query" });
-  wrapped.method = method;
-  return wrapped;
+  return createServerFunction(fns, mainFn, {
+    ...options,
+    method,
+    __type: "query",
+  });
 }
 
 /**
@@ -166,7 +173,9 @@ export function serverAction<TArgs extends any[], TResult>(
   }
 
   const method = options?.method ?? "POST"; // Default to POST for action
-  const wrapped = createServerFunction(fns, mainFn, { ...options, method, __type: "action" });
-  wrapped.method = method;
-  return wrapped;
+  return createServerFunction(fns, mainFn, {
+    ...options,
+    method,
+    __type: "action",
+  });
 }

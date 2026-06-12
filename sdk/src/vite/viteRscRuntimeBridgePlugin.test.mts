@@ -28,6 +28,8 @@ describe("viteRscRuntimeBridgePlugin", () => {
     expect(code).toContain("$$isClientReference");
     expect(code).toContain("registerServerReference");
     expect(code).toContain("reference.method = action.method");
+    expect(code).toContain("reference.source = action.source");
+    expect(code).toContain("__rw_server_function");
     expect(code).toContain("plugin-rsc loadServerAction is disabled");
   });
 });

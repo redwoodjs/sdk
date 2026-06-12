@@ -62,8 +62,19 @@ export const registerClientReference = (proxy, id, name) => {
 
 export const registerServerReference = (action, id, name) => {
   const reference = baseRegisterServerReference(action, id, name);
-  if (typeof reference === "function" && action?.method) {
-    reference.method = action.method;
+  if (typeof reference === "function") {
+    if (action?.method) {
+      reference.method = action.method;
+    }
+    if (action?.source) {
+      reference.source = action.source;
+    }
+    if (action?.__rw_server_function) {
+      Object.defineProperty(reference, "__rw_server_function", {
+        value: action.__rw_server_function,
+        configurable: true,
+      });
+    }
   }
   return reference;
 };

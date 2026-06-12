@@ -61,9 +61,13 @@ export type RedwoodPluginOptions = {
 export const determineRscFeatureFlags = (options: RedwoodPluginOptions = {}) => {
   const shouldUseViteRscClientReferences =
     options.experimentalUseViteRscClientReferences ?? true;
+  const useLegacyServerReferences =
+    process.env.RWSDK_LEGACY_RSC_SERVER_REFERENCES === "1" ||
+    process.env.RWSDK_EXPERIMENTAL_VITE_RSC_SERVER_REFERENCES === "0";
   const shouldUseViteRscServerReferences =
     shouldUseViteRscClientReferences &&
-    (options.experimentalViteRscServerReferences ?? false);
+    !useLegacyServerReferences &&
+    (options.experimentalViteRscServerReferences ?? true);
   const shouldUseViteRscManifestAdapter =
     shouldUseViteRscClientReferences &&
     (options.experimentalUseViteRscManifestAdapter ?? true);

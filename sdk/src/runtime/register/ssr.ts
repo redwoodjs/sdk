@@ -1,5 +1,6 @@
 import { createServerReference as baseCreateServerReference } from "react-server-dom-webpack/client.edge";
 import { memoizeOnId } from "../lib/memoizeOnId";
+import { setServerFunctionMetadata } from "../serverFunctionMetadata.js";
 
 // @ts-ignore
 import { useServerLookup } from "virtual:use-server-lookup.js";
@@ -40,8 +41,10 @@ export const createServerReference = (
 ) => {
   id = id + "#" + name;
   const reference = baseCreateServerReference(id, ssrCallServer);
-  (reference as Function & { method?: "GET" | "POST"; source?: "action" | "query" }).method = _method;
-  (reference as Function & { method?: "GET" | "POST"; source?: "action" | "query" }).source = _source;
+  setServerFunctionMetadata(reference, {
+    method: _method ?? "POST",
+    source: _source,
+  });
   return reference;
 };
 
