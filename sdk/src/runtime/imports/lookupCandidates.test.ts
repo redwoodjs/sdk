@@ -9,11 +9,13 @@ describe("getLookupCandidates", () => {
     ]);
   });
 
-  it("includes pnpm file dependency source aliases", () => {
+  it("does not reverse-engineer pnpm file dependency aliases at runtime", () => {
     expect(
       getLookupCandidates(
-        "/node_modules/.pnpm/ui-lib@file+packages+ui-lib/node_modules/ui-lib/client.mjs",
+        "/node_modules/.pnpm/ui-lib@file+packages+my_lib_react@19.0.0/node_modules/ui-lib/client.mjs",
       ),
-    ).toContain("/packages/ui-lib/client.mjs");
+    ).toEqual([
+      "/node_modules/.pnpm/ui-lib@file+packages+my_lib_react@19.0.0/node_modules/ui-lib/client.mjs",
+    ]);
   });
 });

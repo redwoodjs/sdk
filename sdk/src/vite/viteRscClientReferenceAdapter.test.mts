@@ -111,6 +111,12 @@ describe("generateViteRscClientReferenceLookupEntries", () => {
           referenceKey: "symlinkRef",
           exportNames: ["Button"],
         },
+        "/repo/packages/my_lib/src/client.mjs": {
+          importId:
+            "/repo/app/node_modules/.pnpm/ui-lib@file+packages+my_lib_react@19.0.0/node_modules/ui-lib/src/client.mjs",
+          referenceKey: "pnpmFileRef",
+          exportNames: ["Client"],
+        },
       },
     });
 
@@ -125,6 +131,16 @@ describe("generateViteRscClientReferenceLookupEntries", () => {
     expect(entries).toContainEqual({
       key: "src/linked/Button.tsx#Button",
       importId: "/repo/app/src/linked/Button.tsx",
+    });
+    expect(entries).toContainEqual({
+      key: "/repo/packages/my_lib/src/client.mjs#Client",
+      importId:
+        "/repo/app/node_modules/.pnpm/ui-lib@file+packages+my_lib_react@19.0.0/node_modules/ui-lib/src/client.mjs",
+    });
+    expect(entries).toContainEqual({
+      key: "pnpmFileRef#Client",
+      importId:
+        "/repo/app/node_modules/.pnpm/ui-lib@file+packages+my_lib_react@19.0.0/node_modules/ui-lib/src/client.mjs",
     });
   });
 });

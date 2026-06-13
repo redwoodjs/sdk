@@ -15,6 +15,7 @@ import { hasDirective as sourceHasDirective } from "./hasDirective.mjs";
 import { invalidateModule } from "./invalidateModule.mjs";
 import { isJsFile } from "./isJsFile.mjs";
 import { VIRTUAL_SSR_PREFIX } from "./ssrVirtualModule.mjs";
+import { RESOLVED_VIRTUAL_MODULE } from "./viteRscClientReferencePlugin.mjs";
 
 const log = debug("rwsdk:vite:hmr-plugin");
 
@@ -217,7 +218,7 @@ export const miniflareHMRPlugin = (givenOptions: {
           invalidateModule(
             ctx.server,
             environment,
-            "virtual:use-client-lookup.js",
+            RESOLVED_VIRTUAL_MODULE,
           );
         });
         invalidateModule(
@@ -327,12 +328,17 @@ export const miniflareHMRPlugin = (givenOptions: {
           }
         }
 
-        if (nowImportsKnownClientFile && !previouslyImportedKnownClientFile) {
+        // context(kcc989, 2026-06-13): If the changed file itself has a
+        // 'use client' directive, a full-reload is unnecessary — the client
+        // module graph already handles it via rsc:update. The full-reload
+        // should only trigger when a non-client worker module newly imports
+        // a client module, requiring the worker env to rebuild the lookup.
+        if (!hasClientDirective && nowImportsKnownClientFile && !previouslyImportedKnownClientFile) {
           ["client", "ssr", environment].forEach((environment) => {
             invalidateModule(
               ctx.server,
               environment,
-              "virtual:use-client-lookup.js",
+              RESOLVED_VIRTUAL_MODULE,
             );
           });
           ctx.server.environments.client.hot.send({

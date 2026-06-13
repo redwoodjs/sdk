@@ -217,10 +217,17 @@ export const transformServerFunctions = (
         let source: "action" | "query" = "action";
 
         // Try to find if this export is a serverQuery or serverAction call to extract the method
+        // Match export const and export let forms; also support
+        // serverAction with an explicit method option.
         const patterns = [
           `export const ${name} = serverQuery($$$, { method: "$METHOD" })`,
+          `export let ${name} = serverQuery($$$, { method: "$METHOD" })`,
           `export const ${name} = serverQuery($$$)`,
+          `export let ${name} = serverQuery($$$)`,
+          `export const ${name} = serverAction($$$, { method: "$METHOD" })`,
+          `export let ${name} = serverAction($$$, { method: "$METHOD" })`,
           `export const ${name} = serverAction($$$)`,
+          `export let ${name} = serverAction($$$)`,
         ];
 
         for (const pattern of patterns) {
@@ -231,7 +238,8 @@ export const transformServerFunctions = (
               method = methodMatch ? methodMatch.text() : "GET";
               source = "query";
             } else if (pattern.includes("serverAction")) {
-              method = "POST";
+              const methodMatch = matches[0].getMatch("METHOD");
+              method = methodMatch ? methodMatch.text() : "POST";
               source = "action";
             }
             break;
@@ -265,6 +273,7 @@ export const transformServerFunctions = (
       const patterns = [
         `export default serverQuery($$$, { method: "$METHOD" })`,
         `export default serverQuery($$$)`,
+        `export default serverAction($$$, { method: "$METHOD" })`,
         `export default serverAction($$$)`,
       ];
 
@@ -276,7 +285,8 @@ export const transformServerFunctions = (
             method = methodMatch ? methodMatch.text() : "GET";
             source = "query";
           } else if (pattern.includes("serverAction")) {
-            method = "POST";
+            const methodMatch = matches[0].getMatch("METHOD");
+            method = methodMatch ? methodMatch.text() : "POST";
             source = "action";
           }
           break;

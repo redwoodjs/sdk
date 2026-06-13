@@ -7,18 +7,41 @@ import { hasDirective } from "./hasDirective.mjs";
 const directiveRegex = /^(\s*)(['"]use client['"])\s*;?\s*\n?/m;
 const serverPassthroughClientExports = new Set(["ColorSchemeScript"]);
 
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const nonComponentInitializerPrefix =
+  String.raw`(?:\{|\[|["'\`]|\d|true\b|false\b|null\b|undefined\b)`;
+
+const hasNonComponentNamedInitializer = (name: string, code: string) => {
+  const escapedName = escapeRegExp(name);
+  const pattern = new RegExp(
+    String.raw`\bexport\s+(?:const|let|var)\s+${escapedName}\s*=\s*${nonComponentInitializerPrefix}`,
+  );
+  return pattern.test(code);
+};
+
+const hasNonComponentDefaultInitializer = (code: string) => {
+  const pattern = new RegExp(
+    String.raw`\bexport\s+default\s+${nonComponentInitializerPrefix}`,
+  );
+  return pattern.test(code);
+};
+
 export const hasServerPassthroughClientExport = (id: string, code: string) => {
   const exports = findExports(id, code);
 
   return exports.some((exportInfo) => {
     if (exportInfo.isDefault) {
-      return false;
+      return hasNonComponentDefaultInitializer(code);
     }
 
     const name = exportInfo.name || exportInfo.originalName;
     return (
       !!name &&
-      (/^[a-z]/.test(name) || serverPassthroughClientExports.has(name))
+      (/^[a-z]/.test(name) ||
+        serverPassthroughClientExports.has(name) ||
+        hasNonComponentNamedInitializer(name, code))
     );
   });
 };

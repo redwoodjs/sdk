@@ -1,13 +1,41 @@
+import { getPluginApi } from "@vitejs/plugin-rsc/plugin";
 import debug from "debug";
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { ViteDevServer } from "vite";
+import type { ResolvedConfig, ViteDevServer } from "vite";
 import { Plugin } from "vite";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { transformClientComponents } from "./transformClientComponents.mjs";
 import { transformServerFunctions } from "./transformServerFunctions.mjs";
 
 const log = debug("rwsdk:vite:rsc-directives-plugin");
+
+type PluginRscReferenceMeta = {
+  importId?: string;
+  referenceKey?: string;
+};
+
+const stripViteQuery = (id: string) => id.split("?", 1)[0];
+
+export const pluginRscMetaMapHasModule = ({
+  metaMap,
+  id,
+  projectRootDir,
+}: {
+  metaMap: Record<string, PluginRscReferenceMeta>;
+  id: string;
+  projectRootDir: string;
+}) => {
+  const normalizedId = normalizeModulePath(stripViteQuery(id), projectRootDir);
+
+  return Object.entries(metaMap).some(([sourceId, meta]) => {
+    const candidates = [sourceId, meta.importId].filter(Boolean) as string[];
+    return candidates.some(
+      (candidate) =>
+        normalizeModulePath(stripViteQuery(candidate), projectRootDir) === normalizedId,
+    );
+  });
+};
 
 export const getLoader = (filePath: string) => {
   const ext = path.extname(filePath).slice(1);
@@ -43,14 +71,16 @@ export const directivesPlugin = ({
   experimentalUseViteRscClientReferences?: boolean;
   experimentalViteRscServerReferences?: boolean;
 }): Plugin => {
+  let config: ResolvedConfig;
   let devServer: ViteDevServer;
   let isAfterFirstResponse = false;
   let isBuild = false;
 
   return {
     name: "rwsdk:rsc-directives",
-    configResolved(config) {
-      isBuild = config.command === "build";
+    configResolved(resolvedConfig) {
+      config = resolvedConfig;
+      isBuild = resolvedConfig.command === "build";
     },
     configureServer(server) {
       // context(justinvdm, 19 Nov 2025): This hook adds a middleware to track
@@ -83,11 +113,16 @@ export const directivesPlugin = ({
       }
       const normalizedId = normalizeModulePath(id, projectRootDir);
 
+      const pluginApi = getPluginApi(config);
       const pluginRscHandledClientReference =
         experimentalUseViteRscClientReferences &&
         this.environment.name === "worker" &&
         clientFiles.has(normalizedId) &&
-        code.includes("registerClientReference");
+        pluginRscMetaMapHasModule({
+          metaMap: pluginApi?.manager.clientReferenceMetaMap ?? {},
+          id,
+          projectRootDir,
+        });
 
       const clientResult = pluginRscHandledClientReference
         ? undefined
@@ -108,8 +143,11 @@ export const directivesPlugin = ({
       const pluginRscHandledServerReference =
         experimentalViteRscServerReferences &&
         serverFiles.has(normalizedId) &&
-        (code.includes("createRedwoodServerReference") ||
-          code.includes("registerServerReference"));
+        pluginRscMetaMapHasModule({
+          metaMap: pluginApi?.manager.serverReferenceMetaMap ?? {},
+          id,
+          projectRootDir,
+        });
 
       const serverResult = pluginRscHandledServerReference
         ? undefined

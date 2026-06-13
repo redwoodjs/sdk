@@ -107,6 +107,16 @@ export function collectRedwoodServerReferenceMetadata(
     }
   }
 
+  for (const match of root.findAll(
+    'export const $NAME = serverAction($$$, { method: "$METHOD" })',
+  )) {
+    const exportName = match.getMatch("NAME")?.text();
+    const method = match.getMatch("METHOD")?.text();
+    if (exportName && (method === "GET" || method === "POST")) {
+      add({ exportName, source: "action", method });
+    }
+  }
+
   for (const match of root.findAll("export const $NAME = serverAction($$$)")) {
     const exportName = match.getMatch("NAME")?.text();
     if (exportName) {
@@ -125,6 +135,15 @@ export function collectRedwoodServerReferenceMetadata(
 
   if (root.find("export default serverQuery($$$)")) {
     add({ exportName: "default", source: "query", method: "GET" });
+  }
+
+  for (const match of root.findAll(
+    'export default serverAction($$$, { method: "$METHOD" })',
+  )) {
+    const method = match.getMatch("METHOD")?.text();
+    if (method === "GET" || method === "POST") {
+      add({ exportName: "default", source: "action", method });
+    }
   }
 
   if (root.find("export default serverAction($$$)")) {

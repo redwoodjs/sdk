@@ -10,6 +10,7 @@ import "./setWebpackRequire";
 import React from "react";
 
 import { hydrateRoot } from "react-dom/client";
+import { setServerCallback } from "@vitejs/plugin-rsc/react/browser";
 import {
   createFromFetch,
   createFromReadableStream,
@@ -259,6 +260,11 @@ export const initClient = async ({
   };
 
   globalThis.__rsc_callServer = callServer;
+
+  // Wire plugin-rsc's own callServer (used by untouched $$ReactClient.createServerReference
+  // calls) to Redwood's callServer so that server references not covered by metadata
+  // don't fall through to a dead callServer that throws.
+  setServerCallback(callServer);
 
   globalThis.__rw = {
     callServer,

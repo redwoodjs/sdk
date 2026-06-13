@@ -7,8 +7,8 @@ import {
   type ViteRscClientReferenceMeta,
 } from "./viteRscClientReferenceAdapter.mjs";
 
-const VIRTUAL_MODULE = "virtual:use-client-lookup.js";
-const RESOLVED_VIRTUAL_MODULE = "\0rwsdk:vite-rsc-use-client-lookup";
+export const VIRTUAL_MODULE = "virtual:use-client-lookup.js";
+export const RESOLVED_VIRTUAL_MODULE = "\0rwsdk:vite-rsc-use-client-lookup";
 const ENCODED_RESOLVED_VIRTUAL_MODULE = "__x00__rwsdk:vite-rsc-use-client-lookup";
 
 type ClientReferenceMetaMap = Record<string, ViteRscClientReferenceMeta>;

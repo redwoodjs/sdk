@@ -12,7 +12,8 @@ describe("viteRscServerReferenceBridgePlugin", () => {
        import { serverAction, serverQuery } from "rwsdk/worker";
        export const getGreeting = serverQuery(async () => "hi");
        export const saveGreeting = serverAction(async () => "saved");
-       export default serverQuery(async () => "default", { method: "POST" });`,
+       export const getSavedGreeting = serverAction(async () => "saved", { method: "GET" });
+       export default serverAction(async () => "default", { method: "GET" });`,
       "/src/app/functions.ts",
     );
 
@@ -21,8 +22,8 @@ describe("viteRscServerReferenceBridgePlugin", () => {
         {
           moduleId: "/src/app/functions.ts",
           exportName: "default",
-          source: "query",
-          method: "POST",
+          source: "action",
+          method: "GET",
         },
         {
           moduleId: "/src/app/functions.ts",
@@ -36,9 +37,15 @@ describe("viteRscServerReferenceBridgePlugin", () => {
           source: "action",
           method: "POST",
         },
+        {
+          moduleId: "/src/app/functions.ts",
+          exportName: "getSavedGreeting",
+          source: "action",
+          method: "GET",
+        },
       ]),
     );
-    expect(metadata).toHaveLength(3);
+    expect(metadata).toHaveLength(4);
   });
 
   it("collects use-server re-export metadata links", () => {

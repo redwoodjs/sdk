@@ -18,16 +18,45 @@ type ManifestData = {
 const log = debug("rwsdk:vite:vite-rsc-manifest-data");
 const persistedClientReferenceMetaMaps = new Map<string, ClientReferenceMetaMap>();
 
-const runtimeManifestFiles = [
-  "/runtime/render/createClientManifest.",
-  "/runtime/render/createModuleMap.",
-];
+// context(kcc989, 2026-06-13): Bug #10 fix — use suffix matching on the
+// resolved file path instead of substring sniffing. The needles are exact
+// path suffixes that match the runtime manifest files regardless of the
+// absolute prefix. This avoids misfires when plugin-rsc transforms the id.
+const runtimeManifestFileSuffixes = new Set([
+  "/runtime/render/createClientManifest.js",
+  "/runtime/render/createClientManifest.ts",
+  "/runtime/render/createModuleMap.js",
+  "/runtime/render/createModuleMap.ts",
+]);
 
-const normalizeId = (id: string) => id.replace(/\\/g, "/");
+const normalizeId = (id: string) => id.replace(/\\/g, "/").split("?", 1)[0];
 
-const isRuntimeManifestFile = (id: string) => {
+export const isRuntimeManifestFile = (id: string) => {
   const normalized = normalizeId(id);
-  return runtimeManifestFiles.some((needle) => normalized.includes(needle));
+  // Check exact suffixes only. This avoids false positives from arbitrary
+  // virtual ids that merely contain createClientManifest/createModuleMap.
+  for (const suffix of runtimeManifestFileSuffixes) {
+    if (normalized.endsWith(suffix)) {
+      return true;
+    }
+  }
+  return false;
+};
+
+const assertAfterPluginRsc = (plugins: readonly { name: string }[]) => {
+  const ownIndex = plugins.findIndex(
+    (plugin) => plugin.name === "rwsdk:vite-rsc-manifest-data",
+  );
+  const requiredBefore = ["rsc:minimal", "rsc:use-client/build-references"];
+
+  for (const requiredName of requiredBefore) {
+    const requiredIndex = plugins.findIndex((plugin) => plugin.name === requiredName);
+    if (requiredIndex !== -1 && ownIndex !== -1 && ownIndex < requiredIndex) {
+      throw new Error(
+        `rwsdk:vite-rsc-manifest-data must run after ${requiredName} so plugin-rsc metadata is available`,
+      );
+    }
+  }
 };
 
 export const generateViteRscManifestDataCode = (
@@ -100,6 +129,7 @@ export const viteRscManifestDataPlugin = ({
     },
     configResolved(resolvedConfig) {
       config = resolvedConfig;
+      assertAfterPluginRsc(resolvedConfig.plugins);
     },
     configureServer(server) {
       devServer = server;

@@ -20,11 +20,44 @@ describe("hasServerPassthroughClientExport", () => {
     ).toBe(true);
   });
 
+  it("detects uppercase non-component constants", () => {
+    expect(
+      hasServerPassthroughClientExport(
+        "/src/app/constants.ts",
+        `"use client";\nexport const THEME_CONFIG = { color: "red" };`,
+      ),
+    ).toBe(true);
+  });
+
+  it("detects default object and array exports as passthrough", () => {
+    expect(
+      hasServerPassthroughClientExport(
+        "/src/app/config.ts",
+        `"use client";\nexport default { color: "red" };`,
+      ),
+    ).toBe(true);
+    expect(
+      hasServerPassthroughClientExport(
+        "/src/app/list.ts",
+        `"use client";\nexport default ["red", "blue"];`,
+      ),
+    ).toBe(true);
+  });
+
   it("does not mark component-only modules as server passthrough", () => {
     expect(
       hasServerPassthroughClientExport(
         "/src/app/Button.tsx",
         `"use client";\nexport function AppButton() { return null; }\nexport default function DefaultButton() { return null; }`,
+      ),
+    ).toBe(false);
+  });
+
+  it("does not mark identifier default component exports as passthrough", () => {
+    expect(
+      hasServerPassthroughClientExport(
+        "/src/app/Button.tsx",
+        `"use client";\nfunction Button() { return null; }\nexport default Button;`,
       ),
     ).toBe(false);
   });
