@@ -42,7 +42,7 @@ import {
   decodeReply,
   decodeAction,
   decodeFormState,
-  renderToReadableStream,
+  renderToReadableStream as baseRenderToReadableStream,
   createTemporaryReferenceSet,
 } from "react-server-dom-webpack/server.edge";
 import { requestInfo } from "rwsdk/worker";
@@ -97,11 +97,32 @@ export const registerServerReference = (action, id, name) => {
   return reference;
 };
 
+const createClientManifest = (onClientReference) =>
+  new Proxy({}, {
+    get(_target, $$id) {
+      if (typeof $$id !== "string") {
+        throw new Error("Expected client reference id to be a string");
+      }
+      const [id, name] = $$id.split("#");
+      if (!id || !name) {
+        throw new Error("Expected client reference id to include an export name: " + $$id);
+      }
+      onClientReference?.({ id, name });
+      return { id, name, chunks: [], async: true };
+    },
+  });
+
+export const renderToReadableStream = (data, options, extraOptions) =>
+  baseRenderToReadableStream(
+    data,
+    createClientManifest(extraOptions?.onClientReference),
+    options,
+  );
+
 export {
   decodeReply,
   decodeAction,
   decodeFormState,
-  renderToReadableStream,
   createTemporaryReferenceSet,
 };
 

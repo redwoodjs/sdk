@@ -24,6 +24,11 @@ describe("viteRscRuntimeBridgePlugin", () => {
     const code = load.call({}, "\0rwsdk:vite-rsc-runtime-bridge");
 
     expect(code).toContain("react-server-dom-webpack/server.edge");
+    expect(code).toContain("baseRenderToReadableStream");
+    expect(code).toContain(
+      "createClientManifest(extraOptions?.onClientReference)",
+    );
+    expect(code).toContain("onClientReference?.({ id, name })");
     expect(code).toContain("registerClientReference");
     expect(code).toContain('import { requestInfo } from "rwsdk/worker"');
     expect(code).toContain("requestInfo.rw.scriptsToBeLoaded.add(id)");
