@@ -56,6 +56,26 @@ describe("determineRscFeatureFlags", () => {
     });
   });
 
+  it("keeps the legacy client-reference lookup path available as env rollback", () => {
+    vi.stubEnv("RWSDK_LEGACY_RSC_CLIENT_REFERENCES", "1");
+
+    expect(determineRscFeatureFlags()).toEqual({
+      shouldUseViteRscClientReferences: false,
+      shouldUseViteRscManifestAdapter: false,
+      shouldUseViteRscServerReferences: false,
+    });
+  });
+
+  it("keeps the old experimental client-reference env disable as rollback", () => {
+    vi.stubEnv("RWSDK_EXPERIMENTAL_VITE_RSC_CLIENT_REFERENCES", "0");
+
+    expect(determineRscFeatureFlags()).toEqual({
+      shouldUseViteRscClientReferences: false,
+      shouldUseViteRscManifestAdapter: false,
+      shouldUseViteRscServerReferences: false,
+    });
+  });
+
   it("keeps the legacy server-reference transform available as env rollback", () => {
     vi.stubEnv("RWSDK_LEGACY_RSC_SERVER_REFERENCES", "1");
 
@@ -72,6 +92,34 @@ describe("determineRscFeatureFlags", () => {
     expect(determineRscFeatureFlags()).toEqual({
       shouldUseViteRscClientReferences: true,
       shouldUseViteRscManifestAdapter: true,
+      shouldUseViteRscServerReferences: false,
+    });
+  });
+
+  it("keeps the old experimental manifest adapter env disable as rollback", () => {
+    vi.stubEnv("RWSDK_EXPERIMENTAL_VITE_RSC_MANIFEST_ADAPTER", "0");
+
+    expect(determineRscFeatureFlags()).toEqual({
+      shouldUseViteRscClientReferences: true,
+      shouldUseViteRscManifestAdapter: false,
+      shouldUseViteRscServerReferences: true,
+    });
+  });
+
+  it("lets env rollback flags override options that try to enable plugin-rsc features", () => {
+    vi.stubEnv("RWSDK_LEGACY_RSC_CLIENT_REFERENCES", "1");
+    vi.stubEnv("RWSDK_EXPERIMENTAL_VITE_RSC_SERVER_REFERENCES", "0");
+    vi.stubEnv("RWSDK_EXPERIMENTAL_VITE_RSC_MANIFEST_ADAPTER", "0");
+
+    expect(
+      determineRscFeatureFlags({
+        experimentalUseViteRscClientReferences: true,
+        experimentalUseViteRscManifestAdapter: true,
+        experimentalViteRscServerReferences: true,
+      }),
+    ).toEqual({
+      shouldUseViteRscClientReferences: false,
+      shouldUseViteRscManifestAdapter: false,
       shouldUseViteRscServerReferences: false,
     });
   });

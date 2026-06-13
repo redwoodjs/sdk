@@ -1,6 +1,6 @@
 import { getPluginApi } from "@vitejs/plugin-rsc/plugin";
 import debug from "debug";
-import type { Plugin, ResolvedConfig, ViteDevServer } from "vite";
+import type { Plugin, ResolvedConfig } from "vite";
 import type { ViteRscClientReferenceMeta } from "./viteRscClientReferenceAdapter.mjs";
 
 const VIRTUAL_MODULE = "virtual:rwsdk-vite-rsc-manifest-data.js";
@@ -12,7 +12,6 @@ type ClientReferenceMetaMap = Record<string, ViteRscClientReferenceMeta>;
 type ManifestData = {
   clientReferenceMetaMap: ClientReferenceMetaMap;
   projectRootDir: string;
-  useAssetChunks: false;
 };
 
 const log = debug("rwsdk:vite:vite-rsc-manifest-data");
@@ -73,7 +72,6 @@ export const viteRscManifestDataPlugin = ({
   projectRootDir: string;
 }): Plugin => {
   let config: ResolvedConfig;
-  let devServer: ViteDevServer | undefined;
   let isBuild = false;
 
   const liveClientReferenceMetaMap = () =>
@@ -100,27 +98,10 @@ export const viteRscManifestDataPlugin = ({
     return {
       clientReferenceMetaMap: currentClientReferenceMetaMap(),
       projectRootDir,
-      // Keep Redwood's existing chunks: [] behavior for the first wired step.
-      useAssetChunks: false,
     };
   };
 
   const manifestAssignment = () => generateViteRscManifestDataCode(manifestData());
-
-  const invalidateVirtualModule = () => {
-    if (!devServer) {
-      return;
-    }
-
-    const module =
-      devServer.moduleGraph.getModuleById(RESOLVED_VIRTUAL_MODULE) ??
-      devServer.moduleGraph.getModuleById(VIRTUAL_MODULE);
-
-    if (module) {
-      devServer.moduleGraph.invalidateModule(module);
-      log("invalidated %s", RESOLVED_VIRTUAL_MODULE);
-    }
-  };
 
   return {
     name: "rwsdk:vite-rsc-manifest-data",
@@ -130,9 +111,6 @@ export const viteRscManifestDataPlugin = ({
     configResolved(resolvedConfig) {
       config = resolvedConfig;
       assertAfterPluginRsc(resolvedConfig.plugins);
-    },
-    configureServer(server) {
-      devServer = server;
     },
     resolveId(source) {
       if (source === VIRTUAL_MODULE || source === ENCODED_RESOLVED_VIRTUAL_MODULE) {
@@ -173,12 +151,6 @@ export const viteRscManifestDataPlugin = ({
     },
     generateBundle() {
       persistIfPresent();
-    },
-    handleHotUpdate(ctx) {
-      if (ctx.modules.some((module) => module.id && currentClientReferenceMetaMap()[module.id])) {
-        persistIfPresent();
-        invalidateVirtualModule();
-      }
     },
   };
 };

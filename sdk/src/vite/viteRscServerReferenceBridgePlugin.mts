@@ -25,6 +25,14 @@ type ReExportMetadata = {
 
 const log = debug("rwsdk:vite:vite-rsc-server-reference-bridge");
 
+// Plugin-rsc path ownership note:
+// - plugin-rsc discovers and emits native server-reference calls.
+// - This bridge is Redwood's single client/SSR owner for adapting those calls
+//   back to Redwood's public serverAction/serverQuery method/source contract.
+// - directivesPlugin skips modules that plugin-rsc metadata says it owns, so
+//   the legacy transform remains a rollback path instead of a second owner.
+// - Server lookup generation remains separate because it serves the worker
+//   module-loading path, not client/SSR reference rewriting.
 const metadataKey = (moduleId: string, exportName: string) =>
   `${moduleId}#${exportName}`;
 

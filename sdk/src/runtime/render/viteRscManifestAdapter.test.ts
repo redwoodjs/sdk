@@ -116,28 +116,13 @@ describe("vite-rsc manifest/module-map adapters", () => {
     });
   });
 
-  it("can opt into plugin-rsc asset deps while defaulting to chunkless Redwood entries", () => {
-    const chunkless = createClientManifestFromViteRsc({
+  it("keeps Redwood manifest entries chunkless on the current adapter boundary", () => {
+    const manifest = createClientManifestFromViteRsc({
       clientReferenceMetaMap,
-      clientReferenceDeps: {
-        mixedRef: { js: ["/assets/Mixed.js"], css: ["/assets/Mixed.css"] },
-      },
       projectRootDir: "/repo/app",
-    }) as any;
-    const withChunks = createClientManifestFromViteRsc({
-      clientReferenceMetaMap,
-      clientReferenceDeps: {
-        mixedRef: { js: ["/assets/Mixed.js"], css: ["/assets/Mixed.css"] },
-      },
-      projectRootDir: "/repo/app",
-      useAssetChunks: true,
     }) as any;
 
-    expect(chunkless["mixedRef#MixedNamed"].chunks).toEqual([]);
-    expect(withChunks["mixedRef#MixedNamed"].chunks).toEqual([
-      "/assets/Mixed.js",
-      "/assets/Mixed.css",
-    ]);
+    expect(manifest["mixedRef#MixedNamed"].chunks).toEqual([]);
   });
 
   it("resolves Vite HMR timestamp aliases in client manifests and module maps", () => {

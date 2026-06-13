@@ -6,6 +6,16 @@ export type ServerFunctionMetadata = {
   source: ServerFunctionSource;
 };
 
+export type CreateServerReferenceOptions = Partial<ServerFunctionMetadata>;
+
+export const normalizeServerFunctionMetadata = ({
+  method = "POST",
+  source = "action",
+}: CreateServerReferenceOptions = {}): ServerFunctionMetadata => ({
+  method,
+  source,
+});
+
 type ServerFunctionWithMetadata = Function & {
   method?: ServerFunctionMethod;
   source?: ServerFunctionSource;
@@ -57,16 +67,3 @@ export function getServerFunctionMetadata(
   return undefined;
 }
 
-export function copyServerFunctionMetadata<T extends Function>(
-  from: unknown,
-  to: T,
-  fallback?: ServerFunctionMetadata,
-): T {
-  const metadata = getServerFunctionMetadata(from) ?? fallback;
-
-  if (metadata) {
-    setServerFunctionMetadata(to, metadata);
-  }
-
-  return to;
-}

@@ -3,10 +3,10 @@ import {
   disabledPluginRscServerReferencePluginNames,
   requiredPluginRscClientReferencePluginNames,
   redwoodViteRscEnvironment,
-  viteRscClientReferencePlugins,
+  pluginRscBasePlugins,
 } from "./viteRscClientPlugins.mjs";
 
-describe("viteRscClientReferencePlugins", () => {
+describe("pluginRscBasePlugins", () => {
   it("uses Redwood's Vite environment names for plugin-rsc", () => {
     expect(redwoodViteRscEnvironment).toEqual({
       rsc: "worker",
@@ -16,7 +16,7 @@ describe("viteRscClientReferencePlugins", () => {
   });
 
   it("includes plugin-rsc client-reference plugins and excludes native server-reference plugins by default", () => {
-    const plugins = viteRscClientReferencePlugins();
+    const plugins = pluginRscBasePlugins();
     const names = new Set(plugins.map((plugin) => plugin.name));
 
     for (const requiredName of requiredPluginRscClientReferencePluginNames) {
@@ -29,8 +29,8 @@ describe("viteRscClientReferencePlugins", () => {
   });
 
   it("can opt into plugin-rsc server references while keeping action encryption disabled", () => {
-    const plugins = viteRscClientReferencePlugins({
-      experimentalServerReferences: true,
+    const plugins = pluginRscBasePlugins({
+      includeServerReferences: true,
     });
     const names = new Set(plugins.map((plugin) => plugin.name));
 

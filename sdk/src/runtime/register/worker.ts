@@ -6,7 +6,6 @@ import {
 } from "react-server-dom-webpack/server.edge";
 import { getServerModuleExport } from "../imports/worker.js";
 import { requestInfo } from "../requestInfo/worker.js";
-import { copyServerFunctionMetadata } from "../serverFunctionMetadata.js";
 import { rscActionHandler as rscActionHandlerImpl } from "./methodEnforcer.js";
 
 export function registerServerReference(
@@ -19,15 +18,9 @@ export function registerServerReference(
   }
 
   // Note: We no longer need to register in a Map since we use virtual lookup.
-  // Preserve Redwood method metadata when plugin-rsc wraps a serverQuery or
-  // serverAction with React's server-reference marker; the action handler uses
-  // this metadata for GET/POST enforcement.
-  const reference = baseRegisterServerReference(action, id, name);
-  if (typeof reference === "function") {
-    copyServerFunctionMetadata(action, reference);
-  }
-
-  return reference;
+  // React mutates and returns the same function here, so existing Redwood method
+  // metadata on serverAction/serverQuery remains attached to the action.
+  return baseRegisterServerReference(action, id, name);
 }
 
 const isComponent = (target: unknown) =>

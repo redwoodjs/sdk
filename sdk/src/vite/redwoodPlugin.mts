@@ -37,7 +37,7 @@ import { useServerLookupPlugin } from "./useServerLookupPlugin.mjs";
 import { vitePreamblePlugin } from "./vitePreamblePlugin.mjs";
 import { viteRscClientReferencePassthroughPlugin } from "./viteRscClientReferencePassthroughPlugin.mjs";
 import { viteRscClientReferencePlugin } from "./viteRscClientReferencePlugin.mjs";
-import { viteRscClientReferencePlugins } from "./viteRscClientPlugins.mjs";
+import { pluginRscBasePlugins } from "./viteRscClientPlugins.mjs";
 import { viteRscRuntimeBridgePlugin } from "./viteRscRuntimeBridgePlugin.mjs";
 import { viteRscServerReferenceBridgePlugin } from "./viteRscServerReferenceBridgePlugin.mjs";
 import { viteRscServerReferenceLookupPlugin } from "./viteRscServerReferenceLookupPlugin.mjs";
@@ -60,19 +60,43 @@ export type RedwoodPluginOptions = {
   experimentalViteRscServerReferences?: boolean;
 };
 
+const usePluginRscFeature = ({
+  option,
+  legacyEnv,
+  experimentalEnv,
+}: {
+  option?: boolean;
+  legacyEnv?: string;
+  experimentalEnv: string;
+}) => {
+  if (legacyEnv && process.env[legacyEnv] === "1") {
+    return false;
+  }
+  if (process.env[experimentalEnv] === "0") {
+    return false;
+  }
+  return option ?? true;
+};
+
 export const determineRscFeatureFlags = (options: RedwoodPluginOptions = {}) => {
-  const shouldUseViteRscClientReferences =
-    options.experimentalUseViteRscClientReferences ?? true;
-  const useLegacyServerReferences =
-    process.env.RWSDK_LEGACY_RSC_SERVER_REFERENCES === "1" ||
-    process.env.RWSDK_EXPERIMENTAL_VITE_RSC_SERVER_REFERENCES === "0";
+  const shouldUseViteRscClientReferences = usePluginRscFeature({
+    option: options.experimentalUseViteRscClientReferences,
+    legacyEnv: "RWSDK_LEGACY_RSC_CLIENT_REFERENCES",
+    experimentalEnv: "RWSDK_EXPERIMENTAL_VITE_RSC_CLIENT_REFERENCES",
+  });
   const shouldUseViteRscServerReferences =
     shouldUseViteRscClientReferences &&
-    !useLegacyServerReferences &&
-    (options.experimentalViteRscServerReferences ?? true);
+    usePluginRscFeature({
+      option: options.experimentalViteRscServerReferences,
+      legacyEnv: "RWSDK_LEGACY_RSC_SERVER_REFERENCES",
+      experimentalEnv: "RWSDK_EXPERIMENTAL_VITE_RSC_SERVER_REFERENCES",
+    });
   const shouldUseViteRscManifestAdapter =
     shouldUseViteRscClientReferences &&
-    (options.experimentalUseViteRscManifestAdapter ?? true);
+    usePluginRscFeature({
+      option: options.experimentalUseViteRscManifestAdapter,
+      experimentalEnv: "RWSDK_EXPERIMENTAL_VITE_RSC_MANIFEST_ADAPTER",
+    });
 
   return {
     shouldUseViteRscClientReferences,
@@ -171,6 +195,49 @@ export const redwoodPlugin = async (
     await $`npm run dev:init`;
   }
 
+  // Keep plugin-rsc-related plugins grouped so ordering constraints stay clear:
+  // 1. runtime bridge before plugin-rsc base plugins
+  // 2. Redwood bridge/passthrough adapters before plugin-rsc metadata collection
+  // 3. Redwood lookup/manifest adapters after plugin-rsc metadata is available
+  const pluginRscPlugins = shouldUseViteRscClientReferences
+    ? [
+        viteRscRuntimeBridgePlugin(),
+        ...(shouldUseViteRscServerReferences
+          ? [viteRscServerReferenceBridgePlugin({ projectRootDir })]
+          : []),
+        viteRscClientReferencePassthroughPlugin({ clientFiles, projectRootDir }),
+        ...pluginRscBasePlugins({
+          includeServerReferences: shouldUseViteRscServerReferences,
+        }),
+        viteRscClientReferencePlugin({ clientFiles, projectRootDir }),
+        ...(shouldUseViteRscManifestAdapter
+          ? [viteRscManifestDataPlugin({ projectRootDir })]
+          : []),
+      ]
+    : [];
+
+  const directiveLookupPlugins = [
+    ...(shouldUseViteRscClientReferences
+      ? []
+      : [
+          // Legacy fallback/rollback path. The preferred default path uses
+          // plugin-rsc client-reference metadata plus Redwood adapters.
+          useClientLookupPlugin({
+            projectRootDir,
+            clientFiles,
+          }),
+        ]),
+    shouldUseViteRscServerReferences
+      ? viteRscServerReferenceLookupPlugin({
+          projectRootDir,
+          serverFiles,
+        })
+      : useServerLookupPlugin({
+          projectRootDir,
+          serverFiles,
+        }),
+  ];
+
   return [
     staleDepRetryPlugin(),
     statePlugin({ projectRootDir }),
@@ -200,24 +267,7 @@ export const redwoodPlugin = async (
     knownDepsResolverPlugin({ projectRootDir }),
     cloudflarePreInitPlugin(),
     tsconfigPaths({ root: projectRootDir }),
-    shouldUseViteRscClientReferences ? viteRscRuntimeBridgePlugin() : [],
-    shouldUseViteRscServerReferences
-      ? viteRscServerReferenceBridgePlugin({ projectRootDir })
-      : [],
-    shouldUseViteRscClientReferences
-      ? viteRscClientReferencePassthroughPlugin({ clientFiles, projectRootDir })
-      : [],
-    shouldUseViteRscClientReferences
-      ? viteRscClientReferencePlugins({
-          experimentalServerReferences: shouldUseViteRscServerReferences,
-        })
-      : [],
-    shouldUseViteRscClientReferences
-      ? viteRscClientReferencePlugin({ clientFiles, projectRootDir })
-      : [],
-    shouldUseViteRscManifestAdapter
-      ? viteRscManifestDataPlugin({ projectRootDir })
-      : [],
+    pluginRscPlugins,
     shouldIncludeCloudflarePlugin
       ? (cloudflare({
           viteEnvironment: { name: "worker" },
@@ -244,23 +294,7 @@ export const redwoodPlugin = async (
       clientEntryPoints,
       projectRootDir,
     }),
-    shouldUseViteRscClientReferences
-      ? []
-      : // Legacy fallback/rollback path. The preferred default path uses
-        // plugin-rsc client-reference metadata plus Redwood adapters.
-        useClientLookupPlugin({
-          projectRootDir,
-          clientFiles,
-        }),
-    shouldUseViteRscServerReferences
-      ? viteRscServerReferenceLookupPlugin({
-          projectRootDir,
-          serverFiles,
-        })
-      : useServerLookupPlugin({
-          projectRootDir,
-          serverFiles,
-        }),
+    directiveLookupPlugins,
     transformJsxScriptTagsPlugin({
       clientEntryPoints,
       projectRootDir,

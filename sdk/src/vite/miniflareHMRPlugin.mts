@@ -67,6 +67,58 @@ export const moduleImportsKnownClientFile = ({
   return false;
 };
 
+export const shouldFullReloadForNewClientImport = ({
+  hasClientDirective,
+  nowImportsKnownClientFile,
+  previouslyImportedKnownClientFile,
+}: {
+  hasClientDirective: boolean;
+  nowImportsKnownClientFile: boolean;
+  previouslyImportedKnownClientFile: boolean;
+}) =>
+  !hasClientDirective &&
+  nowImportsKnownClientFile &&
+  !previouslyImportedKnownClientFile;
+
+export type LookupInvalidationTarget = {
+  environment: string;
+  id: string;
+};
+
+export const clientDirectiveLookupInvalidationTargets = (
+  workerEnvironment: string,
+): LookupInvalidationTarget[] => [
+  ...["client", "ssr", workerEnvironment].map((environment) => ({
+    environment,
+    id: RESOLVED_VIRTUAL_MODULE,
+  })),
+  {
+    environment: workerEnvironment,
+    id: VIRTUAL_SSR_PREFIX + "/@id/virtual:use-client-lookup.js",
+  },
+  {
+    environment: workerEnvironment,
+    id: VIRTUAL_SSR_PREFIX + "virtual:use-client-lookup.js",
+  },
+];
+
+export const serverDirectiveLookupInvalidationTargets = (
+  workerEnvironment: string,
+): LookupInvalidationTarget[] => [
+  ...["client", "ssr", workerEnvironment].map((environment) => ({
+    environment,
+    id: "virtual:use-server-lookup.js",
+  })),
+  {
+    environment: workerEnvironment,
+    id: VIRTUAL_SSR_PREFIX + "/@id/virtual:use-server-lookup.js",
+  },
+  {
+    environment: workerEnvironment,
+    id: VIRTUAL_SSR_PREFIX + "virtual:use-server-lookup.js",
+  },
+];
+
 export const hasEntryAsAncestor = ({
   module,
   entryFile,
@@ -214,43 +266,15 @@ export const miniflareHMRPlugin = (givenOptions: {
       }
 
       if (clientDirectiveChanged) {
-        ["client", "ssr", environment].forEach((environment) => {
-          invalidateModule(
-            ctx.server,
-            environment,
-            RESOLVED_VIRTUAL_MODULE,
-          );
-        });
-        invalidateModule(
-          ctx.server,
-          environment,
-          VIRTUAL_SSR_PREFIX + "/@id/virtual:use-client-lookup.js",
-        );
-        invalidateModule(
-          ctx.server,
-          environment,
-          VIRTUAL_SSR_PREFIX + "virtual:use-client-lookup.js",
-        );
+        for (const target of clientDirectiveLookupInvalidationTargets(environment)) {
+          invalidateModule(ctx.server, target.environment, target.id);
+        }
       }
 
       if (serverDirectiveChanged) {
-        ["client", "ssr", environment].forEach((environment) => {
-          invalidateModule(
-            ctx.server,
-            environment,
-            "virtual:use-server-lookup.js",
-          );
-        });
-        invalidateModule(
-          ctx.server,
-          environment,
-          VIRTUAL_SSR_PREFIX + "/@id/virtual:use-server-lookup.js",
-        );
-        invalidateModule(
-          ctx.server,
-          environment,
-          VIRTUAL_SSR_PREFIX + "virtual:use-server-lookup.js",
-        );
+        for (const target of serverDirectiveLookupInvalidationTargets(environment)) {
+          invalidateModule(ctx.server, target.environment, target.id);
+        }
       }
 
       const modules = Array.from(
@@ -333,7 +357,13 @@ export const miniflareHMRPlugin = (givenOptions: {
         // module graph already handles it via rsc:update. The full-reload
         // should only trigger when a non-client worker module newly imports
         // a client module, requiring the worker env to rebuild the lookup.
-        if (!hasClientDirective && nowImportsKnownClientFile && !previouslyImportedKnownClientFile) {
+        if (
+          shouldFullReloadForNewClientImport({
+            hasClientDirective,
+            nowImportsKnownClientFile,
+            previouslyImportedKnownClientFile,
+          })
+        ) {
           ["client", "ssr", environment].forEach((environment) => {
             invalidateModule(
               ctx.server,

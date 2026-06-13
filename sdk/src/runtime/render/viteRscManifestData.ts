@@ -1,13 +1,8 @@
-import type {
-  ClientReferenceDeps,
-  ViteRscClientReferenceMetaMap,
-} from "./viteRscManifestAdapter.js";
+import type { ViteRscClientReferenceMetaMap } from "./viteRscManifestAdapter.js";
 
 export type ViteRscManifestData = {
   clientReferenceMetaMap: ViteRscClientReferenceMetaMap;
-  clientReferenceDeps?: Record<string, ClientReferenceDeps>;
   projectRootDir?: string;
-  useAssetChunks?: boolean;
 };
 
 const globalManifestData = () =>

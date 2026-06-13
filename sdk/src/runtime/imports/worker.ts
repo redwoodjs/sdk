@@ -1,6 +1,7 @@
 import { ssrWebpackRequire as baseSsrWebpackRequire } from "rwsdk/__ssr_bridge";
 import { memoizeOnId } from "../lib/memoizeOnId";
 import { requestInfo } from "../requestInfo/worker";
+import { createNullSsrModule } from "./nullSsrModule.js";
 
 // @ts-ignore
 import { useServerLookup } from "virtual:use-server-lookup.js";
@@ -31,18 +32,7 @@ export const ssrWebpackRequire = memoizeOnId(async (id: string) => {
     // (id=referenceKey, name=exportName), the old placeholder {[id]:()=>null}
     // keyed on the full referenceKey#name string, but React reads by export name.
     // A Proxy avoids this mismatch: every named property returns () => null.
-    return new Proxy(
-      {},
-      {
-        get(_target, prop) {
-          // Return undefined for then/catch to avoid being treated as a thenable
-          if (prop === "then" || prop === "catch" || prop === "finally") {
-            return undefined;
-          }
-          return () => null;
-        },
-      },
-    );
+    return createNullSsrModule();
   }
 
   return baseSsrWebpackRequire(id);

@@ -19,10 +19,10 @@ export const requiredPluginRscClientReferencePluginNames = new Set([
   "rsc:use-client/build-references",
 ]);
 
-export const viteRscClientReferencePlugins = ({
-  experimentalServerReferences = false,
+export const pluginRscBasePlugins = ({
+  includeServerReferences = false,
 }: {
-  experimentalServerReferences?: boolean;
+  includeServerReferences?: boolean;
 } = {}): Plugin[] => {
   const plugins = vitePluginRscMinimal({
     serverHandler: false,
@@ -32,7 +32,7 @@ export const viteRscClientReferencePlugins = ({
     environment: redwoodViteRscEnvironment,
   });
 
-  const disabledNames = experimentalServerReferences
+  const disabledNames = includeServerReferences
     ? new Set(["rsc:encryption-key"])
     : disabledPluginRscServerReferencePluginNames;
 

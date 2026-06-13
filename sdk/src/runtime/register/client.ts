@@ -1,23 +1,32 @@
 import { createServerReference as baseCreateServerReference } from "react-server-dom-webpack/client.browser";
-import { setServerFunctionMetadata } from "../serverFunctionMetadata.js";
+import {
+  type CreateServerReferenceOptions,
+  type ServerFunctionMethod,
+  type ServerFunctionSource,
+  normalizeServerFunctionMetadata,
+  setServerFunctionMetadata,
+} from "../serverFunctionMetadata.js";
 
 export const createServerReference = (
   id: string,
   name: string,
-  method?: "GET" | "POST",
-  source: "action" | "query" = "action",
+  method?: ServerFunctionMethod,
+  source: ServerFunctionSource = "action",
 ) => {
+  const metadata = normalizeServerFunctionMetadata({ method, source });
   const fullId = id + "#" + name;
   const proxy = baseCreateServerReference(fullId, (id, args) => {
-    return globalThis.__rsc_callServer(id, args, source, method);
+    return globalThis.__rsc_callServer(
+      id,
+      args,
+      metadata.source,
+      metadata.method,
+    );
   });
 
   // Attach metadata that hooks like useQuery can use.
   (proxy as any).id = fullId;
-  setServerFunctionMetadata(proxy as Function, {
-    method: method ?? "POST",
-    source,
-  });
+  setServerFunctionMetadata(proxy as Function, metadata);
 
   return proxy;
 };
@@ -25,10 +34,8 @@ export const createServerReference = (
 export const createRedwoodServerReference = (
   id: string,
   name: string,
-  options: {
-    method?: "GET" | "POST";
-    source?: "action" | "query";
-  } = {},
+  options: CreateServerReferenceOptions = {},
 ) => {
-  return createServerReference(id, name, options.method, options.source ?? "action");
+  const metadata = normalizeServerFunctionMetadata(options);
+  return createServerReference(id, name, metadata.method, metadata.source);
 };

@@ -1,10 +1,3 @@
-export type ClientReferenceDeps =
-  | string[]
-  | {
-      js?: string[];
-      css?: string[];
-    };
-
 export type ViteRscClientReferenceMeta = {
   importId: string;
   referenceKey: string;
@@ -29,9 +22,7 @@ export type RedwoodRscManifestEntry = {
 
 export type ViteRscManifestAdapterOptions = {
   clientReferenceMetaMap: ViteRscClientReferenceMetaMap;
-  clientReferenceDeps?: Record<string, ClientReferenceDeps>;
   projectRootDir?: string;
-  useAssetChunks?: boolean;
 };
 
 type ResolvedReference = {
@@ -137,51 +128,20 @@ const createReferenceResolver = ({
   return (key: string) => aliases.get(normalizeReferenceId(key));
 };
 
-const chunksForReference = ({
-  clientReferenceDeps,
-  referenceKey,
-  useAssetChunks,
-}: {
-  clientReferenceDeps?: Record<string, ClientReferenceDeps>;
-  referenceKey: string;
-  useAssetChunks?: boolean;
-}) => {
-  if (!useAssetChunks) {
-    return [];
-  }
-
-  const deps = clientReferenceDeps?.[referenceKey];
-  if (!deps) {
-    return [];
-  }
-
-  return Array.isArray(deps) ? deps : [...(deps.js ?? []), ...(deps.css ?? [])];
-};
-
 const createEntry = ({
-  clientReferenceDeps,
   resolved,
-  useAssetChunks,
 }: {
-  clientReferenceDeps?: Record<string, ClientReferenceDeps>;
   resolved: ResolvedReference;
-  useAssetChunks?: boolean;
 }): RedwoodRscManifestEntry => ({
   id: resolved.referenceKey,
   name: resolved.exportName ?? resolved.referenceKey,
-  chunks: chunksForReference({
-    clientReferenceDeps,
-    referenceKey: resolved.referenceKey,
-    useAssetChunks,
-  }),
+  chunks: [],
   async: true,
 });
 
 export function createClientManifestFromViteRsc({
   clientReferenceMetaMap,
-  clientReferenceDeps,
   projectRootDir,
-  useAssetChunks = false,
 }: ViteRscManifestAdapterOptions) {
   const resolveReference = createReferenceResolver({
     clientReferenceMetaMap,
@@ -196,9 +156,7 @@ export function createClientManifestFromViteRsc({
           const resolved = resolveReference(key);
           if (resolved?.exportName) {
             return createEntry({
-              clientReferenceDeps,
               resolved,
-              useAssetChunks,
             });
           }
         }
@@ -211,9 +169,7 @@ export function createClientManifestFromViteRsc({
 
 export function createModuleMapFromViteRsc({
   clientReferenceMetaMap,
-  clientReferenceDeps,
   projectRootDir,
-  useAssetChunks = false,
 }: ViteRscManifestAdapterOptions) {
   const resolveReference = createReferenceResolver({
     clientReferenceMetaMap,
@@ -232,9 +188,7 @@ export function createModuleMapFromViteRsc({
                 const resolved = resolveReference(`${id}#${name}`);
                 if (resolved) {
                   return createEntry({
-                    clientReferenceDeps,
                     resolved,
-                    useAssetChunks,
                   });
                 }
               }

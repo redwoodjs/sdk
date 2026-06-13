@@ -4,6 +4,7 @@ import { defineApp } from "rwsdk/worker";
 import { Document } from "@/app/Document";
 import { setCommonHeaders } from "@/app/headers";
 import { Home } from "@/app/pages/Home";
+import { SsrFalse } from "@/app/pages/SsrFalse";
 
 export type AppContext = {};
 
@@ -14,4 +15,5 @@ export default defineApp([
     ctx;
   },
   render(Document, [route("/", Home)]),
+  render(Document, [route("/ssr-off/", SsrFalse)], { ssr: false }),
 ]);

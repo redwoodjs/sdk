@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  clientDirectiveLookupInvalidationTargets,
   extractImportSpecifiers,
   hasEntryAsAncestor,
   moduleImportsKnownClientFile,
+  serverDirectiveLookupInvalidationTargets,
+  shouldFullReloadForNewClientImport,
 } from "./miniflareHMRPlugin.mjs";
+import { VIRTUAL_SSR_PREFIX } from "./ssrVirtualModule.mjs";
+import { RESOLVED_VIRTUAL_MODULE } from "./viteRscClientReferencePlugin.mjs";
 
 interface MockModule {
   file: string;
@@ -85,6 +90,79 @@ describe("extractImportSpecifiers", () => {
         const Lazy = import("./Lazy");
       `),
     ).toEqual(["react", "./style.css", "./Thing", "./Lazy"]);
+  });
+});
+
+// Path B for #1230: keep this lower-level decision coverage while the
+// broader browser-level HMR/state-preservation fixture work remains tracked by
+// #1228.
+describe("shouldFullReloadForNewClientImport", () => {
+  it("uses rsc:update instead of full reload when the changed file is itself a client module", () => {
+    expect(
+      shouldFullReloadForNewClientImport({
+        hasClientDirective: true,
+        nowImportsKnownClientFile: true,
+        previouslyImportedKnownClientFile: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("requests full reload only when a non-client worker module newly imports a client module", () => {
+    expect(
+      shouldFullReloadForNewClientImport({
+        hasClientDirective: false,
+        nowImportsKnownClientFile: true,
+        previouslyImportedKnownClientFile: false,
+      }),
+    ).toBe(true);
+    expect(
+      shouldFullReloadForNewClientImport({
+        hasClientDirective: false,
+        nowImportsKnownClientFile: true,
+        previouslyImportedKnownClientFile: true,
+      }),
+    ).toBe(false);
+    expect(
+      shouldFullReloadForNewClientImport({
+        hasClientDirective: false,
+        nowImportsKnownClientFile: false,
+        previouslyImportedKnownClientFile: false,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("directive lookup invalidation targets", () => {
+  it("invalidates plugin-rsc client reference lookups when a use client boundary changes", () => {
+    expect(clientDirectiveLookupInvalidationTargets("worker")).toEqual([
+      { environment: "client", id: RESOLVED_VIRTUAL_MODULE },
+      { environment: "ssr", id: RESOLVED_VIRTUAL_MODULE },
+      { environment: "worker", id: RESOLVED_VIRTUAL_MODULE },
+      {
+        environment: "worker",
+        id: `${VIRTUAL_SSR_PREFIX}/@id/virtual:use-client-lookup.js`,
+      },
+      {
+        environment: "worker",
+        id: `${VIRTUAL_SSR_PREFIX}virtual:use-client-lookup.js`,
+      },
+    ]);
+  });
+
+  it("invalidates server lookup modules when a use server boundary changes", () => {
+    expect(serverDirectiveLookupInvalidationTargets("worker")).toEqual([
+      { environment: "client", id: "virtual:use-server-lookup.js" },
+      { environment: "ssr", id: "virtual:use-server-lookup.js" },
+      { environment: "worker", id: "virtual:use-server-lookup.js" },
+      {
+        environment: "worker",
+        id: `${VIRTUAL_SSR_PREFIX}/@id/virtual:use-server-lookup.js`,
+      },
+      {
+        environment: "worker",
+        id: `${VIRTUAL_SSR_PREFIX}virtual:use-server-lookup.js`,
+      },
+    ]);
   });
 });
 

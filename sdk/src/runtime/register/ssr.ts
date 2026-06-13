@@ -1,6 +1,12 @@
 import { createServerReference as baseCreateServerReference } from "react-server-dom-webpack/client.edge";
 import { memoizeOnId } from "../lib/memoizeOnId";
-import { setServerFunctionMetadata } from "../serverFunctionMetadata.js";
+import {
+  type CreateServerReferenceOptions,
+  type ServerFunctionMethod,
+  type ServerFunctionSource,
+  normalizeServerFunctionMetadata,
+  setServerFunctionMetadata,
+} from "../serverFunctionMetadata.js";
 
 // @ts-ignore
 import { useServerLookup } from "virtual:use-server-lookup.js";
@@ -36,25 +42,21 @@ const ssrCallServer = async (id: string, args: any) => {
 export const createServerReference = (
   id: string,
   name: string,
-  _method?: "GET" | "POST",
-  _source: "action" | "query" = "action",
+  method?: ServerFunctionMethod,
+  source: ServerFunctionSource = "action",
 ) => {
+  const metadata = normalizeServerFunctionMetadata({ method, source });
   id = id + "#" + name;
   const reference = baseCreateServerReference(id, ssrCallServer);
-  setServerFunctionMetadata(reference, {
-    method: _method ?? "POST",
-    source: _source,
-  });
+  setServerFunctionMetadata(reference, metadata);
   return reference;
 };
 
 export const createRedwoodServerReference = (
   id: string,
   name: string,
-  options: {
-    method?: "GET" | "POST";
-    source?: "action" | "query";
-  } = {},
+  options: CreateServerReferenceOptions = {},
 ) => {
-  return createServerReference(id, name, options.method, options.source ?? "action");
+  const metadata = normalizeServerFunctionMetadata(options);
+  return createServerReference(id, name, metadata.method, metadata.source);
 };
