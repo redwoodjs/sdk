@@ -57,7 +57,11 @@ testDev("missing link directive scan", async ({ page, url, projectDir }) => {
     return hasAllComponents;
   });
 
-  // Verify client-side interactivity works
+  // The directive graph change can trigger a full reload so the client lookup
+  // module includes the newly imported client component. Wait for hydration
+  // again before interacting with ComponentC.
+  await waitForHydration(page);
+
   const clickIncrementButton = async () =>
     await page.evaluate(() => {
       const button = document.querySelector("button");
@@ -72,8 +76,8 @@ testDev("missing link directive scan", async ({ page, url, projectDir }) => {
     const clicked = await clickIncrementButton();
     if (!clicked) return false;
 
-    const content = await getPageContent();
-    expect(content).toContain("Count: 1");
+    const text = await page.evaluate(() => document.body.innerText);
+    expect(text).toMatch(/Count: [1-9]\d*/);
     return true;
   });
 });

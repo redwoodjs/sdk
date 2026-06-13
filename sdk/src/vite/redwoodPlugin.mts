@@ -35,6 +35,13 @@ import { transformJsxScriptTagsPlugin } from "./transformJsxScriptTagsPlugin.mjs
 import { useClientLookupPlugin } from "./useClientLookupPlugin.mjs";
 import { useServerLookupPlugin } from "./useServerLookupPlugin.mjs";
 import { vitePreamblePlugin } from "./vitePreamblePlugin.mjs";
+import { viteRscClientReferencePassthroughPlugin } from "./viteRscClientReferencePassthroughPlugin.mjs";
+import { viteRscClientReferencePlugin } from "./viteRscClientReferencePlugin.mjs";
+import { pluginRscBasePlugins } from "./viteRscClientPlugins.mjs";
+import { viteRscRuntimeBridgePlugin } from "./viteRscRuntimeBridgePlugin.mjs";
+import { viteRscServerReferenceBridgePlugin } from "./viteRscServerReferenceBridgePlugin.mjs";
+import { viteRscServerReferenceLookupPlugin } from "./viteRscServerReferenceLookupPlugin.mjs";
+import { viteRscManifestDataPlugin } from "./viteRscManifestDataPlugin.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -48,6 +55,54 @@ export type RedwoodPluginOptions = {
     worker?: string;
   };
   esbuildOptions?: ConfigurableEsbuildOptions;
+  experimentalUseViteRscClientReferences?: boolean;
+  experimentalUseViteRscManifestAdapter?: boolean;
+  experimentalViteRscServerReferences?: boolean;
+};
+
+const usePluginRscFeature = ({
+  option,
+  legacyEnv,
+  experimentalEnv,
+}: {
+  option?: boolean;
+  legacyEnv?: string;
+  experimentalEnv: string;
+}) => {
+  if (legacyEnv && process.env[legacyEnv] === "1") {
+    return false;
+  }
+  if (process.env[experimentalEnv] === "0") {
+    return false;
+  }
+  return option ?? true;
+};
+
+export const determineRscFeatureFlags = (options: RedwoodPluginOptions = {}) => {
+  const shouldUseViteRscClientReferences = usePluginRscFeature({
+    option: options.experimentalUseViteRscClientReferences,
+    legacyEnv: "RWSDK_LEGACY_RSC_CLIENT_REFERENCES",
+    experimentalEnv: "RWSDK_EXPERIMENTAL_VITE_RSC_CLIENT_REFERENCES",
+  });
+  const shouldUseViteRscServerReferences =
+    shouldUseViteRscClientReferences &&
+    usePluginRscFeature({
+      option: options.experimentalViteRscServerReferences,
+      legacyEnv: "RWSDK_LEGACY_RSC_SERVER_REFERENCES",
+      experimentalEnv: "RWSDK_EXPERIMENTAL_VITE_RSC_SERVER_REFERENCES",
+    });
+  const shouldUseViteRscManifestAdapter =
+    shouldUseViteRscClientReferences &&
+    usePluginRscFeature({
+      option: options.experimentalUseViteRscManifestAdapter,
+      experimentalEnv: "RWSDK_EXPERIMENTAL_VITE_RSC_MANIFEST_ADAPTER",
+    });
+
+  return {
+    shouldUseViteRscClientReferences,
+    shouldUseViteRscServerReferences,
+    shouldUseViteRscManifestAdapter,
+  };
 };
 
 export const determineWorkerEntryPathname = async ({
@@ -120,6 +175,12 @@ export const redwoodPlugin = async (
     options.includeReactPlugin ??
     !(await hasOwnReactVitePlugin({ rootProjectDir: projectRootDir }));
 
+  const {
+    shouldUseViteRscClientReferences,
+    shouldUseViteRscServerReferences,
+    shouldUseViteRscManifestAdapter,
+  } = determineRscFeatureFlags(options);
+
   // context(justinvdm, 31 Mar 2025): We assume that if there is no .wrangler directory,
   // then this is fresh install, and we run `npm run dev:init` here.
   if (
@@ -133,6 +194,49 @@ export const redwoodPlugin = async (
     );
     await $`npm run dev:init`;
   }
+
+  // Keep plugin-rsc-related plugins grouped so ordering constraints stay clear:
+  // 1. runtime bridge before plugin-rsc base plugins
+  // 2. Redwood bridge/passthrough adapters before plugin-rsc metadata collection
+  // 3. Redwood lookup/manifest adapters after plugin-rsc metadata is available
+  const pluginRscPlugins = shouldUseViteRscClientReferences
+    ? [
+        viteRscRuntimeBridgePlugin(),
+        ...(shouldUseViteRscServerReferences
+          ? [viteRscServerReferenceBridgePlugin({ projectRootDir })]
+          : []),
+        viteRscClientReferencePassthroughPlugin({ clientFiles, projectRootDir }),
+        ...pluginRscBasePlugins({
+          includeServerReferences: shouldUseViteRscServerReferences,
+        }),
+        viteRscClientReferencePlugin({ clientFiles, projectRootDir }),
+        ...(shouldUseViteRscManifestAdapter
+          ? [viteRscManifestDataPlugin({ projectRootDir })]
+          : []),
+      ]
+    : [];
+
+  const directiveLookupPlugins = [
+    ...(shouldUseViteRscClientReferences
+      ? []
+      : [
+          // Legacy fallback/rollback path. The preferred default path uses
+          // plugin-rsc client-reference metadata plus Redwood adapters.
+          useClientLookupPlugin({
+            projectRootDir,
+            clientFiles,
+          }),
+        ]),
+    shouldUseViteRscServerReferences
+      ? viteRscServerReferenceLookupPlugin({
+          projectRootDir,
+          serverFiles,
+        })
+      : useServerLookupPlugin({
+          projectRootDir,
+          serverFiles,
+        }),
+  ];
 
   return [
     staleDepRetryPlugin(),
@@ -163,6 +267,7 @@ export const redwoodPlugin = async (
     knownDepsResolverPlugin({ projectRootDir }),
     cloudflarePreInitPlugin(),
     tsconfigPaths({ root: projectRootDir }),
+    pluginRscPlugins,
     shouldIncludeCloudflarePlugin
       ? (cloudflare({
           viteEnvironment: { name: "worker" },
@@ -181,20 +286,15 @@ export const redwoodPlugin = async (
       projectRootDir,
       clientFiles,
       serverFiles,
+      experimentalUseViteRscClientReferences: shouldUseViteRscClientReferences,
+      experimentalViteRscServerReferences: shouldUseViteRscServerReferences,
     }),
     vitePreamblePlugin(),
     injectVitePreamble({
       clientEntryPoints,
       projectRootDir,
     }),
-    useClientLookupPlugin({
-      projectRootDir,
-      clientFiles,
-    }),
-    useServerLookupPlugin({
-      projectRootDir,
-      serverFiles,
-    }),
+    directiveLookupPlugins,
     transformJsxScriptTagsPlugin({
       clientEntryPoints,
       projectRootDir,

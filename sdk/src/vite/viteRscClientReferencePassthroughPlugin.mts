@@ -1,0 +1,89 @@
+import MagicString from "magic-string";
+import type { Plugin } from "vite";
+import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
+import { findExports } from "./findSpecifiers.mjs";
+import { hasDirective } from "./hasDirective.mjs";
+
+const directiveRegex = /^(\s*)(['"]use client['"])\s*;?\s*\n?/m;
+const serverPassthroughClientExports = new Set(["ColorSchemeScript"]);
+
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const nonComponentInitializerPrefix =
+  String.raw`(?:\{|\[|["'\`]|\d|true\b|false\b|null\b|undefined\b)`;
+
+const hasNonComponentNamedInitializer = (name: string, code: string) => {
+  const escapedName = escapeRegExp(name);
+  const pattern = new RegExp(
+    String.raw`\bexport\s+(?:const|let|var)\s+${escapedName}\s*=\s*${nonComponentInitializerPrefix}`,
+  );
+  return pattern.test(code);
+};
+
+const hasNonComponentDefaultInitializer = (code: string) => {
+  const pattern = new RegExp(
+    String.raw`\bexport\s+default\s+${nonComponentInitializerPrefix}`,
+  );
+  return pattern.test(code);
+};
+
+export const hasServerPassthroughClientExport = (id: string, code: string) => {
+  const exports = findExports(id, code);
+
+  return exports.some((exportInfo) => {
+    if (exportInfo.isDefault) {
+      return hasNonComponentDefaultInitializer(code);
+    }
+
+    const name = exportInfo.name || exportInfo.originalName;
+    return (
+      !!name &&
+      (/^[a-z]/.test(name) ||
+        serverPassthroughClientExports.has(name) ||
+        hasNonComponentNamedInitializer(name, code))
+    );
+  });
+};
+
+export const viteRscClientReferencePassthroughPlugin = ({
+  clientFiles,
+  projectRootDir,
+}: {
+  clientFiles: Set<string>;
+  projectRootDir: string;
+}): Plugin => ({
+  name: "rwsdk:vite-rsc-client-reference-passthrough",
+  enforce: "pre",
+  transform(code, id) {
+    if (this.environment?.name !== "worker") {
+      return null;
+    }
+
+    const normalizedId = normalizeModulePath(id, projectRootDir);
+    if (
+      !clientFiles.has(normalizedId) ||
+      !hasDirective(code, "use client") ||
+      !hasServerPassthroughClientExport(normalizedId, code)
+    ) {
+      return null;
+    }
+
+    const match = directiveRegex.exec(code);
+    if (!match) {
+      return null;
+    }
+
+    const s = new MagicString(code);
+    s.remove(match.index, match.index + match[0].length);
+
+    return {
+      code: s.toString(),
+      map: s.generateMap({
+        source: normalizedId,
+        includeContent: true,
+        hires: true,
+      }),
+    };
+  },
+});

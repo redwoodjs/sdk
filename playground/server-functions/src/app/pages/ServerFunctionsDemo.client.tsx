@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { getGreetingReExported } from "../actionReexports";
+import nativeDefaultAction, { nativeUpdateName } from "../nativeActions";
+import { nativeUpdateName as nativeUpdateNameReExported } from "../nativeActionReexports";
 import defaultAction, {
   getGreeting,
   getGreetingWithInterruptors,
@@ -54,6 +57,9 @@ export function ServerFunctionsDemo() {
             <button id="query-greeting-interruptors" onClick={() => run(() => getGreetingWithInterruptors("World"))}>
               getGreeting (Interruptors)
             </button>
+            <button id="query-greeting-reexport" onClick={() => run(() => getGreetingReExported("World"))}>
+              getGreeting (Re-export)
+            </button>
             <button id="query-greeting-redirect" onClick={() => run(() => getGreetingWithRedirect())}>
               getGreeting (Redirect)
             </button>
@@ -83,6 +89,15 @@ export function ServerFunctionsDemo() {
             </button>
             <button id="action-default" onClick={() => run(() => defaultAction())}>
               Default Action
+            </button>
+            <button id="action-native" onClick={() => run(() => nativeUpdateName("Agent"))}>
+              Native Action
+            </button>
+            <button id="action-native-default" onClick={() => run(() => nativeDefaultAction())}>
+              Native Default Action
+            </button>
+            <button id="action-native-reexport" onClick={() => run(() => nativeUpdateNameReExported("Agent"))}>
+              Native Action Re-export
             </button>
           </div>
         </section>

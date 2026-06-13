@@ -1,4 +1,7 @@
-export const createModuleMap = () =>
+import { createModuleMapFromViteRsc } from "./viteRscManifestAdapter.js";
+import { getViteRscManifestData } from "./viteRscManifestData.js";
+
+const createFallbackModuleMap = () =>
   new Proxy(
     {},
     {
@@ -11,6 +14,7 @@ export const createModuleMap = () =>
                 id,
                 name,
                 chunks: [],
+                async: true,
               };
             },
           },
@@ -18,3 +22,13 @@ export const createModuleMap = () =>
       },
     },
   );
+
+export const createModuleMap = () => {
+  const viteRscManifestData = getViteRscManifestData();
+
+  if (viteRscManifestData) {
+    return createModuleMapFromViteRsc(viteRscManifestData);
+  }
+
+  return createFallbackModuleMap();
+};

@@ -55,6 +55,38 @@ testDevAndDeploy("serverQuery (POST) works", async ({ page, url }) => {
   });
 });
 
+testDevAndDeploy("serverQuery re-export works", async ({ page, url }) => {
+  await page.goto(url);
+  await waitForHydration(page);
+
+  await page.click("#query-greeting-reexport");
+
+  await poll(async () => {
+    const result = await page.$eval(
+      "#server-function-result",
+      (el) => el.textContent,
+    );
+    expect(result).toBe('"Hello, World! (from serverQuery re-export)"');
+    return true;
+  });
+});
+
+testDevAndDeploy("serverQuery interruptor works", async ({ page, url }) => {
+  await page.goto(url);
+  await waitForHydration(page);
+
+  await page.click("#query-greeting-interruptors");
+
+  await poll(async () => {
+    const result = await page.$eval(
+      "#server-function-result",
+      (el) => el.textContent,
+    );
+    expect(result).toBe('"Hello, World! (with logger interruptor)"');
+    return true;
+  });
+});
+
 testDevAndDeploy("serverAction works", async ({ page, url }) => {
   await page.goto(url);
   await waitForHydration(page);
@@ -87,11 +119,89 @@ testDevAndDeploy("default serverAction works", async ({ page, url }) => {
   });
 });
 
+testDevAndDeploy("serverAction interruptor works", async ({ page, url }) => {
+  await page.goto(url);
+  await waitForHydration(page);
+
+  await page.click("#action-update-name-interruptors");
+
+  await poll(async () => {
+    const result = await page.$eval(
+      "#server-function-result",
+      (el) => el.textContent,
+    );
+    expect(result).toBe('"Name updated to: Agent (with logger interruptor)"');
+    return true;
+  });
+});
+
+testDevAndDeploy("native use server action works as POST action", async ({ page, url }) => {
+  await page.goto(url);
+  await waitForHydration(page);
+
+  await page.click("#action-native");
+
+  await poll(async () => {
+    const result = await page.$eval(
+      "#server-function-result",
+      (el) => el.textContent,
+    );
+    expect(result).toBe('"Native name updated to: Agent"');
+    return true;
+  });
+});
+
+testDevAndDeploy("native use server default action works", async ({ page, url }) => {
+  await page.goto(url);
+  await waitForHydration(page);
+
+  await page.click("#action-native-default");
+
+  await poll(async () => {
+    const result = await page.$eval(
+      "#server-function-result",
+      (el) => el.textContent,
+    );
+    expect(result).toBe('"Native default action called!"');
+    return true;
+  });
+});
+
+testDevAndDeploy("native use server re-export works", async ({ page, url }) => {
+  await page.goto(url);
+  await waitForHydration(page);
+
+  await page.click("#action-native-reexport");
+
+  await poll(async () => {
+    const result = await page.$eval(
+      "#server-function-result",
+      (el) => el.textContent,
+    );
+    expect(result).toBe('"Native name updated to: Agent"');
+    return true;
+  });
+});
+
 testDevAndDeploy("query redirect works", async ({ page, url }) => {
   await page.goto(url);
   await waitForHydration(page);
 
   await page.click("#query-greeting-redirect");
+
+  await poll(async () => {
+    expect(page.url()).toBe(new URL("/redirect-success", url).toString());
+    const text = await page.$eval("h2", (el) => el.textContent);
+    expect(text).toBe("Redirect Successful!");
+    return true;
+  });
+});
+
+testDevAndDeploy("action redirect works", async ({ page, url }) => {
+  await page.goto(url);
+  await waitForHydration(page);
+
+  await page.click("#action-update-name-redirect");
 
   await poll(async () => {
     expect(page.url()).toBe(new URL("/redirect-success", url).toString());

@@ -1,12 +1,15 @@
 import React from "react";
 import { ClientOnly } from "../client/client";
 import { memoizeOnId } from "../lib/memoizeOnId";
+import { getLookupCandidates } from "./lookupCandidates";
 
 // @ts-ignore
 import { useClientLookup } from "virtual:use-client-lookup.js";
 
 export const loadModule = memoizeOnId(async (id: string) => {
-  const moduleFn = useClientLookup[id];
+  const moduleFn = getLookupCandidates(id)
+    .map((candidate) => useClientLookup[candidate])
+    .find(Boolean);
 
   if (!moduleFn) {
     throw new Error(
@@ -21,6 +24,11 @@ export const loadModule = memoizeOnId(async (id: string) => {
 export const clientWebpackRequire = memoizeOnId(async (id: string) => {
   const [file, name] = id.split("#");
   const promisedModule = loadModule(file);
+
+  if (!name) {
+    return await promisedModule;
+  }
+
   const promisedComponent = promisedModule.then((module) => module[name]);
 
   const didSSR = (globalThis as any).__RWSDK_CONTEXT?.rw?.ssr;

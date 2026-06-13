@@ -1,6 +1,129 @@
 import { join } from "node:path/posix";
-import { describe, expect, it } from "vitest";
-import { determineWorkerEntryPathname } from "./redwoodPlugin.mjs";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  determineRscFeatureFlags,
+  determineWorkerEntryPathname,
+} from "./redwoodPlugin.mjs";
+
+describe("determineRscFeatureFlags", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("uses plugin-rsc client references, manifest metadata, and server references by default", () => {
+    expect(determineRscFeatureFlags()).toEqual({
+      shouldUseViteRscClientReferences: true,
+      shouldUseViteRscManifestAdapter: true,
+      shouldUseViteRscServerReferences: true,
+    });
+  });
+
+  it("keeps the legacy client-reference lookup path available as explicit rollback", () => {
+    expect(
+      determineRscFeatureFlags({
+        experimentalUseViteRscClientReferences: false,
+        experimentalUseViteRscManifestAdapter: true,
+        experimentalViteRscServerReferences: true,
+      }),
+    ).toEqual({
+      shouldUseViteRscClientReferences: false,
+      shouldUseViteRscManifestAdapter: false,
+      shouldUseViteRscServerReferences: false,
+    });
+  });
+
+  it("can disable only the manifest adapter while keeping plugin-rsc client and server references", () => {
+    expect(
+      determineRscFeatureFlags({
+        experimentalUseViteRscManifestAdapter: false,
+      }),
+    ).toEqual({
+      shouldUseViteRscClientReferences: true,
+      shouldUseViteRscManifestAdapter: false,
+      shouldUseViteRscServerReferences: true,
+    });
+  });
+
+  it("can explicitly disable plugin-rsc server references", () => {
+    expect(
+      determineRscFeatureFlags({
+        experimentalViteRscServerReferences: false,
+      }),
+    ).toEqual({
+      shouldUseViteRscClientReferences: true,
+      shouldUseViteRscManifestAdapter: true,
+      shouldUseViteRscServerReferences: false,
+    });
+  });
+
+  it("keeps the legacy client-reference lookup path available as env rollback", () => {
+    vi.stubEnv("RWSDK_LEGACY_RSC_CLIENT_REFERENCES", "1");
+
+    expect(determineRscFeatureFlags()).toEqual({
+      shouldUseViteRscClientReferences: false,
+      shouldUseViteRscManifestAdapter: false,
+      shouldUseViteRscServerReferences: false,
+    });
+  });
+
+  it("keeps the old experimental client-reference env disable as rollback", () => {
+    vi.stubEnv("RWSDK_EXPERIMENTAL_VITE_RSC_CLIENT_REFERENCES", "0");
+
+    expect(determineRscFeatureFlags()).toEqual({
+      shouldUseViteRscClientReferences: false,
+      shouldUseViteRscManifestAdapter: false,
+      shouldUseViteRscServerReferences: false,
+    });
+  });
+
+  it("keeps the legacy server-reference transform available as env rollback", () => {
+    vi.stubEnv("RWSDK_LEGACY_RSC_SERVER_REFERENCES", "1");
+
+    expect(determineRscFeatureFlags()).toEqual({
+      shouldUseViteRscClientReferences: true,
+      shouldUseViteRscManifestAdapter: true,
+      shouldUseViteRscServerReferences: false,
+    });
+  });
+
+  it("keeps the old experimental server-reference env disable as rollback", () => {
+    vi.stubEnv("RWSDK_EXPERIMENTAL_VITE_RSC_SERVER_REFERENCES", "0");
+
+    expect(determineRscFeatureFlags()).toEqual({
+      shouldUseViteRscClientReferences: true,
+      shouldUseViteRscManifestAdapter: true,
+      shouldUseViteRscServerReferences: false,
+    });
+  });
+
+  it("keeps the old experimental manifest adapter env disable as rollback", () => {
+    vi.stubEnv("RWSDK_EXPERIMENTAL_VITE_RSC_MANIFEST_ADAPTER", "0");
+
+    expect(determineRscFeatureFlags()).toEqual({
+      shouldUseViteRscClientReferences: true,
+      shouldUseViteRscManifestAdapter: false,
+      shouldUseViteRscServerReferences: true,
+    });
+  });
+
+  it("lets env rollback flags override options that try to enable plugin-rsc features", () => {
+    vi.stubEnv("RWSDK_LEGACY_RSC_CLIENT_REFERENCES", "1");
+    vi.stubEnv("RWSDK_EXPERIMENTAL_VITE_RSC_SERVER_REFERENCES", "0");
+    vi.stubEnv("RWSDK_EXPERIMENTAL_VITE_RSC_MANIFEST_ADAPTER", "0");
+
+    expect(
+      determineRscFeatureFlags({
+        experimentalUseViteRscClientReferences: true,
+        experimentalUseViteRscManifestAdapter: true,
+        experimentalViteRscServerReferences: true,
+      }),
+    ).toEqual({
+      shouldUseViteRscClientReferences: false,
+      shouldUseViteRscManifestAdapter: false,
+      shouldUseViteRscServerReferences: false,
+    });
+  });
+});
 
 describe("determineWorkerEntryPathname", () => {
   const projectRootDir = "/test/project";

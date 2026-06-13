@@ -33,6 +33,9 @@ export const renderToStream = async (
   if (!globalThis.__webpack_require__) {
     globalThis.__webpack_require__ = ssrWebpackRequire;
   }
+  if (!globalThis.__vite_rsc_require__) {
+    globalThis.__vite_rsc_require__ = ssrWebpackRequire;
+  }
 
   // Try to get the context requestInfo from the async store.
   let contextRequestInfo;

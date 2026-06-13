@@ -95,9 +95,10 @@ function findDefaultFunctionName(
 
   try {
     const root = sgParse(lang, code);
-    const matches = root
-      .root()
-      .findAll("export default function $NAME($$$) { $$$ }");
+    const matches = [
+      ...root.root().findAll("export default function $NAME($$$) { $$$ }"),
+      ...root.root().findAll("export default async function $NAME($$$) { $$$ }"),
+    ];
     if (matches.length > 0) {
       const nameCapture = matches[0].getMatch("NAME");
       return nameCapture?.text() || null;
@@ -216,10 +217,17 @@ export const transformServerFunctions = (
         let source: "action" | "query" = "action";
 
         // Try to find if this export is a serverQuery or serverAction call to extract the method
+        // Match export const and export let forms; also support
+        // serverAction with an explicit method option.
         const patterns = [
           `export const ${name} = serverQuery($$$, { method: "$METHOD" })`,
+          `export let ${name} = serverQuery($$$, { method: "$METHOD" })`,
           `export const ${name} = serverQuery($$$)`,
+          `export let ${name} = serverQuery($$$)`,
+          `export const ${name} = serverAction($$$, { method: "$METHOD" })`,
+          `export let ${name} = serverAction($$$, { method: "$METHOD" })`,
           `export const ${name} = serverAction($$$)`,
+          `export let ${name} = serverAction($$$)`,
         ];
 
         for (const pattern of patterns) {
@@ -230,7 +238,8 @@ export const transformServerFunctions = (
               method = methodMatch ? methodMatch.text() : "GET";
               source = "query";
             } else if (pattern.includes("serverAction")) {
-              method = "POST";
+              const methodMatch = matches[0].getMatch("METHOD");
+              method = methodMatch ? methodMatch.text() : "POST";
               source = "action";
             }
             break;
@@ -264,6 +273,7 @@ export const transformServerFunctions = (
       const patterns = [
         `export default serverQuery($$$, { method: "$METHOD" })`,
         `export default serverQuery($$$)`,
+        `export default serverAction($$$, { method: "$METHOD" })`,
         `export default serverAction($$$)`,
       ];
 
@@ -275,7 +285,8 @@ export const transformServerFunctions = (
             method = methodMatch ? methodMatch.text() : "GET";
             source = "query";
           } else if (pattern.includes("serverAction")) {
-            method = "POST";
+            const methodMatch = matches[0].getMatch("METHOD");
+            method = methodMatch ? methodMatch.text() : "POST";
             source = "action";
           }
           break;
@@ -398,18 +409,27 @@ export const transformServerFunctions = (
         const root = sgParse(lang, code);
 
         // Handle named default function: export default function myFunc() {}
-        const namedMatches = root
-          .root()
-          .findAll("export default function $NAME($$$) { $$$ }");
+        const namedMatches = [
+          ...root.root().findAll("export default function $NAME($$$) { $$$ }"),
+          ...root
+            .root()
+            .findAll("export default async function $NAME($$$) { $$$ }"),
+        ];
         if (namedMatches.length > 0) {
           const match = namedMatches[0];
           const range = match.range();
           const funcName = match.getMatch("NAME")?.text();
 
           if (funcName) {
-            // Replace "export default function myFunc" with "function __defaultServerFunction__"
+            // Replace "export default function myFunc" or
+            // "export default async function myFunc" with a local function that
+            // can be registered and re-exported once.
             const newText = match
               .text()
+              .replace(
+                `export default async function ${funcName}`,
+                "async function __defaultServerFunction__",
+              )
               .replace(
                 `export default function ${funcName}`,
                 "function __defaultServerFunction__",
@@ -419,14 +439,19 @@ export const transformServerFunctions = (
           }
         } else {
           // Handle anonymous default function: export default function() {}
-          const anonMatches = root
-            .root()
-            .findAll("export default function($$$) { $$$ }");
+          const anonMatches = [
+            ...root.root().findAll("export default function($$$) { $$$ }"),
+            ...root.root().findAll("export default async function($$$) { $$$ }"),
+          ];
           if (anonMatches.length > 0) {
             const match = anonMatches[0];
             const range = match.range();
             const newText = match
               .text()
+              .replace(
+                "export default async function",
+                "async function __defaultServerFunction__",
+              )
               .replace(
                 "export default function",
                 "function __defaultServerFunction__",

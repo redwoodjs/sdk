@@ -17,6 +17,10 @@ interface TransformResult {
 const logVite = debug("rwsdk:vite:transform-client-components:vite");
 const logEsbuild = debug("rwsdk:vite:transform-client-components:esbuild");
 
+// Legacy fallback transform for "use client" modules.
+// The preferred default path lets plugin-rsc discover client references and
+// adapts its metadata back to Redwood's runtime contracts. Keep this transform
+// for explicit rollback and compatibility fixes only.
 export async function transformClientComponents(
   code: string,
   normalizedId: string,
