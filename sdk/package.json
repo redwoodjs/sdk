@@ -164,6 +164,7 @@
     "@types/react-dom": "~19.2.3",
     "@types/react-is": "~19.2.0",
     "@vitejs/plugin-react": "~5.1.4",
+    "@vitejs/plugin-rsc": "0.5.27",
     "chokidar": "~5.0.0",
     "debug": "~4.4.3",
     "decompress": "~4.2.1",
@@ -181,8 +182,8 @@
     "lodash": "~4.18.1",
     "magic-string": "~0.30.21",
     "picocolors": "~1.1.1",
-    "proper-lockfile": "~4.1.2",
     "playwright-core": "1.60.0",
+    "proper-lockfile": "~4.1.2",
     "puppeteer-core": "~24.42.0",
     "react-is": "~19.2.6",
     "rsc-html-stream": "~0.0.7",
@@ -210,16 +211,16 @@
   "packageManager": "pnpm@10.31.0",
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.33.2",
-    "wrangler": "^4.85.0",
-    "capnweb": "~0.5.0",
     "@types/debug": "~4.1.13",
     "@types/lodash": "~4.17.24",
     "@types/node": "~25.6.0",
     "@types/proper-lockfile": "~4.1.4",
+    "capnweb": "~0.5.0",
     "semver": "~7.7.4",
     "tsx": "~4.21.0",
     "typescript": "~6.0.3",
     "vite": "~7.3.2",
-    "vitest": "~4.1.5"
+    "vitest": "~4.1.5",
+    "wrangler": "^4.85.0"
   }
 }

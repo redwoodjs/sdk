@@ -62,6 +62,7 @@ export const defineApp = <
     __rwRoutes: routes,
     fetch: async (request: Request, env: Env, cf: ExecutionContext) => {
       globalThis.__webpack_require__ = ssrWebpackRequire;
+      globalThis.__vite_rsc_require__ = ssrWebpackRequire;
 
       // context(justinvdm, 17 Mar 2026): Strip the Vite base path from the
       // request URL so that routes defined as "/" match requests to "/app/"

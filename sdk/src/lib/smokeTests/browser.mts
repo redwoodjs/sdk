@@ -407,12 +407,19 @@ export async function checkUrlSmoke(
   log("Running initial server-side smoke test");
   let initialServerResult;
   try {
-    // For initial checks: use the fixed initial value (23)
-    // For realtime checks: if we've previously updated the value, use that instead of 23
-    // For HMR tests: if HMR happened, we'll be back to the initial value (23)
+    // For initial checks: use the fixed initial value (23).
+    // For realtime checks without HMR: the client update should persist.
+    // For realtime checks after dev HMR: either value is valid. Some RSC
+    // server-reference paths preserve the server-function module state, while
+    // others reset it when the surrounding server component hot-updates.
     const expectedValue =
-      isRealtime && timestampState.clientUpdatedValue !== null && skipHmr
-        ? timestampState.clientUpdatedValue
+      isRealtime && timestampState.clientUpdatedValue !== null
+        ? skipHmr
+          ? timestampState.clientUpdatedValue
+          : [
+              timestampState.initialServerValue,
+              timestampState.clientUpdatedValue,
+            ]
         : timestampState.initialServerValue;
 
     // Check that the server is returning the expected value
@@ -424,8 +431,11 @@ export async function checkUrlSmoke(
       expectedValue,
       false, // Not a server render check
     );
+    const expectedValueLabel = Array.isArray(expectedValue)
+      ? expectedValue.join(" or ")
+      : expectedValue;
     log(
-      `${phase} server-side check passed - module variable has expected value ${expectedValue}`,
+      `${phase} server-side check passed - module variable has expected value ${expectedValueLabel}`,
     );
 
     // Store the current timestamp for potential future reference
@@ -744,7 +754,7 @@ export async function checkServerSmoke(
   phase: string = "",
   environment: string = "Development",
   bail: boolean = false,
-  expectedTimestamp?: number,
+  expectedTimestamp?: number | number[],
   isServerRenderCheck: boolean = false,
 ): Promise<SmokeTestResult> {
   const checkType = isServerRenderCheck
@@ -812,9 +822,12 @@ export async function checkServerSmoke(
       let verificationError;
 
       if (expectedTimestamp) {
-        verificationPassed = timestamp === expectedTimestamp;
+        const expectedTimestamps = Array.isArray(expectedTimestamp)
+          ? expectedTimestamp
+          : [expectedTimestamp];
+        verificationPassed = expectedTimestamps.includes(timestamp);
         if (!verificationPassed) {
-          verificationError = `Server timestamp (${timestamp}) does not match expected (${expectedTimestamp})`;
+          verificationError = `Server timestamp (${timestamp}) does not match expected (${expectedTimestamps.join(" or ")})`;
         }
       }
 

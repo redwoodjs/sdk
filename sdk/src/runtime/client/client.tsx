@@ -10,11 +10,6 @@ import "./setWebpackRequire";
 import React from "react";
 
 import { hydrateRoot } from "react-dom/client";
-import {
-  createFromFetch,
-  createFromReadableStream,
-  encodeReply,
-} from "react-server-dom-webpack/client.browser";
 import { rscStream } from "rsc-html-stream/client";
 
 export { default as React } from "react";
@@ -86,7 +81,11 @@ export const fetchTransport: Transport = (transportContext) => {
           method: "POST",
           headers,
           redirect: "manual",
-          body: args != null ? await encodeReply(args) : null,
+          body: args != null
+          ? await import("react-server-dom-webpack/client.browser").then(
+              ({ encodeReply }) => encodeReply(args),
+            )
+          : null,
         });
       }
     }
@@ -129,6 +128,9 @@ export const fetchTransport: Transport = (transportContext) => {
       }
 
       // Continue with the response if handler returned true
+      const { createFromFetch } = await import(
+        "react-server-dom-webpack/client.browser"
+      );
       const streamData = createFromFetch(Promise.resolve(response), {
         callServer: fetchCallServer,
       }) as Promise<RscActionResponse<Result>>;
@@ -151,6 +153,9 @@ export const fetchTransport: Transport = (transportContext) => {
       return undefined as any;
     }
 
+    const { createFromFetch } = await import(
+      "react-server-dom-webpack/client.browser"
+    );
     const streamData = createFromFetch(Promise.resolve(response), {
       callServer: fetchCallServer,
     }) as Promise<RscActionResponse<Result>>;
@@ -260,6 +265,12 @@ export const initClient = async ({
 
   globalThis.__rsc_callServer = callServer;
 
+  // Wire plugin-rsc's own callServer (used by untouched $$ReactClient.createServerReference
+  // calls) to Redwood's callServer so that server references not covered by metadata
+  // don't fall through to a dead callServer that throws.
+  const { setServerCallback } = await import("@vitejs/plugin-rsc/react/browser");
+  setServerCallback(callServer);
+
   globalThis.__rw = {
     callServer,
     upgradeToRealtime,
@@ -278,6 +289,9 @@ export const initClient = async ({
   // context(justinvdm, 18 Jun 2025): We inject the RSC payload
   // unless render(Document, [...], { rscPayload: false }) was used.
   if ((globalThis as any).__FLIGHT_DATA) {
+    const { createFromReadableStream } = await import(
+      "react-server-dom-webpack/client.browser"
+    );
     rscPayload = createFromReadableStream(rscStream, {
       callServer,
     });

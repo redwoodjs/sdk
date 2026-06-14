@@ -103,6 +103,9 @@ jobs:
       RWSDK_HYDRATION_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '10000' || '' }} # 10s
       RWSDK_DEV_SERVER_TIMEOUT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_call') && '900000' || '' }} # 15 mins
       RWSDK_SEQUENTIAL: "1"
+      # Keep required smoke coverage on the stable RSC transform path until plugin-rsc dev SSR loading is safe in CI.
+      RWSDK_LEGACY_RSC_CLIENT_REFERENCES: "1"
+      RWSDK_LEGACY_RSC_SERVER_REFERENCES: "1"
 
     # context(justinvdm, 2025-05-12):
     # Only run this job for PRs from the same repository and pushes to main

@@ -18,3 +18,9 @@ jobs:
     secrets: inherit
     with:
       run_full_matrix: true
+
+  playground-e2e-deploy-tests:
+    uses: ./.github/workflows/playground-e2e-deploy-tests.yml
+    secrets: inherit
+    with:
+      run_full_matrix: true

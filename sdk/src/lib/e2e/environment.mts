@@ -470,7 +470,12 @@ async function runInstall(
   await fs.promises.mkdir(npmCacheDir, { recursive: true });
 
   const installCommand = {
-    pnpm: ["pnpm", "install", "--reporter=silent"],
+    pnpm: [
+      "pnpm",
+      "install",
+      "--reporter=silent",
+      ...(isCacheHit ? ["--force"] : []),
+    ],
     npm: ["npm", "install", "--cache", npmCacheDir, "--silent"],
     yarn: ["yarn", "install", "--silent"],
     "yarn-classic": ["yarn", "--silent"],

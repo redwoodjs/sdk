@@ -577,6 +577,13 @@ export async function runPreviewServer(
     console.log("Preview server stopped");
   };
 
+  // The preview command is pinned to port 4173 below, and readiness is checked
+  // with `checkServerUp`. Keep a resolver for Vite's printed local URL so the
+  // PR merge ref stays compatible with main-branch preview output handling.
+  const serverUrlResolver = (url: string) => {
+    log("Preview server reported local URL: %s", url);
+  };
+
   previewProcess = $(pm, ["run", "preview", "--", "--port", "4173", "--strictPort"], {
     all: true,
     detached: process.platform !== "win32",

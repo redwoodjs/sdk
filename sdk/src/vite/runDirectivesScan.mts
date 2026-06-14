@@ -381,16 +381,31 @@ export const runDirectivesScan = async ({
               // Store the definitive environment for this module, so it can be used when it becomes an importer.
               const realPath = await fsp.realpath(args.path);
               moduleEnvironments.set(realPath, moduleEnv);
+              moduleEnvironments.set(args.path, moduleEnv);
               log("Set environment for", realPath, "to", moduleEnv);
 
               // Finally, populate the output sets if the file has a directive.
+              // Keep both the real path and the resolved import path. Package
+              // manager symlinks can resolve to a real workspace file during
+              // scanning, while Vite/plugin-rsc may later ask for the pnpm
+              // node_modules path when looking up the client reference.
+              const normalizedRealPath = normalizeModulePath(
+                realPath,
+                rootConfig.root,
+              );
+              const normalizedResolvedPath = normalizeModulePath(
+                args.path,
+                rootConfig.root,
+              );
               if (isClient) {
                 log("Discovered 'use client' in:", realPath);
-                clientFiles.add(normalizeModulePath(realPath, rootConfig.root));
+                clientFiles.add(normalizedRealPath);
+                clientFiles.add(normalizedResolvedPath);
               }
               if (isServer) {
                 log("Discovered 'use server' in:", realPath);
-                serverFiles.add(normalizeModulePath(realPath, rootConfig.root));
+                serverFiles.add(normalizedRealPath);
+                serverFiles.add(normalizedResolvedPath);
               }
 
               let code: string;

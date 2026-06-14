@@ -14,6 +14,7 @@
     "typecheck:community": "pnpm exec tsc --project community/tsconfig.json && for d in community/playground/*/; do if [ -f \"$d/tsconfig.json\" ]; then (cd \"$d\" && npx wrangler types --include-runtime false && pnpm exec tsc); fi; done",
     "setup:wrangler": "./scripts/setup-wrangler-auth.sh",
     "test:e2e": "cd sdk && pnpm test:e2e",
+    "test:plugin-rsc-canary": "RWSDK_EXPERIMENTAL_VITE_RSC_CLIENT_REFERENCES=1 RWSDK_EXPERIMENTAL_VITE_RSC_SERVER_REFERENCES=0 RWSDK_LEGACY_RSC_SERVER_REFERENCES=1 RWSDK_SKIP_DEPLOY=1 vitest run playground/hello-world/__tests__/e2e.test.mts -t \"plugin-rsc canary\" --reporter=verbose",
     "setup:e2e": "cd sdk && pnpm setup:e2e",
     "unrelease": "node scripts/unrelease.mjs",
     "release": "./scripts/release-agent-ci.sh",

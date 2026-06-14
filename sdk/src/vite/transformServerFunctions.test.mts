@@ -190,6 +190,23 @@ export const getProject = serverQuery([
   };
 
   describe("TRANSFORMS", () => {
+    it("reads serverAction method options and export let declarations", () => {
+      const result = transformServerFunctions(
+        `
+"use server";
+
+export let getSavedGreeting = serverAction(async () => "saved", { method: "GET" });
+`,
+        "/actions.ts",
+        "client",
+        new Set(),
+      );
+
+      expect(result?.code).toContain(
+        `createServerReference("/actions.ts", "getSavedGreeting", "GET")`,
+      );
+    });
+
     it("preserves client re-exports so serverQuery metadata comes from the defining module", () => {
       const barrelResult = transformServerFunctions(
         `

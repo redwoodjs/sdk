@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { setServerFunctionMetadata } from "../serverFunctionMetadata";
 import { rscActionHandler, type RscActionHandlerDeps } from "./methodEnforcer";
 
 function createDeps(
@@ -94,6 +95,19 @@ describe("rscActionHandler method enforcement", () => {
     const action = Object.assign(vi.fn().mockReturnValue("data"), {
       method: "GET",
     });
+    const deps = createDeps(action);
+    const req = makeRequest(ACTION_URL + "&args=%5B%5D", "GET");
+
+    const result = await rscActionHandler(req, deps);
+
+    expect(result).toBe("data");
+    expect(action).toHaveBeenCalled();
+  });
+
+  it("uses private Redwood metadata for method enforcement", async () => {
+    const action = vi.fn().mockReturnValue("data");
+    setServerFunctionMetadata(action, { method: "GET", source: "query" });
+    delete (action as any).method;
     const deps = createDeps(action);
     const req = makeRequest(ACTION_URL + "&args=%5B%5D", "GET");
 

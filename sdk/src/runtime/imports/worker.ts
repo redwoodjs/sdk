@@ -1,6 +1,7 @@
 import { ssrWebpackRequire as baseSsrWebpackRequire } from "rwsdk/__ssr_bridge";
 import { memoizeOnId } from "../lib/memoizeOnId";
 import { requestInfo } from "../requestInfo/worker";
+import { createNullSsrModule } from "./nullSsrModule.js";
 
 // @ts-ignore
 import { useServerLookup } from "virtual:use-server-lookup.js";
@@ -25,7 +26,13 @@ export const getServerModuleExport = async (id: string) => {
 
 export const ssrWebpackRequire = memoizeOnId(async (id: string) => {
   if (!requestInfo.rw.ssr) {
-    return { [id]: () => null };
+    // When SSR is disabled, return a Proxy that handles any property access
+    // with a null renderer. React's server.edge calls requireModule(manifest.id)
+    // then reads moduleExports[manifest.name]. With the split-format manifest
+    // (id=referenceKey, name=exportName), the old placeholder {[id]:()=>null}
+    // keyed on the full referenceKey#name string, but React reads by export name.
+    // A Proxy avoids this mismatch: every named property returns () => null.
+    return createNullSsrModule();
   }
 
   return baseSsrWebpackRequire(id);

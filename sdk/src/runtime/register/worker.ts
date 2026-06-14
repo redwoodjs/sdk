@@ -17,7 +17,9 @@ export function registerServerReference(
     return action;
   }
 
-  // Note: We no longer need to register in a Map since we use virtual lookup
+  // Note: We no longer need to register in a Map since we use virtual lookup.
+  // React mutates and returns the same function here, so existing Redwood method
+  // metadata on serverAction/serverQuery remains attached to the action.
   return baseRegisterServerReference(action, id, name);
 }
 
@@ -51,7 +53,7 @@ export function registerClientReference<Target extends Record<string, unknown>>(
       };
     }
 
-    finalDescriptors.$$async = { value: true };
+    finalDescriptors.$$async = { value: false };
     finalDescriptors.$$isClientReference = { value: true };
 
     // context(justinvdm, 25 Sep 2025): We create a wrapper function to avoid

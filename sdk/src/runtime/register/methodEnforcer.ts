@@ -1,5 +1,7 @@
 // context(justinvdm, 2026-04-06): Extracted from rscActionHandler() for testability.
 // The real getServerModuleExport and decodeReply require the react-server environment
+import { getServerFunctionMetadata } from "../serverFunctionMetadata.js";
+
 // (virtual module lookup, react-server-dom-webpack), so we accept them as injected
 // dependencies. worker.ts passes the real implementations; tests pass fakes.
 
@@ -100,7 +102,7 @@ export async function rscActionHandler(
   // invocation. serverAction() attaches .method = "POST" at creation time via
   // createServerFunction(), serverQuery() attaches "GET". Functions without
   // .method default to POST to match serverAction() semantics.
-  const actionMethod = (action as Function & { method?: string }).method ?? "POST";
+  const actionMethod = getServerFunctionMetadata(action)?.method ?? "POST";
 
   if (actionMethod !== req.method) {
     return new Response(

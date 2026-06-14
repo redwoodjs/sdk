@@ -1,6 +1,11 @@
 import { Plugin } from "vite";
 import { createDirectiveLookupPlugin } from "./createDirectiveLookupPlugin.mjs";
 
+// Legacy fallback for client-reference discovery.
+// The preferred default path uses plugin-rsc metadata via
+// viteRscClientReferencePlugin. Keep this plugin for explicit rollback and
+// compatibility fixes only; add new client-reference behavior to the
+// plugin-rsc adapter path instead.
 export const useClientLookupPlugin = async ({
   projectRootDir,
   clientFiles,
