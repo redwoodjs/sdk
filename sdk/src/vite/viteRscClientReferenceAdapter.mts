@@ -16,11 +16,35 @@ export const normalizeViteRscClientReferenceId = (id: string) =>
     drive.toLowerCase(),
   );
 
-const stripViteTimestampQuery = (id: string) => {
+const splitExportSuffix = (id: string) => {
   const hashIndex = id.indexOf("#");
-  const pathPart = hashIndex === -1 ? id : id.slice(0, hashIndex);
-  const exportPart = hashIndex === -1 ? "" : id.slice(hashIndex);
+  return hashIndex === -1
+    ? { pathPart: id, exportPart: "" }
+    : { pathPart: id.slice(0, hashIndex), exportPart: id.slice(hashIndex) };
+};
+
+const stripViteTimestampQuery = (id: string) => {
+  const { pathPart, exportPart } = splitExportSuffix(id);
   return pathPart.split("?", 1)[0] + exportPart;
+};
+
+const stripPluginRscCacheTag = (id: string) => {
+  const { pathPart, exportPart } = splitExportSuffix(id);
+  return pathPart.replace(/\$\$cache=[^?#]+/, "") + exportPart;
+};
+
+const createLookupKeyVariants = (key: string) => {
+  const normalizedKey = normalizeViteRscClientReferenceId(key);
+  const queryless = stripViteTimestampQuery(normalizedKey);
+  const cacheless = stripPluginRscCacheTag(normalizedKey);
+
+  return new Set([
+    normalizedKey,
+    queryless,
+    cacheless,
+    stripPluginRscCacheTag(queryless),
+    stripViteTimestampQuery(cacheless),
+  ]);
 };
 
 export function generateViteRscClientReferenceLookupEntries({
@@ -41,14 +65,9 @@ export function generateViteRscClientReferenceLookupEntries({
     if (!key || !importId) {
       return;
     }
-    const normalizedKey = normalizeViteRscClientReferenceId(key);
     const normalizedImportId = normalizeViteRscClientReferenceId(importId);
-    const keyVariants = new Set([
-      normalizedKey,
-      stripViteTimestampQuery(normalizedKey),
-    ]);
 
-    for (const keyVariant of keyVariants) {
+    for (const keyVariant of createLookupKeyVariants(key)) {
       if (!entries.has(keyVariant)) {
         entries.set(keyVariant, normalizedImportId);
       }

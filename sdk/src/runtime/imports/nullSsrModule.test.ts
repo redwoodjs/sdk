@@ -8,6 +8,9 @@ describe("createNullSsrModule", () => {
     expect(module.default()).toBe(null);
     expect(module.NamedButton()).toBe(null);
     expect(module["referenceKey#NamedButton"]()).toBe(null);
+    expect(Object.prototype.hasOwnProperty.call(module, "NamedButton")).toBe(
+      true,
+    );
   });
 
   it("does not look like a thenable", () => {

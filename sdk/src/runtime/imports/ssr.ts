@@ -32,5 +32,5 @@ export const ssrWebpackRequire = memoizeOnId(async (id: string) => {
     return module;
   }
 
-  return { [id]: module[name] };
+  return { [id]: module[name], [name]: module[name] };
 });

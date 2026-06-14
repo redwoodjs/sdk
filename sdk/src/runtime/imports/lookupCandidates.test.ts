@@ -9,6 +9,24 @@ describe("getLookupCandidates", () => {
     ]);
   });
 
+  it("includes plugin-rsc dev cache-tag aliases", () => {
+    expect(getLookupCandidates("/src/app/client.tsx$$cache=abc123")).toEqual([
+      "/src/app/client.tsx$$cache=abc123",
+      "/src/app/client.tsx",
+    ]);
+  });
+
+  it("includes queryless and cacheless aliases together", () => {
+    expect(
+      getLookupCandidates("/src/app/client.tsx$$cache=abc123?t=456#Named"),
+    ).toEqual([
+      "/src/app/client.tsx$$cache=abc123?t=456#Named",
+      "/src/app/client.tsx$$cache=abc123#Named",
+      "/src/app/client.tsx?t=456#Named",
+      "/src/app/client.tsx#Named",
+    ]);
+  });
+
   it("does not reverse-engineer pnpm file dependency aliases at runtime", () => {
     expect(
       getLookupCandidates(

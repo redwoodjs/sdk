@@ -26,6 +26,28 @@ describe("generateViteRscClientReferenceLookupCode", () => {
     );
   });
 
+  it("generates SSR-safe stubs instead of importing client modules in the SSR environment", () => {
+    const code = generateViteRscClientReferenceLookupCode({
+      projectRootDir: "/repo/app",
+      ssrSafeStubs: true,
+      clientReferenceMetaMap: {
+        "/repo/app/src/app/client/Named.tsx": {
+          importId: "/repo/app/src/app/client/Named.tsx",
+          referenceKey: "hashNamed",
+          exportNames: ["NamedButton"],
+        },
+      },
+    });
+
+    expect(code).toContain(
+      'import { createNullSsrModule } from "rwsdk/__ssr";',
+    );
+    expect(code).toContain(
+      '"hashNamed": () => Promise.resolve(createNullSsrModule())',
+    );
+    expect(code).not.toContain('import("/repo/app/src/app/client/Named.tsx")');
+  });
+
   it("keeps directive-scan client files in the plugin-rsc lookup fallback", () => {
     const code = generateViteRscClientReferenceLookupCode({
       projectRootDir: "/repo/app",

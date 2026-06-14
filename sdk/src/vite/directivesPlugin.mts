@@ -32,9 +32,47 @@ export const pluginRscMetaMapHasModule = ({
     const candidates = [sourceId, meta.importId].filter(Boolean) as string[];
     return candidates.some(
       (candidate) =>
-        normalizeModulePath(stripViteQuery(candidate), projectRootDir) === normalizedId,
+        normalizeModulePath(stripViteQuery(candidate), projectRootDir) ===
+        normalizedId,
     );
   });
+};
+
+export const shouldSkipLegacyClientTransformForPluginRsc = ({
+  experimentalUseViteRscClientReferences,
+  environmentName,
+  clientFiles,
+  normalizedId,
+  pluginRscClientReferenceMetaMap,
+  projectRootDir,
+  rawId,
+}: {
+  experimentalUseViteRscClientReferences: boolean;
+  environmentName: string;
+  clientFiles: Set<string>;
+  normalizedId: string;
+  pluginRscClientReferenceMetaMap: Record<string, PluginRscReferenceMeta>;
+  projectRootDir: string;
+  rawId: string;
+}) => {
+  if (
+    !experimentalUseViteRscClientReferences ||
+    environmentName !== "worker" ||
+    !clientFiles.has(normalizedId)
+  ) {
+    return false;
+  }
+
+  return (
+    clientFiles.has(
+      normalizeModulePath(stripViteQuery(rawId), projectRootDir),
+    ) ||
+    pluginRscMetaMapHasModule({
+      metaMap: pluginRscClientReferenceMetaMap,
+      id: rawId,
+      projectRootDir,
+    })
+  );
 };
 
 export const getLoader = (filePath: string) => {
@@ -115,13 +153,15 @@ export const directivesPlugin = ({
 
       const pluginApi = getPluginApi(config);
       const pluginRscHandledClientReference =
-        experimentalUseViteRscClientReferences &&
-        this.environment.name === "worker" &&
-        clientFiles.has(normalizedId) &&
-        pluginRscMetaMapHasModule({
-          metaMap: pluginApi?.manager.clientReferenceMetaMap ?? {},
-          id,
+        shouldSkipLegacyClientTransformForPluginRsc({
+          experimentalUseViteRscClientReferences,
+          environmentName: this.environment.name,
+          clientFiles,
+          normalizedId,
+          pluginRscClientReferenceMetaMap:
+            pluginApi?.manager.clientReferenceMetaMap ?? {},
           projectRootDir,
+          rawId: id,
         });
 
       const clientResult = pluginRscHandledClientReference

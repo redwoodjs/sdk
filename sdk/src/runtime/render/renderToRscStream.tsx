@@ -1,4 +1,5 @@
-import { renderToReadableStream as pluginRscRenderToReadableStream } from "@vitejs/plugin-rsc/react/rsc";
+import { renderToReadableStream as baseRenderToRscStream } from "react-server-dom-webpack/server.edge";
+import { createClientManifest } from "./createClientManifest.js";
 
 export const renderToRscStream = ({
   input,
@@ -27,7 +28,7 @@ export const renderToRscStream = ({
     actionResult,
   };
 
-  return pluginRscRenderToReadableStream(wrappedInput, {
+  return baseRenderToRscStream(wrappedInput, createClientManifest(), {
     onError,
   });
 };

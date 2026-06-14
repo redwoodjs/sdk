@@ -41,57 +41,137 @@ const clickUntilText = async (
   });
 };
 
-testDevAndDeploy("renders plugin-rsc client-reference fixture in the browser", async ({ page, url }) => {
-  await page.goto(url);
+testDevAndDeploy(
+  "renders plugin-rsc client-reference fixture in the browser",
+  async ({ page, url }) => {
+    await page.goto(url);
 
-  await expectText(page, "h1", "Hello World");
-  await expectProofs(page, [
-    "vite-rsc-client-adapter-fixture",
-    "named-button",
-    "named-label",
-    "default-only",
-    "mixed-default",
-    "mixed-named",
-    "re-exported-button",
-    "duplicate-a",
-    "duplicate-b",
-    "dynamic-target",
-    "server-proof-client",
-  ]);
+    await expectText(page, "h1", "Hello World");
+    await expectProofs(page, [
+      "vite-rsc-client-adapter-fixture",
+      "named-button",
+      "named-label",
+      "default-only",
+      "mixed-default",
+      "mixed-named",
+      "re-exported-button",
+      "duplicate-a",
+      "duplicate-b",
+      "dynamic-target",
+      "server-proof-client",
+    ]);
 
-  await expectText(page, "#named-count", "Named count: 0");
-  await clickUntilText(page, "#named-count", "#named-count", "Named count: 1");
+    await expectText(page, "#named-count", "Named count: 0");
+    await clickUntilText(
+      page,
+      "#named-count",
+      "#named-count",
+      "Named count: 1",
+    );
 
-  await clickUntilText(
-    page,
-    "#server-query-proof",
-    "#server-proof-result",
-    "Hello, Adapter! (serverQuery preserved)",
+    await clickUntilText(
+      page,
+      "#server-query-proof",
+      "#server-proof-result",
+      "Hello, Adapter! (serverQuery preserved)",
+    );
+
+    await clickUntilText(
+      page,
+      "#server-action-proof",
+      "#server-proof-result",
+      "Updated Adapter (serverAction preserved)",
+    );
+  },
+);
+
+const canaryCases = [
+  {
+    name: "named export",
+    path: "/canary/named",
+    heading: "plugin-rsc canary named",
+    proofs: ["named-button", "named-label"],
+  },
+  {
+    name: "default export",
+    path: "/canary/default",
+    heading: "plugin-rsc canary default",
+    proofs: ["default-only"],
+  },
+  {
+    name: "mixed exports",
+    path: "/canary/mixed",
+    heading: "plugin-rsc canary mixed",
+    proofs: ["mixed-default", "mixed-named"],
+  },
+  {
+    name: "re-export",
+    path: "/canary/re-export",
+    heading: "plugin-rsc canary re-export",
+    proofs: ["re-exported-button"],
+  },
+  {
+    name: "duplicate basenames",
+    path: "/canary/duplicate",
+    heading: "plugin-rsc canary duplicate",
+    proofs: ["duplicate-a", "duplicate-b"],
+  },
+  {
+    name: "dynamic import",
+    path: "/canary/dynamic",
+    heading: "plugin-rsc canary dynamic",
+    proofs: ["dynamic-target"],
+  },
+  {
+    name: "server function client component",
+    path: "/canary/server-proof",
+    heading: "plugin-rsc canary server proof",
+    proofs: ["server-proof-client"],
+  },
+] as const;
+
+testDevAndDeploy(
+  "plugin-rsc canary type diagnostics",
+  async ({ page, url }) => {
+    await page.goto(new URL("/canary/types", url).toString());
+
+    await expectText(page, "h1", "plugin-rsc canary types");
+    await expectText(page, "#client-reference-types", '"NamedButton":"function"');
+    await expectText(page, "#client-reference-types", '"DefaultOnly":"function"');
+    await expectText(page, "#client-reference-types", '"MixedNamed":"function"');
+  },
+);
+
+for (const canary of canaryCases) {
+  testDevAndDeploy(
+    `plugin-rsc canary ${canary.name}`,
+    async ({ page, url }) => {
+      await page.goto(new URL(canary.path, url).toString());
+
+      await expectText(page, "h1", canary.heading);
+      await expectProofs(page, [...canary.proofs]);
+    },
   );
+}
 
-  await clickUntilText(
-    page,
-    "#server-action-proof",
-    "#server-proof-result",
-    "Updated Adapter (serverAction preserved)",
-  );
-});
+testDevAndDeploy(
+  "renders and hydrates an ssr:false client reference route",
+  async ({ page, url }) => {
+    await page.goto(new URL("/ssr-off/", url).toString());
 
-testDevAndDeploy("renders and hydrates an ssr:false client reference route", async ({ page, url }) => {
-  await page.goto(new URL("/ssr-off/", url).toString());
+    await expectText(page, "h1", "SSR false proof");
+    await expectProofs(page, ["ssr-false-client"]);
+    await expectProofs(page, ["server-proof-client"]);
+    await expectText(page, "#server-proof-result", "idle");
 
-  await expectText(page, "h1", "SSR false proof");
-  await expectProofs(page, ["ssr-false-client"]);
-  await expectProofs(page, ["server-proof-client"]);
-  await expectText(page, "#server-proof-result", "idle");
-
-  await clickUntilText(
-    page,
-    "#server-query-proof",
-    "#server-proof-result",
-    "Hello, Adapter! (serverQuery preserved)",
-  );
-});
+    await clickUntilText(
+      page,
+      "#server-query-proof",
+      "#server-proof-result",
+      "Hello, Adapter! (serverQuery preserved)",
+    );
+  },
+);
 
 // Rollback-mode coverage for this work lives in redwoodPlugin.test.mts because
 // those env flags change Vite plugin setup before the shared e2e harness starts

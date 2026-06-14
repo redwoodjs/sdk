@@ -33,11 +33,35 @@ type ResolvedReference = {
 const normalizeReferenceId = (id: string) =>
   id.replace(/\\/g, "/").replace(/^[A-Z]:\//, (drive) => drive.toLowerCase());
 
-const stripViteQuery = (id: string) => {
+const splitExportSuffix = (id: string) => {
   const hashIndex = id.indexOf("#");
-  const pathPart = hashIndex === -1 ? id : id.slice(0, hashIndex);
-  const exportPart = hashIndex === -1 ? "" : id.slice(hashIndex);
+  return hashIndex === -1
+    ? { pathPart: id, exportPart: "" }
+    : { pathPart: id.slice(0, hashIndex), exportPart: id.slice(hashIndex) };
+};
+
+const stripViteQuery = (id: string) => {
+  const { pathPart, exportPart } = splitExportSuffix(id);
   return pathPart.split("?", 1)[0] + exportPart;
+};
+
+const stripPluginRscCacheTag = (id: string) => {
+  const { pathPart, exportPart } = splitExportSuffix(id);
+  return pathPart.replace(/\$\$cache=[^?#]+/, "") + exportPart;
+};
+
+const createReferenceVariants = (id: string) => {
+  const normalized = normalizeReferenceId(id);
+  const queryless = stripViteQuery(normalized);
+  const cacheless = stripPluginRscCacheTag(normalized);
+
+  return new Set([
+    normalized,
+    queryless,
+    cacheless,
+    stripPluginRscCacheTag(queryless),
+    stripViteQuery(cacheless),
+  ]);
 };
 
 const createFallbackClientManifestEntry = (
@@ -84,16 +108,16 @@ const createReferenceResolver = ({
   const aliases = new Map<string, ResolvedReference>();
   const rootRelative = createRootRelative(projectRootDir);
 
-  const add = (key: string | undefined, referenceKey: string, exportName?: string) => {
+  const add = (
+    key: string | undefined,
+    referenceKey: string,
+    exportName?: string,
+  ) => {
     if (!key) {
       return;
     }
 
-    const normalizedKey = normalizeReferenceId(key);
-    for (const keyVariant of new Set([
-      normalizedKey,
-      stripViteQuery(normalizedKey),
-    ])) {
+    for (const keyVariant of createReferenceVariants(key)) {
       if (!aliases.has(keyVariant)) {
         aliases.set(keyVariant, { referenceKey, exportName });
       }
@@ -118,14 +142,37 @@ const createReferenceResolver = ({
       add(`${meta.referenceKey}#${exportName}`, meta.referenceKey, exportName);
       add(`${importId}#${exportName}`, meta.referenceKey, exportName);
       add(`${normalizedSourceId}#${exportName}`, meta.referenceKey, exportName);
-      add(`${rootRelativeImportId}#${exportName}`, meta.referenceKey, exportName);
-      add(`${rootRelativeSourceId}#${exportName}`, meta.referenceKey, exportName);
-      add(`/${rootRelativeImportId}#${exportName}`, meta.referenceKey, exportName);
-      add(`/${rootRelativeSourceId}#${exportName}`, meta.referenceKey, exportName);
+      add(
+        `${rootRelativeImportId}#${exportName}`,
+        meta.referenceKey,
+        exportName,
+      );
+      add(
+        `${rootRelativeSourceId}#${exportName}`,
+        meta.referenceKey,
+        exportName,
+      );
+      add(
+        `/${rootRelativeImportId}#${exportName}`,
+        meta.referenceKey,
+        exportName,
+      );
+      add(
+        `/${rootRelativeSourceId}#${exportName}`,
+        meta.referenceKey,
+        exportName,
+      );
     }
   }
 
-  return (key: string) => aliases.get(normalizeReferenceId(key));
+  return (key: string) => {
+    for (const keyVariant of createReferenceVariants(key)) {
+      const resolved = aliases.get(keyVariant);
+      if (resolved) {
+        return resolved;
+      }
+    }
+  };
 };
 
 const createEntry = ({

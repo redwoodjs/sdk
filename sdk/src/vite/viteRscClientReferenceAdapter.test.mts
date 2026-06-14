@@ -62,6 +62,28 @@ describe("generateViteRscClientReferenceLookupEntries", () => {
     });
   });
 
+  it("adds cacheless lookup aliases for plugin-rsc dev cache-tagged client reference ids", () => {
+    const entries = generateViteRscClientReferenceLookupEntries({
+      projectRootDir: "/repo/app",
+      clientReferenceMetaMap: {
+        "/repo/app/src/app/Client.tsx$$cache=abc123?t=456": {
+          importId: "/repo/app/src/app/Client.tsx$$cache=abc123?t=456",
+          referenceKey: "abc123",
+          exportNames: ["Named"],
+        },
+      },
+    });
+
+    expect(entries).toContainEqual({
+      key: "/repo/app/src/app/Client.tsx#Named",
+      importId: "/repo/app/src/app/Client.tsx$$cache=abc123?t=456",
+    });
+    expect(entries).toContainEqual({
+      key: "src/app/Client.tsx#Named",
+      importId: "/repo/app/src/app/Client.tsx$$cache=abc123?t=456",
+    });
+  });
+
   it("normalizes Windows-style ids and keeps duplicate basenames distinct", () => {
     const entries = generateViteRscClientReferenceLookupEntries({
       projectRootDir: "C:\\repo\\app",

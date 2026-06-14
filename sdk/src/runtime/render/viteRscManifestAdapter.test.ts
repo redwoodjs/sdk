@@ -76,19 +76,25 @@ describe("vite-rsc manifest/module-map adapters", () => {
       projectRootDir: "/repo/app",
     }) as any;
 
-    expect(manifest["src/app/client/duplicate/a/Duplicate.tsx#Duplicate"]).toEqual({
+    expect(
+      manifest["src/app/client/duplicate/a/Duplicate.tsx#Duplicate"],
+    ).toEqual({
       id: "duplicateARef",
       name: "Duplicate",
       chunks: [],
       async: true,
     });
-    expect(manifest["src/app/client/duplicate/b/Duplicate.tsx#Duplicate"]).toEqual({
+    expect(
+      manifest["src/app/client/duplicate/b/Duplicate.tsx#Duplicate"],
+    ).toEqual({
       id: "duplicateBRef",
       name: "Duplicate",
       chunks: [],
       async: true,
     });
-    expect(manifest["/src/app/client/ReExportLeaf.tsx#ReExportedButton"]).toEqual({
+    expect(
+      manifest["/src/app/client/ReExportLeaf.tsx#ReExportedButton"],
+    ).toEqual({
       id: "reExportRef",
       name: "ReExportedButton",
       chunks: [],
@@ -125,7 +131,7 @@ describe("vite-rsc manifest/module-map adapters", () => {
     expect(manifest["mixedRef#MixedNamed"].chunks).toEqual([]);
   });
 
-  it("resolves Vite HMR timestamp aliases in client manifests and module maps", () => {
+  it("resolves Vite HMR timestamp and plugin-rsc cache-tag aliases in client manifests and module maps", () => {
     const manifest = createClientManifestFromViteRsc({
       clientReferenceMetaMap,
       projectRootDir: "/repo/app",
@@ -141,7 +147,23 @@ describe("vite-rsc manifest/module-map adapters", () => {
       chunks: [],
       async: true,
     });
+    expect(
+      manifest["/src/app/client/Named.tsx$$cache=abc123#NamedButton"],
+    ).toEqual({
+      id: "namedRef",
+      name: "NamedButton",
+      chunks: [],
+      async: true,
+    });
     expect(moduleMap["/src/app/client/Named.tsx"].NamedLabel).toEqual({
+      id: "namedRef",
+      name: "NamedLabel",
+      chunks: [],
+      async: true,
+    });
+    expect(
+      moduleMap["/src/app/client/Named.tsx$$cache=abc123"].NamedLabel,
+    ).toEqual({
       id: "namedRef",
       name: "NamedLabel",
       chunks: [],
@@ -161,7 +183,9 @@ describe("vite-rsc manifest/module-map adapters", () => {
       chunks: [],
       async: true,
     });
-    expect(moduleMap["/src/app/client/duplicate/a/Duplicate.tsx"].Duplicate).toEqual({
+    expect(
+      moduleMap["/src/app/client/duplicate/a/Duplicate.tsx"].Duplicate,
+    ).toEqual({
       id: "duplicateARef",
       name: "Duplicate",
       chunks: [],

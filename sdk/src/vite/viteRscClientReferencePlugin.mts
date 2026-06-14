@@ -9,23 +9,29 @@ import {
 
 export const VIRTUAL_MODULE = "virtual:use-client-lookup.js";
 export const RESOLVED_VIRTUAL_MODULE = "\0rwsdk:vite-rsc-use-client-lookup";
-const ENCODED_RESOLVED_VIRTUAL_MODULE = "__x00__rwsdk:vite-rsc-use-client-lookup";
+const ENCODED_RESOLVED_VIRTUAL_MODULE =
+  "__x00__rwsdk:vite-rsc-use-client-lookup";
 
 type ClientReferenceMetaMap = Record<string, ViteRscClientReferenceMeta>;
 
 const log = debug("rwsdk:vite:vite-rsc-client-reference");
-const persistedClientReferenceMetaMaps = new Map<string, ClientReferenceMetaMap>();
+const persistedClientReferenceMetaMaps = new Map<
+  string,
+  ClientReferenceMetaMap
+>();
 
 export const generateViteRscClientReferenceLookupCode = ({
   clientReferenceMetaMap,
   legacyClientFiles,
   projectRootDir,
   isDev = false,
+  ssrSafeStubs = false,
 }: {
   clientReferenceMetaMap: ClientReferenceMetaMap;
   legacyClientFiles?: Iterable<string>;
   projectRootDir: string;
   isDev?: boolean;
+  ssrSafeStubs?: boolean;
 }) => {
   const entries = generateViteRscClientReferenceLookupEntries({
     clientReferenceMetaMap,
@@ -33,6 +39,10 @@ export const generateViteRscClientReferenceLookupCode = ({
     projectRootDir,
   });
   const lines = entries.map(({ key, importId }) => {
+    if (ssrSafeStubs) {
+      return `  ${JSON.stringify(key)}: () => Promise.resolve(createNullSsrModule()),`;
+    }
+
     if (isDev && importId.includes("node_modules")) {
       return `  ${JSON.stringify(key)}: () => import(${JSON.stringify(
         VENDOR_CLIENT_BARREL_EXPORT_PATH,
@@ -42,7 +52,11 @@ export const generateViteRscClientReferenceLookupCode = ({
     return `  ${JSON.stringify(key)}: () => import(${JSON.stringify(importId)}),`;
   });
 
-  return `export const useClientLookup = {\n${lines.join("\n")}\n};\n`;
+  const imports = ssrSafeStubs
+    ? `import { createNullSsrModule } from "rwsdk/__ssr";\n`
+    : "";
+
+  return `${imports}export const useClientLookup = {\n${lines.join("\n")}\n};\n`;
 };
 
 export const viteRscClientReferencePlugin = ({
@@ -56,7 +70,8 @@ export const viteRscClientReferencePlugin = ({
   let devServer: ViteDevServer | undefined;
 
   const liveClientReferenceMetaMap = () =>
-    (getPluginApi(config)?.manager.clientReferenceMetaMap ?? {}) as ClientReferenceMetaMap;
+    (getPluginApi(config)?.manager.clientReferenceMetaMap ??
+      {}) as ClientReferenceMetaMap;
 
   const currentClientReferenceMetaMap = () => {
     const live = liveClientReferenceMetaMap();
@@ -131,14 +146,20 @@ export const viteRscClientReferencePlugin = ({
       });
     },
     resolveId(source) {
-      if (source === VIRTUAL_MODULE || source === ENCODED_RESOLVED_VIRTUAL_MODULE) {
+      if (
+        source === VIRTUAL_MODULE ||
+        source === ENCODED_RESOLVED_VIRTUAL_MODULE
+      ) {
         return RESOLVED_VIRTUAL_MODULE;
       }
 
       return null;
     },
     load(id) {
-      if (id !== RESOLVED_VIRTUAL_MODULE && id !== ENCODED_RESOLVED_VIRTUAL_MODULE) {
+      if (
+        id !== RESOLVED_VIRTUAL_MODULE &&
+        id !== ENCODED_RESOLVED_VIRTUAL_MODULE
+      ) {
         return null;
       }
 
@@ -156,6 +177,7 @@ export const viteRscClientReferencePlugin = ({
         legacyClientFiles: clientFiles,
         projectRootDir,
         isDev: config.command === "serve",
+        ssrSafeStubs: this.environment?.name === "ssr",
       });
     },
     transform: {
