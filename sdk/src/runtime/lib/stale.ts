@@ -1,7 +1,6 @@
 export const STALE_RESPONSE_HEADER = "x-rwsdk-stale";
 export const STALE_RESPONSE_VALUE_RELOAD = "reload";
 export const CLIENT_VERSION_HEADER = "x-rwsdk-client-version";
-export const CLIENT_VERSION_QUERY = "__rwsdk_client_version";
 
 export type StaleSource = "core" | "asset" | "synced-state";
 export type StaleReason =
@@ -20,16 +19,7 @@ export interface StaleEvent {
 export function getClientVersionFromRequest(
   request: Request,
 ): string | undefined {
-  const headerVersion = request.headers.get(CLIENT_VERSION_HEADER)?.trim();
-  if (headerVersion) {
-    return headerVersion;
-  }
-
-  const url = new URL(request.url);
-  const queryVersion = url.searchParams.get(CLIENT_VERSION_QUERY)?.trim();
-  if (queryVersion) {
-    return queryVersion;
-  }
+  return request.headers.get(CLIENT_VERSION_HEADER)?.trim();
 }
 
 export function isStaleRequest(
@@ -76,21 +66,6 @@ export function createStaleReloadResponse(): Response {
       "cache-control": "no-store",
     },
   });
-}
-
-export function addClientVersionToUrl(
-  urlLike: string,
-  clientVersion: string | undefined,
-): string {
-  if (!clientVersion) {
-    return urlLike;
-  }
-
-  const baseUrl =
-    typeof window !== "undefined" ? window.location.href : "http://localhost";
-  const url = new URL(urlLike, baseUrl);
-  url.searchParams.set(CLIENT_VERSION_QUERY, clientVersion);
-  return url.toString();
 }
 
 export const STALE_CLIENT_ERROR_MESSAGE =

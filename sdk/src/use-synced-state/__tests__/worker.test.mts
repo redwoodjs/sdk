@@ -155,6 +155,10 @@ describe("SyncedStateProxy", () => {
 
     expect(proxy).toBeDefined();
 
+    // The client sends its build version data-level after the WebSocket
+    // handshake completes.
+    proxy.setClientVersion("initial-build");
+
     // Simulate a deployment that changes the worker build ID while the
     // WebSocket session remains open.
     vi.stubEnv("VITE_RWSDK_BUILD_ID", "new-build");

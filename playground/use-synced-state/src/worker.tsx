@@ -8,6 +8,7 @@ import { defineApp } from "rwsdk/worker";
 
 import { Document } from "@/app/Document";
 import { setCommonHeaders } from "@/app/headers";
+import { About } from "@/app/pages/About";
 import { Home } from "@/app/pages/Home";
 import { registerSyncedStateHandlers } from "./syncedStateHandlers";
 
@@ -71,18 +72,6 @@ export default defineApp([
       headers: response.headers,
     });
   }),
-  route("/__stale-test/set-build-id", ({ request }) => {
-    // Test-only route used by E2E tests to simulate a deployment that changes
-    // the worker build ID while an existing WebSocket connection is open.
-    const url = new URL(request.url);
-    const version = url.searchParams.get("version");
-    if (version) {
-      (globalThis as any).__rwsdk_stale_build_id_override = version;
-    } else {
-      delete (globalThis as any).__rwsdk_stale_build_id_override;
-    }
-    return new Response("ok", { status: 200 });
-  }),
-  render(Document, [route("/", Home)]),
+  render(Document, [route("/", Home), route("/about", About)]),
   ...syncedStateRoutes(() => env.SYNCED_STATE_SERVER),
 ]);

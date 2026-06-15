@@ -112,12 +112,20 @@ export const defineApp = <
         }
       }
 
-      const staleResponse = await handleStaleRequest(
-        request,
-        request.url.includes("/assets/") ? "asset" : "core",
-      );
-      if (staleResponse) {
-        return staleResponse;
+      // Stale-client detection for use-synced-state is handled entirely
+      // data-level over the RPC channel. The WebSocket upgrade request itself
+      // carries no version metadata and must not be rejected here.
+      const isWebSocketUpgrade =
+        request.headers.get("upgrade")?.toLowerCase() === "websocket";
+
+      if (!isWebSocketUpgrade) {
+        const staleResponse = await handleStaleRequest(
+          request,
+          request.url.includes("/assets/") ? "asset" : "core",
+        );
+        if (staleResponse) {
+          return staleResponse;
+        }
       }
 
       // context(justinvdm, 5 Feb 2025): Serve assets requests using the assets service binding

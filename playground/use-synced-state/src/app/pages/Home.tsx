@@ -4,7 +4,10 @@ import { ConnectionStatus } from "@/app/components/ConnectionStatus";
 import { MountUnmountTest } from "@/app/components/MountUnmountTest";
 import { UserPresence } from "@/app/components/UserPresence";
 import { AppContext } from "@/worker";
+import { lazy, Suspense, useState } from "react";
 import { useSyncedState } from "rwsdk/use-synced-state/client";
+
+const LazyWidget = lazy(() => import("@/app/components/Widget"));
 
 export function Home({ ctx }: { ctx: AppContext }) {
   const [userCount, setUserCount] = useSyncedState(0, "user:counter");
@@ -31,6 +34,7 @@ export function Home({ ctx }: { ctx: AppContext }) {
     "STATE",
     "private",
   );
+  const [showWidget, setShowWidget] = useState(false);
 
   const isLoggedIn = ctx.userId !== null;
 
@@ -83,7 +87,24 @@ export function Home({ ctx }: { ctx: AppContext }) {
           )}
         </div>
 
-        {isLoggedIn ? (
+        <div style={{ marginBottom: "1rem" }}>
+        <a href="/about" id="about-link">
+          About
+        </a>
+      </div>
+
+      <div style={{ marginBottom: "1rem" }}>
+        <button id="load-widget" onClick={() => setShowWidget(true)}>
+          Load Widget
+        </button>
+      </div>
+      {showWidget && (
+        <Suspense fallback={<div>Loading widget...</div>}>
+          <LazyWidget />
+        </Suspense>
+      )}
+
+      {isLoggedIn ? (
           <>
             <h2>User Counter</h2>
             <div className="counter-display">Count: {userCount}</div>

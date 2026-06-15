@@ -42,9 +42,12 @@ async function getSyncedStateProxy(): Promise<{
       #stub: DurableObjectStub<SyncedStateServer>;
       #keyHandler: KeyHandler | null;
       #requestInfo: RequestInfo | null;
-      // The worker build ID that was current when this WebSocket session was
-      // established. Compared against the current build ID on every RPC message
-      // so established connections that outlive a deployment are rejected.
+      // The client build ID sent via the setClientVersion RPC. Compared
+      // against the worker's current build ID on every RPC message so
+      // established connections that outlive a deployment are rejected.
+      // Staleness for use-synced-state is handled entirely data-level over
+      // the RPC channel; no query parameter or WebSocket-handshake check is
+      // used.
       #clientVersion: string | undefined;
       // Map original RPC callbacks to the duplicated callbacks sent to the DO
       // so unsubscribe uses the same identity that subscribe registered.
@@ -59,14 +62,19 @@ async function getSyncedStateProxy(): Promise<{
         this.#stub = stub;
         this.#keyHandler = keyHandler;
         this.#requestInfo = requestInfo;
-        // Store the build ID current at session creation time. Fresh page loads
-        // after a deployment will always carry the new build ID, so this only
-        // matters for long-lived WebSocket sessions.
-        this.#clientVersion = import.meta.env.VITE_RWSDK_BUILD_ID;
         // Set stub in DO instance so handlers can access it
         if (stub && typeof (stub as any)._setStub === "function") {
           void (stub as any)._setStub(stub);
         }
+      }
+
+      /**
+       * Stores the client's build version. This is the only way stale-client
+       * detection receives the client's version for use-synced-state. The
+       * WebSocket handshake carries no version metadata.
+       */
+      setClientVersion(version: string): void {
+        this.#clientVersion = version;
       }
 
       /**
@@ -78,7 +86,7 @@ async function getSyncedStateProxy(): Promise<{
         const currentVersion =
           (globalThis as any).__rwsdk_stale_build_id_override ??
           import.meta.env.VITE_RWSDK_BUILD_ID;
-        if (!currentVersion) {
+        if (!currentVersion || !this.#clientVersion) {
           return;
         }
         if (this.#clientVersion !== currentVersion) {

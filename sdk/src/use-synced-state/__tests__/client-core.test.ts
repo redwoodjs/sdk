@@ -21,6 +21,7 @@ function makeMockClient() {
     setState: vi.fn().mockResolvedValue(undefined),
     subscribe: vi.fn().mockResolvedValue(undefined),
     unsubscribe: vi.fn().mockResolvedValue(undefined),
+    setClientVersion: vi.fn().mockResolvedValue(undefined),
     onRpcBroken: vi.fn((cb: (error: any) => void) => {
       brokenCb = cb;
     }),
@@ -232,13 +233,14 @@ describe("client-core reconnection", () => {
     expect(mockClients).toHaveLength(1);
   });
 
-  it("does not append a build id query to the websocket endpoint", async () => {
+  it("sends the client build version over RPC after connecting", async () => {
     vi.stubEnv("VITE_RWSDK_BUILD_ID", "test-build");
 
     getSyncedStateClient(ENDPOINT);
     await __testing.warmUp(ENDPOINT);
 
     expect(newWebSocketRpcSession).toHaveBeenCalledWith(ENDPOINT);
+    expect(mockClients[0].setClientVersion).toHaveBeenCalledWith("test-build");
   });
 
   it("re-subscribes multiple subscriptions after reconnect", async () => {
