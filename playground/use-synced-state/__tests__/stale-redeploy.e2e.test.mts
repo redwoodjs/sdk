@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "fs/promises";
+import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
 import {
   createDeployment,
@@ -19,56 +19,15 @@ setupPlaygroundEnvironment({
 });
 
 testSDK.deploy(
-  "reproduces stale-client errors after redeploy",
-  async ({ page, projectDir }) => {
+  "reloads stale tab when the use-synced-state WebSocket drops",
+  async ({ page }) => {
     const consoleErrors: string[] = [];
-    const pageErrors: string[] = [];
     const failedRequests: string[] = [];
-    const webSocketErrors: string[] = [];
-
-    // Instrument the page before any navigation so we capture all errors.
-    await page.evaluateOnNewDocument(() => {
-      // Capture console errors.
-      const originalError = console.error;
-      console.error = (...args: unknown[]) => {
-        window.__rwsdkReproConsoleErrors.push(
-          args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" "),
-        );
-        originalError.apply(console, args);
-      };
-
-      // Capture WebSocket errors and close codes.
-      const OriginalWebSocket = window.WebSocket;
-      (window as any).WebSocket = class extends OriginalWebSocket {
-        constructor(url: string | URL, protocols?: string | string[]) {
-          super(url, protocols);
-          this.addEventListener("error", (event) => {
-            window.__rwsdkReproWebSocketErrors.push(
-              `WebSocket error on ${url}: ${(event as ErrorEvent).message || "unknown"}`,
-            );
-          });
-          this.addEventListener("close", (event) => {
-            if (!event.wasClean) {
-              window.__rwsdkReproWebSocketErrors.push(
-                `WebSocket closed on ${url}: code=${event.code} reason=${event.reason || "none"}`,
-              );
-            }
-          });
-        }
-      };
-
-      (window as any).__rwsdkReproConsoleErrors = [];
-      (window as any).__rwsdkReproWebSocketErrors = [];
-    });
 
     page.on("console", (msg) => {
       if (msg.type() === "error") {
         consoleErrors.push(msg.text());
       }
-    });
-
-    page.on("pageerror", (error) => {
-      pageErrors.push(error.message);
     });
 
     page.on("requestfailed", (request) => {
@@ -77,13 +36,28 @@ testSDK.deploy(
       );
     });
 
+    // Capture every WebSocket the page creates so the test can forcibly close
+    // the use-synced-state connection and assert the client reloads.
+    await page.evaluateOnNewDocument(() => {
+      const OriginalWebSocket = window.WebSocket;
+      (window as any).__rwsdkWebSockets = [];
+      (window as any).WebSocket = class extends OriginalWebSocket {
+        constructor(url: string | URL, protocols?: string | string[]) {
+          super(url, protocols);
+          (window as any).__rwsdkWebSockets.push({
+            url: String(url),
+            socket: this,
+          });
+        }
+      };
+    });
+
     const deploymentControl = createDeployment();
+    const deployment = await deploymentControl.start();
+    console.log(`Deployed at ${deployment.url}`);
 
-    // 1. Deploy build A and load the page.
-    const deploymentA = await deploymentControl.start();
-    console.log(`Build A deployed at ${deploymentA.url}`);
-
-    await page.goto(deploymentA.url, {
+    // 1. Load the page and establish a use-synced-state session.
+    await page.goto(deployment.url, {
       waitUntil: "domcontentloaded",
       timeout: 30000,
     });
@@ -95,90 +69,61 @@ testSDK.deploy(
       return true;
     });
 
-    // 2. Establish a real use-synced-state WebSocket RPC session.
-    await page.waitForSelector(".button-group button");
-    await page.evaluate(() => {
-      const buttonGroups = document.querySelectorAll(".button-group");
-      const globalCounterButtonGroup = buttonGroups[1];
-      const incrementButton = globalCounterButtonGroup?.querySelector("button");
-      incrementButton?.click();
-    });
-
-    // Wait for the counter update to confirm the RPC worked.
-    await poll(async () => {
-      const text = await page.$$eval(
-        ".counter-display",
-        (els) => els[1]?.textContent,
-      );
-      const match = text?.match(/Count:\s*(\d+)/);
-      return match && parseInt(match[1], 10) >= 1;
-    });
-
-    // 3. Modify a lazily-imported 'use client' component so build B has a
-    // different chunk hash. The stale tab's Home chunk still references the
-    // old Widget chunk hash, so clicking "Load Widget" after redeploy will
-    // request a chunk that no longer exists.
-    const widgetPath = join(projectDir, "src/app/components/Widget.tsx");
-    const widgetContent = await readFile(widgetPath, "utf-8");
-    await writeFile(
-      widgetPath,
-      widgetContent.replace(
-        'className="widget-build-a"',
-        'className="widget-build-b"',
-      ),
+    // 2. Wait for the use-synced-state WebSocket to connect.
+    const syncedStateWebSocket = await page.waitForFunction(
+      () => {
+        const sockets = (window as any).__rwsdkWebSockets as Array<{
+          url: string;
+          socket: WebSocket;
+        }>;
+        return sockets.find((s) => s.url.includes("/__synced-state"))?.socket;
+      },
+      { timeout: 10000 },
     );
 
-    // 4. Redeploy build B to the same URL.
-    const deploymentB = await deploymentControl.redeploy();
-    console.log(`Build B deployed at ${deploymentB.url}`);
-    // Normalize host representation; Vite may report localhost while checkServerUp
-    // reports [::1], but they are the same listening port.
-    expect(new URL(deploymentB.url).port).toBe(new URL(deploymentA.url).port);
+    // 3. Mark the page so we can detect when it reloads.
+    await page.evaluate(() => {
+      (window as any).__rwsdkBeforeReload = true;
+    });
 
-    // Give the new server a moment to fully start.
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // 4. Forcibly close the WebSocket. In production this happens when the
+    // worker/DO restarts after a deploy. The client should reload the page
+    // rather than try to reconnect a stale session.
+    await page.evaluate((socket) => {
+      socket.close();
+    }, syncedStateWebSocket);
 
-    // 5. From the stale tab, click "Load Widget". This triggers a dynamic
-    // import resolved from the stale Home chunk, which references the old
-    // Widget chunk hash that build B no longer serves.
+    // 5. Wait for the stale tab to reload.
+    await page.waitForFunction(
+      () => !(window as any).__rwsdkBeforeReload,
+      {
+        timeout: 30000,
+      },
+    );
+
+    // 6. Wait for the reloaded page to hydrate.
+    await waitForHydration(page);
+
+    await poll(async () => {
+      const title = await page.evaluate(() => document.title);
+      expect(title).toBe("Synced State Test");
+      return true;
+    });
+
+    // 7. Trigger the lazy Widget load on the fresh page.
     await page.evaluate(() => {
       document.getElementById("load-widget")?.click();
     });
 
-    // The dynamic import may fail or hang; use a bounded wait.
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+    await new Promise((resolve) => setTimeout(resolve, 3000));
 
-    // Also try another RPC to surface the WebSocket staleness.
-    await page.evaluate(() => {
-      const buttonGroups = document.querySelectorAll(".button-group");
-      const globalCounterButtonGroup = buttonGroups[1];
-      const incrementButton = globalCounterButtonGroup?.querySelector("button");
-      incrementButton?.click();
+    const widgetLoaded = await page.evaluate(() => {
+      return document.body.textContent?.includes("Widget loaded") ?? false;
     });
 
-    // Wait a bounded amount of time for errors to surface.
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+    // 8. Collect artifacts for inspection.
+    const allErrors = [...consoleErrors, ...failedRequests];
 
-    // Collect errors from the page instrumentation.
-    const instrumentedErrors = await page.evaluate(() => ({
-      consoleErrors: (window as any).__rwsdkReproConsoleErrors as string[],
-      webSocketErrors: (window as any).__rwsdkReproWebSocketErrors as string[],
-    }));
-
-    const allErrors = [
-      ...consoleErrors,
-      ...pageErrors,
-      ...instrumentedErrors.consoleErrors,
-      ...instrumentedErrors.webSocketErrors,
-      ...failedRequests,
-    ];
-
-    console.log("Captured errors:");
-    for (const error of allErrors) {
-      console.log(`  - ${error}`);
-    }
-
-    // Save visual/console artifacts for inspection regardless of pass/fail.
     await mkdir(ARTIFACT_DIR, { recursive: true });
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const screenshotPath = join(
@@ -198,22 +143,17 @@ testSDK.deploy(
     console.log(`Screenshot saved to ${screenshotPath}`);
     console.log(`Console log saved to ${consolePath}`);
 
-    // 6. Assert both PRZM-295 failure-mode errors are present.
-    const chunkErrorPattern = /Failed to fetch dynamically imported module:/i;
-    const webSocketErrorPattern =
-      /WebSocket connection to .* failed|WebSocket is already in CLOSING or CLOSED state|WebSocket closed on/i;
-
-    const hasChunkError = allErrors.some((e) => chunkErrorPattern.test(e));
-    const hasWebSocketError = allErrors.some((e) => webSocketErrorPattern.test(e));
-
-    // We expect both errors on the unfixed mainline SDK behavior.
+    // 9. Assertions: the stale tab reloaded and the Widget chunk loaded.
     expect(
-      hasChunkError,
-      "Expected a stale chunk 404 error ('Failed to fetch dynamically imported module')",
+      widgetLoaded,
+      "Expected the Widget to load successfully after the stale tab reloaded",
     ).toBe(true);
+
+    const chunk404Pattern = /Failed to fetch dynamically imported module:/i;
+    const hasChunk404 = allErrors.some((e) => chunk404Pattern.test(e));
     expect(
-      hasWebSocketError,
-      "Expected a WebSocket disconnect error after DO restart",
-    ).toBe(true);
+      hasChunk404,
+      "Did not expect a stale chunk 404 after the page reloaded",
+    ).toBe(false);
   },
 );

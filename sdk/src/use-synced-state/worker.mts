@@ -1,9 +1,5 @@
 import { env } from "cloudflare:workers";
 import { route } from "../runtime/entries/router";
-import {
-  StaleClientError,
-  type StalePolicy,
-} from "../runtime/lib/stale.js";
 import type { RequestInfo } from "../runtime/requestInfo/types";
 import { runWithRequestInfo } from "../runtime/requestInfo/worker";
 import { loadCapnweb } from "./capnweb-loader.mjs";
@@ -18,13 +14,6 @@ export { SyncedStateServer };
 export type SyncedStateRouteOptions = {
   basePath?: string;
   durableObjectName?: string;
-  // When stale handling is configured (e.g. { onStale: "reload" }), route
-  // through SyncedStateProxy so data-level stale-client detection runs even
-  // without a custom keyHandler. Apps not opting into stale handling keep the
-  // original direct-DO behavior for maximum compatibility.
-  stale?: {
-    onStale?: StalePolicy;
-  };
 };
 
 const DEFAULT_SYNC_STATE_NAME = "syncedState";
@@ -52,13 +41,7 @@ async function getSyncedStateProxy(): Promise<{
       #stub: DurableObjectStub<SyncedStateServer>;
       #keyHandler: KeyHandler | null;
       #requestInfo: RequestInfo | null;
-      // The client build ID sent via the setClientVersion RPC. Compared
-      // against the worker's current build ID on every RPC message so
-      // established connections that outlive a deployment are rejected.
-      // Staleness for use-synced-state is handled entirely data-level over
-      // the RPC channel; no query parameter or WebSocket-handshake check is
-      // used.
-      #clientVersion: string | undefined;
+
       // Map original RPC callbacks to the duplicated callbacks sent to the DO
       // so unsubscribe uses the same identity that subscribe registered.
       #subscriptionClients = new Map<string, Map<unknown, unknown>>();
@@ -75,32 +58,6 @@ async function getSyncedStateProxy(): Promise<{
         // Set stub in DO instance so handlers can access it
         if (stub && typeof (stub as any)._setStub === "function") {
           void (stub as any)._setStub(stub);
-        }
-      }
-
-      /**
-       * Stores the client's build version. This is the only way stale-client
-       * detection receives the client's version for use-synced-state. The
-       * WebSocket handshake carries no version metadata.
-       */
-      setClientVersion(version: string): void {
-        this.#clientVersion = version;
-      }
-
-      /**
-       * Throws if the client's build version is older than the worker's current
-       * build. Checked on every RPC message so already-established WebSocket
-       * sessions are rejected after a deployment.
-       */
-      #assertClientVersionCurrent(): void {
-        const currentVersion =
-          (globalThis as any).__rwsdk_stale_build_id_override ??
-          import.meta.env.VITE_RWSDK_BUILD_ID;
-        if (!currentVersion || !this.#clientVersion) {
-          return;
-        }
-        if (this.#clientVersion !== currentVersion) {
-          throw new StaleClientError();
         }
       }
 
@@ -143,19 +100,16 @@ async function getSyncedStateProxy(): Promise<{
       }
 
       async getState(key: string): Promise<SyncedStateValue> {
-        this.#assertClientVersionCurrent();
         const transformedKey = await this.#transformKey(key);
         return this.#stub.getState(transformedKey);
       }
 
       async setState(value: SyncedStateValue, key: string): Promise<void> {
-        this.#assertClientVersionCurrent();
         const transformedKey = await this.#transformKey(key);
         return this.#stub.setState(value, transformedKey);
       }
 
       async subscribe(key: string, client: any): Promise<void> {
-        this.#assertClientVersionCurrent();
         const transformedKey = await this.#transformKey(key);
 
         const subscribeHandler = SyncedStateServer.getSubscribeHandler();
@@ -187,7 +141,6 @@ async function getSyncedStateProxy(): Promise<{
       }
 
       async unsubscribe(key: string, client: any): Promise<void> {
-        this.#assertClientVersionCurrent();
         const transformedKey = await this.#transformKey(key);
 
         // Call unsubscribe handler before unsubscribe, similar to subscribe handler
@@ -261,18 +214,13 @@ export const syncedStateRoutes = (
       resolvedRoomName = idParam ?? durableObjectName;
     }
 
-    // Preserve the original direct-DO behavior for apps that do not opt into
-    // stale handling. As soon as a keyHandler is registered or stale handling
-    // is configured we go through SyncedStateProxy: the proxy is where the
-    // data-level stale-client checks live, and it defaults to an identity key
-    // handler so apps like PRZM (room handler only) still get those checks.
-    const staleEnabled = options.stale?.onStale != null;
-    if (!keyHandler && !staleEnabled) {
+    // When no keyHandler is registered, forward the WebSocket request directly
+    // to the Durable Object. As soon as a keyHandler is registered we route
+    // through SyncedStateProxy so keys can be transformed.
+    if (!keyHandler) {
       const id = namespace.idFromName(resolvedRoomName);
       return namespace.get(id).fetch(request);
     }
-
-    const effectiveKeyHandler = keyHandler ?? (async (key: string) => key);
 
     const id = namespace.idFromName(resolvedRoomName);
     const coordinator = namespace.get(id);
@@ -280,7 +228,7 @@ export const syncedStateRoutes = (
       await getSyncedStateProxy();
     const proxy = new SyncedStateProxy(
       coordinator,
-      effectiveKeyHandler,
+      keyHandler,
       requestInfo,
     );
 

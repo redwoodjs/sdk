@@ -7,7 +7,9 @@ import { AppContext } from "@/worker";
 import { lazy, Suspense, useState } from "react";
 import { useSyncedState } from "rwsdk/use-synced-state/client";
 
-const LazyWidget = lazy(() => import("@/app/components/Widget"));
+const LazyWidget = lazy(() =>
+  import("@/app/components/Widget").then(({ Widget }) => ({ default: Widget })),
+);
 
 export function Home({ ctx }: { ctx: AppContext }) {
   const [userCount, setUserCount] = useSyncedState(0, "user:counter");
