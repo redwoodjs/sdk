@@ -251,16 +251,21 @@ export const syncedStateRoutes = (
       resolvedRoomName = idParam ?? durableObjectName;
     }
 
-    if (!keyHandler) {
-      const id = namespace.idFromName(resolvedRoomName);
-      return namespace.get(id).fetch(request);
-    }
+    // Always run through SyncedStateProxy so framework-level checks (e.g.
+    // stale-client detection) apply even when the app does not register a
+    // key handler. Key transformation remains opt-in; without a handler the
+    // key passes through unchanged.
+    const effectiveKeyHandler = keyHandler ?? (async (key: string) => key);
 
     const id = namespace.idFromName(resolvedRoomName);
     const coordinator = namespace.get(id);
     const { SyncedStateProxy, newWorkersRpcResponse } =
       await getSyncedStateProxy();
-    const proxy = new SyncedStateProxy(coordinator, keyHandler, requestInfo);
+    const proxy = new SyncedStateProxy(
+      coordinator,
+      effectiveKeyHandler,
+      requestInfo,
+    );
 
     return newWorkersRpcResponse(request, proxy);
   };
