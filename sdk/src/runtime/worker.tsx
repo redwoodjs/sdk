@@ -20,6 +20,7 @@ import {
   createStaleReloadResponse,
   isStaleRequest,
   type StaleEvent,
+  type StalePolicy,
 } from "./lib/stale.js";
 import type { RwContext } from "./lib/types.js";
 import { generateNonce } from "./lib/utils";
@@ -43,10 +44,6 @@ export type AppDefinition<
   ) => Promise<Response>;
   __rwRoutes: Routes;
 };
-
-type StalePolicy =
-  | "reload"
-  | ((event: StaleEvent) => Response | void | Promise<Response | void>);
 
 export interface DefineAppOptions {
   // context(justinvdm, 2026-04-20): Origins that may invoke server actions on

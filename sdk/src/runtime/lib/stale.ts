@@ -22,6 +22,10 @@ export function getClientVersionFromRequest(
   return request.headers.get(CLIENT_VERSION_HEADER)?.trim();
 }
 
+export type StalePolicy =
+  | "reload"
+  | ((event: StaleEvent) => Response | void | Promise<Response | void>);
+
 export function isStaleRequest(
   request: Request,
   source: StaleSource,

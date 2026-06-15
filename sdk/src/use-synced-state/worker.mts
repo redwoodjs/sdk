@@ -1,6 +1,9 @@
 import { env } from "cloudflare:workers";
 import { route } from "../runtime/entries/router";
-import { StaleClientError } from "../runtime/lib/stale.js";
+import {
+  StaleClientError,
+  type StalePolicy,
+} from "../runtime/lib/stale.js";
 import type { RequestInfo } from "../runtime/requestInfo/types";
 import { runWithRequestInfo } from "../runtime/requestInfo/worker";
 import { loadCapnweb } from "./capnweb-loader.mjs";
@@ -15,6 +18,13 @@ export { SyncedStateServer };
 export type SyncedStateRouteOptions = {
   basePath?: string;
   durableObjectName?: string;
+  // When stale handling is configured (e.g. { onStale: "reload" }), route
+  // through SyncedStateProxy so data-level stale-client detection runs even
+  // without a custom keyHandler. Apps not opting into stale handling keep the
+  // original direct-DO behavior for maximum compatibility.
+  stale?: {
+    onStale?: StalePolicy;
+  };
 };
 
 const DEFAULT_SYNC_STATE_NAME = "syncedState";
@@ -251,10 +261,17 @@ export const syncedStateRoutes = (
       resolvedRoomName = idParam ?? durableObjectName;
     }
 
-    // Always run through SyncedStateProxy so framework-level checks (e.g.
-    // stale-client detection) apply even when the app does not register a
-    // key handler. Key transformation remains opt-in; without a handler the
-    // key passes through unchanged.
+    // Preserve the original direct-DO behavior for apps that do not opt into
+    // stale handling. As soon as a keyHandler is registered or stale handling
+    // is configured we go through SyncedStateProxy: the proxy is where the
+    // data-level stale-client checks live, and it defaults to an identity key
+    // handler so apps like PRZM (room handler only) still get those checks.
+    const staleEnabled = options.stale?.onStale != null;
+    if (!keyHandler && !staleEnabled) {
+      const id = namespace.idFromName(resolvedRoomName);
+      return namespace.get(id).fetch(request);
+    }
+
     const effectiveKeyHandler = keyHandler ?? (async (key: string) => key);
 
     const id = namespace.idFromName(resolvedRoomName);
