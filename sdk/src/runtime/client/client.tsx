@@ -24,6 +24,10 @@ export { initClientNavigation, navigate } from "./navigation.js";
 export type { ActionResponseData } from "./types";
 
 import { getCachedNavigationResponse } from "./navigationCache.js";
+import {
+  configureRecovery,
+  type RecoveryOptions,
+} from "./recovery.js";
 import type {
   ActionResponseData,
   HydrationOptions,
@@ -227,13 +231,16 @@ export const initClient = async ({
   handleResponse,
   onHydrated,
   onActionResponse,
+  onDisconnected = "reloadWhenReady",
+  onModuleNotFound = "reloadWhenReady",
 }: {
   transport?: Transport;
   hydrateRootOptions?: HydrationOptions;
   handleResponse?: (response: Response) => boolean;
   onHydrated?: () => void;
   onActionResponse?: (actionResponse: ActionResponseData) => boolean | void;
-} = {}) => {
+} & RecoveryOptions = {}) => {
+  configureRecovery({ onDisconnected, onModuleNotFound });
   const transportContext: TransportContext = {
     setRscPayload: () => { },
     handleResponse,

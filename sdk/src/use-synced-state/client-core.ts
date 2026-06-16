@@ -1,3 +1,4 @@
+import { startRecovery } from "../runtime/client/recovery.js";
 import { loadCapnweb } from "./capnweb-loader.mjs";
 import { DEFAULT_SYNCED_STATE_PATH } from "./constants.mjs";
 
@@ -81,18 +82,7 @@ export const onStatusChange = (
   };
 };
 
-// Tracks per-endpoint reconnection backoff state
-const backoffState = new Map<string, { attempt: number; timer: ReturnType<typeof setTimeout> | null }>();
 
-const BASE_BACKOFF_MS = 1000;
-const MAX_BACKOFF_MS = 30000;
-
-function getBackoffMs(attempt: number): number {
-  const base = Math.min(BASE_BACKOFF_MS * 2 ** attempt, MAX_BACKOFF_MS);
-  // Add ±25% jitter to avoid thundering herd on server restart
-  const jittered = base * (0.75 + Math.random() * 0.5);
-  return Math.round(Math.min(jittered, MAX_BACKOFF_MS));
-}
 
 // Set up beforeunload handler to unsubscribe all active subscriptions
 if (typeof window !== "undefined") {
@@ -117,61 +107,9 @@ if (typeof window !== "undefined") {
   window.addEventListener("beforeunload", handleBeforeUnload);
 }
 
-function reconnect(endpoint: string, deadClient: SyncedStateClient) {
-  // Don't schedule multiple reconnects for the same endpoint
-  const state = backoffState.get(endpoint) ?? { attempt: 0, timer: null };
-  if (state.timer !== null) {
-    return;
-  }
-
+function onDisconnected(endpoint: string) {
   notifyStatusChange(endpoint, "disconnected");
-
-  const delayMs = getBackoffMs(state.attempt);
-  state.timer = setTimeout(() => {
-    state.timer = null;
-    state.attempt++;
-    backoffState.set(endpoint, state);
-
-    notifyStatusChange(endpoint, "reconnecting");
-
-    // Evict the dead client so getSyncedStateClient creates a fresh one
-    clientCache.delete(endpoint);
-    const newClient = getSyncedStateClient(endpoint);
-
-    // Re-subscribe everything that was on the dead client. Kick off both
-    // subscribe() and getState() synchronously so callers see the calls
-    // happen inside the timer tick, but only confirm "connected" once the
-    // subscribe promises resolve — otherwise a rejected resubscription
-    // would be masked as a successful reconnect.
-    const subscribePromises: Promise<void>[] = [];
-    for (const sub of activeSubscriptions) {
-      if (sub.client === deadClient) {
-        sub.client = newClient;
-        subscribePromises.push(newClient.subscribe(sub.key, sub.handler));
-        void newClient.getState(sub.key).then((val) => {
-          if (val !== undefined) {
-            sub.handler(val);
-          }
-        });
-      }
-    }
-
-    Promise.all(subscribePromises).then(
-      () => {
-        backoffState.set(endpoint, { attempt: 0, timer: null });
-        notifyStatusChange(endpoint, "connected");
-      },
-      () => {
-        // Resubscription failed — leave the attempt counter elevated so
-        // the next reconnect uses a longer backoff, and emit disconnected
-        // again. A subsequent onRpcBroken from the new (likely dead)
-        // client will drive the next retry.
-        notifyStatusChange(endpoint, "disconnected");
-      },
-    );
-  }, delayMs);
-
-  backoffState.set(endpoint, state);
+  startRecovery("disconnected");
 }
 
 /**
@@ -203,7 +141,7 @@ export const getSyncedStateClient = (
         const session = mod.newWebSocketRpcSession(endpoint);
         if (typeof (session as any).onRpcBroken === "function") {
           (session as any).onRpcBroken(() => {
-            reconnect(endpoint, wrappedClient);
+            onDisconnected(endpoint);
           });
         }
         return session;
@@ -299,23 +237,13 @@ export const setSyncedStateClientForTesting = (
   baseClientPromiseByEndpoint.delete(endpoint);
   activeSubscriptions.clear();
   statusListeners.clear();
-  // Clear any pending reconnection timers
-  for (const [, state] of backoffState) {
-    if (state.timer !== null) {
-      clearTimeout(state.timer);
-    }
-  }
-  backoffState.clear();
 };
 
 // Exported for testing only
 export const __testing = {
   activeSubscriptions,
   clientCache,
-  backoffState,
   statusListeners,
-  reconnect,
-  getBackoffMs,
   // Awaits the eagerly-kicked-off capnweb load for a cached client. Tests
   // should `await __testing.warmUp(endpoint)` after `getSyncedStateClient`
   // (or after a reconnect) when they need the underlying session to exist
