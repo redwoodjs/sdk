@@ -28,6 +28,15 @@ const STARTUP_JITTER_MS = 1000;
 let configuredOptions: RecoveryOptions = {};
 let activeController: RecoveryController | null = null;
 
+function debugLog(...args: unknown[]): void {
+  if (
+    typeof window !== "undefined" &&
+    ((window as any).__RWSDK_DEBUG__ || (window as any).__RWSDK_DEBUG_RECOVERY__)
+  ) {
+    console.log("[rwsdk:recovery]", ...args);
+  }
+}
+
 function getBackoffMs(attempt: number): number {
   const base = Math.min(DEFAULT_BACKOFF_MS * 2 ** attempt, MAX_BACKOFF_MS);
   const jittered = base * (0.75 + Math.random() * 0.5);
@@ -49,8 +58,11 @@ async function checkUrl(url: string, signal: AbortSignal): Promise<boolean> {
       headers: { Accept: "text/html" },
       signal,
     });
-    return response.status === 200;
-  } catch {
+    const ok = response.status === 200;
+    debugLog("checked", url, "status", response.status, "ok", ok);
+    return ok;
+  } catch (error) {
+    debugLog("check failed", url, error);
     return false;
   }
 }
@@ -118,7 +130,10 @@ export function startRecovery(
     return;
   }
 
+  debugLog("start", reason);
+
   if (activeController) {
+    debugLog("already recovering, reloading immediately");
     activeController.reload();
     return;
   }
@@ -133,6 +148,7 @@ export function startRecovery(
 
   const run = async () => {
     controller._setState("waiting");
+    debugLog("waiting, handler", typeof handler === "function" ? "custom" : handler);
 
     if (typeof handler === "function") {
       try {
@@ -145,29 +161,44 @@ export function startRecovery(
     const currentUrl = window.location.href;
     const fallbackTimeoutMs = getJitteredFallbackTimeoutMs();
 
-    await controller._wait(Math.round(Math.random() * STARTUP_JITTER_MS));
+    const startupJitter = Math.round(Math.random() * STARTUP_JITTER_MS);
+    debugLog("startup jitter", startupJitter, "ms");
+    await controller._wait(startupJitter);
 
     while (activeController === controller) {
       controller._setState("checking");
       controller._incAttempts();
+      debugLog(
+        "checking",
+        currentUrl,
+        "attempt",
+        controller.attempts,
+        "elapsed",
+        controller.elapsedMs,
+      );
 
       const ok = await checkUrl(currentUrl, new AbortController().signal);
       if (ok) {
+        debugLog("current route ready, reloading");
         controller.reload();
         return;
       }
 
       if (controller.elapsedMs >= fallbackTimeoutMs) {
+        debugLog("fallback timeout reached, checking /");
         const indexUrl = `${window.location.origin}/`;
         const indexOk = await checkUrl(indexUrl, new AbortController().signal);
         if (indexOk) {
+          debugLog("/ ready, navigating to /");
           window.location.href = "/";
           return;
         }
       }
 
+      const backoff = getBackoffMs(controller.attempts);
+      debugLog("not ready, backing off", backoff, "ms");
       controller._setState("waiting");
-      await controller._wait(getBackoffMs(controller.attempts));
+      await controller._wait(backoff);
     }
   };
 
