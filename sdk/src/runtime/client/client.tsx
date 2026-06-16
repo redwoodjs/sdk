@@ -231,8 +231,8 @@ export const initClient = async ({
   handleResponse,
   onHydrated,
   onActionResponse,
-  onDisconnected = "reloadWhenReady",
-  onModuleNotFound = "reloadWhenReady",
+  onDisconnected,
+  onModuleNotFound,
 }: {
   transport?: Transport;
   hydrateRootOptions?: HydrationOptions;

@@ -18,12 +18,14 @@ The recovery flow therefore separates detection from the decision to reload. It 
 
 ## The recovery flow
 
-The recovery flow is exposed through `initClient()` as two independent triggers, both defaulting to the built-in `"reloadWhenReady"` preset:
+The recovery flow is exposed through `initClient()` as two independent triggers:
 
 - `onDisconnected` fires when a `use-synced-state` RPC session breaks.
 - `onModuleNotFound` fires when a `"use client"` dynamic import fails with a missing-chunk error.
 
-When either trigger fires, the SDK creates a `RecoveryController` and starts polling the current route with `cache: "no-store"` and `Accept: text/html`. The poll uses exponential backoff with jitter, capped at ten seconds, to avoid hammering the server. Once the route returns HTTP 200, the controller calls `window.location.reload()`. If the current route is not loadable within thirty seconds, the controller falls back to the index route (`/`). If `/` returns 200, it navigates there instead.
+Each trigger accepts either the built-in `"reloadWhenReady"` preset string or a callback that receives a `RecoveryController`. The SDK does not enable either trigger by default, because the right behavior depends on the application: an unexpected page reload can be worse than a stale tab, so the application opts in explicitly.
+
+When a trigger fires and is configured, the SDK creates a `RecoveryController` and starts polling the current route with `cache: "no-store"` and `Accept: text/html`. The poll uses exponential backoff with jitter, capped at ten seconds, to avoid hammering the server. Once the route returns HTTP 200, the controller calls `window.location.reload()`. If the current route is not loadable within thirty seconds, the controller falls back to the index route (`/`). If `/` returns 200, it navigates there instead.
 
 Only one recovery controller runs at a time. If a second failure occurs while recovery is already in progress, the existing controller reloads the page immediately.
 
@@ -35,7 +37,7 @@ The WebSocket path is caught inside `sdk/src/use-synced-state/client-core.ts`. W
 
 ## Configuring recovery
 
-Most applications will use the defaults:
+Applications opt into recovery through `initClient()`. The framework provides one built-in preset, `"reloadWhenReady"`:
 
 ```ts
 import { initClient } from "rwsdk/client";
