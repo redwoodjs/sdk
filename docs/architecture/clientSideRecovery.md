@@ -1,6 +1,6 @@
-# Client-Side Recovery After Deploy Gaps
+# Client-Side Recovery
 
-This document describes how RedwoodSDK recovers from failures that happen while a browser tab crosses a deployment. The most visible cause is a stale client build, but the same recovery path also handles other deploy-gap symptoms: a `use-synced-state` WebSocket that drops, or any dynamic import failure whose error matches the missing-chunk pattern. The SDK does not try to decide whether the tab is "stale"; it treats the failure as a signal that the page may need to reload once the new deployment is reachable.
+This document describes how RedwoodSDK recovers from client-side failures that interrupt normal operation. The failures are most visible after a deploy — a stale client build cannot load its chunks and a `use-synced-state` WebSocket may drop — but the same recovery path also handles a `use-synced-state` session that breaks for any reason, or any dynamic import failure whose error matches the missing-chunk pattern. The SDK does not try to decide whether the tab is "stale"; it treats the failure as a signal that the page may need to reload once the application is reachable again.
 
 ## The Core Challenge
 
