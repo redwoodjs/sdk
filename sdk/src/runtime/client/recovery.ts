@@ -50,6 +50,17 @@ function getJitteredFallbackTimeoutMs(): number {
   );
 }
 
+function normalizeRecoveryUrl(url: string): string {
+  const parsed = new URL(url);
+  // A trailing dot on the hostname (e.g. example.com.) is a DNS root
+  // indicator that some Cloudflare Workers routes treat differently. Strip
+  // it so the health check hits the same origin the app uses normally.
+  parsed.hostname = parsed.hostname.replace(/\.$/, "");
+  // Drop query string and hash: we only care whether the document route
+  // itself is ready.
+  return `${parsed.origin}${parsed.pathname}`;
+}
+
 function getCurrentHydrateRootId(): string | null {
   if (typeof document === "undefined") {
     return null;
@@ -208,7 +219,7 @@ export function startRecovery(
       }
     }
 
-    const currentUrl = window.location.href;
+    const currentUrl = normalizeRecoveryUrl(window.location.href);
     const fallbackTimeoutMs = getJitteredFallbackTimeoutMs();
 
     const startupJitter = Math.round(Math.random() * STARTUP_JITTER_MS);
@@ -236,7 +247,7 @@ export function startRecovery(
 
       if (controller.elapsedMs >= fallbackTimeoutMs) {
         debugLog("fallback timeout reached, checking /");
-        const indexUrl = `${window.location.origin}/`;
+        const indexUrl = `${new URL(window.location.href).origin}/`;
         const indexOk = await checkUrl(indexUrl, new AbortController().signal);
         if (indexOk) {
           debugLog("/ ready, navigating to /");

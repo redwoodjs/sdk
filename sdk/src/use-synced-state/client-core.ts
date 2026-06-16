@@ -18,7 +18,10 @@ export type SyncedStateClient = {
 function normalizeEndpoint(endpoint: string): string {
   if (endpoint.startsWith("/") && typeof window !== "undefined") {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    return `${protocol}//${window.location.host}${endpoint}`;
+    // Strip any trailing DNS root dot from the hostname so the WebSocket
+    // URL matches the normal origin Cloudflare routes on.
+    const host = window.location.host.replace(/\.$/, "");
+    return `${protocol}//${host}${endpoint}`;
   }
   return endpoint;
 }
