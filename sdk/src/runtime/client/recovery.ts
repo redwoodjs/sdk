@@ -50,6 +50,14 @@ function getJitteredFallbackTimeoutMs(): number {
   );
 }
 
+function getCurrentHydrateRootId(): string | null {
+  if (typeof document === "undefined") {
+    return null;
+  }
+  const root = document.getElementById("hydrate-root");
+  return root?.tagName.toLowerCase() ?? null;
+}
+
 async function checkUrl(url: string, signal: AbortSignal): Promise<boolean> {
   try {
     const response = await fetch(url, {
@@ -58,9 +66,51 @@ async function checkUrl(url: string, signal: AbortSignal): Promise<boolean> {
       headers: { Accept: "text/html" },
       signal,
     });
-    const ok = response.status === 200;
-    debugLog("checked", url, "status", response.status, "ok", ok);
-    return ok;
+
+    if (response.status !== 200) {
+      debugLog("checked", url, "status", response.status, "ok", false);
+      return false;
+    }
+
+    const contentType = response.headers.get("content-type") ?? "";
+    if (!contentType.includes("text/html")) {
+      debugLog("checked", url, "content-type", contentType, "ok", false);
+      return false;
+    }
+
+    const text = await response.text();
+    const isHtml = /<!doctype html|<html/i.test(text);
+    if (!isHtml) {
+      debugLog("checked", url, "not html", "ok", false);
+      return false;
+    }
+
+    const currentRootId = getCurrentHydrateRootId();
+    if (currentRootId) {
+      // Match the current hydrate root element. We look for id="hydrate-root"
+      // or id='hydrate-root' followed by the same tag name.
+      const rootPattern = new RegExp(
+        `id=["']hydrate-root["'][^>]*>\\s*<${currentRootId}\\b`,
+        "i",
+      );
+      const rootMatches = rootPattern.test(text);
+      debugLog(
+        "checked",
+        url,
+        "status",
+        200,
+        "rootId",
+        currentRootId,
+        "rootMatches",
+        rootMatches,
+        "ok",
+        rootMatches,
+      );
+      return rootMatches;
+    }
+
+    debugLog("checked", url, "status", 200, "html", true, "ok", true);
+    return true;
   } catch (error) {
     debugLog("check failed", url, error);
     return false;
