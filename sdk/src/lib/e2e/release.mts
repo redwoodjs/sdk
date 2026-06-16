@@ -587,24 +587,6 @@ export async function runPreviewServer(
     stdio: "pipe",
   });
 
-  // Vite prints the local URL once it has bound to a port, e.g.
-  // "  ➜  Local:   http://localhost:55271/"
-  // Strip ANSI escape codes first: when color output is enabled the port can
-  // be wrapped in its own color sequence (e.g. "http://localhost:\u001b[1m52829"),
-  // which breaks a naive regex.
-  const urlPattern = /Local:\s+(http:\/\/localhost:\d+)/i;
-  const ansiEscapePattern = /\u001b\[[0-9;]*m/g;
-  previewProcess.all?.on("data", (data: Buffer) => {
-    const chunk = data.toString();
-    if (IS_DEBUG_MODE) {
-      process.stdout.write(chunk);
-    }
-    const strippedChunk = chunk.replace(ansiEscapePattern, "");
-    const match = strippedChunk.match(urlPattern);
-    if (match && match[1]) {
-      serverUrlResolver(match[1]);
-    }
-  });
   previewProcess.catch((error: any) => {
     if (!isErrorExpected) {
       log("Preview server process exited unexpectedly: %O", error);
