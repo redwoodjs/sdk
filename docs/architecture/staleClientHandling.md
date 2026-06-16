@@ -1,14 +1,14 @@
-# Stale Client Handling
+# Client-Side Recovery After Deploy Gaps
 
-This document describes how RedwoodSDK recovers when a browser tab encounters failures that commonly follow a deployment. We often summarize these as "stale client handling" because a tab running an older build is the most common cause, but the same recovery flow handles any WebSocket disconnect or dynamic import failure that matches the symptoms. The mechanism is not limited to tabs that are literally stale; it is a general client-side recovery path for deploy-gap failures.
+This document describes how RedwoodSDK recovers from failures that happen while a browser tab crosses a deployment. The most visible cause is a stale client build, but the same recovery path also handles other deploy-gap symptoms: a `use-synced-state` WebSocket that drops, or any dynamic import failure whose error matches the missing-chunk pattern. The SDK does not try to decide whether the tab is "stale"; it treats the failure as a signal that the page may need to reload once the new deployment is reachable.
 
 ## The Core Challenge
 
-A RedwoodSDK deployment replaces the worker, the client bundle, and the hashed asset files as a single unit. A tab that was opened before the deployment may still be running the previous build's client code. When that tab tries to continue interacting with the application, two things can go wrong.
+A RedwoodSDK deployment replaces the worker, the client bundle, and the hashed asset files as a single unit. A tab that was opened before the deployment may still be running the previous build's client code. When that tab tries to keep interacting with the application, two common failures appear.
 
-First, the tab may try to load a client chunk whose content hash no longer exists. RedwoodSDK ships client components as hashed JavaScript files, and a new build renames or removes the files the old build references. The browser then fails to fetch the chunk, and React crashes into a blank page.
+First, the tab may try to load a client chunk whose content hash no longer exists. RedwoodSDK ships client components as hashed JavaScript files, and a new build renames or removes the files the old build references. The browser fails to fetch the chunk, and React crashes into a blank page.
 
-Second, the tab may hold a `use-synced-state` WebSocket session. A deploy restarts the worker, and the WebSocket drops. The tab is now running stale code against a fresh worker, and the live state it was viewing may no longer make sense.
+Second, the tab may hold a `use-synced-state` WebSocket session. A deploy restarts the worker, and the WebSocket drops. The tab is now running old code against a fresh worker, and the live state it was viewing may no longer make sense.
 
 The obvious fix is to reload the page as soon as something goes wrong. But a deploy is not an atomic event from the tab's perspective. The worker may restart before the new assets are reachable, or the new worker may be live while a CDN or edge node still serves old responses. Reloading immediately can land the user on a page that is also broken. The recovery flow therefore waits until it can confirm the current route is loadable before it reloads.
 
