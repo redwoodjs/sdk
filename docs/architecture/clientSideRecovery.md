@@ -25,7 +25,7 @@ The recovery flow is exposed through `initClient()` as two independent triggers:
 
 Each trigger accepts either the built-in `"reloadWhenReady"` preset string or a callback that receives a `RecoveryController`. The SDK does not enable either trigger by default, because the right behavior depends on the application: an unexpected page reload can be worse than a stale tab, so the application opts in explicitly.
 
-When a trigger fires and is configured, the SDK creates a `RecoveryController` and starts polling the current route with `cache: "no-store"` and `Accept: text/html`. The poll uses exponential backoff with jitter, capped at ten seconds, to avoid hammering the server. Once the route returns HTTP 200, the controller calls `window.location.reload()`. If the current route is not loadable within thirty seconds, the controller falls back to the index route (`/`). If `/` returns 200, it navigates there instead.
+When a trigger fires and is configured, the SDK creates a `RecoveryController` and starts polling the current route with `cache: "no-store"` and `Accept: text/html`. To reduce the chance of a thundering herd after a mass failure event, the first poll is delayed by a random startup jitter of up to one second, and subsequent polls use exponential backoff with jitter, capped at thirty seconds. Once the route returns HTTP 200, the controller calls `window.location.reload()`. If the current route is not loadable within roughly thirty seconds, the controller falls back to the index route (`/`). The fallback timeout itself is jittered by up to ten seconds so tabs that reach the timeout do not all hit `/` at the same instant.
 
 Only one recovery controller runs at a time. If a second failure occurs while recovery is already in progress, the existing controller reloads the page immediately.
 
@@ -59,6 +59,12 @@ initClient({
 ```
 
 The SDK does not render any overlay, banner, or spinner. Recovery UI is application land.
+
+## Scaling trade-offs
+
+The polling design assumes that failures are relatively uncorrelated in normal operation. After a mass failure event such as a redeploy or outage recovery, many tabs can enter recovery at the same time. The SDK mitigates this with three sources of jitter: a random startup delay before the first poll, jittered exponential backoff between polls, and a jittered fallback timeout. These spread recovery attempts over time and reduce the chance that all affected tabs hit the server simultaneously.
+
+The health check is a full HTML GET with `cache: "no-store"`. This is heavier than a HEAD request or a dedicated health endpoint, but it is the only signal that proves the user's actual route is renderable. Applications that need lighter probes, custom backoff schedules, or server-side coordination can opt out of the built-in preset and implement their own recovery logic in the callback.
 
 ## What is not covered
 
