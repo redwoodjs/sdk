@@ -1,48 +1,41 @@
 # Client-Side Recovery
 
-This document describes how RedwoodSDK recovers from client-side failures that interrupt normal operation. The failures are most visible after a deploy — a stale client build cannot load its chunks and a `use-synced-state` WebSocket may drop — but the same recovery path also handles a `use-synced-state` session that breaks for any reason, or any dynamic import failure whose error matches the missing-chunk pattern. The SDK does not try to decide whether the tab is "stale"; it treats the failure as a signal that the page may need to reload once the application is reachable again.
+A RedwoodSDK application is split between a worker that runs on the server and a client bundle that runs in the browser. The two are built together, and a deployment replaces both at the same time. When a browser tab crosses that boundary, or when the connection it depends on is interrupted, the tab can end up in a state where the code it is running no longer matches the code it needs to load. RedwoodSDK handles this with a client-side recovery flow that waits until the application is reachable again and then reloads the page.
 
-## The Core Challenge
+## Where the problem appears
 
-A RedwoodSDK deployment replaces the worker, the client bundle, and the hashed asset files as a single unit. A tab that was opened before the deployment may still be running the previous build's client code. When that tab tries to keep interacting with the application, two common failures appear.
+The most common way this surfaces is after a redeploy. RedwoodSDK ships client components as individual JavaScript files whose filenames include content hashes. A new build renames those files. A tab that was opened before the redeploy still references the old names, so when it later tries to load a chunk it has not yet needed, the browser fails to fetch it and React crashes into a blank page.
 
-First, the tab may try to load a client chunk whose content hash no longer exists. RedwoodSDK ships client components as hashed JavaScript files, and a new build renames or removes the files the old build references. The browser fails to fetch the chunk, and React crashes into a blank page.
+The same boundary appears in real-time APIs. `use-synced-state` keeps a WebSocket RPC session open between the browser and a Durable Object. When the worker restarts after a deploy, the WebSocket drops. The client can reconnect, but it is still running the previous build's code against a fresh worker and a fresh Durable Object state. Continuing in that state risks showing the user data or behavior that no longer matches what the server expects.
 
-Second, the tab may hold a `use-synced-state` WebSocket session. A deploy restarts the worker, and the WebSocket drops. The tab is now running old code against a fresh worker, and the live state it was viewing may no longer make sense.
+These failures are not strictly limited to deploys. A network interruption can also break a `use-synced-state` session. A CDN or edge node can serve a stale HTML shell that references chunks the origin no longer has. A worker can restart for reasons unrelated to a release. In each case the tab is holding code or state that may no longer be valid, and the safest recovery is to reload once the application is confirmed reachable.
 
-The obvious fix is to reload the page as soon as something goes wrong. But a deploy is not an atomic event from the tab's perspective. The worker may restart before the new assets are reachable, or the new worker may be live while a CDN or edge node still serves old responses. Reloading immediately can land the user on a page that is also broken. The recovery flow therefore waits until it can confirm the current route is loadable before it reloads.
+## Why immediate reload is not enough
 
-## What We Observe Instead of a Server Signal
+The natural response is to reload as soon as the failure is detected. But a deployment is not atomic from the tab's point of view. The new worker may be live before its assets are reachable, or assets may be reachable before the worker responsible for the user's URL has finished starting. Reloading immediately can land the user on a page that is also broken, either because the HTML loads but a referenced chunk is still missing, or because the route itself is not yet serving.
 
-The previous approach asked the server to compare a client build ID against the worker's build ID and return a `409` response. That works when the server is already running the new build and is able to answer. It does not work while the worker is restarting or while the deploy is still propagating.
+The recovery flow therefore separates detection from the decision to reload. It detects the failure, enters a waiting state, and polls the current route until that route returns HTTP 200. Only then does it reload. A 200 on the actual route is the signal that matters, because it means the worker for that URL is up and serving HTML. A build-version endpoint could not provide the same guarantee: the new build ID might be reported while the specific route the user needs is still unavailable.
 
-The current approach recovers from observable failures instead. The client does not need to know whether the server thinks it is stale. It only needs to notice that something it expected to work no longer works, and then wait for the application to be reachable again.
+## The recovery flow
 
-There are two observable failure paths.
+The recovery flow is exposed through `initClient()` as two independent triggers, both defaulting to the built-in `"reloadWhenReady"` preset:
 
-The first is a failed dynamic import. When the tab tries to load a `"use client"` chunk and the browser returns an error such as `Failed to fetch dynamically imported module`, the client knows the old build's assets are gone. The framework owns the client-side module loader, so it can intercept that failure before React crashes.
+- `onDisconnected` fires when a `use-synced-state` RPC session breaks.
+- `onModuleNotFound` fires when a `"use client"` dynamic import fails with a missing-chunk error.
 
-The second is a broken `use-synced-state` RPC session. The capnweb WebSocket connection signals when the RPC transport breaks. That break can happen because of a deploy, but it can also happen because of ordinary network interruption. In either case, the right response is the same: wait until the application is reachable again, then reload.
-
-## The Recovery Flow: Wait, Then Reload
-
-When either failure is observed, the client enters a recovery flow called `"reloadWhenReady"`. The flow does not try to diagnose the cause. It simply waits until the current page can be fetched successfully, then reloads.
-
-The reason for waiting is that a fetch of the current route is the only signal that proves the deploy is ready for this user. A build-version endpoint could report the new build ID while the worker responsible for the user's URL is still starting. A 200 response on the actual page means the worker is serving HTML for that URL.
-
-The flow polls the current route with `cache: "no-store"` and `Accept: text/html`. It uses exponential backoff with jitter, capped at ten seconds, so it does not hammer the server. Once the route returns HTTP 200, the flow calls `window.location.reload()`. If the current route is not loadable within thirty seconds, the flow falls back to the index route (`/`). If `/` returns 200, it navigates there instead.
+When either trigger fires, the SDK creates a `RecoveryController` and starts polling the current route with `cache: "no-store"` and `Accept: text/html`. The poll uses exponential backoff with jitter, capped at ten seconds, to avoid hammering the server. Once the route returns HTTP 200, the controller calls `window.location.reload()`. If the current route is not loadable within thirty seconds, the controller falls back to the index route (`/`). If `/` returns 200, it navigates there instead.
 
 Only one recovery controller runs at a time. If a second failure occurs while recovery is already in progress, the existing controller reloads the page immediately.
 
-## The Two Failure Paths
+## Hooking the failure paths
 
-The dynamic import path is hooked inside `sdk/src/runtime/imports/client.ts`. Every `"use client"` module is loaded through the framework's module lookup. When `loadModule()` catches a dynamic import failure whose message matches `dynamically imported module`, it starts recovery and returns a never-resolving promise. That promise keeps React's Suspense boundary suspended until the reload, so the tab does not crash before recovery completes.
+The dynamic import path is caught inside `sdk/src/runtime/imports/client.ts`. Every `"use client"` module is loaded through the framework's module lookup. When `loadModule()` catches a dynamic import failure whose message matches `dynamically imported module`, it starts recovery and returns a never-resolving promise. That promise keeps React's Suspense boundary suspended until the reload, so the tab does not crash before recovery completes.
 
-The WebSocket path is hooked inside `sdk/src/use-synced-state/client-core.ts`. When capnweb reports that the RPC session is broken, the client notifies any status listeners with `"disconnected"` and starts recovery. The old reconnect-and-backoff loop has been removed, because reconnecting to a restarted Durable Object would preserve the stale client build. Reloading gives the tab a fresh start.
+The WebSocket path is caught inside `sdk/src/use-synced-state/client-core.ts`. When capnweb reports that the RPC session is broken, the client notifies any status listeners with `"disconnected"` and starts recovery. The previous reconnect-and-backoff loop has been removed, because reconnecting to a restarted Durable Object would preserve the stale client build. Reloading gives the tab a fresh start.
 
-## Configuring Recovery
+## Configuring recovery
 
-Applications opt into recovery through `initClient()`. The framework provides one built-in preset, `"reloadWhenReady"`, and both triggers default to it.
+Most applications will use the defaults:
 
 ```ts
 import { initClient } from "rwsdk/client";
@@ -53,26 +46,20 @@ initClient({
 });
 ```
 
-Most applications will not need to change these defaults. The preset is the resilient behavior described above.
-
-## Custom Callbacks and Application UI
-
-Applications that want to show their own UI while waiting can pass a callback instead of the preset. The callback receives a `RecoveryController` that exposes the current state, the number of attempts, the elapsed time, and actions to retry now or reload immediately.
+Applications that want to show their own UI, log to analytics, or override the behavior can pass a callback. The callback receives a `RecoveryController` with `state`, `attempts`, `elapsedMs`, `retry()`, and `reload()`.
 
 ```ts
 initClient({
   onDisconnected: (controller) => {
-    console.log("Connection lost, waiting for deploy", controller.state);
+    console.log("Connection lost, waiting for application", controller.state);
   },
 });
 ```
 
-The SDK does not render any overlay, banner, or spinner. Recovery UI is application land. The callback exists so the application can observe the flow, render what it wants, log to analytics, or override the behavior entirely by calling `controller.reload()`.
+The SDK does not render any overlay, banner, or spinner. Recovery UI is application land.
 
-## What Is Not Covered
+## What is not covered
 
 This mechanism is intentionally scoped to the two failure paths above.
 
-It does not intercept ordinary RSC or action fetches that happen to fail for other reasons, such as validation errors or network blips that do not indicate a deploy. It does not queue requests transparently. It does not use a service worker. It does not maintain a persistent connection or try to remap old module names to new asset names.
-
-It also does not add any server-side stale detection, build-version plumbing, or dedicated health endpoint. The recovery is driven entirely by what the client can observe and by whether the current route is loadable.
+It does not intercept ordinary RSC or action fetches that fail for other reasons, such as validation errors or transient network blips. It does not queue requests transparently. It does not use a service worker. It does not maintain a persistent connection or try to remap old module names to new asset names. It also does not add any server-side stale detection, build-version plumbing, or dedicated health endpoint. The recovery is driven entirely by what the client can observe and by whether the current route is loadable.
