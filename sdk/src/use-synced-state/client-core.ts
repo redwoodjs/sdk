@@ -108,6 +108,12 @@ if (typeof window !== "undefined") {
 }
 
 function onDisconnected(endpoint: string) {
+  if (
+    typeof window !== "undefined" &&
+    ((window as any).__RWSDK_DEBUG__ || (window as any).__RWSDK_DEBUG_RECOVERY__)
+  ) {
+    console.log("[rwsdk:use-synced-state] disconnected", endpoint);
+  }
   notifyStatusChange(endpoint, "disconnected");
   startRecovery("disconnected");
 }
