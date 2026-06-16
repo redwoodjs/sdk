@@ -56,7 +56,7 @@
     "tailwindcss": "^4.1.13",
     "typescript": "6.0.3",
     "unist-util-visit": "^5.1.0",
-    "vite": "~7.3.2",
+    "vite": "~7.3.5",
     "wrangler": "4.85.0"
   },
   "pnpm": {}
