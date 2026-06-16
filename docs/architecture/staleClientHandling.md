@@ -1,6 +1,6 @@
 # Stale Client Handling
 
-This document describes how RedwoodSDK recovers when a browser tab outlives the deployment it was opened on.
+This document describes how RedwoodSDK recovers when a browser tab encounters failures that commonly follow a deployment. We often summarize these as "stale client handling" because a tab running an older build is the most common cause, but the same recovery flow handles any WebSocket disconnect or dynamic import failure that matches the symptoms. The mechanism is not limited to tabs that are literally stale; it is a general client-side recovery path for deploy-gap failures.
 
 ## The Core Challenge
 
