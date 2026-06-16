@@ -1,0 +1,31 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "websocket-disconnect-recovery",
+  "main": "src/worker.tsx",
+  "compatibility_date": "2025-08-21",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "no_handle_cross_request_promise_resolution"
+  ],
+  "assets": {
+    "binding": "ASSETS"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SYNCED_STATE_SERVER",
+        "class_name": "SyncedStateServer"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["SyncedStateServer"]
+    }
+  ],
+  "observability": {
+    "enabled": true
+  },
+  "vars": {}
+}
