@@ -19,9 +19,11 @@ export type RecoveryOptions = {
   onModuleNotFound?: RecoveryHandler;
 };
 
-const DEFAULT_BACKOFF_MS = 500;
-const MAX_BACKOFF_MS = 10000;
+const DEFAULT_BACKOFF_MS = 1000;
+const MAX_BACKOFF_MS = 30000;
 const FALLBACK_TIMEOUT_MS = 30000;
+const FALLBACK_TIMEOUT_JITTER_MS = 10000;
+const STARTUP_JITTER_MS = 1000;
 
 let configuredOptions: RecoveryOptions = {};
 let activeController: RecoveryController | null = null;
@@ -30,6 +32,13 @@ function getBackoffMs(attempt: number): number {
   const base = Math.min(DEFAULT_BACKOFF_MS * 2 ** attempt, MAX_BACKOFF_MS);
   const jittered = base * (0.75 + Math.random() * 0.5);
   return Math.round(Math.min(jittered, MAX_BACKOFF_MS));
+}
+
+function getJitteredFallbackTimeoutMs(): number {
+  return (
+    FALLBACK_TIMEOUT_MS +
+    Math.round(Math.random() * FALLBACK_TIMEOUT_JITTER_MS)
+  );
 }
 
 async function checkUrl(url: string, signal: AbortSignal): Promise<boolean> {
@@ -134,6 +143,9 @@ export function startRecovery(
     }
 
     const currentUrl = window.location.href;
+    const fallbackTimeoutMs = getJitteredFallbackTimeoutMs();
+
+    await controller._wait(Math.round(Math.random() * STARTUP_JITTER_MS));
 
     while (activeController === controller) {
       controller._setState("checking");
@@ -145,7 +157,7 @@ export function startRecovery(
         return;
       }
 
-      if (controller.elapsedMs >= FALLBACK_TIMEOUT_MS) {
+      if (controller.elapsedMs >= fallbackTimeoutMs) {
         const indexUrl = `${window.location.origin}/`;
         const indexOk = await checkUrl(indexUrl, new AbortController().signal);
         if (indexOk) {
