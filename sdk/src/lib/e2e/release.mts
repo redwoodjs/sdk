@@ -3,6 +3,7 @@ import { execaCommand } from "execa";
 import { existsSync, readFileSync } from "fs";
 import { pathExists } from "fs-extra";
 import * as fs from "fs/promises";
+import { createConnection } from "node:net";
 import { parse as parseJsonc } from "jsonc-parser";
 import { setTimeout } from "node:timers/promises";
 import { basename, dirname, join, relative, resolve } from "path";
@@ -12,6 +13,51 @@ import { extractLastJson, parseJson } from "../../lib/jsonUtils.mjs";
 import { IS_DEBUG_MODE, PREVIEW_SERVER_TIMEOUT } from "./constants.mjs";
 
 const log = debug("rwsdk:e2e:release");
+
+function isPortFree(port: number, host = "localhost"): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = createConnection(port, host);
+    let settled = false;
+
+    const finish = (value: boolean) => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      resolve(value);
+    };
+
+    socket.once("connect", () => finish(false));
+    socket.once("error", (err: any) => {
+      finish(err.code === "ECONNREFUSED");
+    });
+    socket.setTimeout(300, () => finish(true));
+  });
+}
+
+async function findFreePort(startingAt = 4173): Promise<number> {
+  for (let port = startingAt; port < startingAt + 100; port++) {
+    if (await isPortFree(port)) {
+      return port;
+    }
+  }
+  throw new Error(
+    `Could not find a free port between ${startingAt} and ${startingAt + 99}`,
+  );
+}
+
+async function waitForPortFree(
+  port: number,
+  timeoutMs = 10000,
+): Promise<void> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (await isPortFree(port)) {
+      return;
+    }
+    await setTimeout(200);
+  }
+  throw new Error(`Port ${port} did not become free within ${timeoutMs}ms`);
+}
 
 /**
  * Find wrangler cache by searching up the directory tree for node_modules/.cache/wrangler
@@ -546,7 +592,8 @@ export async function runRelease(
 export async function runPreviewServer(
   packageManager: string = "pnpm",
   cwd?: string,
-): Promise<{ url: string; stopPreview: () => Promise<void> }> {
+  preferredPort?: number,
+): Promise<{ url: string; stopPreview: () => Promise<void>; port: number }> {
   console.log("🚀 Building for production preview...");
 
   const pm = packageManager === "yarn-classic" ? "yarn" : packageManager;
@@ -558,6 +605,13 @@ export async function runPreviewServer(
   });
 
   console.log("✅ Build complete. Starting preview server...");
+
+  const port =
+    preferredPort ?? (await findFreePort(preferredPort ?? 4173));
+
+  if (preferredPort != null) {
+    await waitForPortFree(preferredPort);
+  }
 
   let previewProcess: any = null;
   let isErrorExpected = false;
@@ -577,7 +631,7 @@ export async function runPreviewServer(
     console.log("Preview server stopped");
   };
 
-  previewProcess = $(pm, ["run", "preview", "--", "--port", "4173", "--strictPort"], {
+  previewProcess = $(pm, ["run", "preview", "--port", String(port), "--strictPort"], {
     all: true,
     detached: process.platform !== "win32",
     cleanup: true,
@@ -587,22 +641,9 @@ export async function runPreviewServer(
     stdio: "pipe",
   });
 
-  // Vite prints the local URL once it has bound to a port, e.g.
-  // "  ➜  Local:   http://localhost:55271/"
-  // Strip ANSI escape codes first: when color output is enabled the port can
-  // be wrapped in its own color sequence (e.g. "http://localhost:\u001b[1m52829"),
-  // which breaks a naive regex.
-  const urlPattern = /Local:\s+(http:\/\/localhost:\d+)/i;
-  const ansiEscapePattern = /\u001b\[[0-9;]*m/g;
   previewProcess.all?.on("data", (data: Buffer) => {
-    const chunk = data.toString();
     if (IS_DEBUG_MODE) {
-      process.stdout.write(chunk);
-    }
-    const strippedChunk = chunk.replace(ansiEscapePattern, "");
-    const match = strippedChunk.match(urlPattern);
-    if (match && match[1]) {
-      serverUrlResolver(match[1]);
+      process.stdout.write(data.toString());
     }
   });
   previewProcess.catch((error: any) => {
@@ -645,16 +686,16 @@ export async function runPreviewServer(
   // context(justinvdm, 2026-05-13): Give the CI preview path the same
   // readiness budget as the dev server so local agent-ci runs can absorb build
   // and startup latency without falling back to Cloudflare.
-  const reachableDebugUrl = await checkServerUp(
-    "http://localhost:4173",
+  const serverUrl = `http://localhost:${port}`;
+  await checkServerUp(
+    serverUrl,
     "/__debug",
     Math.max(1, Math.ceil(PREVIEW_SERVER_TIMEOUT / 2000)),
     false,
   );
-  const serverUrl = new URL(reachableDebugUrl).origin;
   console.log(`✅ Preview server started at ${serverUrl}`);
 
-  return { url: serverUrl, stopPreview };
+  return { url: serverUrl, stopPreview, port };
 }
 
 /**
