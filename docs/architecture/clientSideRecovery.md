@@ -35,6 +35,8 @@ A response is considered "ready" only when:
 
 The hydrate-root check protects against preview or health-check fallbacks that return a bare `200 OK` plain-text response while the app is still deploying. If the current page does not have a hydrate-root element, the check falls back to the HTML-only validation.
 
+The health-check URL is normalized before fetching: any trailing DNS-root dot on the hostname is removed, and query strings and hashes are stripped. This prevents Cloudflare Workers route mismatches that can occur when the browser preserves a trailing dot in `window.location.href`.
+
 Once the route passes these checks, the controller calls `window.location.reload()`. If the current route is not loadable within roughly thirty seconds, the controller falls back to the index route (`/`). The fallback timeout itself is jittered by up to ten seconds so tabs that reach the timeout do not all hit `/` at the same instant.
 
 Only one recovery controller runs at a time. If a second failure occurs while recovery is already in progress, the existing controller reloads the page immediately.
