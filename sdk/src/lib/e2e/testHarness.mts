@@ -72,6 +72,19 @@ interface DeploymentInstance {
   resourceUniqueKey: string;
   projectDir: string;
   cleanup: () => Promise<void>;
+  redeploy: () => Promise<void>;
+}
+
+function getProjectBasePort(projectDir: string): number {
+  // Spread concurrent playground previews across a wide port range so
+  // different playgrounds are unlikely to collide. Each playground still
+  // reuses the same port for redeploys within a single test file.
+  const name = basename(projectDir);
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  }
+  return 4173 + (hash % 1000);
 }
 
 // Environment variable flags for skipping tests
@@ -369,7 +382,57 @@ export function createDeployment() {
     );
   }
   const { projectDir } = globalDeployPlaygroundEnv;
+  const packageManager =
+    (process.env.PACKAGE_MANAGER as "pnpm" | "npm" | "yarn") || "pnpm";
   let instance: DeploymentInstance | null = null;
+  let previewStop: (() => Promise<void>) | null = null;
+  let previewPort: number | null = null;
+
+  const makeRedeploy = (): (() => Promise<void>) => async () => {
+    if (!instance) {
+      throw new Error("Deployment not started");
+    }
+
+    if (IS_PULL_REQUEST) {
+      if (!previewStop || previewPort == null) {
+        throw new Error("No preview server to redeploy");
+      }
+      await previewStop();
+      const newPreview = await runPreviewServer(
+        packageManager,
+        projectDir,
+        previewPort,
+      );
+      previewStop = newPreview.stopPreview;
+      previewPort = newPreview.port;
+      instance.url = newPreview.url;
+      return;
+    }
+
+    const deployResult = await runRelease(
+      projectDir,
+      projectDir,
+      instance.resourceUniqueKey,
+    );
+
+    await poll(
+      async () => {
+        try {
+          const response = await fetch(deployResult.url);
+          const body = await response.text();
+          return body.includes("__RWSDK_CONTEXT");
+        } catch (e) {
+          return false;
+        }
+      },
+      {
+        timeout: DEPLOYMENT_CHECK_TIMEOUT,
+      },
+    );
+
+    instance.url = deployResult.url;
+    instance.workerName = deployResult.workerName;
+  };
 
   return {
     projectDir,
@@ -392,11 +455,14 @@ export function createDeployment() {
 
       if (IS_PULL_REQUEST) {
         console.log("PR mode detected — using local preview instead of deploy");
+        const basePort = getProjectBasePort(projectDir);
         const previewResult = await runPreviewServer(
-          (process.env.PACKAGE_MANAGER as "pnpm" | "npm" | "yarn") ||
-            "pnpm",
+          packageManager,
           projectDir,
+          basePort,
         );
+        previewStop = previewResult.stopPreview;
+        previewPort = previewResult.port;
 
         instance = {
           url: previewResult.url,
@@ -413,6 +479,7 @@ export function createDeployment() {
             });
             return Promise.resolve();
           },
+          redeploy: makeRedeploy(),
         };
 
         deploymentInstances.push(instance);
@@ -478,6 +545,7 @@ export function createDeployment() {
             resourceUniqueKey,
             projectDir: projectDir,
             cleanup,
+            redeploy: makeRedeploy(),
           };
         },
         {
