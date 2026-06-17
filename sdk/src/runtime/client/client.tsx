@@ -107,6 +107,18 @@ export const fetchTransport: Transport = (transportContext) => {
             actionResponse.status >= 300 && actionResponse.status < 400;
 
           if (location && isRedirect) {
+            if (
+              typeof window !== "undefined" &&
+              ((window as any).__RWSDK_DEBUG__ ||
+                (window as any).__RWSDK_DEBUG_RECOVERY__)
+            ) {
+              // context(justinvdm, 2026-06-17): capture action redirect call site.
+              console.log(
+                "[rwsdk:client:action-redirect]",
+                location,
+                new Error().stack,
+              );
+            }
             window.location.href = location;
             return undefined;
           }
@@ -151,6 +163,18 @@ export const fetchTransport: Transport = (transportContext) => {
     const location = response.headers.get("Location");
 
     if (response.status >= 300 && response.status < 400 && location) {
+      if (
+        typeof window !== "undefined" &&
+        ((window as any).__RWSDK_DEBUG__ ||
+          (window as any).__RWSDK_DEBUG_RECOVERY__)
+      ) {
+        // context(justinvdm, 2026-06-17): capture the no-handler redirect call site.
+        console.log(
+          "[rwsdk:client:redirect]",
+          location,
+          new Error().stack,
+        );
+      }
       window.location.href = location;
       return undefined as any;
     }

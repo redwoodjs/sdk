@@ -235,12 +235,37 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get("Location");
       if (location) {
+        if (
+          typeof window !== "undefined" &&
+          ((window as any).__RWSDK_DEBUG__ ||
+            (window as any).__RWSDK_DEBUG_RECOVERY__)
+        ) {
+          // context(justinvdm, 2026-06-17): capture the SDK navigation call site.
+          console.log(
+            "[rwsdk:navigation:redirect]",
+            location,
+            new Error().stack,
+          );
+        }
         window.location.href = location;
         return false;
       }
     }
 
     if (!response.ok) {
+      if (
+        typeof window !== "undefined" &&
+        ((window as any).__RWSDK_DEBUG__ ||
+          (window as any).__RWSDK_DEBUG_RECOVERY__)
+      ) {
+        // context(justinvdm, 2026-06-17): capture the SDK error-reload call site.
+        console.log(
+          "[rwsdk:navigation:error-reload]",
+          response.status,
+          response.url,
+          new Error().stack,
+        );
+      }
       // Redirect to the current page (window.location) to show the error
       // This means the page that produced the error is called twice.
       window.location.href = window.location.href;
