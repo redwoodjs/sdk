@@ -372,6 +372,36 @@ describe("client-core reconnection", () => {
       unsubB();
     });
 
+    it("duplicates active subscriptions on every reconnect", async () => {
+      const client = getSyncedStateClient(ENDPOINT);
+      const handler = vi.fn();
+
+      await client.subscribe("counter", handler);
+      expect(__testing.activeSubscriptions.size).toBe(1);
+
+      // First reconnect
+      mockClients[0].simulateBreak();
+      vi.runOnlyPendingTimers();
+      await __testing.warmUp(ENDPOINT);
+      await vi.runAllTimersAsync();
+
+      // Second reconnect
+      mockClients[1].simulateBreak();
+      vi.runOnlyPendingTimers();
+      await __testing.warmUp(ENDPOINT);
+      await vi.runAllTimersAsync();
+
+      // Third reconnect
+      mockClients[2].simulateBreak();
+      vi.runOnlyPendingTimers();
+      await __testing.warmUp(ENDPOINT);
+      await vi.runAllTimersAsync();
+
+      // Should remain exactly one subscription per logical subscription.
+      // Buggy implementation doubles the set on every reconnect.
+      expect(__testing.activeSubscriptions.size).toBe(1);
+    });
+
     it("BUG: reconnect emits 'connected' and resets backoff even when subscribe() rejects", async () => {
       const client = getSyncedStateClient(ENDPOINT);
       const handler = vi.fn();

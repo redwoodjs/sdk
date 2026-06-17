@@ -63,6 +63,9 @@ export const onStatusChange = (
   endpoint: string,
   callback: StatusChangeCallback,
 ): (() => void) => {
+  // Normalize the endpoint so listeners registered with a relative URL
+  // (e.g. "/__synced-state") are notified using the same key as the
+  // cached client and the reconnect path.
   const normalized = normalizeEndpoint(endpoint);
   let listeners = statusListeners.get(normalized);
   if (!listeners) {
@@ -217,27 +220,33 @@ export const getSyncedStateClient = (
     get(_target, prop) {
       if (prop === "subscribe") {
         return async (key: string, handler: (value: unknown) => void) => {
-          const subscription: Subscription = {
-            key,
-            handler,
-            client: wrappedClient,
-          };
-          activeSubscriptions.add(subscription);
+          // Idempotent subscription registration. Reconnect mutates the
+          // existing entry's client in place and then re-subscribes on the
+          // new transport; without this guard we create duplicate registry
+          // entries that double on every reconnect and leak component
+          // closures after unmount.
+          const exists = [...activeSubscriptions].some(
+            (s) => s.key === key && s.handler === handler && s.client === wrappedClient,
+          );
+          if (!exists) {
+            activeSubscriptions.add({ key, handler, client: wrappedClient });
+          }
           const base = await getBaseClient();
           return base[prop](key, handler);
         };
       }
       if (prop === "unsubscribe") {
         return async (key: string, handler: (value: unknown) => void) => {
-          // Find and remove the subscription
-          for (const sub of activeSubscriptions) {
+          // Remove every matching registry entry. The reconnect path can
+          // create duplicates for the same (key, handler) pair, so a single
+          // component unmount must clean up all of them.
+          for (const sub of [...activeSubscriptions]) {
             if (
               sub.key === key &&
               sub.handler === handler &&
               sub.client === wrappedClient
             ) {
               activeSubscriptions.delete(sub);
-              break;
             }
           }
           const base = await getBaseClient();
