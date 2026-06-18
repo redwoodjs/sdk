@@ -62,6 +62,9 @@ This collection of documents provides a high-level overview of the core architec
 - [**Realtime Shared State Hook**](./realtimeStateHook.md)
   Describes the realtime synced state feature that keeps shared values aligned across browser sessions through the worker runtime, using a Durable Object and CapnWeb RPC surface.
 
+- [**Realtime Shared State Hook (Hibernation Transport)**](./useSyncedStateHibernation.md)
+  Describes the hibernation transport for `useSyncedState`, which uses a stateless Worker WebSocket proxy and a hibernating Durable Object to reduce duration cost while preserving the existing hook API.
+
 - [**Realtime State Error Handling and Offline Queue**](./realtimeStateErrorHandling.md)
   Outlines planned enhancements for error handling, retry logic, and offline queue support in `useSyncedState`, including connection status monitoring and pluggable storage backends.
 
