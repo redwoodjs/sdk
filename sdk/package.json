@@ -116,9 +116,17 @@
       "types": "./dist/use-synced-state/client.d.ts",
       "default": "./dist/use-synced-state/client.js"
     },
+    "./use-synced-state/hibernation/client": {
+      "types": "./dist/use-synced-state/client-hibernation.d.ts",
+      "default": "./dist/use-synced-state/client-hibernation.js"
+    },
     "./use-synced-state/worker": {
       "types": "./dist/use-synced-state/worker.d.mts",
       "workerd": "./dist/use-synced-state/worker.mjs"
+    },
+    "./use-synced-state/hibernation/worker": {
+      "types": "./dist/use-synced-state/worker-hibernation.d.mts",
+      "workerd": "./dist/use-synced-state/worker-hibernation.mjs"
     }
   },
   "keywords": [
