@@ -219,8 +219,7 @@ export function startRecovery(
   }
 
   if (activeController) {
-    debugLog("already recovering, reloading immediately");
-    activeController.reload();
+    debugLog("already recovering, ignoring duplicate");
     return;
   }
 
