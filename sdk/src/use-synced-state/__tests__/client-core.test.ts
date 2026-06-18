@@ -82,7 +82,7 @@ describe("client-core recovery", () => {
     expect(mockClients[0].onRpcBroken).toHaveBeenCalledOnce();
   });
 
-  it("fires 'disconnected' and starts recovery when the RPC session breaks", async () => {
+  it("fires 'disconnected' and schedules a reconnect when the RPC session breaks", async () => {
     getSyncedStateClient(ENDPOINT);
     await __testing.warmUp(ENDPOINT);
 
@@ -92,7 +92,7 @@ describe("client-core recovery", () => {
     mockClients[0].simulateBreak();
 
     expect(statusCb).toHaveBeenCalledWith("disconnected");
-    expect(startRecovery).toHaveBeenCalledWith("disconnected");
+    expect(__testing.backoffState.get(ENDPOINT)?.timer).not.toBeNull();
   });
 
   it("returns cached client on second call for same endpoint", async () => {

@@ -255,7 +255,6 @@ export const initClient = async ({
   handleResponse,
   onHydrated,
   onActionResponse,
-  onDisconnected,
   onModuleNotFound,
 }: {
   transport?: Transport;
@@ -264,7 +263,7 @@ export const initClient = async ({
   onHydrated?: () => void;
   onActionResponse?: (actionResponse: ActionResponseData) => boolean | void;
 } & RecoveryOptions = {}) => {
-  configureRecovery({ onDisconnected, onModuleNotFound });
+  configureRecovery({ onModuleNotFound });
   const transportContext: TransportContext = {
     setRscPayload: () => { },
     handleResponse,

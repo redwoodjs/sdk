@@ -15,7 +15,6 @@ export type RecoveryCallback = (
 export type RecoveryHandler = "reloadWhenReady" | RecoveryCallback;
 
 export type RecoveryOptions = {
-  onDisconnected?: RecoveryHandler;
   onModuleNotFound?: RecoveryHandler;
 };
 
@@ -219,15 +218,15 @@ export function startRecovery(
   }
 
   if (activeController) {
-    debugLog("already recovering, reloading immediately");
-    activeController.reload();
+    debugLog("already recovering, ignoring duplicate");
     return;
   }
 
-  const handler =
-    reason === "disconnected"
-      ? configuredOptions.onDisconnected
-      : configuredOptions.onModuleNotFound;
+  if (reason !== "module-not-found") {
+    return;
+  }
+
+  const handler = configuredOptions.onModuleNotFound;
 
   const controller = createController();
   activeController = controller;
