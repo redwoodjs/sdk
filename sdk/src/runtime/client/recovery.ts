@@ -30,7 +30,8 @@ let activeController: RecoveryController | null = null;
 function debugLog(...args: unknown[]): void {
   if (
     typeof window !== "undefined" &&
-    ((window as any).__RWSDK_DEBUG__ || (window as any).__RWSDK_DEBUG_RECOVERY__)
+    ((window as any).__RWSDK_DEBUG__ ||
+      (window as any).__RWSDK_DEBUG_RECOVERY__)
   ) {
     console.log("[rwsdk:recovery]", ...args);
   }
@@ -44,8 +45,7 @@ function getBackoffMs(attempt: number): number {
 
 function getJitteredFallbackTimeoutMs(): number {
   return (
-    FALLBACK_TIMEOUT_MS +
-    Math.round(Math.random() * FALLBACK_TIMEOUT_JITTER_MS)
+    FALLBACK_TIMEOUT_MS + Math.round(Math.random() * FALLBACK_TIMEOUT_JITTER_MS)
   );
 }
 
@@ -162,18 +162,6 @@ function createController(): RecoveryController & {
       state = "reload";
       wakeResolver?.();
       if (typeof window !== "undefined") {
-        if (
-          (window as any).__RWSDK_DEBUG__ ||
-          (window as any).__RWSDK_DEBUG_RECOVERY__
-        ) {
-          // context(justinvdm, 2026-06-17): capture the call site that decided
-          // to reload, since window.location cannot be patched in Chromium.
-          console.log(
-            "[rwsdk:recovery:reload]",
-            "reloading now",
-            new Error().stack,
-          );
-        }
         window.location.reload();
       }
     },
@@ -195,34 +183,15 @@ export function configureRecovery(options: RecoveryOptions): void {
   configuredOptions = options;
 }
 
-export function startRecovery(
-  reason: "disconnected" | "module-not-found",
-): void {
+export function startRecovery(reason: "module-not-found"): void {
   if (typeof window === "undefined") {
     return;
   }
 
   debugLog("start", reason);
 
-  if (
-    typeof window !== "undefined" &&
-    ((window as any).__RWSDK_DEBUG__ || (window as any).__RWSDK_DEBUG_RECOVERY__)
-  ) {
-    // context(justinvdm, 2026-06-17): stack trace so apps can see which code
-    // path entered recovery without them having to monkey-patch location.
-    console.log(
-      "[rwsdk:recovery:start]",
-      reason,
-      new Error().stack,
-    );
-  }
-
   if (activeController) {
     debugLog("already recovering, ignoring duplicate");
-    return;
-  }
-
-  if (reason !== "module-not-found") {
     return;
   }
 
@@ -233,7 +202,10 @@ export function startRecovery(
 
   const run = async () => {
     controller._setState("waiting");
-    debugLog("waiting, handler", typeof handler === "function" ? "custom" : handler);
+    debugLog(
+      "waiting, handler",
+      typeof handler === "function" ? "custom" : handler,
+    );
 
     if (typeof handler === "function") {
       try {
@@ -275,18 +247,6 @@ export function startRecovery(
         const indexOk = await checkUrl(indexUrl, new AbortController().signal);
         if (indexOk) {
           debugLog("/ ready, navigating to /");
-          if (
-            typeof window !== "undefined" &&
-            ((window as any).__RWSDK_DEBUG__ ||
-              (window as any).__RWSDK_DEBUG_RECOVERY__)
-          ) {
-            // context(justinvdm, 2026-06-17): capture the fallback navigation call site.
-            console.log(
-              "[rwsdk:recovery:navigate]",
-              "/",
-              new Error().stack,
-            );
-          }
           window.location.href = "/";
           return;
         }

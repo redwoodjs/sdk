@@ -1,9 +1,6 @@
 import React from "react";
 import { ClientOnly } from "../client/client";
-import {
-  isDynamicImportFailure,
-  startRecovery,
-} from "../client/recovery.js";
+import { isDynamicImportFailure, startRecovery } from "../client/recovery.js";
 import { memoizeOnId } from "../lib/memoizeOnId";
 
 // @ts-ignore
@@ -22,12 +19,6 @@ export const loadModule = memoizeOnId(async (id: string) => {
     return await moduleFn();
   } catch (error) {
     if (isDynamicImportFailure(error)) {
-      if (
-        typeof window !== "undefined" &&
-        ((window as any).__RWSDK_DEBUG__ || (window as any).__RWSDK_DEBUG_RECOVERY__)
-      ) {
-        console.log("[rwsdk:module-loader] dynamic import failed, starting recovery", error);
-      }
       startRecovery("module-not-found");
       // Stall this import forever so React doesn't crash before the recovery
       // flow reloads the page.
