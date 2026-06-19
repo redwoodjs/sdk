@@ -44,6 +44,9 @@ This collection of documents provides a high-level overview of the core architec
 - [**Dev Server Dependency Optimization**](./devServerDependencyOptimization.md)
   Outlines the strategy used to manage dependencies in the development server, providing Vite's dependency optimizer with a complete dependency graph at startup to improve performance and stability.
 
+- [**State Module**](./stateModule.md)
+  Describes `rwsdk/__state`, the centralized virtual state module that keeps framework-level state alive across Vite's development-server re-optimizations.
+
 - [**E2E Testing Infrastructure**](./endToEndTesting.md)
   Outlines the architecture of the end-to-end testing infrastructure, designed for fast and reliable testing of playground applications using a concurrent, suite-level approach.
 

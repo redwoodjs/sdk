@@ -47,6 +47,21 @@ When resolving an import, the process is as follows:
 
 This two-phase approach—combining a comprehensive glob pre-scan with a context-aware `esbuild` traversal—results in a reliable and accurate scan that is resilient to both complex package structures and mid-session code changes.
 
+## The Challenge: Mid-Session Discovery of `node_modules` Directives
+
+The initial scan runs once at startup and discovers all directive files that are reachable at that moment. However, application code can import new third-party dependencies mid-session. Because Vite's file watcher ignores `node_modules`, a newly imported `"use client"` or `"use server"` module inside a package will not be reflected in the directive sets, the vendor barrels, or the lookup maps. This causes module-resolution errors when the server tries to render the newly imported component.
+
+### The Solution: HMR-Triggered Sub-Scans
+
+To handle mid-session imports of directive-bearing `node_modules` files, the dev server's HMR pipeline runs a targeted sub-scan whenever a worker file changes.
+
+- The changed file is used as the entry point for a new invocation of `runDirectivesScan`.
+- This sub-scan traverses the import graph starting from that file, discovering any newly reachable directive files, including transitive dependencies (e.g. an app file imports `widget-lib`, which re-exports from `ui-lib/client`).
+- Newly discovered files are added to the shared `clientFiles` / `serverFiles` sets.
+- The vendor barrels and directive lookup virtual modules are then regenerated and invalidated in Vite's module graph, so the next request sees the updated directive map.
+
+This sub-scan reuses the same context-aware resolver and produces the same output format as the initial scan, ensuring consistency between startup and mid-session discovery.
+
 ## Rationale and Alternatives
 
 This custom resolver approach was chosen after investigating several alternatives that proved to be inconsistent or unstable.
