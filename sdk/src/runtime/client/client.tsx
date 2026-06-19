@@ -236,7 +236,9 @@ export const initClient = async ({
   onHydrated?: () => void;
   onActionResponse?: (actionResponse: ActionResponseData) => boolean | void;
 } & RecoveryOptions = {}) => {
-  configureRecovery({ onModuleNotFound });
+  if (onModuleNotFound) {
+    configureRecovery({ onModuleNotFound });
+  }
   const transportContext: TransportContext = {
     setRscPayload: () => {},
     handleResponse,

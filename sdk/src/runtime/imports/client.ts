@@ -1,6 +1,10 @@
 import React from "react";
 import { ClientOnly } from "../client/client";
-import { isDynamicImportFailure, startRecovery } from "../client/recovery.js";
+import {
+  isDynamicImportFailure,
+  isRecoveryConfigured,
+  startRecovery,
+} from "../client/recovery.js";
 import { memoizeOnId } from "../lib/memoizeOnId";
 
 // @ts-ignore
@@ -18,7 +22,7 @@ export const loadModule = memoizeOnId(async (id: string) => {
   try {
     return await moduleFn();
   } catch (error) {
-    if (isDynamicImportFailure(error)) {
+    if (isDynamicImportFailure(error) && isRecoveryConfigured()) {
       startRecovery("module-not-found");
       // Stall this import forever so React doesn't crash before the recovery
       // flow reloads the page.

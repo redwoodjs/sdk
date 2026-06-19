@@ -183,6 +183,10 @@ export function configureRecovery(options: RecoveryOptions): void {
   configuredOptions = options;
 }
 
+export function isRecoveryConfigured(): boolean {
+  return configuredOptions.onModuleNotFound != null;
+}
+
 export function startRecovery(reason: "module-not-found"): void {
   if (typeof window === "undefined") {
     return;
