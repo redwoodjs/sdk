@@ -1,7 +1,10 @@
 import { SyncedStateServerHibernation } from "rwsdk/use-synced-state/hibernation/worker";
-import { requestInfo } from "rwsdk/worker";
 
 type HibernationStub = DurableObjectStub<SyncedStateServerHibernation>;
+
+type SyncedStateIdentity = {
+  userId?: string;
+};
 
 // Ephemeral state mirror for validation, keyed by Durable Object ID
 export const globalStateMap: Map<string, Record<string, unknown>> = new Map();
@@ -44,6 +47,12 @@ export async function updatePresenceList(
 export function registerSyncedStateHandlers(
   getNamespace: () => DurableObjectNamespace<SyncedStateServerHibernation> | undefined,
 ) {
+  // Capture a serializable identity from the request context at upgrade time.
+  // The DO uses this identity to transform keys and run presence logic without
+  // keeping the worker alive.
+  SyncedStateServerHibernation.registerIdentityExtractor((reqInfo) => ({
+    userId: reqInfo.ctx?.userId,
+  }));
   // Helper function to sync globalState to the Durable Object
   async function syncGlobalState(
     stub: HibernationStub,
@@ -63,6 +72,7 @@ export function registerSyncedStateHandlers(
     (
       key: string,
       value: unknown,
+      _identity: unknown,
       stub: HibernationStub,
     ) => {
       // Ignore updates to "STATE" itself to prevent infinite loops
@@ -87,6 +97,7 @@ export function registerSyncedStateHandlers(
     (
       key: string,
       value: unknown,
+      _identity: unknown,
       stub: HibernationStub,
     ) => {
       // Ignore reads of "STATE" itself to prevent infinite loops
@@ -136,18 +147,19 @@ export function registerSyncedStateHandlers(
   );
 
   SyncedStateServerHibernation.registerKeyHandler(
-    async (key: string, stub: DurableObjectStub<SyncedStateServerHibernation>) => {
+    async (key: string, identity: unknown) => {
       // if the key starts with "user:", modify it to include the userId.
-      if (key.startsWith("user:")) {
-        key = key + ":" + requestInfo.ctx.userId;
+      const userId = (identity as SyncedStateIdentity | undefined)?.userId;
+      if (key.startsWith("user:") && userId) {
+        key = key + ":" + userId;
       }
       return key;
     },
   );
 
   SyncedStateServerHibernation.registerSubscribeHandler(
-    (key: string, stub: DurableObjectStub<SyncedStateServerHibernation>) => {
-      const userId = requestInfo.ctx.userId;
+    (key: string, identity: unknown, stub: DurableObjectStub<SyncedStateServerHibernation>) => {
+      const userId = (identity as SyncedStateIdentity | undefined)?.userId;
       if (key === "presence" && userId) {
         console.log("updatePresenceList", userId);
         void updatePresenceList(stub, userId, null);
@@ -156,8 +168,8 @@ export function registerSyncedStateHandlers(
   );
 
   SyncedStateServerHibernation.registerUnsubscribeHandler(
-    (key: string, stub: DurableObjectStub<SyncedStateServerHibernation>) => {
-      const userId = requestInfo.ctx.userId;
+    (key: string, identity: unknown, stub: DurableObjectStub<SyncedStateServerHibernation>) => {
+      const userId = (identity as SyncedStateIdentity | undefined)?.userId;
       if (key === "presence" && userId) {
         console.log("updatePresenceList", userId);
         void updatePresenceList(stub, null, userId);

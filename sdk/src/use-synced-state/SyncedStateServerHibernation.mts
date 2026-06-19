@@ -1,6 +1,10 @@
 import { DurableObject } from "cloudflare:workers";
 import type { RequestInfo } from "../runtime/requestInfo/types";
 import {
+  type SyncedStateIdentity,
+  getIdentityFromUrl,
+} from "./identity-hibernation.mjs";
+import {
   type ClientMessage,
   type ServerMessage,
   type SyncedStateValue,
@@ -10,21 +14,25 @@ import {
 
 export type SyncedStateServerHibernationAttachment = {
   clientId: string;
+  identity: SyncedStateIdentity;
   subscriptions: Array<{ userKey: string; storageKey: string }>;
 };
 
 type OnSetHandler = (
   key: string,
   value: SyncedStateValue,
+  identity: SyncedStateIdentity,
   stub: DurableObjectStub<SyncedStateServerHibernation>,
 ) => void;
 type OnGetHandler = (
   key: string,
   value: SyncedStateValue | undefined,
+  identity: SyncedStateIdentity,
   stub: DurableObjectStub<SyncedStateServerHibernation>,
 ) => void;
 type OnKeyHandler = (
   key: string,
+  identity: SyncedStateIdentity,
   stub: DurableObjectStub<SyncedStateServerHibernation>,
 ) => Promise<string>;
 type OnRoomHandler = (
@@ -33,12 +41,17 @@ type OnRoomHandler = (
 ) => Promise<string>;
 type OnSubscribeHandler = (
   key: string,
+  identity: SyncedStateIdentity,
   stub: DurableObjectStub<SyncedStateServerHibernation>,
 ) => void;
 type OnUnsubscribeHandler = (
   key: string,
+  identity: SyncedStateIdentity,
   stub: DurableObjectStub<SyncedStateServerHibernation>,
 ) => void;
+type IdentityExtractor = (
+  requestInfo: RequestInfo,
+) => SyncedStateIdentity | Promise<SyncedStateIdentity>;
 
 /**
  * Durable Object that keeps shared state for multiple clients and notifies
@@ -49,10 +62,10 @@ type OnUnsubscribeHandler = (
  * RealtimeDurableObject but replaces its RSC/action protocol with a small
  * JSON state-sync protocol.
  *
- * Keys are expected to arrive already transformed by the worker proxy (via
- * registerKeyHandler). The DO stores and broadcasts using the `storageKey`
- * provided in each message, but sends user-facing `key` values back to the
- * client.
+ * Keys arrive as user-facing values. When a key handler is registered, the DO
+ * transforms them internally using the identity captured at upgrade time by
+ * the worker. This lets the worker hand off the WebSocket and exit instead of
+ * staying alive as a proxy.
  */
 export class SyncedStateServerHibernation extends DurableObject {
   static #keyHandler: OnKeyHandler | null = null;
@@ -61,6 +74,7 @@ export class SyncedStateServerHibernation extends DurableObject {
   static #getStateHandler: OnGetHandler | null = null;
   static #subscribeHandler: OnSubscribeHandler | null = null;
   static #unsubscribeHandler: OnUnsubscribeHandler | null = null;
+  static #identityExtractor: IdentityExtractor | null = null;
   static #namespace: DurableObjectNamespace<SyncedStateServerHibernation> | null = null;
   static #durableObjectName: string = "syncedStateHibernation";
 
@@ -78,6 +92,16 @@ export class SyncedStateServerHibernation extends DurableObject {
 
   static getRoomHandler(): OnRoomHandler | null {
     return SyncedStateServerHibernation.#roomHandler;
+  }
+
+  static registerIdentityExtractor(
+    extractor: IdentityExtractor | null,
+  ): void {
+    SyncedStateServerHibernation.#identityExtractor = extractor;
+  }
+
+  static getIdentityExtractor(): IdentityExtractor | null {
+    return SyncedStateServerHibernation.#identityExtractor;
   }
 
   static registerNamespace(
@@ -141,11 +165,13 @@ export class SyncedStateServerHibernation extends DurableObject {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const clientId = url.searchParams.get("clientId") ?? crypto.randomUUID();
+    const identity = getIdentityFromUrl(url);
 
     const { 0: client, 1: server } = new WebSocketPair();
 
     const attachment: SyncedStateServerHibernationAttachment = {
       clientId,
+      identity,
       subscriptions: [],
     };
     server.serializeAttachment(attachment);
@@ -171,16 +197,17 @@ export class SyncedStateServerHibernation extends DurableObject {
       return;
     }
 
-    const storageKey = message.storageKey ?? message.key;
-
     // After hibernation the in-memory subscription map is empty. Rehydrate it
     // from the socket attachment before handling any message that depends on
     // knowing this socket's subscriptions (especially broadcasts on setState).
     this.#ensureSubscriptionsLoaded(ws);
 
+    const identity = this.#getIdentity(ws);
+    const storageKey = await this.#resolveStorageKey(message.key, identity);
+
     switch (message.kind) {
       case "getState": {
-        const value = await this.#getState(storageKey);
+        const value = await this.#getState(storageKey, identity);
         this.#send(ws, {
           kind: "getState",
           key: message.key,
@@ -190,7 +217,7 @@ export class SyncedStateServerHibernation extends DurableObject {
         break;
       }
       case "setState": {
-        await this.#setState(storageKey, message.value);
+        await this.#setState(storageKey, message.value, identity);
         this.#send(ws, {
           kind: "setState",
           key: message.key,
@@ -243,11 +270,11 @@ export class SyncedStateServerHibernation extends DurableObject {
 
   // Public RPC surface exposed to handler callbacks and other Workers RPC callers.
   async getState(key: string): Promise<SyncedStateValue | undefined> {
-    return this.#getState(key);
+    return this.#getState(key, undefined);
   }
 
   async setState(value: SyncedStateValue, key: string): Promise<void> {
-    await this.#setState(key, value);
+    await this.#setState(key, value, undefined);
   }
 
   // ---------------------------------------------------------------------------
@@ -280,20 +307,27 @@ export class SyncedStateServerHibernation extends DurableObject {
     return `state:${key}`;
   }
 
-  async #getState(key: string): Promise<SyncedStateValue | undefined> {
+  async #getState(
+    key: string,
+    identity: SyncedStateIdentity,
+  ): Promise<SyncedStateValue | undefined> {
     await this.#loadStateStore();
 
     const value = this.#stateStore.get(key);
     if (SyncedStateServerHibernation.#getStateHandler) {
       const stub = this.#getStubForHandlers();
       if (stub) {
-        SyncedStateServerHibernation.#getStateHandler(key, value, stub);
+        SyncedStateServerHibernation.#getStateHandler(key, value, identity, stub);
       }
     }
     return value;
   }
 
-  async #setState(key: string, value: SyncedStateValue): Promise<void> {
+  async #setState(
+    key: string,
+    value: SyncedStateValue,
+    identity: SyncedStateIdentity,
+  ): Promise<void> {
     await this.#loadStateStore();
 
     this.#stateStore.set(key, value);
@@ -302,7 +336,7 @@ export class SyncedStateServerHibernation extends DurableObject {
     if (SyncedStateServerHibernation.#setStateHandler) {
       const stub = this.#getStubForHandlers();
       if (stub) {
-        SyncedStateServerHibernation.#setStateHandler(key, value, stub);
+        SyncedStateServerHibernation.#setStateHandler(key, value, identity, stub);
       }
     }
     this.#broadcastUpdate(key, value);
@@ -334,11 +368,12 @@ export class SyncedStateServerHibernation extends DurableObject {
     }
     subscribers.add({ ws, userKey });
 
+    const identity = this.#getIdentity(ws);
     const subscribeHandler = SyncedStateServerHibernation.#subscribeHandler;
     if (subscribeHandler) {
       const stub = this.#getStubForHandlers();
       if (stub) {
-        subscribeHandler(storageKey, stub);
+        subscribeHandler(storageKey, identity, stub);
       }
     }
 
@@ -365,11 +400,12 @@ export class SyncedStateServerHibernation extends DurableObject {
       }
     }
 
+    const identity = this.#getIdentity(ws);
     const unsubscribeHandler = SyncedStateServerHibernation.#unsubscribeHandler;
     if (unsubscribeHandler) {
       const stub = this.#getStubForHandlers();
       if (stub) {
-        unsubscribeHandler(storageKey, stub);
+        unsubscribeHandler(storageKey, identity, stub);
       }
     }
 
@@ -413,7 +449,11 @@ export class SyncedStateServerHibernation extends DurableObject {
     ) {
       return raw as SyncedStateServerHibernationAttachment;
     }
-    return { clientId: "", subscriptions: [] };
+    return { clientId: "", identity: undefined, subscriptions: [] };
+  }
+
+  #getIdentity(ws: WebSocket): SyncedStateIdentity {
+    return this.#getAttachment(ws).identity;
   }
 
   #getSubscriptionsFromAttachment(
@@ -454,6 +494,18 @@ export class SyncedStateServerHibernation extends DurableObject {
   // ---------------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------------
+
+  async #resolveStorageKey(
+    key: string,
+    identity: SyncedStateIdentity,
+  ): Promise<string> {
+    const keyHandler = SyncedStateServerHibernation.#keyHandler;
+    if (keyHandler) {
+      const stub = this.#getStubForHandlers();
+      return await keyHandler(key, identity, stub ?? ({} as any));
+    }
+    return key;
+  }
 
   #getStubForHandlers(): DurableObjectStub<SyncedStateServerHibernation> | null {
     if (this.#stub) {

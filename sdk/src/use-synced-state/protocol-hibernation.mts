@@ -11,20 +11,17 @@ export type SyncedStateEnvelope = {
   v: typeof PROTOCOL_VERSION;
 } & SyncedStateMessage;
 
-export type SyncedStateMessage =
-  | ClientMessage
-  | ServerMessage;
+export type SyncedStateMessage = ClientMessage | ServerMessage;
 
-// Messages sent by the client (and proxied by the worker). `key` is always
-// the user-facing key; the worker proxy adds `storageKey` after applying
-// registerKeyHandler.
+// Messages sent by the client. `key` is always the user-facing key; the DO
+// transforms it into a storage key internally when a key handler is registered.
 export type ClientMessage =
-  | { kind: "getState"; key: string; id: string; storageKey?: string }
-  | { kind: "setState"; key: string; value: SyncedStateValue; id: string; storageKey?: string }
-  | { kind: "subscribe"; key: string; id: string; storageKey?: string }
-  | { kind: "unsubscribe"; key: string; id: string; storageKey?: string };
+  | { kind: "getState"; key: string; id: string }
+  | { kind: "setState"; key: string; value: SyncedStateValue; id: string }
+  | { kind: "subscribe"; key: string; id: string }
+  | { kind: "unsubscribe"; key: string; id: string };
 
-// Messages sent by the DO back to the client (via the worker proxy).
+// Messages sent by the DO back to the client.
 export type ServerMessage =
   | { kind: "getState"; key: string; value: SyncedStateValue | undefined; id: string }
   | { kind: "setState"; key: string; id: string }
