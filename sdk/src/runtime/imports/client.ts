@@ -1,5 +1,10 @@
 import React from "react";
 import { ClientOnly } from "../client/client";
+import {
+  isDynamicImportFailure,
+  isRecoveryConfigured,
+  startRecovery,
+} from "../client/recovery.js";
 import { memoizeOnId } from "../lib/memoizeOnId";
 
 // @ts-ignore
@@ -14,7 +19,17 @@ export const loadModule = memoizeOnId(async (id: string) => {
     );
   }
 
-  return await moduleFn();
+  try {
+    return await moduleFn();
+  } catch (error) {
+    if (isDynamicImportFailure(error) && isRecoveryConfigured()) {
+      startRecovery("module-not-found");
+      // Stall this import forever so React doesn't crash before the recovery
+      // flow reloads the page.
+      return new Promise(() => {});
+    }
+    throw error;
+  }
 });
 
 // context(justinvdm, 2 Dec 2024): re memoize(): React relies on the same promise instance being returned for the same id
