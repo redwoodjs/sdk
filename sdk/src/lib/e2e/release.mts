@@ -606,11 +606,25 @@ export async function runPreviewServer(
 
   console.log("✅ Build complete. Starting preview server...");
 
-  const port =
-    preferredPort ?? (await findFreePort(preferredPort ?? 4173));
-
+  // Pick a port. If the caller asked for a specific port (e.g. a redeploy
+  // wants to reuse the previous port), try that first and wait briefly for
+  // the old process to release it. If it is still occupied, fall back to a
+  // free port rather than failing — deterministic port assignment can collide
+  // between different playground test files.
+  let port: number;
   if (preferredPort != null) {
-    await waitForPortFree(preferredPort);
+    if (await isPortFree(preferredPort)) {
+      port = preferredPort;
+    } else {
+      try {
+        await waitForPortFree(preferredPort, 3000);
+        port = preferredPort;
+      } catch {
+        port = await findFreePort(preferredPort + 1);
+      }
+    }
+  } else {
+    port = await findFreePort(4173);
   }
 
   let previewProcess: any = null;
