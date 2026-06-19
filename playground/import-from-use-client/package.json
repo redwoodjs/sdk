@@ -26,7 +26,8 @@
     "react-dom": "19.2.6",
     "react-server-dom-webpack": "19.2.6",
     "rwsdk": "workspace:*",
-    "ui-lib": "file:./packages/ui-lib"
+    "ui-lib": "file:./packages/ui-lib",
+    "widget-lib": "file:./packages/widget-lib"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.33.2",

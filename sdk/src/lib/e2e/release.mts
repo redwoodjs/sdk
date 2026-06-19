@@ -600,10 +600,7 @@ export async function runPreviewServer(
       process.stdout.write(chunk);
     }
     const strippedChunk = chunk.replace(ansiEscapePattern, "");
-    const match = strippedChunk.match(urlPattern);
-    if (match && match[1]) {
-      serverUrlResolver(match[1]);
-    }
+    strippedChunk.match(urlPattern);
   });
   previewProcess.catch((error: any) => {
     if (!isErrorExpected) {

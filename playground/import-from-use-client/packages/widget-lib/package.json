@@ -1,0 +1,9 @@
+{
+  "name": "widget-lib",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./client.mjs",
+  "exports": {
+    ".": "./client.mjs"
+  }
+}
