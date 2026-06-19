@@ -220,4 +220,32 @@ describe("SyncedStateServerHibernation", () => {
     const response = JSON.parse((ws2 as any)._sent[0] as string);
     expect(response).toMatchObject({ v: 1, kind: "getState", key: "counter", value: 99, id: "2" });
   });
+
+  it("deduplicates subscriptions from the same socket for the same key", async () => {
+    const coordinator = new SyncedStateServerHibernation(
+      { storage: createStorageStub() } as any,
+      {} as any,
+    );
+    const ws = createWebSocketStub();
+
+    await coordinator.webSocketMessage(
+      ws as any,
+      packMessage({ kind: "subscribe", key: "counter", storageKey: "counter", id: "1" }),
+    );
+    await coordinator.webSocketMessage(
+      ws as any,
+      packMessage({ kind: "subscribe", key: "counter", storageKey: "counter", id: "2" }),
+    );
+
+    await coordinator.webSocketMessage(
+      ws as any,
+      packMessage({ kind: "setState", key: "counter", storageKey: "counter", value: 7, id: "3" }),
+    );
+
+    const updateMessages = (ws as any)._sent
+      .map((m: unknown) => JSON.parse(m as string))
+      .filter((m: any) => m.kind === "update");
+    expect(updateMessages).toHaveLength(1);
+    expect(updateMessages[0]).toMatchObject({ v: 1, kind: "update", key: "counter", value: 7 });
+  });
 });

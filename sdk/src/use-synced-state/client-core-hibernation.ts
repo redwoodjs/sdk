@@ -16,6 +16,8 @@ export type SyncedStateClient = {
   unsubscribe(key: string, handler: (value: unknown) => void): Promise<void>;
 };
 
+export type WebSocketFactory = (url: string) => WebSocket;
+
 // Converts a relative endpoint like "/__synced-state" to an absolute
 // ws:// or wss:// URL.
 function normalizeEndpoint(endpoint: string): string {
@@ -139,11 +141,14 @@ function makeMessageId(connection: Connection): string {
   return `${connection.nextId++}`;
 }
 
-function getConnection(endpoint: string): Connection {
+function getConnection(
+  endpoint: string,
+  webSocketFactory: WebSocketFactory,
+): Connection {
   const normalized = normalizeEndpoint(endpoint);
   let connection = connectionByEndpoint.get(normalized);
   if (!connection) {
-    connection = createConnection(normalized);
+    connection = createConnection(normalized, webSocketFactory);
     connectionByEndpoint.set(normalized, connection);
   }
   return connection;
@@ -182,9 +187,12 @@ function cleanupConnectionTimers(connection: Connection) {
   }
 }
 
-function createConnection(endpoint: string): Connection {
+function createConnection(
+  endpoint: string,
+  webSocketFactory: WebSocketFactory,
+): Connection {
   const connection: Connection = {
-    ws: new WebSocket(endpoint),
+    ws: webSocketFactory(endpoint),
     nextId: 0,
     pending: new Map(),
     isOpen: false,
@@ -355,13 +363,30 @@ function reconnect(endpoint: string) {
       connectionByEndpoint.delete(endpoint);
     }
 
-    const newConnection = getConnection(endpoint);
+    // Reuse the same WebSocket factory that the original client was created
+    // with (production WebSocket, test ws.WebSocket, etc.).
+    let webSocketFactory: WebSocketFactory = (url) => new WebSocket(url);
+    for (const sub of activeSubscriptions) {
+      const subEndpoint = normalizeEndpoint((sub.client as any).__endpoint);
+      if (subEndpoint === endpoint) {
+        const factory = (sub.client as any).__webSocketFactory as
+          | WebSocketFactory
+          | undefined;
+        if (factory) {
+          webSocketFactory = factory;
+          break;
+        }
+      }
+    }
+
+    const newConnection = getConnection(endpoint, webSocketFactory);
 
     newConnection.ws.addEventListener(
       "open",
       () => {
         backoffState.set(endpoint, { attempt: 0, timer: null });
-        notifyStatusChange(endpoint, "connected");
+        // The connection's own open handler already notifies "connected" and
+        // re-subscribes; avoid doing it twice here.
       },
       { once: true },
     );
@@ -385,6 +410,7 @@ function reconnect(endpoint: string) {
  */
 export const getSyncedStateClient = (
   endpoint: string = DEFAULT_SYNCED_STATE_PATH,
+  webSocketFactory: WebSocketFactory = (url) => new WebSocket(url),
 ): SyncedStateClient => {
   const normalized = normalizeEndpoint(endpoint);
 
@@ -395,13 +421,13 @@ export const getSyncedStateClient = (
 
   const client: SyncedStateClient = {
     async getState(key: string): Promise<unknown> {
-      const connection = getConnection(normalized);
+      const connection = getConnection(normalized, webSocketFactory);
       const id = makeMessageId(connection);
       return sendMessage(connection, { kind: "getState", key, id });
     },
 
     async setState(value: unknown, key: string): Promise<void> {
-      const connection = getConnection(normalized);
+      const connection = getConnection(normalized, webSocketFactory);
       const id = makeMessageId(connection);
       await sendMessage(connection, { kind: "setState", key, value, id });
     },
@@ -417,7 +443,7 @@ export const getSyncedStateClient = (
         activeSubscriptions.add({ key, handler, client });
       }
 
-      const connection = getConnection(normalized);
+      const connection = getConnection(normalized, webSocketFactory);
       let handlers = connection.messageHandlers.get(key);
       if (!handlers) {
         handlers = new Set();
@@ -427,7 +453,9 @@ export const getSyncedStateClient = (
 
       if (connection.isOpen) {
         const id = makeMessageId(connection);
-        await sendMessage(connection, { kind: "subscribe", key, id });
+        // Subscribe is fire-and-forget: the server does not send an ack, and
+        // any missed subscribe is repaired by the reconnect re-subscribe path.
+        connection.ws.send(packMessage({ kind: "subscribe", key, id }));
       }
     },
 
@@ -446,6 +474,9 @@ export const getSyncedStateClient = (
       }
 
       const connection = connectionByEndpoint.get(normalized);
+      // Note: we intentionally do not await an unsubscribe response. The server
+      // removes the subscription, and if the message is lost the close/reconnect
+      // path will re-subscribe only keys that are still active.
       if (connection) {
         const handlers = connection.messageHandlers.get(key);
         if (handlers) {
@@ -457,14 +488,19 @@ export const getSyncedStateClient = (
 
         if (connection.isOpen) {
           const id = makeMessageId(connection);
-          await sendMessage(connection, { kind: "unsubscribe", key, id });
+          // Fire-and-forget: the server removes the subscription, and if the
+          // message is lost the close/reconnect path will re-subscribe only
+          // keys that are still active.
+          connection.ws.send(packMessage({ kind: "unsubscribe", key, id }));
         }
       }
     },
   };
 
-  // Expose the endpoint so reconnect can match subscriptions to connections.
+  // Expose the endpoint and WebSocket factory so reconnect can recreate the
+  // connection with the same dependencies the client was created with.
   (client as any).__endpoint = endpoint;
+  (client as any).__webSocketFactory = webSocketFactory;
 
   clientCache.set(normalized, client);
   return client;
@@ -474,12 +510,17 @@ export const getSyncedStateClient = (
  * Initializes and caches an RPC client instance for the sync state endpoint.
  * The client is wrapped to track subscriptions for cleanup on page unload.
  */
-export const initSyncedStateClient = (options: { endpoint?: string } = {}) => {
+export const initSyncedStateClient = (
+  options: { endpoint?: string; webSocketFactory?: WebSocketFactory } = {},
+) => {
   const endpoint = options.endpoint ?? DEFAULT_SYNCED_STATE_PATH;
   if (typeof window === "undefined") {
     return null;
   }
-  return getSyncedStateClient(endpoint);
+  return getSyncedStateClient(
+    endpoint,
+    options.webSocketFactory ?? ((url) => new WebSocket(url)),
+  );
 };
 
 /**
@@ -518,10 +559,6 @@ export const setSyncedStateClientForTesting = (
 
 // Exported for testing only
 export const __testing = {
-  activeSubscriptions,
-  clientCache,
-  backoffState,
-  statusListeners,
-  connectionByEndpoint,
   getBackoffMs,
+  DEAD_CONNECTION_TIMEOUT_MS,
 };

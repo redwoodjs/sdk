@@ -321,7 +321,18 @@ export class SyncedStateServerHibernation extends DurableObject {
     if (!this.#subscriptions.has(storageKey)) {
       this.#subscriptions.set(storageKey, new Set());
     }
-    this.#subscriptions.get(storageKey)!.add({ ws, userKey });
+    const subscribers = this.#subscriptions.get(storageKey)!;
+
+    // Defensive deduplication: a stateful client may send subscribe more than
+    // once for the same key (e.g. across reconnects), and hibernation can
+    // rehydrate the same subscription from the attachment. Keep only one entry
+    // per (socket, userKey) pair.
+    for (const entry of subscribers) {
+      if (entry.ws === ws && entry.userKey === userKey) {
+        return;
+      }
+    }
+    subscribers.add({ ws, userKey });
 
     const subscribeHandler = SyncedStateServerHibernation.#subscribeHandler;
     if (subscribeHandler) {
