@@ -36,7 +36,7 @@ The playground uses:
 
 - **Client Hook**: `useSyncedState` from `rwsdk/use-synced-state/hibernation/client`
 - **Server Routes**: `syncedStateRoutes` from `rwsdk/use-synced-state/hibernation/worker`
-- **Durable Object**: `SyncedStateServerHibernation` stores state and broadcasts updates to all subscribers while allowing the DO to hibernate when idle
+- **Durable Object**: `SyncedStateServer` stores state and broadcasts updates to all subscribers while allowing the DO to hibernate when idle
 
 The regular capnweb-based `useSyncedState` playground is in `playground/use-synced-state`.
 

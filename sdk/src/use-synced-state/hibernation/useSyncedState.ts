@@ -3,8 +3,8 @@ import {
   getSyncedStateClient,
   onStatusChange,
   type StatusChangeCallback,
-} from "./client-core-hibernation.js";
-import { DEFAULT_SYNCED_STATE_PATH } from "./constants.mjs";
+} from "./client-core.js";
+import { DEFAULT_SYNCED_STATE_PATH } from "../constants.mjs";
 
 type HookDeps = {
   useState: typeof React.useState;
@@ -31,7 +31,7 @@ export type CreateSyncedStateHookOptions = {
 
 /**
  * Builds a `useSyncedState` hook configured with optional endpoint and hook overrides.
- * Uses the hibernation-aware raw WebSocket transport.
+ * Uses the raw WebSocket transport.
  */
 export const createSyncedStateHook = (
   options: CreateSyncedStateHookOptions = {},

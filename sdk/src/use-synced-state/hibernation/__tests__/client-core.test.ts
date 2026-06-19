@@ -6,8 +6,8 @@ import {
   onStatusChange,
   setSyncedStateClientForTesting,
   __testing,
-} from "../client-core-hibernation.js";
-import { type ServerMessage, type ClientMessage } from "../protocol-hibernation.mjs";
+} from "../client-core.js";
+import { type ServerMessage, type ClientMessage } from "../protocol.mjs";
 
 const { DEAD_CONNECTION_TIMEOUT_MS, getBackoffMs } = __testing;
 
@@ -67,7 +67,7 @@ function collectMessages(ws: WebSocket): ClientMessage[] {
   return messages;
 }
 
-describe("client-core-hibernation", () => {
+describe("client-core", () => {
   let wss: WebSocketServer;
   let serverSockets: WebSocket[] = [];
   let serverMessages: ClientMessage[][] = [];
@@ -87,7 +87,6 @@ describe("client-core-hibernation", () => {
       serverMessages.push(collectMessages(ws));
     });
 
-    // Give the server a moment to start listening.
     await wait(10);
   });
 
@@ -122,12 +121,9 @@ describe("client-core-hibernation", () => {
 
     await client.subscribe("counter", handler);
 
-    const serverSocket = await waitForCondition(
-      () => serverSockets[0],
-    );
+    const serverSocket = await waitForCondition(() => serverSockets[0]);
     await waitForOpen(clients[0] as unknown as WebSocket);
 
-    // Wait for both subscribe and getState messages to arrive.
     await waitForCondition(() =>
       serverMessages[0].length >= 2 ? serverMessages[0] : undefined,
     );
@@ -178,7 +174,6 @@ describe("client-core-hibernation", () => {
 
     // Wait for the reconnect to create a second server socket.
     await waitForCondition(() => serverSockets[1]);
-    await waitForOpen(clients[1] as unknown as WebSocket);
 
     await waitForCondition(() =>
       serverMessages[1].length >= 2 ? serverMessages[1] : undefined,
@@ -228,7 +223,6 @@ describe("client-core-hibernation", () => {
   it("rejects pending getState requests when the socket closes", async () => {
     const client = createClient();
     const getStatePromise = client.getState("counter");
-    // Suppress unhandled rejection warning while we await the assertion.
     getStatePromise.catch(() => {});
 
     await waitForOpen(clients[0] as unknown as WebSocket);

@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { render, route } from "rwsdk/router";
 import {
-  SyncedStateServerHibernation,
+  SyncedStateServer,
   syncedStateRoutes,
 } from "rwsdk/use-synced-state/hibernation/worker";
 import { defineApp } from "rwsdk/worker";
@@ -13,7 +13,7 @@ import { registerSyncedStateHandlers } from "./syncedStateHandlers";
 
 registerSyncedStateHandlers(() => env.SYNCED_STATE_HIBERNATION_SERVER);
 
-export { SyncedStateServerHibernation };
+export { SyncedStateServer };
 
 export type AppContext = {
   userId: string | null;

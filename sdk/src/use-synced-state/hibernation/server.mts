@@ -1,18 +1,18 @@
 import { DurableObject } from "cloudflare:workers";
-import type { RequestInfo } from "../runtime/requestInfo/types";
+import type { RequestInfo } from "../../runtime/requestInfo/types";
 import {
   type SyncedStateIdentity,
   getIdentityFromUrl,
-} from "./identity-hibernation.mjs";
+} from "./identity.mjs";
 import {
   type ClientMessage,
   type ServerMessage,
   type SyncedStateValue,
   unpackClientMessage,
   packMessage,
-} from "./protocol-hibernation.mjs";
+} from "./protocol.mjs";
 
-export type SyncedStateServerHibernationAttachment = {
+export type SyncedStateServerAttachment = {
   clientId: string;
   identity: SyncedStateIdentity;
   subscriptions: Array<{ userKey: string; storageKey: string }>;
@@ -22,18 +22,18 @@ type OnSetHandler = (
   key: string,
   value: SyncedStateValue,
   identity: SyncedStateIdentity,
-  stub: DurableObjectStub<SyncedStateServerHibernation>,
+  stub: DurableObjectStub<SyncedStateServer>,
 ) => void;
 type OnGetHandler = (
   key: string,
   value: SyncedStateValue | undefined,
   identity: SyncedStateIdentity,
-  stub: DurableObjectStub<SyncedStateServerHibernation>,
+  stub: DurableObjectStub<SyncedStateServer>,
 ) => void;
 type OnKeyHandler = (
   key: string,
   identity: SyncedStateIdentity,
-  stub: DurableObjectStub<SyncedStateServerHibernation>,
+  stub: DurableObjectStub<SyncedStateServer>,
 ) => Promise<string>;
 type OnRoomHandler = (
   roomId: string | undefined,
@@ -42,12 +42,12 @@ type OnRoomHandler = (
 type OnSubscribeHandler = (
   key: string,
   identity: SyncedStateIdentity,
-  stub: DurableObjectStub<SyncedStateServerHibernation>,
+  stub: DurableObjectStub<SyncedStateServer>,
 ) => void;
 type OnUnsubscribeHandler = (
   key: string,
   identity: SyncedStateIdentity,
-  stub: DurableObjectStub<SyncedStateServerHibernation>,
+  stub: DurableObjectStub<SyncedStateServer>,
 ) => void;
 type IdentityExtractor = (
   requestInfo: RequestInfo,
@@ -58,7 +58,7 @@ type IdentityExtractor = (
  * subscribers, using the Cloudflare Hibernation WebSocket API so idle
  * connections do not keep the object active.
  *
- * The implementation copies the hibernation lifecycle pattern from the older
+ * The implementation copies the lifecycle pattern from the older
  * RealtimeDurableObject but replaces its RSC/action protocol with a small
  * JSON state-sync protocol.
  *
@@ -67,7 +67,7 @@ type IdentityExtractor = (
  * the worker. This lets the worker hand off the WebSocket and exit instead of
  * staying alive as a proxy.
  */
-export class SyncedStateServerHibernation extends DurableObject {
+export class SyncedStateServer extends DurableObject {
   static #keyHandler: OnKeyHandler | null = null;
   static #roomHandler: OnRoomHandler | null = null;
   static #setStateHandler: OnSetHandler | null = null;
@@ -75,81 +75,81 @@ export class SyncedStateServerHibernation extends DurableObject {
   static #subscribeHandler: OnSubscribeHandler | null = null;
   static #unsubscribeHandler: OnUnsubscribeHandler | null = null;
   static #identityExtractor: IdentityExtractor | null = null;
-  static #namespace: DurableObjectNamespace<SyncedStateServerHibernation> | null = null;
+  static #namespace: DurableObjectNamespace<SyncedStateServer> | null = null;
   static #durableObjectName: string = "syncedStateHibernation";
 
   static registerKeyHandler(handler: OnKeyHandler | null): void {
-    SyncedStateServerHibernation.#keyHandler = handler;
+    SyncedStateServer.#keyHandler = handler;
   }
 
   static getKeyHandler(): OnKeyHandler | null {
-    return SyncedStateServerHibernation.#keyHandler;
+    return SyncedStateServer.#keyHandler;
   }
 
   static registerRoomHandler(handler: OnRoomHandler | null): void {
-    SyncedStateServerHibernation.#roomHandler = handler;
+    SyncedStateServer.#roomHandler = handler;
   }
 
   static getRoomHandler(): OnRoomHandler | null {
-    return SyncedStateServerHibernation.#roomHandler;
+    return SyncedStateServer.#roomHandler;
   }
 
   static registerIdentityExtractor(
     extractor: IdentityExtractor | null,
   ): void {
-    SyncedStateServerHibernation.#identityExtractor = extractor;
+    SyncedStateServer.#identityExtractor = extractor;
   }
 
   static getIdentityExtractor(): IdentityExtractor | null {
-    return SyncedStateServerHibernation.#identityExtractor;
+    return SyncedStateServer.#identityExtractor;
   }
 
   static registerNamespace(
-    namespace: DurableObjectNamespace<SyncedStateServerHibernation>,
+    namespace: DurableObjectNamespace<SyncedStateServer>,
     durableObjectName?: string,
   ): void {
-    SyncedStateServerHibernation.#namespace = namespace;
+    SyncedStateServer.#namespace = namespace;
     if (durableObjectName) {
-      SyncedStateServerHibernation.#durableObjectName = durableObjectName;
+      SyncedStateServer.#durableObjectName = durableObjectName;
     }
   }
 
-  static getNamespace(): DurableObjectNamespace<SyncedStateServerHibernation> | null {
-    return SyncedStateServerHibernation.#namespace;
+  static getNamespace(): DurableObjectNamespace<SyncedStateServer> | null {
+    return SyncedStateServer.#namespace;
   }
 
   static getDurableObjectName(): string {
-    return SyncedStateServerHibernation.#durableObjectName;
+    return SyncedStateServer.#durableObjectName;
   }
 
   static registerSetStateHandler(handler: OnSetHandler | null): void {
-    SyncedStateServerHibernation.#setStateHandler = handler;
+    SyncedStateServer.#setStateHandler = handler;
   }
 
   static registerGetStateHandler(handler: OnGetHandler | null): void {
-    SyncedStateServerHibernation.#getStateHandler = handler;
+    SyncedStateServer.#getStateHandler = handler;
   }
 
   static registerSubscribeHandler(handler: OnSubscribeHandler | null): void {
-    SyncedStateServerHibernation.#subscribeHandler = handler;
+    SyncedStateServer.#subscribeHandler = handler;
   }
 
   static registerUnsubscribeHandler(handler: OnUnsubscribeHandler | null): void {
-    SyncedStateServerHibernation.#unsubscribeHandler = handler;
+    SyncedStateServer.#unsubscribeHandler = handler;
   }
 
   static getSubscribeHandler(): OnSubscribeHandler | null {
-    return SyncedStateServerHibernation.#subscribeHandler;
+    return SyncedStateServer.#subscribeHandler;
   }
 
   static getUnsubscribeHandler(): OnUnsubscribeHandler | null {
-    return SyncedStateServerHibernation.#unsubscribeHandler;
+    return SyncedStateServer.#unsubscribeHandler;
   }
 
   state: DurableObjectState;
   env: Env;
   storage: DurableObjectStorage;
-  #stub: DurableObjectStub<SyncedStateServerHibernation> | null = null;
+  #stub: DurableObjectStub<SyncedStateServer> | null = null;
 
   constructor(state: DurableObjectState, env: Env) {
     super(state, env);
@@ -158,7 +158,7 @@ export class SyncedStateServerHibernation extends DurableObject {
     this.storage = state.storage;
   }
 
-  setStub(stub: DurableObjectStub<SyncedStateServerHibernation>): void {
+  setStub(stub: DurableObjectStub<SyncedStateServer>): void {
     this.#stub = stub;
   }
 
@@ -169,7 +169,7 @@ export class SyncedStateServerHibernation extends DurableObject {
 
     const { 0: client, 1: server } = new WebSocketPair();
 
-    const attachment: SyncedStateServerHibernationAttachment = {
+    const attachment: SyncedStateServerAttachment = {
       clientId,
       identity,
       subscriptions: [],
@@ -197,7 +197,7 @@ export class SyncedStateServerHibernation extends DurableObject {
       return;
     }
 
-    // After hibernation the in-memory subscription map is empty. Rehydrate it
+    // After DO eviction the in-memory subscription map is empty. Rehydrate it
     // from the socket attachment before handling any message that depends on
     // knowing this socket's subscriptions (especially broadcasts on setState).
     this.#ensureSubscriptionsLoaded(ws);
@@ -314,10 +314,10 @@ export class SyncedStateServerHibernation extends DurableObject {
     await this.#loadStateStore();
 
     const value = this.#stateStore.get(key);
-    if (SyncedStateServerHibernation.#getStateHandler) {
+    if (SyncedStateServer.#getStateHandler) {
       const stub = this.#getStubForHandlers();
       if (stub) {
-        SyncedStateServerHibernation.#getStateHandler(key, value, identity, stub);
+        SyncedStateServer.#getStateHandler(key, value, identity, stub);
       }
     }
     return value;
@@ -333,10 +333,10 @@ export class SyncedStateServerHibernation extends DurableObject {
     this.#stateStore.set(key, value);
     await this.storage.put(this.#stateStorageKey(key), value);
 
-    if (SyncedStateServerHibernation.#setStateHandler) {
+    if (SyncedStateServer.#setStateHandler) {
       const stub = this.#getStubForHandlers();
       if (stub) {
-        SyncedStateServerHibernation.#setStateHandler(key, value, identity, stub);
+        SyncedStateServer.#setStateHandler(key, value, identity, stub);
       }
     }
     this.#broadcastUpdate(key, value);
@@ -358,7 +358,7 @@ export class SyncedStateServerHibernation extends DurableObject {
     const subscribers = this.#subscriptions.get(storageKey)!;
 
     // Defensive deduplication: a stateful client may send subscribe more than
-    // once for the same key (e.g. across reconnects), and hibernation can
+    // once for the same key (e.g. across reconnects), and DO eviction can
     // rehydrate the same subscription from the attachment. Keep only one entry
     // per (socket, userKey) pair.
     for (const entry of subscribers) {
@@ -369,7 +369,7 @@ export class SyncedStateServerHibernation extends DurableObject {
     subscribers.add({ ws, userKey });
 
     const identity = this.#getIdentity(ws);
-    const subscribeHandler = SyncedStateServerHibernation.#subscribeHandler;
+    const subscribeHandler = SyncedStateServer.#subscribeHandler;
     if (subscribeHandler) {
       const stub = this.#getStubForHandlers();
       if (stub) {
@@ -378,7 +378,7 @@ export class SyncedStateServerHibernation extends DurableObject {
     }
 
     // Persist the subscription in the socket attachment so it survives
-    // hibernation.
+    // DO eviction.
     const subs = this.#getSubscriptionsFromAttachment(ws);
     if (!subs.some((s) => s.userKey === userKey && s.storageKey === storageKey)) {
       subs.push({ userKey, storageKey });
@@ -401,7 +401,7 @@ export class SyncedStateServerHibernation extends DurableObject {
     }
 
     const identity = this.#getIdentity(ws);
-    const unsubscribeHandler = SyncedStateServerHibernation.#unsubscribeHandler;
+    const unsubscribeHandler = SyncedStateServer.#unsubscribeHandler;
     if (unsubscribeHandler) {
       const stub = this.#getStubForHandlers();
       if (stub) {
@@ -439,7 +439,7 @@ export class SyncedStateServerHibernation extends DurableObject {
   // Attachment helpers
   // ---------------------------------------------------------------------------
 
-  #getAttachment(ws: WebSocket): SyncedStateServerHibernationAttachment {
+  #getAttachment(ws: WebSocket): SyncedStateServerAttachment {
     const raw = ws.deserializeAttachment();
     if (
       raw &&
@@ -447,7 +447,7 @@ export class SyncedStateServerHibernation extends DurableObject {
       "subscriptions" in raw &&
       Array.isArray((raw as any).subscriptions)
     ) {
-      return raw as SyncedStateServerHibernationAttachment;
+      return raw as SyncedStateServerAttachment;
     }
     return { clientId: "", identity: undefined, subscriptions: [] };
   }
@@ -499,7 +499,7 @@ export class SyncedStateServerHibernation extends DurableObject {
     key: string,
     identity: SyncedStateIdentity,
   ): Promise<string> {
-    const keyHandler = SyncedStateServerHibernation.#keyHandler;
+    const keyHandler = SyncedStateServer.#keyHandler;
     if (keyHandler) {
       const stub = this.#getStubForHandlers();
       return await keyHandler(key, identity, stub ?? ({} as any));
@@ -507,11 +507,11 @@ export class SyncedStateServerHibernation extends DurableObject {
     return key;
   }
 
-  #getStubForHandlers(): DurableObjectStub<SyncedStateServerHibernation> | null {
+  #getStubForHandlers(): DurableObjectStub<SyncedStateServer> | null {
     if (this.#stub) {
       return this.#stub;
     }
-    const namespace = SyncedStateServerHibernation.#namespace;
+    const namespace = SyncedStateServer.#namespace;
     if (namespace) {
       return namespace.get(this.ctx.id);
     }

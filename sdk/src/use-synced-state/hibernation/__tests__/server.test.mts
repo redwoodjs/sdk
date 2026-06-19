@@ -5,10 +5,10 @@ vi.mock("cloudflare:workers", () => {
   return { DurableObject };
 });
 
-import { SyncedStateServerHibernation } from "../SyncedStateServerHibernation.mjs";
-import { packMessage } from "../protocol-hibernation.mjs";
+import { SyncedStateServer } from "../server.mjs";
+import { packMessage } from "../protocol.mjs";
 
-// Minimal in-memory storage stub for the hibernation DO tests.
+// Minimal in-memory storage stub for the DO tests.
 function createStorageStub() {
   const store = new Map<string, unknown>();
   return {
@@ -70,19 +70,19 @@ function createUpgradeRequest(identity: unknown): Request {
   });
 }
 
-describe("SyncedStateServerHibernation", () => {
+describe("SyncedStateServer", () => {
   afterEach(() => {
-    SyncedStateServerHibernation.registerKeyHandler(null);
-    SyncedStateServerHibernation.registerRoomHandler(null);
-    SyncedStateServerHibernation.registerSetStateHandler(null);
-    SyncedStateServerHibernation.registerGetStateHandler(null);
-    SyncedStateServerHibernation.registerSubscribeHandler(null);
-    SyncedStateServerHibernation.registerUnsubscribeHandler(null);
-    SyncedStateServerHibernation.registerIdentityExtractor(null);
+    SyncedStateServer.registerKeyHandler(null);
+    SyncedStateServer.registerRoomHandler(null);
+    SyncedStateServer.registerSetStateHandler(null);
+    SyncedStateServer.registerGetStateHandler(null);
+    SyncedStateServer.registerSubscribeHandler(null);
+    SyncedStateServer.registerUnsubscribeHandler(null);
+    SyncedStateServer.registerIdentityExtractor(null);
   });
 
   it("stores and retrieves state by key", async () => {
-    const coordinator = new SyncedStateServerHibernation(
+    const coordinator = new SyncedStateServer(
       { storage: createStorageStub() } as any,
       {} as any,
     );
@@ -103,7 +103,7 @@ describe("SyncedStateServerHibernation", () => {
   });
 
   it("notifies subscribers when state changes", async () => {
-    const coordinator = new SyncedStateServerHibernation(
+    const coordinator = new SyncedStateServer(
       { storage: createStorageStub() } as any,
       {} as any,
     );
@@ -123,12 +123,12 @@ describe("SyncedStateServerHibernation", () => {
   });
 
   it("transforms keys using the registered key handler and captured identity", async () => {
-    const coordinator = new SyncedStateServerHibernation(
+    const coordinator = new SyncedStateServer(
       { storage: createStorageStub() } as any,
       {} as any,
     );
 
-    SyncedStateServerHibernation.registerKeyHandler(
+    SyncedStateServer.registerKeyHandler(
       async (key, identity) => `user:${(identity as any).userId}:${key}`,
     );
 
@@ -158,13 +158,13 @@ describe("SyncedStateServerHibernation", () => {
   });
 
   it("invokes registered setState handler with identity", async () => {
-    const coordinator = new SyncedStateServerHibernation(
+    const coordinator = new SyncedStateServer(
       { storage: createStorageStub() } as any,
       {} as any,
     );
     coordinator.setStub({} as any);
     const calls: Array<{ key: string; value: unknown; identity: unknown }> = [];
-    SyncedStateServerHibernation.registerSetStateHandler((key, value, identity) => {
+    SyncedStateServer.registerSetStateHandler((key, value, identity) => {
       calls.push({ key, value, identity });
     });
     const ws = createWebSocketStub({ userId: "42" });
@@ -178,7 +178,7 @@ describe("SyncedStateServerHibernation", () => {
   });
 
   it("rehydrates subscriptions after simulated hibernation", async () => {
-    const coordinator = new SyncedStateServerHibernation(
+    const coordinator = new SyncedStateServer(
       { storage: createStorageStub() } as any,
       {} as any,
     );
@@ -189,7 +189,7 @@ describe("SyncedStateServerHibernation", () => {
       packMessage({ kind: "subscribe", key: "counter", id: "1" }),
     );
 
-    // Simulate hibernation by clearing the in-memory subscription map.
+    // Simulate DO eviction by clearing the in-memory subscription map.
     (coordinator as any)["#subscriptions" as never]?.clear?.();
 
     // A setState message should still trigger an update because the attachment
@@ -204,7 +204,7 @@ describe("SyncedStateServerHibernation", () => {
   });
 
   it("rejects unsupported protocol versions", async () => {
-    const coordinator = new SyncedStateServerHibernation(
+    const coordinator = new SyncedStateServer(
       { storage: createStorageStub() } as any,
       {} as any,
     );
@@ -218,12 +218,12 @@ describe("SyncedStateServerHibernation", () => {
     const messages = (ws as any)._sent.map((m: unknown) => JSON.parse(m as string));
     expect(messages).toHaveLength(1);
     expect(messages[0]).toMatchObject({ v: 1, kind: "error" });
-    expect(messages[0].message).toContain("Unsupported hibernation protocol version");
+    expect(messages[0].message).toContain("Unsupported protocol version");
   });
 
   it("persists state across DO evictions", async () => {
     const storage = createStorageStub();
-    const coordinator = new SyncedStateServerHibernation(
+    const coordinator = new SyncedStateServer(
       { storage } as any,
       {} as any,
     );
@@ -235,7 +235,7 @@ describe("SyncedStateServerHibernation", () => {
     );
 
     // Simulate a fresh DO instance reading from the same storage.
-    const coordinator2 = new SyncedStateServerHibernation(
+    const coordinator2 = new SyncedStateServer(
       { storage } as any,
       {} as any,
     );
@@ -250,7 +250,7 @@ describe("SyncedStateServerHibernation", () => {
   });
 
   it("deduplicates subscriptions from the same socket for the same key", async () => {
-    const coordinator = new SyncedStateServerHibernation(
+    const coordinator = new SyncedStateServer(
       { storage: createStorageStub() } as any,
       {} as any,
     );

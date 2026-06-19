@@ -1,6 +1,6 @@
-import { SyncedStateServerHibernation } from "rwsdk/use-synced-state/hibernation/worker";
+import { SyncedStateServer } from "rwsdk/use-synced-state/hibernation/worker";
 
-type HibernationStub = DurableObjectStub<SyncedStateServerHibernation>;
+type HibernationStub = DurableObjectStub<SyncedStateServer>;
 
 type SyncedStateIdentity = {
   userId?: string;
@@ -45,12 +45,12 @@ export async function updatePresenceList(
 }
 
 export function registerSyncedStateHandlers(
-  getNamespace: () => DurableObjectNamespace<SyncedStateServerHibernation> | undefined,
+  getNamespace: () => DurableObjectNamespace<SyncedStateServer> | undefined,
 ) {
   // Capture a serializable identity from the request context at upgrade time.
   // The DO uses this identity to transform keys and run presence logic without
   // keeping the worker alive.
-  SyncedStateServerHibernation.registerIdentityExtractor((reqInfo) => ({
+  SyncedStateServer.registerIdentityExtractor((reqInfo) => ({
     userId: reqInfo.ctx?.userId,
   }));
   // Helper function to sync globalState to the Durable Object
@@ -68,7 +68,7 @@ export function registerSyncedStateHandlers(
   }
 
   // Register setStateHandler to mirror all state updates to globalState
-  SyncedStateServerHibernation.registerSetStateHandler(
+  SyncedStateServer.registerSetStateHandler(
     (
       key: string,
       value: unknown,
@@ -93,7 +93,7 @@ export function registerSyncedStateHandlers(
   );
 
   // Register getStateHandler to mirror all state reads to globalState
-  SyncedStateServerHibernation.registerGetStateHandler(
+  SyncedStateServer.registerGetStateHandler(
     (
       key: string,
       value: unknown,
@@ -119,7 +119,7 @@ export function registerSyncedStateHandlers(
 
   // Register roomHandler to demonstrate server-side room transformation
   // This allows the server to map client-requested room IDs to actual Durable Object names
-  SyncedStateServerHibernation.registerRoomHandler(
+  SyncedStateServer.registerRoomHandler(
     async (roomId: string | undefined, reqInfo: any) => {
       // Access userId from the request context
       // The reqInfo parameter is the RequestInfo from the runtime, which has ctx
@@ -146,7 +146,7 @@ export function registerSyncedStateHandlers(
     },
   );
 
-  SyncedStateServerHibernation.registerKeyHandler(
+  SyncedStateServer.registerKeyHandler(
     async (key: string, identity: unknown) => {
       // if the key starts with "user:", modify it to include the userId.
       const userId = (identity as SyncedStateIdentity | undefined)?.userId;
@@ -157,8 +157,8 @@ export function registerSyncedStateHandlers(
     },
   );
 
-  SyncedStateServerHibernation.registerSubscribeHandler(
-    (key: string, identity: unknown, stub: DurableObjectStub<SyncedStateServerHibernation>) => {
+  SyncedStateServer.registerSubscribeHandler(
+    (key: string, identity: unknown, stub: DurableObjectStub<SyncedStateServer>) => {
       const userId = (identity as SyncedStateIdentity | undefined)?.userId;
       if (key === "presence" && userId) {
         console.log("updatePresenceList", userId);
@@ -167,8 +167,8 @@ export function registerSyncedStateHandlers(
     },
   );
 
-  SyncedStateServerHibernation.registerUnsubscribeHandler(
-    (key: string, identity: unknown, stub: DurableObjectStub<SyncedStateServerHibernation>) => {
+  SyncedStateServer.registerUnsubscribeHandler(
+    (key: string, identity: unknown, stub: DurableObjectStub<SyncedStateServer>) => {
       const userId = (identity as SyncedStateIdentity | undefined)?.userId;
       if (key === "presence" && userId) {
         console.log("updatePresenceList", userId);

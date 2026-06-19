@@ -1,14 +1,12 @@
 import { env } from "cloudflare:workers";
-import { route } from "../runtime/entries/router";
-import type { RequestInfo } from "../runtime/requestInfo/types";
-import { runWithRequestInfo } from "../runtime/requestInfo/worker";
-import {
-  SyncedStateServerHibernation,
-} from "./SyncedStateServerHibernation.mjs";
-import { setIdentityInUrl } from "./identity-hibernation.mjs";
-import { DEFAULT_SYNCED_STATE_PATH } from "./constants.mjs";
+import { route } from "../../runtime/entries/router";
+import type { RequestInfo } from "../../runtime/requestInfo/types";
+import { runWithRequestInfo } from "../../runtime/requestInfo/worker";
+import { SyncedStateServer } from "./server.mjs";
+import { setIdentityInUrl } from "./identity.mjs";
+import { DEFAULT_SYNCED_STATE_PATH } from "../constants.mjs";
 
-export { SyncedStateServerHibernation };
+export { SyncedStateServer };
 
 export type SyncedStateHibernationRouteOptions = {
   basePath?: string;
@@ -17,14 +15,14 @@ export type SyncedStateHibernationRouteOptions = {
 
 const DEFAULT_HIBERNATION_STATE_NAME = "syncedStateHibernation";
 
-// context(justinvdm, 19 Jun 2026): The hibernation route hands the browser's
-// WebSocket directly to the DO and exits. Room resolution and identity
-// extraction happen once at upgrade time in the worker; the DO then uses the
-// captured identity to transform keys internally via registerKeyHandler.
+// context(justinvdm, 19 Jun 2026): The route hands the browser's WebSocket
+// directly to the DO and exits. Room resolution and identity extraction happen
+// once at upgrade time in the worker; the DO then uses the captured identity to
+// transform keys internally via registerKeyHandler.
 export const syncedStateRoutes = (
   getNamespace: (
     env: Cloudflare.Env,
-  ) => DurableObjectNamespace<SyncedStateServerHibernation>,
+  ) => DurableObjectNamespace<SyncedStateServer>,
   options: SyncedStateHibernationRouteOptions = {},
 ) => {
   const basePath = options.basePath ?? DEFAULT_SYNCED_STATE_PATH;
@@ -37,11 +35,10 @@ export const syncedStateRoutes = (
     }
 
     const namespace = getNamespace(env);
-    SyncedStateServerHibernation.registerNamespace(namespace, durableObjectName);
+    SyncedStateServer.registerNamespace(namespace, durableObjectName);
 
-    const identityExtractor =
-      SyncedStateServerHibernation.getIdentityExtractor();
-    const roomHandler = SyncedStateServerHibernation.getRoomHandler();
+    const identityExtractor = SyncedStateServer.getIdentityExtractor();
+    const roomHandler = SyncedStateServer.getRoomHandler();
 
     const idParam = requestInfo.params?.id;
 
@@ -58,8 +55,6 @@ export const syncedStateRoutes = (
     const id = namespace.idFromName(resolvedRoomName);
     const stub = namespace.get(id);
 
-    // Extract a serializable identity from the request context so the DO can
-    // run key transformation without keeping the worker alive.
     let identity: unknown = undefined;
     if (identityExtractor) {
       identity = await runWithRequestInfo(
@@ -68,8 +63,6 @@ export const syncedStateRoutes = (
       );
     }
 
-    // Forward the upgrade request to the DO, passing the captured identity in
-    // the URL so the DO can store it on the WebSocket attachment.
     const doUrl = new URL(request.url);
     doUrl.searchParams.set("clientId", crypto.randomUUID());
     setIdentityInUrl(identity, doUrl);

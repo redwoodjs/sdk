@@ -24,14 +24,14 @@
     "bindings": [
       {
         "name": "SYNCED_STATE_HIBERNATION_SERVER",
-        "class_name": "SyncedStateServerHibernation"
+        "class_name": "SyncedStateServer"
       }
     ]
   },
   "migrations": [
     {
       "tag": "v1",
-      "new_sqlite_classes": ["SyncedStateServerHibernation"]
+      "new_sqlite_classes": ["SyncedStateServer"]
     }
   ],
 

@@ -30,13 +30,13 @@ State is persisted to Durable Object storage, and subscriptions are stored in th
 
 ## Worker Responsibilities
 
-The hibernation route in `sdk/src/use-synced-state/worker-hibernation.mts` accepts browser WebSocket upgrades at `/__synced-state`. It resolves the room name using the registered room handler with the current request context. This is a one-time routing decision: the handler may inspect session data, query the database, or apply scoping rules before returning the final DO room name.
+The hibernation route in `sdk/src/use-synced-state/hibernation/worker.mts` accepts browser WebSocket upgrades at `/__synced-state`. It resolves the room name using the registered room handler with the current request context. This is a one-time routing decision: the handler may inspect session data, query the database, or apply scoping rules before returning the final DO room name.
 
 Once the room is resolved, the Worker extracts a serializable identity from the request context using the registered identity extractor. This identity must contain everything the Durable Object needs to transform keys or perform other request-scoped work. The Worker forwards the upgrade request to the hibernation Durable Object, passing the captured identity in the URL, and returns the DO's 101 response directly. After the upgrade response is returned, the Worker exits. It does not stay alive for the connection and does not proxy messages.
 
 ## Durable Object Responsibilities
 
-`SyncedStateServerHibernation` in `sdk/src/use-synced-state/SyncedStateServerHibernation.mts` owns the WebSocket after the handoff. In `fetch` it creates a `WebSocketPair`, reads the identity from the request URL, stores it in the socket attachment, accepts the server socket with `acceptWebSocket`, and returns the client socket to the browser.
+`SyncedStateServer` in `sdk/src/use-synced-state/hibernation/server.mts` owns the WebSocket after the handoff. In `fetch` it creates a `WebSocketPair`, reads the identity from the request URL, stores it in the socket attachment, accepts the server socket with `acceptWebSocket`, and returns the client socket to the browser.
 
 The DO stores state by transformed storage key and broadcasts updates to subscribers using the user-facing key. State is persisted to Durable Object storage on every `setState`, and the in-memory cache is warmed lazily on first read. Subscriptions are tracked per storage key in memory and persisted in the WebSocket attachment. On every `webSocketMessage`, the DO rehydrates subscriptions from the attachment so broadcasts continue to work after hibernation.
 
@@ -44,7 +44,7 @@ When a message arrives, the DO transforms the user-facing key internally by call
 
 ## Client Hook Responsibilities
 
-The client core in `sdk/src/use-synced-state/client-core-hibernation.ts` maintains one WebSocket connection per endpoint. It exposes `getState`, `setState`, `subscribe`, and `unsubscribe` methods to application hooks. It tracks active subscriptions in a module-scoped set, reconnects with exponential backoff when the connection drops, and re-subscribes to every active key after reconnecting. It notifies listeners of connection status changes: `connected`, `disconnected`, and `reconnecting`.
+The client core in `sdk/src/use-synced-state/hibernation/client-core.ts` maintains one WebSocket connection per endpoint. It exposes `getState`, `setState`, `subscribe`, and `unsubscribe` methods to application hooks. It tracks active subscriptions in a module-scoped set, reconnects with exponential backoff when the connection drops, and re-subscribes to every active key after reconnecting. It notifies listeners of connection status changes: `connected`, `disconnected`, and `reconnecting`.
 
 The client does not send application-level ping/pong traffic, because synthetic keepalives would keep the DO awake and defeat the purpose of hibernation. Instead it relies on a read-only dead-connection timer: if no message is received within a timeout window, the client force-closes the socket and triggers reconnect.
 
@@ -66,10 +66,10 @@ Client message kinds are `getState`, `setState`, `subscribe`, and `unsubscribe`.
 
 ## Identity Extraction and Key Transformation
 
-Applications register an identity extractor with `SyncedStateServerHibernation.registerIdentityExtractor`. It runs in the Worker at upgrade time and returns a serializable value from `requestInfo`:
+Applications register an identity extractor with `SyncedStateServer.registerIdentityExtractor`. It runs in the Worker at upgrade time and returns a serializable value from `requestInfo`:
 
 ```ts
-SyncedStateServerHibernation.registerIdentityExtractor((requestInfo) => ({
+SyncedStateServer.registerIdentityExtractor((requestInfo) => ({
   userId: requestInfo.ctx.user.id,
 }));
 ```
@@ -77,7 +77,7 @@ SyncedStateServerHibernation.registerIdentityExtractor((requestInfo) => ({
 The DO receives this identity, stores it on the WebSocket attachment, and passes it to handlers. The key handler signature is:
 
 ```ts
-SyncedStateServerHibernation.registerKeyHandler(
+SyncedStateServer.registerKeyHandler(
   async (key, identity, stub) => `user:${identity.userId}:${key}`,
 );
 ```
@@ -92,4 +92,4 @@ The client tracks the last incoming message timestamp. If no message is received
 
 ## Testing
 
-Unit tests in `sdk/src/use-synced-state/__tests__/SyncedStateServerHibernation.test.mts` cover state persistence, subscription rehydration, protocol validation, DO eviction, key transformation, and identity passing. A dedicated playground in `playground/use-synced-state-hibernation` exercises the transport end-to-end.
+Unit tests in `sdk/src/use-synced-state/hibernation/__tests__/server.test.mts` cover state persistence, subscription rehydration, protocol validation, DO eviction, key transformation, and identity passing. A dedicated playground in `playground/use-synced-state-hibernation` exercises the transport end-to-end.

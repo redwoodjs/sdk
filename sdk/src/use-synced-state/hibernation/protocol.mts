@@ -1,6 +1,6 @@
 export type SyncedStateValue = unknown;
 
-// Version marker for the hibernation state-sync protocol. Bumped whenever the
+// Version marker for the state-sync protocol. Bumped whenever the
 // envelope or message shape changes incompatibly.
 export const PROTOCOL_VERSION = 1;
 
@@ -39,7 +39,7 @@ function parseEnvelope(data: string): SyncedStateEnvelope {
 
   if (parsed.v !== PROTOCOL_VERSION) {
     throw new Error(
-      `Unsupported hibernation protocol version: ${parsed.v ?? "missing"}`,
+      `Unsupported protocol version: ${parsed.v ?? "missing"}`,
     );
   }
 
