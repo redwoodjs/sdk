@@ -6,10 +6,6 @@ import {
   VENDOR_CLIENT_BARREL_EXPORT_PATH,
   VENDOR_SERVER_BARREL_EXPORT_PATH,
 } from "../lib/constants.mjs";
-import {
-  getVendorClientBarrelPath,
-  getVendorServerBarrelPath,
-} from "./barrelPaths.mjs";
 
 export function generateLookupMap({
   files,
@@ -27,18 +23,10 @@ export const ${exportName} = {
   ${Array.from(files)
     .map((file: string) => {
       if (file.includes("node_modules") && isDev) {
-        const tempBarrelPath =
-          kind === "client"
-            ? getVendorClientBarrelPath()
-            : getVendorServerBarrelPath();
-
-        // Fall back to the package export if the dev plugin hasn't set temp
-        // paths (e.g. in tests or unusual plugin setups).
         const barrelPath =
-          tempBarrelPath ??
-          (kind === "client"
+          kind === "client"
             ? VENDOR_CLIENT_BARREL_EXPORT_PATH
-            : VENDOR_SERVER_BARREL_EXPORT_PATH);
+            : VENDOR_SERVER_BARREL_EXPORT_PATH;
 
         return `
   "${file}": () => import("${barrelPath}").then(m => m.default["${file}"]),

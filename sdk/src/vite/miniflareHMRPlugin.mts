@@ -10,16 +10,20 @@ import {
   Plugin,
   ViteDevServer,
 } from "vite";
+import {
+  VENDOR_CLIENT_BARREL_EXPORT_PATH,
+  VENDOR_SERVER_BARREL_EXPORT_PATH,
+} from "../lib/constants.mjs";
 import { getShortName } from "../lib/getShortName.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import {
   getVendorClientBarrelPath,
   getVendorServerBarrelPath,
 } from "./barrelPaths.mjs";
+import { generateVendorBarrelContent } from "./directiveModulesDevPlugin.mjs";
 import { hasDirective as sourceHasDirective } from "./hasDirective.mjs";
 import { invalidateModule } from "./invalidateModule.mjs";
 import { isJsFile } from "./isJsFile.mjs";
-import { generateVendorBarrelContent } from "./directiveModulesDevPlugin.mjs";
 import { runDirectivesScan } from "./runDirectivesScan.mjs";
 import { VIRTUAL_SSR_PREFIX } from "./ssrVirtualModule.mjs";
 
@@ -305,6 +309,16 @@ export const miniflareHMRPlugin = (givenOptions: {
             if (serverBarrelPath) {
               invalidateModule(ctx.server, envName, serverBarrelPath);
             }
+            invalidateModule(
+              ctx.server,
+              envName,
+              VENDOR_CLIENT_BARREL_EXPORT_PATH,
+            );
+            invalidateModule(
+              ctx.server,
+              envName,
+              VENDOR_SERVER_BARREL_EXPORT_PATH,
+            );
           }
 
           if (clientFilesAfter !== clientFilesBefore) {
