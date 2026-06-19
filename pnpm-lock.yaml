@@ -1137,6 +1137,9 @@ importers:
       ui-lib:
         specifier: file:./packages/ui-lib
         version: link:packages/ui-lib
+      widget-lib:
+        specifier: file:./packages/widget-lib
+        version: link:packages/widget-lib
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.33.2
@@ -1167,6 +1170,8 @@ importers:
         version: 4.85.0(@cloudflare/workers-types@4.20260426.1)
 
   playground/import-from-use-client/packages/ui-lib: {}
+
+  playground/import-from-use-client/packages/widget-lib: {}
 
   playground/kitchen-sink:
     dependencies:
