@@ -24,13 +24,9 @@ The sequence of events was as follows:
 
 This happened because the initial optimization pass was only aware of third-party `node_modules` dependencies; it had no knowledge of the application's internal dependency graph.
 
-### 3. Correctness: Immutable `node_modules` Prebundles
-
-A third challenge arises from how Vite treats files inside `node_modules`. The dependency optimizer assumes `node_modules` contents are immutable, so it aggressively caches prebundled output. Any generated file written inside `node_modules` can therefore be cached indefinitely, even when its content changes. This makes `node_modules` an unsafe location for framework-generated artifacts like directive barrel files.
-
 ## The Solutions
 
-The solution is a multi-pronged strategy. A proactive dependency scan solves the performance problem and reduces the frequency of re-optimizations. Virtual and temporary barrel files avoid the `node_modules` caching hazard. Finally, HMR-triggered sub-scans keep the directive map accurate when new dependencies are imported mid-session.
+The solution is a multi-pronged strategy. A proactive dependency scan solves the performance problem and reduces the frequency of re-optimizations. Stable, framework-controlled barrel files keep the optimizer's entry points predictable. Finally, HMR-triggered sub-scans keep the directive map accurate when new dependencies are imported mid-session.
 
 ### Solution 1: Proactive Scanning to Prevent Waterfalls and Reduce Re-Optimizations
 
@@ -50,9 +46,11 @@ For a detailed explanation of the scanner's implementation and the rationale beh
 
 Instead of feeding hundreds of individual files to `optimizeDeps`, we consolidate them into **"barrel files."** We create separate barrels for third-party dependencies (which we refer to as **vendor barrels**) and for the application's own source code.
 
-Vendor barrels are generated in a unique temporary directory outside `node_modules`. This prevents Vite's dependency optimizer from treating them as immutable `node_modules` artifacts and caching stale or empty content. The barrel paths are added to `optimizeDeps.entries` and `optimizeDeps.include`, and an `esbuild` plugin serves their generated content in-memory while blocking the optimizer until the directive scan has populated them.
+Vendor barrels are generated at stable paths inside the SDK package (`dist/__intermediate_builds/rwsdk-vendor-{client,server}-barrel.js`). They are exposed to the optimizer through stable package export specifiers (`rwsdk/__vendor_client_barrel` and `rwsdk/__vendor_server_barrel`). The lookup maps for directive modules import these stable specifiers, so Vite pre-bundles the barrels just like any other dependency.
 
-This approach works *with* the bundler's expectations. By providing a small, consolidated list of entry points (the barrel files), we signal a complete and interconnected dependency graph. This allows `esbuild` to perform an efficient, comprehensive optimization pass that avoids both excessive chunking and the need for later re-optimization. The lookup maps for directive modules continue to point at the optimized vendor barrel rather than at raw `node_modules` files, preserving `optimizeDeps` behavior for all discovered dependencies.
+After the initial directive scan completes, the vendor barrel files are written to disk with the discovered imports. If a later HMR sub-scan finds new directive files, the files are rewritten and the corresponding barrel modules are invalidated in Vite's module graph, which triggers re-optimization.
+
+This approach works *with* the bundler's expectations. By providing a small, consolidated list of entry points (the barrel files), we signal a complete and interconnected dependency graph. This allows `esbuild` to perform an efficient, comprehensive optimization pass that avoids both excessive chunking and the need for later re-optimization, while stable specifiers keep the pre-bundle cache coherent across server restarts.
 
 #### 3. Synchronized Execution and Assertive Resolution
 
@@ -62,7 +60,7 @@ We solve this with a hybrid blocking and resolution strategy:
 
 1.  **Asynchronous Scan Start:** The scan is initiated early in the `configureServer` hook but is not awaited, allowing the Vite server to start up quickly.
 
-2.  **Optimizer Blocking:** A custom `esbuild` plugin is injected at the *start* of the `optimizeDeps` plugin chain. Its `onResolve` hook intercepts requests for both app and vendor barrel files and `await`s the scan's completion, pausing the optimizer until the barrels are populated with content.
+2.  **Optimizer Blocking:** A custom `esbuild` plugin is injected at the *start* of the `optimizeDeps` plugin chain. Its `onResolve` hook intercepts requests for app barrel files and `await`s the scan's completion, pausing the optimizer until the barrels are populated with content.
 
 3.  **Assertive Resolution:** The same `esbuild` plugin intercepts resolution requests for the application's own source files. It then explicitly returns a resolution result, claiming the file and signaling that it is *internal* code that must be scanned for dependencies. This preempts Vite's default behavior and ensures the entire application graph is traversed.
 

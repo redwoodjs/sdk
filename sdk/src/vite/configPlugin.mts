@@ -27,6 +27,7 @@ export const configPlugin = ({
   esbuildOptions: ConfigurableEsbuildOptions;
 }): Plugin => ({
   name: "rwsdk:config",
+  enforce: "pre",
   config: async (config, { command }) => {
     const mode = process.env.NODE_ENV;
 
@@ -228,5 +229,16 @@ export const configPlugin = ({
     };
 
     return baseConfig;
+  },
+  configResolved(config) {
+    // context(justinvdm, 2025-09-20): Vitest and some Vite defaults set
+    // `resolve.external` to Node built-ins for non-client environments. The
+    // Cloudflare Vite plugin rejects any `resolve.external` value on Worker
+    // environments. We clear it here after Vite has resolved the environment
+    // configs but before the Cloudflare plugin validates them. `noExternal: true`
+    // in the worker config ensures builtins are bundled rather than externalized.
+    if (config.environments.worker?.resolve) {
+      config.environments.worker.resolve.external = [];
+    }
   },
 });
