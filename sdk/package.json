@@ -113,6 +113,10 @@
       "default": "./dist/runtime/lib/realtime/durableObject.js"
     },
     "./use-synced-state/client": {
+      "rwsdk-use-synced-state-hibernation": {
+        "types": "./dist/use-synced-state/shim/client.d.ts",
+        "default": "./dist/use-synced-state/shim/client.js"
+      },
       "types": "./dist/use-synced-state/client.d.ts",
       "default": "./dist/use-synced-state/client.js"
     },
@@ -121,6 +125,10 @@
       "default": "./dist/use-synced-state/hibernation/client.js"
     },
     "./use-synced-state/worker": {
+      "rwsdk-use-synced-state-hibernation": {
+        "types": "./dist/use-synced-state/shim/worker.d.mts",
+        "workerd": "./dist/use-synced-state/shim/worker.mjs"
+      },
       "types": "./dist/use-synced-state/worker.d.mts",
       "workerd": "./dist/use-synced-state/worker.mjs"
     },
