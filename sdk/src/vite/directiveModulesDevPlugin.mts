@@ -123,7 +123,7 @@ export const directiveModulesDevPlugin = ({
         entries: [workerEntryPathname],
         esbuildOptions,
       })
-        .then(() => {
+        .then(async () => {
           // context(justinvdm, 11 Sep 2025): For vendor barrels, we write the
           // files directly to disk after the scan. For app barrels, we use a
           // more complex esbuild plugin to provide content in-memory. This is
@@ -144,6 +144,53 @@ export const directiveModulesDevPlugin = ({
           writeFileSync(VENDOR_SERVER_BARREL_PATH, vendorServerBarrelContent);
 
           resolveScanPromise();
+
+          // context(justinvdm, 16 Jun 2026): Wait for each environment's
+          // dependency optimizer to finish its current batch before later
+          // plugins (e.g. the Cloudflare worker runner) start requesting
+          // modules. `transformRequest` does not reliably wait for dependency
+          // pre-bundles to complete, so we explicitly await the optimizer's
+          // scan and any in-flight processing. This prevents the "new version
+          // of the pre-bundle" race where the optimizer updates pre-bundle
+          // metadata while the worker runner is already loading the SSR bridge.
+          for (const envName of ["client", "ssr", "worker"]) {
+            const optimizer = (server.environments as Record<string, any>)[
+              envName
+            ]?.depsOptimizer;
+            if (!optimizer) continue;
+
+            try {
+              await optimizer.init();
+
+              // context(justinvdm, 16 Jun 2026): Wait until the optimizer has
+              // fully finished scanning and processing all discovered deps.
+              // A single batch is not enough: resolving the app barrel can
+              // cause the scan to discover additional dependencies, which
+              // schedules another optimization batch. We poll until there are
+              // no in-flight scans or processing promises left.
+              const start = Date.now();
+              const timeout = 30_000;
+              while (Date.now() - start < timeout) {
+                if (optimizer.scanProcessing) {
+                  await optimizer.scanProcessing;
+                }
+                const processing = Object.values(
+                  optimizer.metadata.discovered || {},
+                )
+                  .map((dep: any) => dep.processing)
+                  .filter(Boolean);
+                if (processing.length === 0) break;
+                await Promise.all(processing);
+              }
+            } catch (error) {
+              // context(justinvdm, 16 Jun 2026): An optimizer failure here is
+              // not fatal. We log it and continue so the normal dev server
+              // request flow can surface the error with better context.
+              server.config.logger.warn(
+                `rwsdk:directive-modules-dev: ${envName} dependency optimizer preflight failed: ${error}`,
+              );
+            }
+          }
         })
         .catch((error) => {
           rejectScanPromise(error);

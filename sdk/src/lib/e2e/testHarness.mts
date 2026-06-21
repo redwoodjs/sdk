@@ -345,6 +345,21 @@ export function createDevServer() {
         throw new Error("Dev server tests are skipped via RWSDK_SKIP_DEV=1");
       }
 
+      // Reuse the global dev server when it is for the same project directory.
+      // This avoids spawning multiple Vite/Cloudflare dev servers in the same
+      // project (which compete for the same inspector port, etc.).
+      if (globalDevInstance && globalDevInstance.projectDir === projectDir) {
+        instance = globalDevInstance;
+        return instance;
+      }
+      if (globalDevInstancePromise) {
+        const globalInstance = await globalDevInstancePromise;
+        if (globalInstance && globalInstance.projectDir === projectDir) {
+          instance = globalInstance;
+          return instance;
+        }
+      }
+
       const devResult = await pollValue(
         () => runDevServer(packageManager, projectDir),
         {
