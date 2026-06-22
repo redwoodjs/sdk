@@ -167,8 +167,6 @@ export const redwoodPlugin = async (
       ? (cloudflare({
           viteEnvironment: { name: "worker" },
           configPath: workerConfigPath,
-          inspectorPort:
-            process.env.RWSDK_WORKER_RUN === "1" ? false : undefined,
         }) as Plugin[])
       : [],
     miniflareHMRPlugin({

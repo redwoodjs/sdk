@@ -1,23 +1,25 @@
 import {
   $,
+  createDevServer,
   poll,
   setupPlaygroundEnvironment,
   testDev,
   testDevAndDeploy,
+  testSDK,
   waitForHydration,
 } from "rwsdk/e2e";
 import { expect } from "vitest";
 
 setupPlaygroundEnvironment(import.meta.url);
 
-testDev(
+testSDK.dev(
   "seeds the database and displays initial todos",
-  async ({ page, devServer }) => {
-    if (!devServer) {
-      throw new Error("Dev server not available");
-    }
+  async ({ page }) => {
+    const devServerControl = createDevServer();
 
-    await $({ cwd: devServer.projectDir })`pnpm seed`;
+    await $({ cwd: devServerControl.projectDir })`pnpm seed`;
+
+    const devServer = await devServerControl.start();
 
     await page.goto(devServer.url);
     await waitForHydration(page);
