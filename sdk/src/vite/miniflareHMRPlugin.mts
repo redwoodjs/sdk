@@ -270,6 +270,16 @@ export const miniflareHMRPlugin = (givenOptions: {
         const clientFilesBefore = clientFiles.size;
         const serverFilesBefore = serverFiles.size;
 
+        // context(justinvdm, 22 Jun 2026): A full directive scan is expensive and
+        // awaiting it here can noticeably delay the HMR reload/refresh while the
+        // scan runs. However, this only happens when a changed worker file imports
+        // a dependency that was not seen in the initial scan (or a previous
+        // sub-scan). For files that were already part of the discovered directive
+        // graph, this branch is skipped. We are aware that blocking HMR for a full
+        // scan is not ideal, and we will monitor how it performs in practice. If it
+        // becomes a bottleneck, we should look into caching scan results and/or
+        // making the sub-scan incremental so we only pay the cost once per new
+        // dependency rather than on every unrelated edit.
         await runDirectivesScan({
           rootConfig: ctx.server.config,
           environments: ctx.server.environments,
