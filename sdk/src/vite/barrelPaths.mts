@@ -1,10 +1,10 @@
 /**
- * Paths for the generated vendor barrels in development.
+ * Temporary paths for the generated vendor barrels in development.
  *
- * In dev, `directiveModulesDevPlugin` writes vendor barrel content to stable
- * paths in the SDK package (`dist/__intermediate_builds/...`). These paths are
- * shared with the HMR plugin so it can rewrite the files when a sub-scan
- * discovers new directive files mid-session.
+ * In dev, `directiveModulesDevPlugin` generates these paths in a temp directory
+ * (outside of node_modules) and provides barrel content to Vite's optimizer
+ * in-memory. The lookup plugins read these paths so the lookup map imports the
+ * same temp files the optimizer is configured to pre-bundle.
  */
 
 let vendorClientBarrelPath: string | undefined;
