@@ -15,13 +15,19 @@ export const INTERMEDIATES_OUTPUT_DIR = resolve(
   "__intermediate_builds",
 );
 
+// Intentionally named `.dev-virtual.js`: these files are never written during
+// the SDK build. In dev, directiveModulesDevPlugin intercepts the matching
+// `rwsdk/__vendor_*_barrel` specifiers and serves generated content from
+// in-memory temp barrels. The package.json exports point here only as a
+// fallback marker/placeholder for cases where the dev plugin has not set temp
+// barrel paths.
 export const VENDOR_CLIENT_BARREL_PATH = resolve(
   INTERMEDIATES_OUTPUT_DIR,
-  "rwsdk-vendor-client-barrel.js",
+  "__vendor_client_barrel.dev-virtual.js",
 );
 export const VENDOR_SERVER_BARREL_PATH = resolve(
   INTERMEDIATES_OUTPUT_DIR,
-  "rwsdk-vendor-server-barrel.js",
+  "__vendor_server_barrel.dev-virtual.js",
 );
 
 export const VENDOR_CLIENT_BARREL_EXPORT_PATH = "rwsdk/__vendor_client_barrel";

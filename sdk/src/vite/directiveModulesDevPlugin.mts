@@ -225,11 +225,11 @@ export const directiveModulesDevPlugin = ({
               const isClientBarrelPath =
                 args.path === VENDOR_CLIENT_BARREL_EXPORT_PATH ||
                 args.path === SDK_VENDOR_CLIENT_BARREL_PATH ||
-                args.path.endsWith("/rwsdk-vendor-client-barrel.js");
+                args.path.endsWith("/__vendor_client_barrel.dev-virtual.js");
               const isServerBarrelPath =
                 args.path === VENDOR_SERVER_BARREL_EXPORT_PATH ||
                 args.path === SDK_VENDOR_SERVER_BARREL_PATH ||
-                args.path.endsWith("/rwsdk-vendor-server-barrel.js");
+                args.path.endsWith("/__vendor_server_barrel.dev-virtual.js");
 
               if (isClientBarrelPath) {
                 return {
@@ -270,7 +270,7 @@ export const directiveModulesDevPlugin = ({
             });
 
             build.onLoad(
-              { filter: /rwsdk-vendor-(client|server)-barrel\.js$/ },
+              { filter: /__vendor_(client|server)_barrel\.dev-virtual\.js$/ },
               async (args) => {
                 await scanPromise;
                 const isServerBarrel = args.path.includes("server-barrel");

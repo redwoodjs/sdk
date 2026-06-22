@@ -58,10 +58,10 @@
       "default": "./dist/runtime/ssrBridge.js"
     },
     "./__vendor_client_barrel": {
-      "default": "./dist/__intermediate_builds/rwsdk-vendor-client-barrel.js"
+      "default": "./dist/__intermediate_builds/__vendor_client_barrel.dev-virtual.js"
     },
     "./__vendor_server_barrel": {
-      "default": "./dist/__intermediate_builds/rwsdk-vendor-server-barrel.js"
+      "default": "./dist/__intermediate_builds/__vendor_server_barrel.dev-virtual.js"
     },
     "./router": {
       "types": "./dist/runtime/entries/router.d.ts",
