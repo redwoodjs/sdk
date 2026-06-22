@@ -70,7 +70,6 @@ export const configPlugin = ({
           "rwsdk/realtime/worker",
           "rwsdk/router",
           "rwsdk/worker",
-          "rwsdk/use-synced-state/worker",
         ],
         exclude: [],
         entries: [workerEntryPathname],
