@@ -233,7 +233,7 @@ export const configPlugin = ({
     return baseConfig;
   },
   configResolved(config) {
-    // context(justinvdm, 2025-09-20): Vitest and some Vite defaults set
+    // context(chrisvdm, 2025-09-20): Vitest and some Vite defaults set
     // `resolve.external` to Node built-ins for non-client environments. The
     // Cloudflare Vite plugin rejects any `resolve.external` value on Worker
     // environments. We clear it here after Vite has resolved the environment

@@ -262,7 +262,7 @@ export const miniflareHMRPlugin = (givenOptions: {
       // The worker needs an update, and the hot check is for the worker environment
       // => Notify for custom RSC-based HMR update, then short circuit HMR
       if (isWorkerUpdate && this.environment.name === environment) {
-        // context(justinvdm, ...): When a worker file changes it may have imported
+        // context(chrisvdm, 22 Jun 2026): When a worker file changes it may have imported
         // a new dependency (or transitive dependency) that contains a directive.
         // The directive scan only runs once at startup, so run a targeted sub-scan
         // from the changed file to discover any new directive files and update the
@@ -270,7 +270,7 @@ export const miniflareHMRPlugin = (givenOptions: {
         const clientFilesBefore = clientFiles.size;
         const serverFilesBefore = serverFiles.size;
 
-        // context(justinvdm, 22 Jun 2026): A full directive scan is expensive and
+        // context(chrisvdm, 22 Jun 2026): A full directive scan is expensive and
         // awaiting it here can noticeably delay the HMR reload/refresh while the
         // scan runs. However, this only happens when a changed worker file imports
         // a dependency that was not seen in the initial scan (or a previous
