@@ -1173,6 +1173,49 @@ importers:
 
   playground/import-from-use-client/packages/widget-lib: {}
 
+  playground/json-import:
+    dependencies:
+      react:
+        specifier: 19.2.6
+        version: 19.2.6
+      react-dom:
+        specifier: 19.2.6
+        version: 19.2.6(react@19.2.6)
+      react-server-dom-webpack:
+        specifier: 19.2.6
+        version: 19.2.6(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(webpack@5.105.4)
+      rwsdk:
+        specifier: workspace:*
+        version: link:../../sdk
+    devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: 1.33.2
+        version: 1.33.2(vite@7.3.5(@types/node@25.6.1)(jiti@2.6.1)(lightningcss@1.32.0)(sugarss@5.0.1(postcss@8.5.12))(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3))(workerd@1.20260430.1)(wrangler@4.85.0(@cloudflare/workers-types@4.20260426.1))
+      '@cloudflare/workers-types':
+        specifier: 4.20260426.1
+        version: 4.20260426.1
+      '@types/node':
+        specifier: ~25.6.0
+        version: 25.6.1
+      '@types/react':
+        specifier: 19.2.14
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: 19.2.3
+        version: 19.2.3(@types/react@19.2.14)
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ~7.3.5
+        version: 7.3.5(@types/node@25.6.1)(jiti@2.6.1)(lightningcss@1.32.0)(sugarss@5.0.1(postcss@8.5.12))(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
+      vitest:
+        specifier: ^4.1.2
+        version: 4.1.5(@types/node@25.6.1)(msw@2.11.3(@types/node@25.6.1)(typescript@6.0.3))(vite@7.3.5(@types/node@25.6.1)(jiti@2.6.1)(lightningcss@1.32.0)(sugarss@5.0.1(postcss@8.5.12))(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3))
+      wrangler:
+        specifier: 4.85.0
+        version: 4.85.0(@cloudflare/workers-types@4.20260426.1)
+
   playground/kitchen-sink:
     dependencies:
       react:

@@ -40,6 +40,16 @@ In development, the process is dynamic.
 5.  The transformed code is returned to the `worker` environment.
 6.  Before finishing, the plugin inspects the returned code for any further imports. It rewrites these imports to also be prefixed with `virtual:rwsdk:ssr:`, ensuring that the entire dependency chain remains within the virtual SSR subgraph.
 
+#### Non-JS Assets in the Bridge
+
+Not all modules can safely pass through the SSR environment's transform pipeline. Some static assets are kept out of the SSR subgraph so they can be handled by Vite (and the Cloudflare Vite plugin) in the `worker` environment instead:
+
+- **CSS files**: These are already processed by the `worker` environment's own pipeline. The bridge strips the synthetic `.js` suffix it adds for internal routing and returns an empty module so the worker's CSS handling remains in control.
+- **JSON files**: Vite's JSON plugin transforms `.json` imports in the SSR environment into code containing SSR-only helpers (such as `__vite_ssr_exportName__`) that the Cloudflare worker runner cannot execute. When the bridge rewrites the import callsites inside SSR-fetched code, it leaves JSON specifiers unchanged so they are resolved and transformed by the `worker` environment instead.
+- **`?raw` imports**: Vite 8 denies IDs containing `?raw` in the SSR bridge context. When the bridge rewrites import callsites, it leaves `?raw` specifiers unchanged so they are handled by the `worker` environment's own asset pipeline.
+
+This applies both to imports inside bridged modules and to direct JSON/`?raw` imports in the `worker` environment, keeping non-JS assets out of the SSR transform path.
+
 #### Worker Transform Boundary
 
 Modules inside the virtual SSR subgraph are identified by IDs that start with `virtual:rwsdk:ssr:`. Vite may also surface those modules through its `/@id/` URL form, which is normalized back to the same virtual ID before bridge logic runs. They have already been resolved and transformed by the `ssr` environment before the `worker` environment sees them. Worker-side discovery transforms must treat those IDs as read-only bridge output and must not rewrite them again. For example, script/link tag discovery runs on normal worker `.tsx` modules, but skips virtual SSR modules to avoid injecting duplicate imports into already-transformed bridge code.

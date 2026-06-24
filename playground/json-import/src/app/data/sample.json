@@ -1,0 +1,4 @@
+{
+  "greeting": "Hello from a JSON file",
+  "items": ["one", "two", "three"]
+}

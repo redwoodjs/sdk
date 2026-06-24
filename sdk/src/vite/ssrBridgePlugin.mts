@@ -205,8 +205,12 @@ export const ssrBridgePlugin = ({
       }
     },
     async load(id) {
+      if (this.environment.name !== "worker") {
+        return;
+      }
+
       const virtualSsrId = normalizeVirtualSsrModuleId(id);
-      if (virtualSsrId && this.environment.name === "worker") {
+      if (virtualSsrId) {
         const realId = virtualSsrId.slice(VIRTUAL_SSR_PREFIX.length);
         let idForFetch = realId.endsWith(".css.js")
           ? realId.slice(0, -3)
@@ -313,6 +317,20 @@ export const ssrBridgePlugin = ({
                 // as a bare specifier. Rewriting it with any prefix (`/@id/` or
                 // our virtual one) will break Vite's default externalization.
                 if (externalModulesSet.has(normalized)) {
+                  const replacement = `import("${normalized}")`;
+                  s.overwrite(site.start, site.end, replacement);
+                  continue;
+                }
+
+                // context(chrisvdm, 24 Jun 2026): JSON and ?raw imports should not
+                // be pulled into the SSR subgraph. They are static assets that Vite
+                // (and the Cloudflare Vite plugin) can handle directly in the worker
+                // environment. Keeping them out of the SSR environment avoids Vite's
+                // SSR-only JSON helpers and the ?raw access-denial check.
+                if (
+                  normalized.endsWith(".json") ||
+                  normalized.includes("?raw")
+                ) {
                   const replacement = `import("${normalized}")`;
                   s.overwrite(site.start, site.end, replacement);
                   continue;
