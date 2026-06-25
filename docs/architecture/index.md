@@ -56,6 +56,9 @@ This collection of documents provides a high-level overview of the core architec
 - [**Client-Side Navigation**](./clientSideNavigation.md)
   An explanation of how client-side navigation works in RedwoodSDK, providing a Single Page App (SPA) like experience.
 
+- [**Client Navigation Pending Boundaries**](./clientNavigationPending.md)
+  Explains how `NavigationPending` and `useNavigationPending` expose Suspense-aware pending state for client-side RSC navigations.
+
 - [**Router Architecture**](./router.md)
   Describes the core principles of the router, its flattened route table structure, and its performance characteristics.
 
