@@ -21,14 +21,31 @@ export { default as React } from "react";
 export type { Dispatch, MutableRefObject, SetStateAction } from "react";
 export { ClientOnly } from "./ClientOnly.js";
 export { initClientNavigation, navigate } from "./navigation.js";
-export type { ActionResponseData } from "./types";
+export {
+  NavigationPending,
+  useNavigationPending,
+} from "./navigationPending.js";
+export type {
+  NavigationPendingOptions,
+  NavigationPendingProps,
+  NavigationPendingWatch,
+  NavigationPendingWhenArgs,
+  NavigationSearchParamsWatch,
+} from "./navigationPending.js";
+export type {
+  NavigationSnapshot,
+  PendingNavigationSnapshot,
+} from "./navigationState.js";
+export type { ActionResponseData, RscPayloadMeta } from "./types";
 
 import { getCachedNavigationResponse } from "./navigationCache.js";
+import { NavigationPayloadProvider } from "./navigationPending.js";
 import { configureRecovery, type RecoveryOptions } from "./recovery.js";
 import type {
   ActionResponseData,
   HydrationOptions,
   RscActionResponse,
+  RscPayloadMeta,
   Transport,
   TransportContext,
 } from "./types";
@@ -41,7 +58,8 @@ export const fetchTransport: Transport = (transportContext) => {
     source: "action" | "navigation" | "query" = "action",
     method: "GET" | "POST" = "POST",
   ): Promise<Result | undefined> => {
-    const url = new URL(window.location.href);
+    const pageUrl = new URL(window.location.href);
+    const url = new URL(pageUrl.href);
     url.searchParams.set("__rsc", "");
 
     const isAction = id != null;
@@ -92,6 +110,9 @@ export const fetchTransport: Transport = (transportContext) => {
       }
     }
 
+    const isStaleNavigationResponse = () =>
+      source === "navigation" && pageUrl.href !== window.location.href;
+
     const processActionResponse = (rawActionResult: any) => {
       if (isActionResponse(rawActionResult)) {
         const actionResponse = rawActionResult.__rw_action_response;
@@ -124,6 +145,10 @@ export const fetchTransport: Transport = (transportContext) => {
     // If there's a response handler, check the response first
     if (transportContext.handleResponse) {
       const response = await fetchPromise;
+      if (isStaleNavigationResponse()) {
+        return undefined as any;
+      }
+
       const shouldContinue = transportContext.handleResponse(response);
       if (!shouldContinue) {
         return undefined as any;
@@ -135,7 +160,14 @@ export const fetchTransport: Transport = (transportContext) => {
       }) as Promise<RscActionResponse<Result>>;
 
       if (source === "navigation" || source === "action") {
-        transportContext.setRscPayload(streamData);
+        if (isStaleNavigationResponse()) {
+          return undefined as any;
+        }
+
+        transportContext.setRscPayload(streamData, {
+          source,
+          href: pageUrl.href,
+        });
       }
       const result = await streamData;
       return processActionResponse(
@@ -145,6 +177,10 @@ export const fetchTransport: Transport = (transportContext) => {
 
     // Original behavior when no handler is present
     const response = await fetchPromise;
+    if (isStaleNavigationResponse()) {
+      return undefined as any;
+    }
+
     const location = response.headers.get("Location");
 
     if (response.status >= 300 && response.status < 400 && location) {
@@ -157,7 +193,14 @@ export const fetchTransport: Transport = (transportContext) => {
     }) as Promise<RscActionResponse<Result>>;
 
     if (source === "navigation" || source === "action") {
-      transportContext.setRscPayload(streamData);
+      if (isStaleNavigationResponse()) {
+        return undefined as any;
+      }
+
+      transportContext.setRscPayload(streamData, {
+        source,
+        href: pageUrl.href,
+      });
     }
     const result = await streamData;
     return processActionResponse(
@@ -233,7 +276,7 @@ export const initClient = async ({
   transport?: Transport;
   hydrateRootOptions?: HydrationOptions;
   handleResponse?: (response: Response) => boolean;
-  onHydrated?: () => void;
+  onHydrated?: (meta?: RscPayloadMeta) => void;
   onActionResponse?: (actionResponse: ActionResponseData) => boolean | void;
 } & RecoveryOptions = {}) => {
   if (onModuleNotFound) {
@@ -288,24 +331,36 @@ export const initClient = async ({
     });
   }
 
+  type StreamState = {
+    data: any;
+    meta?: RscPayloadMeta;
+  };
+
   function Content() {
-    const [streamData, setStreamData] = React.useState(rscPayload);
+    const [streamState, setStreamState] = React.useState<StreamState | null>(
+      rscPayload
+        ? {
+            data: rscPayload,
+            meta: { source: "initial", href: window.location.href },
+          }
+        : null,
+    );
     const [_isPending, startTransition] = React.useTransition();
-    transportContext.setRscPayload = (v) =>
+    transportContext.setRscPayload = (v, meta) =>
       startTransition(() => {
-        setStreamData(v);
+        setStreamState({ data: v, meta });
       });
 
     React.useEffect(() => {
-      if (!streamData) return;
-      transportContext.onHydrated?.();
-    }, [streamData]);
+      if (!streamState) return;
+      transportContext.onHydrated?.(streamState.meta);
+    }, [streamState]);
     return (
-      <>
-        {streamData
-          ? React.use<{ node: React.ReactNode }>(streamData).node
+      <NavigationPayloadProvider meta={streamState?.meta}>
+        {streamState
+          ? React.use<{ node: React.ReactNode }>(streamState.data).node
           : null}
-      </>
+      </NavigationPayloadProvider>
     );
   }
 

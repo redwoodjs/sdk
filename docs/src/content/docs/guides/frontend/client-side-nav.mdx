@@ -21,11 +21,11 @@ initClient({ handleResponse, onHydrated });
 
 <Aside type="note">
   <strong>Note:</strong> The <code>onHydrated</code> callback is optional but
-  recommended. It's required if you're using prefetching (see the{" "}
-  <a href="#prefetching-routes">Prefetching Routes</a> section), and it also
-  handles cache eviction which helps prevent memory bloat. If you're not using
-  prefetching, you can omit it and only pass <code>handleResponse</code> to{" "}
-  <code>initClient</code>.
+  recommended. It's required for <code>NavigationPending</code> and for
+  prefetching (see the <a href="#prefetching-routes">Prefetching Routes</a>{" "}
+  section). It also handles cache eviction which helps prevent memory bloat. If
+  you're not using those features, you can omit it and only pass{" "}
+  <code>handleResponse</code> to <code>initClient</code>.
 </Aside>
 
 Once this is initialized, internal `<a href="/some-path">` links will no longer trigger full-page reloads. Instead, the SDK will:
@@ -48,6 +48,34 @@ No routing system is included: RedwoodSDK doesn't provide a client-side router. 
 Only internal links are intercepted: RedwoodSDK will only handle links pointing to the same origin. External links (https://example.com) or those with `target="\_blank"` behave normally.
 
 Middleware still runs: Every navigation hits your server again — so auth checks, headers, and streaming behavior remain intact.
+
+## Showing Loading UI During Pending Navigation
+
+Client-side navigation updates the URL before the new RSC tree commits. If a
+server-backed subtree would otherwise show stale props during that gap, wrap it
+with `NavigationPending` inside your own Suspense fallback.
+
+```tsx title="src/app/components/PendingResults.tsx"
+"use client";
+
+import { Suspense } from "react";
+import { NavigationPending } from "rwsdk/client";
+
+export function PendingResults({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={<ResultsSkeleton />}>
+      <NavigationPending searchParams={["search", "page"]}>
+        {children}
+      </NavigationPending>
+    </Suspense>
+  );
+}
+```
+
+`<NavigationPending>` suspends for any pending navigation by default. Pass
+`searchParams`, `watch`, or `when` when only some URL changes should affect that
+subtree. It requires passing the `onHydrated` callback from
+`initClientNavigation()` into `initClient()`.
 
 ## Configuring Scroll Behaviour
 

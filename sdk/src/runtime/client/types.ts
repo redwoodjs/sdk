@@ -15,6 +15,12 @@ export type RscActionResponse<Result> = {
   actionResult: Result;
 };
 
+export type RscPayloadMeta = {
+  source: "initial" | "action" | "navigation" | "query";
+  /** Browser URL represented by this RSC payload, without the internal __rsc marker. */
+  href?: string;
+};
+
 export type ActionResponseData = {
   status: number;
   headers: {
@@ -37,14 +43,17 @@ export function isActionResponse(value: unknown): value is ActionResponseMeta {
 }
 
 export type TransportContext = {
-  setRscPayload: <Result>(v: Promise<RscActionResponse<Result>>) => void;
+  setRscPayload: <Result>(
+    v: Promise<RscActionResponse<Result>>,
+    meta?: RscPayloadMeta,
+  ) => void;
   handleResponse?: (response: Response) => boolean; // Returns false to stop normal processing
   /**
    * Optional callback invoked after a new RSC payload has been committed on the client.
    * This is useful for features like client-side navigation that want to run logic
    * after hydration/updates, e.g. warming navigation caches.
    */
-  onHydrated?: () => void;
+  onHydrated?: (meta?: RscPayloadMeta) => void;
   /**
    * Optional callback invoked when an action returns a Response.
    * Return true to signal that the response has been handled and

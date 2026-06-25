@@ -19,7 +19,7 @@ The `initClient` function is used to initialize the React Client. This hydrates 
 | `transport`          | `Transport`                           | Custom transport for server communication (defaults to `fetchTransport`)                                                                                    |
 | `hydrateRootOptions` | `HydrationOptions`                    | Options passed directly to React's `hydrateRoot`. Supports all React 19 hydration options including error handling (see examples below).                    |
 | `handleResponse`     | `(response: Response) => boolean`     | Custom response handler for navigation errors (navigation GETs)                                                                                             |
-| `onHydrated`         | `() => void`                          | Callback invoked after a new RSC payload has been committed on the client                                                                                   |
+| `onHydrated`         | `(meta?: RscPayloadMeta) => void`     | Callback invoked after a new RSC payload has been committed on the client                                                                                   |
 | `onActionResponse`   | `(actionResponse) => boolean \| void` | Optional hook invoked when an action returns a Response; return `true` to signal that the response has been handled and default behaviour should be skipped |
 
 ### Error Handling
@@ -116,8 +116,8 @@ initClient({
 ```tsx title="With client-side navigation"
 import { initClient, initClientNavigation } from "rwsdk/client";
 
-const { handleResponse } = initClientNavigation();
-initClient({ handleResponse });
+const { handleResponse, onHydrated } = initClientNavigation();
+initClient({ handleResponse, onHydrated });
 ```
 
 ## `initClientNavigation`
@@ -171,6 +171,29 @@ RedwoodSDK mirrors the behaviour of classic Multi Page Apps where each link clic
 brings you back to the **top** of the next page. This is the most common
 expectation and is therefore the default. You can turn it off or make it smooth
 with a single option – no additional libraries required.
+
+## `NavigationPending`
+
+`NavigationPending` is a Suspense-aware client component. Put it inside your own
+`<Suspense fallback>` to hide stale server-backed UI while a matching
+client-side RSC navigation is pending.
+
+```tsx
+import { Suspense } from "react";
+import { NavigationPending } from "rwsdk/client";
+
+<Suspense fallback={<ResultsSkeleton />}>
+  <NavigationPending searchParams={["search", "page"]}>
+    <ResultsTable />
+  </NavigationPending>
+</Suspense>;
+```
+
+By default it suspends for any pending navigation. Use `searchParams`, `watch`,
+or `when` to make a subtree wait only for relevant URL changes. The lower-level
+`useNavigationPending()` hook uses the same options and suspends in the same way.
+Make sure the `onHydrated` callback returned by `initClientNavigation()` is
+passed to `initClient()` so pending navigations can resolve after commit.
 
 ## `navigate`
 

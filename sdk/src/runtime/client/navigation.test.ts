@@ -1,6 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { initClientNavigation, validateClickEvent } from "./navigation";
+import {
+  getNavigationSnapshot,
+  resetNavigationStateForTests,
+} from "./navigationState";
 import { HISTORY_STATE_SCROLL_KEY } from "./scrollRestoration";
+
+beforeEach(() => {
+  resetNavigationStateForTests();
+});
 
 // Mocking browser globals
 vi.stubGlobal("window", {
@@ -159,15 +167,6 @@ describe("onNavigate callback (issue #1123 regression)", () => {
       replaceState: vi.fn(),
       state: {},
     });
-    vi.stubGlobal(
-      "URL",
-      class {
-        href: string;
-        constructor(path: string, base: string) {
-          this.href = base.replace(/\/$/, "") + path;
-        }
-      },
-    );
     // Assign directly to globalThis without replacing it (avoids breaking Vitest internals)
     (globalThis as any).__rsc_callServer = vi.fn().mockResolvedValue(undefined);
   });
@@ -368,6 +367,33 @@ describe("initClientNavigation", () => {
     expect(onNavigate).not.toHaveBeenCalled();
     expect((globalThis as any).__rsc_callServer).not.toHaveBeenCalled();
     expect(window.scrollTo).not.toHaveBeenCalled();
+  });
+
+  it("keeps navigation pending until the matching navigation payload hydrates", async () => {
+    (globalThis as any).__rsc_callServer = vi.fn().mockResolvedValue(undefined);
+
+    const { onHydrated } = initClientNavigation();
+    expect(capturedPopstateHandler).not.toBeNull();
+
+    (window.location as unknown as { href: string; pathname: string }).href =
+      "http://localhost/about";
+    (
+      window.location as unknown as { href: string; pathname: string }
+    ).pathname = "/about";
+
+    await capturedPopstateHandler!();
+
+    const pending = getNavigationSnapshot().pending;
+    expect(pending?.pendingUrl.href).toBe("http://localhost/about");
+
+    onHydrated({ source: "action", href: pending!.pendingUrl.href });
+    expect(getNavigationSnapshot().pending?.id).toBe(pending!.id);
+
+    onHydrated({ source: "navigation", href: "http://localhost/other" });
+    expect(getNavigationSnapshot().pending?.id).toBe(pending!.id);
+
+    onHydrated({ source: "navigation", href: pending!.pendingUrl.href });
+    expect(getNavigationSnapshot().pending).toBeNull();
   });
 
   it("does not write to history state on scroll", () => {

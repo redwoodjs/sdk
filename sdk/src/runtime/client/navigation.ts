@@ -5,9 +5,16 @@ import {
   type NavigationCacheStorage,
 } from "./navigationCache.js";
 import {
+  abortPendingNavigation,
+  beginPendingNavigation,
+  commitPendingNavigation,
+  isPendingNavigationCommit,
+} from "./navigationState.js";
+import {
   createScrollRestoration,
   type ScrollRestorationController,
 } from "./scrollRestoration.js";
+import type { RscPayloadMeta } from "./types.js";
 
 export type { NavigationCache, NavigationCacheStorage };
 
@@ -116,16 +123,23 @@ export async function navigate(
     scrollRestoration?.recordCurrentPosition(window.scrollX, window.scrollY);
   }
 
-  await options.onNavigate?.();
+  const pendingNavigation = beginPendingNavigation(url);
 
-  await globalThis.__rsc_callServer(null, null, "navigation");
+  try {
+    await options.onNavigate?.();
+
+    await globalThis.__rsc_callServer(null, null, "navigation");
+  } catch (error) {
+    abortPendingNavigation(pendingNavigation.id);
+    throw error;
+  }
 }
 
 /**
  * Initializes client-side navigation for Single Page App (SPA) behavior.
  *
  * Intercepts clicks on internal links and fetches page content without full-page reloads.
- * Returns a handleResponse function to pass to initClient.
+ * Returns handleResponse and onHydrated functions to pass to initClient.
  *
  * @param opts.scrollToTop - Scroll to top after navigation (default: true)
  * @param opts.scrollBehavior - How to scroll: 'instant', 'smooth', or 'auto' (default: 'instant')
@@ -140,27 +154,27 @@ export async function navigate(
  *
  * @example
  * // With custom scroll behavior
- * const { handleResponse } = initClientNavigation({
+ * const { handleResponse, onHydrated } = initClientNavigation({
  *   scrollBehavior: "smooth",
  *   scrollToTop: true,
  * });
- * initClient({ handleResponse });
+ * initClient({ handleResponse, onHydrated });
  *
  * @example
  * // Preserve scroll position (e.g., for infinite scroll)
- * const { handleResponse } = initClientNavigation({
+ * const { handleResponse, onHydrated } = initClientNavigation({
  *   scrollToTop: false,
  * });
- * initClient({ handleResponse });
+ * initClient({ handleResponse, onHydrated });
  *
  * @example
  * // With navigation callback
- * const { handleResponse } = initClientNavigation({
+ * const { handleResponse, onHydrated } = initClientNavigation({
  *   onNavigate: () => {
  *     console.log("Navigating to:", window.location.href);
  *   },
  * });
- * initClient({ handleResponse });
+ * initClient({ handleResponse, onHydrated });
  */
 export function initClientNavigation(opts: ClientNavigationOptions = {}) {
   IS_CLIENT_NAVIGATION = true;
@@ -196,8 +210,15 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
     }
 
     scrollRestoration?.restorePopStateScroll();
-    await opts.onNavigate?.();
-    await globalThis.__rsc_callServer(null, null, "navigation");
+    const pendingNavigation = beginPendingNavigation(window.location.href);
+
+    try {
+      await opts.onNavigate?.();
+      await globalThis.__rsc_callServer(null, null, "navigation");
+    } catch (error) {
+      abortPendingNavigation(pendingNavigation.id);
+      throw error;
+    }
   });
 
   // Track the user's scroll position in memory so back/forward navigation can
@@ -235,6 +256,7 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get("Location");
       if (location) {
+        abortPendingNavigation();
         window.location.href = location;
         return false;
       }
@@ -243,6 +265,7 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
     if (!response.ok) {
       // Redirect to the current page (window.location) to show the error
       // This means the page that produced the error is called twice.
+      abortPendingNavigation();
       window.location.href = window.location.href;
       return false;
     }
@@ -254,11 +277,25 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
     (globalThis as any).__rsc_cacheStorage = opts.cacheStorage;
   }
 
-  function onHydrated() {
-    // Apply any pending scroll intent now that React has committed the new
-    // DOM — this is what prevents the scroll flash on both link-click and
-    // popstate navigations.
-    scrollRestoration?.applyPendingScroll();
+  function onHydrated(meta?: RscPayloadMeta) {
+    // Apply any pending scroll intent once the relevant DOM has committed. For
+    // navigation payloads, ignore stale/superseded commits whose href no longer
+    // matches the pending navigation target.
+    const shouldCommitPendingNavigation = !meta || meta.source === "navigation";
+    const isMatchingNavigationCommit =
+      shouldCommitPendingNavigation && isPendingNavigationCommit(meta?.href);
+
+    if (!meta || meta.source === "initial" || isMatchingNavigationCommit) {
+      scrollRestoration?.applyPendingScroll();
+    }
+
+    // Resolve NavigationPending boundaries only for navigation payloads. If a
+    // custom transport does not provide metadata, fall back to the historical
+    // onHydrated behavior and treat the commit as the pending navigation.
+    if (isMatchingNavigationCommit) {
+      commitPendingNavigation(meta?.href);
+    }
+
     // After each RSC hydration/update, increment generation and evict old caches,
     // then warm the navigation cache based on any <link rel="x-prefetch"> tags
     // rendered for the current location.

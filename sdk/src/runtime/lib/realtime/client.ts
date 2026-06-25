@@ -80,7 +80,10 @@ export const realtimeTransport =
       });
 
       listenForUpdates(ws!, (response) => {
-        processResponse(response);
+        processResponse(response, {
+          source: "action",
+          href: window.location.href,
+        });
       });
     };
 
@@ -99,14 +102,13 @@ export const realtimeTransport =
     const realtimeCallServer = async <T>(
       id: string | null,
       args: unknown[] | null,
-      _source?: "action" | "navigation" | "query",
+      source: "action" | "navigation" | "query" = "action",
       _method?: "GET" | "POST",
     ): Promise<T | undefined> => {
       try {
         const socket = ensureWs();
-        const { encodeReply } = await import(
-          "react-server-dom-webpack/client.browser"
-        );
+        const { encodeReply } =
+          await import("react-server-dom-webpack/client.browser");
 
         // Note(peterp, 2025-07-02): We need to send the "current URL" per message,
         // in case the user has enabled client side navigation.
@@ -128,7 +130,10 @@ export const realtimeTransport =
         const promisedResponse = respondToRequest(requestId, socket);
         socket.send(message);
 
-        return await processResponse(await promisedResponse);
+        return await processResponse(await promisedResponse, {
+          source,
+          href: window.location.href,
+        });
       } catch (e) {
         console.error("[Realtime] Error calling server", e);
         return undefined;
@@ -137,10 +142,17 @@ export const realtimeTransport =
 
     const processResponse = async <T>(
       response: Response,
+      meta?: { source: "action" | "navigation" | "query"; href: string },
     ): Promise<T | undefined> => {
       try {
         let streamForRsc: ReadableStream<Uint8Array>;
         let shouldContinue = true;
+        const isStaleNavigationResponse = () =>
+          meta?.source === "navigation" && meta.href !== window.location.href;
+
+        if (isStaleNavigationResponse()) {
+          return undefined;
+        }
 
         if (transportContext.handleResponse) {
           const [stream1, stream2] = response.body!.tee();
@@ -159,7 +171,11 @@ export const realtimeTransport =
           callServer: realtimeCallServer as any,
         }) as Promise<RscActionResponse<unknown>>;
 
-        transportContext.setRscPayload(rscPayload);
+        if (isStaleNavigationResponse()) {
+          return undefined;
+        }
+
+        transportContext.setRscPayload(rscPayload, meta);
         const rawActionResult = (await rscPayload).actionResult;
 
         if (isActionResponse(rawActionResult)) {
