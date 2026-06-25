@@ -12,6 +12,7 @@ import {
   beginPendingNavigation,
   commitPendingNavigation,
   getNavigationSnapshot,
+  isSameNavigationDocumentUrl,
   resetNavigationStateForTests,
 } from "./navigationState";
 
@@ -87,6 +88,29 @@ describe("navigation pending state", () => {
     expect(getNavigationSnapshot().pending?.id).toBe(second.id);
     await expectPromiseResolved(first.promise);
     expect(getNavigationSnapshot().pending?.id).toBe(second.id);
+  });
+
+  it("treats hash-only differences as the same navigation document", async () => {
+    const pending = beginPendingNavigation("/results?search=new&page=1");
+
+    expect(
+      isSameNavigationDocumentUrl(
+        "http://localhost/results?search=new&page=1",
+        "http://localhost/results?search=new&page=1#details",
+      ),
+    ).toBe(true);
+    expect(
+      isSameNavigationDocumentUrl(
+        "http://localhost/results?search=new&page=1",
+        "http://localhost/results?search=new&page=2#details",
+      ),
+    ).toBe(false);
+
+    expect(commitPendingNavigation("/results?search=new&page=1#details")).toBe(
+      true,
+    );
+    expect(getNavigationSnapshot().pending).toBeNull();
+    await expectPromiseResolved(pending.promise);
   });
 
   it("can abort only the matching pending navigation", async () => {
@@ -197,6 +221,12 @@ describe("shouldSuspendForPendingNavigation", () => {
       renderPendingBoundary({
         source: "navigation",
         href: "http://localhost/results?search=new&page=1",
+      }),
+    ).toContain("ready");
+    expect(
+      renderPendingBoundary({
+        source: "navigation",
+        href: "http://localhost/results?search=new&page=1#details",
       }),
     ).toContain("ready");
   });

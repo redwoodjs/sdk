@@ -2,6 +2,7 @@ import React, { useContext, useSyncExternalStore } from "react";
 
 import {
   getNavigationSnapshot,
+  isSameNavigationDocumentUrl,
   subscribeNavigationState,
   type NavigationSnapshot,
 } from "./navigationState.js";
@@ -147,8 +148,9 @@ function isRenderingMatchingNavigationPayload(
   }
 
   try {
-    return (
-      new URL(meta.href, pending.currentUrl).href === pending.pendingUrl.href
+    return isSameNavigationDocumentUrl(
+      new URL(meta.href, pending.currentUrl),
+      pending.pendingUrl,
     );
   } catch {
     return false;

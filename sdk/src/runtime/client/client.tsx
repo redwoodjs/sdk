@@ -40,6 +40,11 @@ export type { ActionResponseData, RscPayloadMeta } from "./types";
 
 import { getCachedNavigationResponse } from "./navigationCache.js";
 import { NavigationPayloadProvider } from "./navigationPending.js";
+import {
+  abortPendingNavigation,
+  isPendingNavigationCommit,
+  isSameNavigationDocumentUrl,
+} from "./navigationState.js";
 import { configureRecovery, type RecoveryOptions } from "./recovery.js";
 import type {
   ActionResponseData,
@@ -110,8 +115,20 @@ export const fetchTransport: Transport = (transportContext) => {
       }
     }
 
-    const isStaleNavigationResponse = () =>
-      source === "navigation" && pageUrl.href !== window.location.href;
+    const discardStaleNavigationResponse = () => {
+      if (
+        source !== "navigation" ||
+        isSameNavigationDocumentUrl(pageUrl, window.location.href)
+      ) {
+        return false;
+      }
+
+      if (isPendingNavigationCommit(pageUrl)) {
+        abortPendingNavigation();
+      }
+
+      return true;
+    };
 
     const processActionResponse = (rawActionResult: any) => {
       if (isActionResponse(rawActionResult)) {
@@ -145,7 +162,7 @@ export const fetchTransport: Transport = (transportContext) => {
     // If there's a response handler, check the response first
     if (transportContext.handleResponse) {
       const response = await fetchPromise;
-      if (isStaleNavigationResponse()) {
+      if (discardStaleNavigationResponse()) {
         return undefined as any;
       }
 
@@ -160,7 +177,7 @@ export const fetchTransport: Transport = (transportContext) => {
       }) as Promise<RscActionResponse<Result>>;
 
       if (source === "navigation" || source === "action") {
-        if (isStaleNavigationResponse()) {
+        if (discardStaleNavigationResponse()) {
           return undefined as any;
         }
 
@@ -177,7 +194,7 @@ export const fetchTransport: Transport = (transportContext) => {
 
     // Original behavior when no handler is present
     const response = await fetchPromise;
-    if (isStaleNavigationResponse()) {
+    if (discardStaleNavigationResponse()) {
       return undefined as any;
     }
 
@@ -193,7 +210,7 @@ export const fetchTransport: Transport = (transportContext) => {
     }) as Promise<RscActionResponse<Result>>;
 
     if (source === "navigation" || source === "action") {
-      if (isStaleNavigationResponse()) {
+      if (discardStaleNavigationResponse()) {
         return undefined as any;
       }
 

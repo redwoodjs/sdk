@@ -72,6 +72,19 @@ function toUrl(url: string | URL) {
   return new URL(url, readWindowUrl());
 }
 
+function toNavigationDocumentHref(url: string | URL) {
+  const nextUrl = toUrl(url);
+  nextUrl.hash = "";
+  return nextUrl.href;
+}
+
+export function isSameNavigationDocumentUrl(
+  left: string | URL,
+  right: string | URL,
+) {
+  return toNavigationDocumentHref(left) === toNavigationDocumentHref(right);
+}
+
 function createDeferred() {
   let resolve!: () => void;
   const promise = new Promise<void>((resolvePromise) => {
@@ -122,8 +135,7 @@ export function isPendingNavigationCommit(href?: string | URL) {
     return true;
   }
 
-  const committedUrl = toUrl(href);
-  return committedUrl.href === pendingNavigation.pendingUrl.href;
+  return isSameNavigationDocumentUrl(href, pendingNavigation.pendingUrl);
 }
 
 export function commitPendingNavigation(href?: string | URL) {
