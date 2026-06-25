@@ -190,10 +190,48 @@ import { NavigationPending } from "rwsdk/client";
 ```
 
 By default it suspends for any pending navigation. Use `searchParams`, `watch`,
-or `when` to make a subtree wait only for relevant URL changes. The lower-level
-`useNavigationPending()` hook uses the same options and suspends in the same way.
-Make sure the `onHydrated` callback returned by `initClientNavigation()` is
-passed to `initClient()` so pending navigations can resolve after commit.
+or `when` to make a subtree wait only for relevant URL changes. Use one option
+at a time; if you combine them, `when` takes precedence over `watch`, and
+`watch` takes precedence over `searchParams`.
+
+### Options
+
+| Prop           | Type                                                                                  | Description                                                                                          |
+| -------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `searchParams` | `readonly string[]`                                                                   | Shorthand for watching only the listed search params.                                                |
+| `watch`        | `{ pathname?: boolean; searchParams?: boolean \| readonly string[]; hash?: boolean }` | Explicit URL parts to watch. Defaults are `pathname: true`, `searchParams: true`, and `hash: false`. |
+| `when`         | `({ currentUrl, pendingUrl }) => boolean`                                             | Custom predicate. Return `true` when this subtree should suspend for the pending navigation.         |
+
+```tsx title="Watch explicit URL parts"
+<Suspense fallback={<ResultsSkeleton />}>
+  <NavigationPending
+    watch={{
+      pathname: false,
+      searchParams: ["search", "page"],
+      hash: false,
+    }}
+  >
+    <ResultsTable />
+  </NavigationPending>
+</Suspense>
+```
+
+```tsx title="Use a custom predicate"
+<Suspense fallback={<TabSkeleton />}>
+  <NavigationPending
+    when={({ currentUrl, pendingUrl }) =>
+      currentUrl.searchParams.get("tab") !== pendingUrl.searchParams.get("tab")
+    }
+  >
+    <TabPanel />
+  </NavigationPending>
+</Suspense>
+```
+
+The lower-level `useNavigationPending()` hook uses the same options and suspends
+in the same way. Make sure the `onHydrated` callback returned by
+`initClientNavigation()` is passed to `initClient()` so pending navigations can
+resolve after commit.
 
 ## `navigate`
 

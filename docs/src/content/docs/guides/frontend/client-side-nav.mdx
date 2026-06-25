@@ -20,12 +20,11 @@ initClient({ handleResponse, onHydrated });
 ```
 
 <Aside type="note">
-  <strong>Note:</strong> The <code>onHydrated</code> callback is optional but
-  recommended. It's required for <code>NavigationPending</code> and for
-  prefetching (see the <a href="#prefetching-routes">Prefetching Routes</a>{" "}
-  section). It also handles cache eviction which helps prevent memory bloat. If
-  you're not using those features, you can omit it and only pass{" "}
-  <code>handleResponse</code> to <code>initClient</code>.
+  <strong>Note:</strong> The <code>onHydrated</code> callback is optional but recommended. It's
+  required for <code>NavigationPending</code> and for prefetching (see the{" "}
+  <a href="#prefetching-routes">Prefetching Routes</a> section). It also handles cache eviction
+  which helps prevent memory bloat. If you're not using those features, you can omit it and only
+  pass <code>handleResponse</code> to <code>initClient</code>.
 </Aside>
 
 Once this is initialized, internal `<a href="/some-path">` links will no longer trigger full-page reloads. Instead, the SDK will:
@@ -64,9 +63,7 @@ import { NavigationPending } from "rwsdk/client";
 export function PendingResults({ children }: { children: React.ReactNode }) {
   return (
     <Suspense fallback={<ResultsSkeleton />}>
-      <NavigationPending searchParams={["search", "page"]}>
-        {children}
-      </NavigationPending>
+      <NavigationPending searchParams={["search", "page"]}>{children}</NavigationPending>
     </Suspense>
   );
 }
@@ -74,8 +71,50 @@ export function PendingResults({ children }: { children: React.ReactNode }) {
 
 `<NavigationPending>` suspends for any pending navigation by default. Pass
 `searchParams`, `watch`, or `when` when only some URL changes should affect that
-subtree. It requires passing the `onHydrated` callback from
-`initClientNavigation()` into `initClient()`.
+subtree. Use one option at a time; if you combine them, `when` takes precedence
+over `watch`, and `watch` takes precedence over `searchParams`. It requires
+passing the `onHydrated` callback from `initClientNavigation()` into
+`initClient()`.
+
+### Watch exact URL parts
+
+Use `watch` when a subtree should wait for explicit parts of the URL. In this
+example, the table only shows its fallback when `search` or `page` changes; a
+pathname-only or hash-only change will not suspend it.
+
+```tsx
+<Suspense fallback={<ResultsSkeleton />}>
+  <NavigationPending
+    watch={{
+      pathname: false,
+      searchParams: ["search", "page"],
+      hash: false,
+    }}
+  >
+    <ResultsTable />
+  </NavigationPending>
+</Suspense>
+```
+
+When using `watch`, `pathname` defaults to `true`, `searchParams` defaults to
+`true`, and `hash` defaults to `false`.
+
+### Use a custom predicate
+
+Use `when` for app-specific rules. RedwoodSDK passes copies of the current and
+pending URLs, and the subtree suspends when your predicate returns `true`.
+
+```tsx
+<Suspense fallback={<TabSkeleton />}>
+  <NavigationPending
+    when={({ currentUrl, pendingUrl }) =>
+      currentUrl.searchParams.get("tab") !== pendingUrl.searchParams.get("tab")
+    }
+  >
+    <TabPanel />
+  </NavigationPending>
+</Suspense>
+```
 
 ## Configuring Scroll Behaviour
 
