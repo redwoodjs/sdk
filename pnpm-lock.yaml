@@ -832,8 +832,8 @@ importers:
   playground/database-do:
     dependencies:
       kysely:
-        specifier: ^0.28.17
-        version: 0.28.17
+        specifier: ^0.29.2
+        version: 0.29.2
       react:
         specifier: 19.2.6
         version: 19.2.6
@@ -922,7 +922,7 @@ importers:
     dependencies:
       drizzle-orm:
         specifier: ^0.45.2
-        version: 0.45.2(@cloudflare/workers-types@4.20260426.1)(gel@2.2.0)(kysely@0.28.17)
+        version: 0.45.2(@cloudflare/workers-types@4.20260426.1)(gel@2.2.0)(kysely@0.29.2)
       react:
         specifier: 19.2.6
         version: 19.2.6
@@ -8740,6 +8740,10 @@ packages:
     resolution: {integrity: sha512-nbD8lB9EB3wNdMhOCdx5Li8DxnLbvKByylRLcJ1h+4SkrowVeECAyZlyiKMThF7xFdRz0jSQ2MoJr+wXux2y0Q==}
     engines: {node: '>=20.0.0'}
 
+  kysely@0.29.2:
+    resolution: {integrity: sha512-s6WVJyEZrbm6jhBpiKHsGHyePMrVQKJ85wZCFCr9W4QHv6WTjWIrdvTmO9hDEA3bNK0xkrE2DqrHsXMLWuZpQg==}
+    engines: {node: '>=22.0.0'}
+
   leac@0.6.0:
     resolution: {integrity: sha512-y+SqErxb8h7nE/fiEX07jsbuhrpO9lL8eca7/Y1nuWV2moNlXhyd59iDGcRf6moVyDMbmTNzL40SUyrFU/yDpg==}
 
@@ -16189,11 +16193,11 @@ snapshots:
       esbuild: 0.28.1
       tsx: 4.21.0
 
-  drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260426.1)(gel@2.2.0)(kysely@0.28.17):
+  drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260426.1)(gel@2.2.0)(kysely@0.29.2):
     optionalDependencies:
       '@cloudflare/workers-types': 4.20260426.1
       gel: 2.2.0
-      kysely: 0.28.17
+      kysely: 0.29.2
 
   dunder-proto@1.0.1:
     dependencies:
@@ -17596,6 +17600,8 @@ snapshots:
       kysely: 0.28.17
 
   kysely@0.28.17: {}
+
+  kysely@0.29.2: {}
 
   leac@0.6.0: {}
 

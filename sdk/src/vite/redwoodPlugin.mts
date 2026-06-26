@@ -25,7 +25,6 @@ import { injectVitePreamble } from "./injectVitePreamblePlugin.mjs";
 import { knownDepsResolverPlugin } from "./knownDepsResolverPlugin.mjs";
 import { linkerPlugin } from "./linkerPlugin.mjs";
 import { miniflareHMRPlugin } from "./miniflareHMRPlugin.mjs";
-import { rolldownCompatPlugin } from "./rolldownCompatPlugin.mjs";
 import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
 import { prismaPlugin } from "./prismaPlugin.mjs";
 import { resolveForcedPaths } from "./resolveForcedPaths.mjs";
@@ -163,7 +162,6 @@ export const redwoodPlugin = async (
     }),
     knownDepsResolverPlugin({ projectRootDir }),
     cloudflarePreInitPlugin(),
-    rolldownCompatPlugin(),
     shouldIncludeCloudflarePlugin
       ? (cloudflare({
           viteEnvironment: { name: "worker" },
