@@ -281,21 +281,22 @@ describe("client-core", () => {
     expect(statusChanges.filter((s) => s === "connected")).toHaveLength(2);
   });
 
-  it("force-closes the socket when no message is received within the dead-connection timeout", async () => {
+  it("does not force-close an idle hibernation socket when no messages are received", async () => {
     const client = createClient();
     await client.subscribe("counter", () => {});
     await waitForOpen(clients[0] as unknown as WebSocket);
 
     const firstSocket = clients[0] as unknown as WebSocket;
-    const closePromise = new Promise<void>((res) => firstSocket.once("close", () => res()));
+    const closeSpy = vi.fn();
+    firstSocket.once("close", closeSpy);
 
     await vi.advanceTimersByTimeAsync(DEAD_CONNECTION_TIMEOUT_MS + 1000);
-    await closePromise;
 
-    expect(firstSocket.readyState).toBe(WebSocket.CLOSED);
+    expect(closeSpy).not.toHaveBeenCalled();
+    expect(firstSocket.readyState).toBe(WebSocket.OPEN);
   });
 
-  it("resets the dead-connection timer on incoming messages", async () => {
+  it("keeps the socket open across long idle windows between update messages", async () => {
     const client = createClient();
     await client.subscribe("counter", () => {});
     await waitForOpen(clients[0] as unknown as WebSocket);

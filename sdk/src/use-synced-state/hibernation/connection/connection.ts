@@ -1,11 +1,7 @@
 import { manager } from "../state/clientManager.js";
 import { reconnect } from "../reconnect/reconnect.js";
 import { sendMessage, makeMessageId, unpackMessage, handleServerMessage } from "./messages.js";
-import {
-  resetDeadConnectionTimer,
-  cleanupConnectionTimers,
-  rejectPending,
-} from "./timer.js";
+import { rejectPending } from "./timer.js";
 import { type Connection, type WebSocketFactory } from "./types.js";
 
 export function getConnection(
@@ -38,13 +34,10 @@ function createConnection(
     connection.isOpen = true;
     manager.notifyStatusChange(endpoint, "connected");
     manager.resetBackoff(endpoint);
-    resetDeadConnectionTimer(connection, endpoint);
     resubscribeAndSync(connection, endpoint);
   });
 
   connection.ws.addEventListener("message", (event) => {
-    resetDeadConnectionTimer(connection, endpoint);
-
     const message = unpackMessage(event.data);
     if (!message) return;
 
@@ -53,7 +46,6 @@ function createConnection(
 
   connection.ws.addEventListener("close", () => {
     connection.isOpen = false;
-    cleanupConnectionTimers(connection);
     rejectPending(connection, "WebSocket closed");
 
     if (manager.getConnection(endpoint) === connection) {
