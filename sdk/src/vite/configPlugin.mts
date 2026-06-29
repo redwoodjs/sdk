@@ -34,7 +34,7 @@ export const configPlugin = ({
     // context(justinvdm, 2026-05-06): Only set a sourcemap default if the user
     // hasn't already configured it in their vite config. This lets users opt in
     // or out explicitly while still providing a sensible mode-aware default.
-    const sourcemap = config.build?.sourcemap ?? (mode === "development");
+    const sourcemap = config.build?.sourcemap ?? mode === "development";
 
     const workerConfig: InlineConfig = {
       resolve: {
@@ -70,6 +70,8 @@ export const configPlugin = ({
           "rwsdk/realtime/worker",
           "rwsdk/router",
           "rwsdk/worker",
+          "rwsdk/use-synced-state/worker",
+          "rwsdk/use-synced-state/hibernation/worker",
         ],
         exclude: [],
         entries: [workerEntryPathname],
@@ -78,7 +80,7 @@ export const configPlugin = ({
             jsx: "react-jsx",
             define: {
               "process.env.NODE_ENV": JSON.stringify(mode),
-              "__webpack_require__": "globalThis.__webpack_require__",
+              __webpack_require__: "globalThis.__webpack_require__",
             },
           },
         },
@@ -132,6 +134,7 @@ export const configPlugin = ({
               "rwsdk/router",
               "rwsdk/turnstile",
               "rwsdk/use-synced-state/client",
+              "rwsdk/use-synced-state/hibernation/client",
             ],
             entries: [],
             rolldownOptions: {
@@ -139,7 +142,7 @@ export const configPlugin = ({
                 jsx: "react-jsx",
                 define: {
                   "process.env.NODE_ENV": JSON.stringify(mode),
-                  "__webpack_require__": "globalThis.__webpack_require__",
+                  __webpack_require__: "globalThis.__webpack_require__",
                 },
               },
             },
@@ -172,13 +175,14 @@ export const configPlugin = ({
               "rwsdk/realtime/durableObject",
               "rwsdk/realtime/worker",
               "rwsdk/use-synced-state/client",
+              "rwsdk/use-synced-state/hibernation/client",
             ],
             rolldownOptions: {
               transform: {
                 jsx: "react-jsx",
                 define: {
                   "process.env.NODE_ENV": JSON.stringify(mode),
-                  "__webpack_require__": "globalThis.__webpack_require__",
+                  __webpack_require__: "globalThis.__webpack_require__",
                 },
               },
             },
