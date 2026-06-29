@@ -9,6 +9,17 @@ import { ConfigurableEsbuildOptions } from "./runDirectivesScan.mjs";
 
 import { ssrBridgeWrapPlugin } from "./ssrBridgeWrapPlugin.mjs";
 
+export const SSR_BRIDGE_ROLLDOWN_EXPERIMENTAL = {
+  // Rolldown's lazy barrel optimization can keep code that references imports it
+  // already pruned when `codeSplitting` is false. The SSR bridge intentionally
+  // disables code splitting, so keep lazy barrel off for this build until the
+  // upstream issue is fixed.
+  // See:
+  // - https://github.com/rolldown/rolldown/issues/9691#issuecomment-4666238497
+  // - https://github.com/rolldown/rolldown/issues/9964
+  lazyBarrel: false,
+};
+
 export const configPlugin = ({
   silent,
   projectRootDir,
@@ -197,6 +208,7 @@ export const configPlugin = ({
             },
             outDir: path.dirname(INTERMEDIATE_SSR_BRIDGE_PATH),
             rolldownOptions: {
+              experimental: SSR_BRIDGE_ROLLDOWN_EXPERIMENTAL,
               output: {
                 // context(justinvdm, 15 Sep 2025): The SSR bundle is a
                 // pre-compiled artifact. When the linker pass bundles it into
