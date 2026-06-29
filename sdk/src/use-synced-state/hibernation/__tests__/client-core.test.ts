@@ -380,16 +380,21 @@ describe("client-core", () => {
     expect(clientCloseSpy).not.toHaveBeenCalled();
   });
 
-  it("rejects in-flight requests when the pending request timeout fires", async () => {
+  it("rejects in-flight requests when the pending request timeout fires without closing the socket", async () => {
     const client = createClient();
     const getStatePromise = client.getState("counter");
     getStatePromise.catch(() => {});
 
     await waitForOpen(clients[0] as unknown as WebSocket);
 
+    const firstSocket = clients[0] as unknown as WebSocket;
+    const closeSpy = vi.fn();
+    firstSocket.once("close", closeSpy);
+
     await vi.advanceTimersByTimeAsync(PENDING_REQUEST_TIMEOUT_MS + 1000);
 
     await expect(getStatePromise).rejects.toThrow("useSyncedState request timed out");
+    expect(closeSpy).not.toHaveBeenCalled();
   });
 
   it("does not start the pending timeout for an idle subscribed socket", async () => {

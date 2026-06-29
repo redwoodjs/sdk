@@ -12,12 +12,13 @@ export function startPendingRequestTimer(connection: Connection): void {
     return;
   }
   connection.pendingRequestTimer = setTimeout(() => {
+    // We intentionally do not close the socket here. In Cloudflare's
+    // environment a half-open WebSocket is unlikely; the server should
+    // already have sent an error frame for any throw (see server.mts).
+    // Closing would trigger a visible reconnect that looks like the old
+    // idle-timeout symptom. We only reject the pending promises so the
+    // caller is not left hanging forever.
     rejectPending(connection, "useSyncedState request timed out");
-    try {
-      connection.ws.close();
-    } catch {
-      // Close event will drive reconnect if needed.
-    }
   }, PENDING_REQUEST_TIMEOUT_MS);
 }
 

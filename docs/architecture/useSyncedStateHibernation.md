@@ -90,7 +90,7 @@ This approach keeps scoping logic in one place while allowing the Worker to exit
 
 If the Worker cannot reach the DO, it returns a non-101 response and the browser connection fails. If the DO receives an unsupported protocol version or an invalid message shape, it sends an `error` message to that socket. When the browser socket closes, the DO removes it from subscription sets; reconnection is handled by the client core.
 
-Pending requests in flight during a close are rejected. Mutations sent while disconnected are queued and sent on reconnect. If a pending request does not receive a response within the pending-request timeout, the client rejects it and closes the socket to trigger reconnect.
+Pending requests in flight during a close are rejected. Mutations sent while disconnected are queued and sent on reconnect. If a pending request does not receive a response within the pending-request timeout, the client rejects it with a timeout error but does not close the socket; reconnection is left to the normal WebSocket lifecycle (browser close/error, Cloudflare edge timeout, or DO eviction).
 
 ## Testing
 
