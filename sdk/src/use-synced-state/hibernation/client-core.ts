@@ -8,7 +8,7 @@ import {
 import { manager } from "./state/clientManager.js";
 import { createSyncedStateClient } from "./state/clientFactory.js";
 import { getBackoffMs } from "./reconnect/backoff.js";
-import { DEAD_CONNECTION_TIMEOUT_MS } from "./connection/timer.js";
+import { PENDING_REQUEST_TIMEOUT_MS } from "./connection/timer.js";
 
 export type { SyncedStateClient, SyncedStateStatus, StatusChangeCallback };
 
@@ -52,5 +52,5 @@ export const setSyncedStateClientForTesting = (
 // Exported for testing only
 export const __testing = {
   getBackoffMs,
-  DEAD_CONNECTION_TIMEOUT_MS,
+  PENDING_REQUEST_TIMEOUT_MS,
 };

@@ -5,6 +5,7 @@ import {
   unpackServerMessage,
 } from "../protocol.mjs";
 import { type Connection } from "./types.js";
+import { startPendingRequestTimer } from "./timer.js";
 
 export function makeMessageId(connection: Connection): string {
   return `${connection.nextId++}`;
@@ -19,6 +20,7 @@ export async function sendMessage(
   if (isOpen) {
     return new Promise((resolve, reject) => {
       pending.set(message.id, { resolve, reject });
+      startPendingRequestTimer(connection);
       ws.send(packMessage(message));
     });
   }
@@ -27,6 +29,7 @@ export async function sendMessage(
     const onOpen = () => {
       cleanup();
       connection.pending.set(message.id, { resolve, reject });
+      startPendingRequestTimer(connection);
       connection.ws.send(packMessage(message));
     };
     const onClose = () => {
@@ -61,6 +64,7 @@ export function handleServerMessage(
         pending.reject(new Error(message.message));
       }
     }
+    startPendingRequestTimer(connection);
     return;
   }
 
@@ -68,6 +72,7 @@ export function handleServerMessage(
   if (!pending) return;
   connection.pending.delete(message.id);
   pending.resolve(message.kind === "getState" ? message.value : undefined);
+  startPendingRequestTimer(connection);
 }
 
 export function unpackMessage(data: unknown): ServerMessage | undefined {

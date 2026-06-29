@@ -21,6 +21,6 @@ export type Connection = {
   pending: Map<string, PendingRequest>;
   isOpen: boolean;
   messageHandlers: Map<string, Set<(value: unknown) => void>>;
-  deadConnectionTimer: ReturnType<typeof setTimeout> | null;
+  pendingRequestTimer: ReturnType<typeof setTimeout> | null;
   webSocketFactory: WebSocketFactory;
 };

@@ -35,7 +35,9 @@ export class SyncedStateClientManager {
   normalizeEndpoint(endpoint: string): string {
     if (endpoint.startsWith("/") && typeof window !== "undefined") {
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      return `${protocol}//${window.location.host}${endpoint}`;
+      // Strip a trailing DNS root dot so the WebSocket URL matches routing.
+      const host = window.location.host.replace(/\.$/, "");
+      return `${protocol}//${host}${endpoint}`;
     }
     return endpoint;
   }
@@ -164,9 +166,9 @@ export class SyncedStateClientManager {
 
     const connection = this.getConnection(normalized);
     if (connection) {
-      if (connection.deadConnectionTimer) {
-        clearTimeout(connection.deadConnectionTimer);
-        connection.deadConnectionTimer = null;
+      if (connection.pendingRequestTimer) {
+        clearTimeout(connection.pendingRequestTimer);
+        connection.pendingRequestTimer = null;
       }
       try {
         connection.ws.close();

@@ -1,7 +1,7 @@
 import { manager } from "../state/clientManager.js";
 import { reconnect } from "../reconnect/reconnect.js";
 import { sendMessage, makeMessageId, unpackMessage, handleServerMessage } from "./messages.js";
-import { rejectPending } from "./timer.js";
+import { rejectPending, startPendingRequestTimer } from "./timer.js";
 import { type Connection, type WebSocketFactory } from "./types.js";
 
 export function getConnection(
@@ -26,7 +26,7 @@ function createConnection(
     pending: new Map(),
     isOpen: false,
     messageHandlers: new Map(),
-    deadConnectionTimer: null,
+    pendingRequestTimer: null,
     webSocketFactory,
   };
 
@@ -34,6 +34,9 @@ function createConnection(
     connection.isOpen = true;
     manager.notifyStatusChange(endpoint, "connected");
     manager.resetBackoff(endpoint);
+    // After reconnect, any requests that were queued while disconnected now
+    // have a live socket. Start the timer in case the server never replies.
+    startPendingRequestTimer(connection);
     resubscribeAndSync(connection, endpoint);
   });
 

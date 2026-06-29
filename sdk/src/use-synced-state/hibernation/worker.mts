@@ -43,29 +43,48 @@ export const syncedStateRoutes = (
     const idParam = requestInfo.params?.id;
 
     let resolvedRoomName: string;
-    if (roomHandler) {
-      resolvedRoomName = await runWithRequestInfo(
-        requestInfo,
-        async () => await roomHandler(idParam, requestInfo),
-      );
-    } else {
-      resolvedRoomName = idParam ?? durableObjectName;
+    try {
+      if (roomHandler) {
+        resolvedRoomName = await runWithRequestInfo(
+          requestInfo,
+          async () => await roomHandler(idParam, requestInfo),
+        );
+      } else {
+        resolvedRoomName = idParam ?? durableObjectName;
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Room resolution failed";
+      return new Response(message, { status: 500 });
     }
 
     const id = namespace.idFromName(resolvedRoomName);
     const stub = namespace.get(id);
 
     let identity: unknown = undefined;
-    if (identityExtractor) {
-      identity = await runWithRequestInfo(
-        requestInfo,
-        async () => await identityExtractor(requestInfo),
-      );
+    try {
+      if (identityExtractor) {
+        identity = await runWithRequestInfo(
+          requestInfo,
+          async () => await identityExtractor(requestInfo),
+        );
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Identity extraction failed";
+      return new Response(message, { status: 500 });
     }
 
     const doUrl = new URL(request.url);
     doUrl.searchParams.set("clientId", crypto.randomUUID());
-    setIdentityInUrl(identity, doUrl);
+
+    try {
+      setIdentityInUrl(identity, doUrl);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Invalid identity";
+      return new Response(message, { status: 500 });
+    }
 
     const doRequest = new Request(doUrl.toString(), {
       headers: request.headers,

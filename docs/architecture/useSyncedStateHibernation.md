@@ -26,7 +26,7 @@ Browsers drop WebSockets for many reasons: network changes, suspended tabs, or p
 
 The design splits work between the Worker and a Durable Object. The Worker performs one-time work at upgrade time: it authenticates the request, resolves the room name, and extracts a serializable identity from the request context. It then hands the browser's WebSocket directly to the Durable Object and exits. The Durable Object owns the socket, room state, subscriptions, key transformation, and broadcasts. Because the DO has the captured identity and never needs request context, it can use Cloudflare's Hibernation WebSocket API and sleep between messages.
 
-State is persisted to Durable Object storage, and subscriptions are stored in the WebSocket attachment so they survive hibernation.
+State is persisted to Durable Object storage. Subscriptions are the authoritative source of truth on the WebSocket attachment of each live socket; the DO broadcasts by iterating `state.getWebSockets()` and reading each socket's attachment rather than relying on an in-memory map.
 
 ## Worker Responsibilities
 
@@ -38,7 +38,7 @@ Once the room is resolved, the Worker extracts a serializable identity from the 
 
 `SyncedStateServer` in `sdk/src/use-synced-state/hibernation/server.mts` owns the WebSocket after the handoff. In `fetch` it creates a `WebSocketPair`, reads the identity from the request URL, stores it in the socket attachment, accepts the server socket with `acceptWebSocket`, and returns the client socket to the browser.
 
-The DO stores state by transformed storage key and broadcasts updates to subscribers using the user-facing key. State is persisted to Durable Object storage on every `setState`, and the in-memory cache is warmed lazily on first read. Subscriptions are tracked per storage key in memory and persisted in the WebSocket attachment. On every `webSocketMessage`, the DO rehydrates subscriptions from the attachment so broadcasts continue to work after hibernation.
+The DO stores state by transformed storage key and broadcasts updates to subscribers using the user-facing key. State is persisted to Durable Object storage on every `setState`, and the in-memory cache is warmed lazily on first read. Subscriptions are persisted on each WebSocket attachment. Broadcasts iterate `state.getWebSockets()` and read each socket's attachment, so they continue to work after DO hibernation without an in-memory subscription map.
 
 When a message arrives, the DO transforms the user-facing key internally by calling the registered key handler with the captured identity. This keeps scoping logic centralized while removing the need for a Worker proxy. If no key handler is registered, keys pass through unchanged.
 
@@ -46,7 +46,7 @@ When a message arrives, the DO transforms the user-facing key internally by call
 
 The client core in `sdk/src/use-synced-state/hibernation/client-core.ts` maintains one WebSocket connection per endpoint. It exposes `getState`, `setState`, `subscribe`, and `unsubscribe` methods to application hooks. It tracks active subscriptions in a module-scoped set, reconnects with exponential backoff when the connection drops, and re-subscribes to every active key after reconnecting. It notifies listeners of connection status changes: `connected`, `disconnected`, and `reconnecting`.
 
-The client does not send application-level ping/pong traffic, because synthetic keepalives would keep the DO awake and defeat the purpose of hibernation. Instead it relies on a read-only dead-connection timer: if no message is received within a timeout window, the client force-closes the socket and triggers reconnect.
+The client does not send application-level ping/pong traffic, because synthetic keepalives would keep the DO awake and defeat the purpose of hibernation. A pending-request timeout applies only while the client is waiting for a server response; idle subscribed sockets are not force-closed.
 
 ## Data Flow
 
@@ -66,13 +66,15 @@ Client message kinds are `getState`, `setState`, `subscribe`, and `unsubscribe`.
 
 ## Identity Extraction and Key Transformation
 
-Applications register an identity extractor with `SyncedStateServer.registerIdentityExtractor`. It runs in the Worker at upgrade time and returns a serializable value from `requestInfo`:
+Applications register an identity extractor with `SyncedStateServer.registerIdentityExtractor`. It runs in the Worker at upgrade time and must return a small JSON-serializable value from `requestInfo`:
 
 ```ts
 SyncedStateServer.registerIdentityExtractor((requestInfo) => ({
   userId: requestInfo.ctx.user.id,
 }));
 ```
+
+The extractor must not return circular objects, BigInt values, or very large objects. If identity serialization fails, the handshake returns a clear 500 error instead of an opaque internal failure.
 
 The DO receives this identity, stores it on the WebSocket attachment, and passes it to handlers. The key handler signature is:
 
@@ -88,7 +90,7 @@ This approach keeps scoping logic in one place while allowing the Worker to exit
 
 If the Worker cannot reach the DO, it returns a non-101 response and the browser connection fails. If the DO receives an unsupported protocol version or an invalid message shape, it sends an `error` message to that socket. When the browser socket closes, the DO removes it from subscription sets; reconnection is handled by the client core.
 
-The client tracks the last incoming message timestamp. If no message is received for a timeout period, it assumes the socket is silently dead and force-closes it to trigger reconnection. Pending requests in flight during a close are rejected; mutations sent while disconnected are queued and sent on reconnect.
+Pending requests in flight during a close are rejected. Mutations sent while disconnected are queued and sent on reconnect. If a pending request does not receive a response within the pending-request timeout, the client rejects it and closes the socket to trigger reconnect.
 
 ## Testing
 

@@ -197,11 +197,20 @@ export class SyncedStateServer extends DurableObject {
       return;
     }
 
-    // After DO eviction the in-memory subscription map is empty. Rehydrate it
-    // from the socket attachment before handling any message that depends on
-    // knowing this socket's subscriptions (especially broadcasts on setState).
-    this.#ensureSubscriptionsLoaded(ws);
+    // Once a request id is parsed, the client is waiting for a matching
+    // response. Every dispatch path must resolve or reject that request id.
+    try {
+      await this.#handleClientMessage(ws, message);
+    } catch (error) {
+      this.#sendError(
+        ws,
+        error instanceof Error ? error.message : String(error),
+        message.id,
+      );
+    }
+  }
 
+  async #handleClientMessage(ws: WebSocket, message: ClientMessage) {
     const identity = this.#getIdentity(ws);
     const storageKey = await this.#resolveStorageKey(message.key, identity);
 
@@ -249,23 +258,10 @@ export class SyncedStateServer extends DurableObject {
     }
   }
 
-  async webSocketClose(ws: WebSocket) {
-    // context(justinvdm, 18 Jun 2026): Remove this socket from all in-memory
-    // subscription sets. The attachment is dropped by the runtime, so no
-    // persistent cleanup is required.
-    for (const subscribers of this.#subscriptions.values()) {
-      for (const entry of subscribers) {
-        if (entry.ws === ws) {
-          subscribers.delete(entry);
-          break;
-        }
-      }
-    }
-    for (const [key, subscribers] of this.#subscriptions) {
-      if (subscribers.size === 0) {
-        this.#subscriptions.delete(key);
-      }
-    }
+  async webSocketClose(_ws: WebSocket) {
+    // context(justinvdm, 29 Jun 2026): Subscriptions are persisted on the
+    // WebSocket attachment. When the runtime removes the socket, the
+    // attachment disappears with it, so no persistent cleanup is required.
   }
 
   // Public RPC surface exposed to handler callbacks and other Workers RPC callers.
@@ -346,27 +342,19 @@ export class SyncedStateServer extends DurableObject {
   // Subscriptions
   // ---------------------------------------------------------------------------
 
-  // Map from storage key to the subscribers for that key. We store the
-  // user-facing key per subscriber so broadcasts can send each socket the key
-  // it originally subscribed to.
-  #subscriptions = new Map<string, Set<{ ws: WebSocket; userKey: string }>>();
+  // Authority for subscriptions is the WebSocket attachment on each live
+  // socket, because the in-memory map is lost when the DO hibernates. We read
+  // those attachments at broadcast time via Cloudflare's live socket list.
 
   #subscribe(ws: WebSocket, storageKey: string, userKey: string): void {
-    if (!this.#subscriptions.has(storageKey)) {
-      this.#subscriptions.set(storageKey, new Set());
-    }
-    const subscribers = this.#subscriptions.get(storageKey)!;
-
     // Defensive deduplication: a stateful client may send subscribe more than
-    // once for the same key (e.g. across reconnects), and DO eviction can
-    // rehydrate the same subscription from the attachment. Keep only one entry
-    // per (socket, userKey) pair.
-    for (const entry of subscribers) {
-      if (entry.ws === ws && entry.userKey === userKey) {
-        return;
-      }
+    // once for the same key (e.g. across reconnects). Keep only one entry per
+    // (socket, userKey) pair in the attachment.
+    const subs = this.#getSubscriptionsFromAttachment(ws);
+    if (!subs.some((s) => s.userKey === userKey && s.storageKey === storageKey)) {
+      subs.push({ userKey, storageKey });
+      this.#setSubscriptionsInAttachment(ws, subs);
     }
-    subscribers.add({ ws, userKey });
 
     const identity = this.#getIdentity(ws);
     const subscribeHandler = SyncedStateServer.#subscribeHandler;
@@ -376,29 +364,13 @@ export class SyncedStateServer extends DurableObject {
         subscribeHandler(storageKey, identity, stub);
       }
     }
-
-    // Persist the subscription in the socket attachment so it survives
-    // DO eviction.
-    const subs = this.#getSubscriptionsFromAttachment(ws);
-    if (!subs.some((s) => s.userKey === userKey && s.storageKey === storageKey)) {
-      subs.push({ userKey, storageKey });
-      this.#setSubscriptionsInAttachment(ws, subs);
-    }
   }
 
   #unsubscribe(ws: WebSocket, storageKey: string, userKey: string): void {
-    const subscribers = this.#subscriptions.get(storageKey);
-    if (subscribers) {
-      for (const entry of subscribers) {
-        if (entry.ws === ws && entry.userKey === userKey) {
-          subscribers.delete(entry);
-          break;
-        }
-      }
-      if (subscribers.size === 0) {
-        this.#subscriptions.delete(storageKey);
-      }
-    }
+    const subs = this.#getSubscriptionsFromAttachment(ws).filter(
+      (s) => !(s.userKey === userKey && s.storageKey === storageKey),
+    );
+    this.#setSubscriptionsInAttachment(ws, subs);
 
     const identity = this.#getIdentity(ws);
     const unsubscribeHandler = SyncedStateServer.#unsubscribeHandler;
@@ -408,29 +380,27 @@ export class SyncedStateServer extends DurableObject {
         unsubscribeHandler(storageKey, identity, stub);
       }
     }
-
-    const subs = this.#getSubscriptionsFromAttachment(ws).filter(
-      (s) => !(s.userKey === userKey && s.storageKey === storageKey),
-    );
-    this.#setSubscriptionsInAttachment(ws, subs);
   }
 
-  #broadcastUpdate(key: string, value: SyncedStateValue): void {
-    const subscribers = this.#subscriptions.get(key);
-    if (!subscribers || subscribers.size === 0) {
-      return;
-    }
-
-    for (const { ws, userKey } of subscribers) {
-      const message: ServerMessage = {
-        kind: "update",
-        key: userKey,
-        value,
-      };
-      try {
-        ws.send(packMessage(message));
-      } catch {
-        // Socket is already closed; it will be cleaned up via webSocketClose.
+  #broadcastUpdate(storageKey: string, value: SyncedStateValue): void {
+    // Cloudflare's live socket list is the source of truth for currently
+    // connected sockets. Each socket's attachment holds the user-facing keys it
+    // subscribed to, so we send each socket its original key even after the DO
+    // has hibernated.
+    for (const ws of this.ctx.getWebSockets()) {
+      const subs = this.#getSubscriptionsFromAttachment(ws);
+      for (const sub of subs) {
+        if (sub.storageKey !== storageKey) continue;
+        const message: ServerMessage = {
+          kind: "update",
+          key: sub.userKey,
+          value,
+        };
+        try {
+          ws.send(packMessage(message));
+        } catch {
+          // Socket is already closed; it will be cleaned up via webSocketClose.
+        }
       }
     }
   }
@@ -469,26 +439,6 @@ export class SyncedStateServer extends DurableObject {
     const attachment = this.#getAttachment(ws);
     attachment.subscriptions = subscriptions;
     ws.serializeAttachment(attachment);
-  }
-
-  #ensureSubscriptionsLoaded(ws: WebSocket): void {
-    const subs = this.#getSubscriptionsFromAttachment(ws);
-    for (const { userKey, storageKey } of subs) {
-      if (!this.#subscriptions.has(storageKey)) {
-        this.#subscriptions.set(storageKey, new Set());
-      }
-      const subscribers = this.#subscriptions.get(storageKey)!;
-      let exists = false;
-      for (const entry of subscribers) {
-        if (entry.ws === ws && entry.userKey === userKey) {
-          exists = true;
-          break;
-        }
-      }
-      if (!exists) {
-        subscribers.add({ ws, userKey });
-      }
-    }
   }
 
   // ---------------------------------------------------------------------------

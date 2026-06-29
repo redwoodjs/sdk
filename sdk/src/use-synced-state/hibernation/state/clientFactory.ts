@@ -42,14 +42,20 @@ export function createSyncedStateClient(
       handlers.add(handler);
 
       if (connection.isOpen) {
-        connection.ws.send(
-          JSON.stringify({
-            v: 1,
+        try {
+          await sendMessage(connection, {
             kind: "subscribe",
             key,
             id: makeMessageId(connection),
-          }),
-        );
+          });
+        } catch (error) {
+          // Roll back local subscription state so we don't pretend to be
+          // subscribed when the server rejected or never processed it.
+          handlers.delete(handler);
+          if (handlers.size === 0) connection.messageHandlers.delete(key);
+          manager.removeSubscription(key, handler, client);
+          throw error;
+        }
       }
     },
 
@@ -64,15 +70,18 @@ export function createSyncedStateClient(
         handlers.delete(handler);
         if (handlers.size === 0) connection.messageHandlers.delete(key);
       }
-      if (connection.isOpen) {
-        connection.ws.send(
-          JSON.stringify({
-            v: 1,
+
+      try {
+        if (connection.isOpen) {
+          await sendMessage(connection, {
             kind: "unsubscribe",
             key,
             id: makeMessageId(connection),
-          }),
-        );
+          });
+        }
+      } catch {
+        // Unsubscribe is often called during cleanup. Swallow errors from a
+        // closing socket; the server attachment will be dropped anyway.
       }
     },
   };

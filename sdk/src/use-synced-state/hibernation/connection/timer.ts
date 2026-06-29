@@ -1,11 +1,30 @@
 import { type Connection } from "./types.js";
 
-export const DEAD_CONNECTION_TIMEOUT_MS = 90_000;
+// context(justinvdm, 29 Jun 2026): This timeout applies only to requests that
+// are waiting for a server response, not to idle connections. Hibernation
+// relies on idle sockets being allowed to sleep, so we must not close a socket
+// just because no traffic has arrived.
+export const PENDING_REQUEST_TIMEOUT_MS = 30_000;
 
-export function stopDeadConnectionTimer(connection: Connection): void {
-  if (connection.deadConnectionTimer) {
-    clearTimeout(connection.deadConnectionTimer);
-    connection.deadConnectionTimer = null;
+export function startPendingRequestTimer(connection: Connection): void {
+  stopPendingRequestTimer(connection);
+  if (connection.pending.size === 0) {
+    return;
+  }
+  connection.pendingRequestTimer = setTimeout(() => {
+    rejectPending(connection, "useSyncedState request timed out");
+    try {
+      connection.ws.close();
+    } catch {
+      // Close event will drive reconnect if needed.
+    }
+  }, PENDING_REQUEST_TIMEOUT_MS);
+}
+
+export function stopPendingRequestTimer(connection: Connection): void {
+  if (connection.pendingRequestTimer) {
+    clearTimeout(connection.pendingRequestTimer);
+    connection.pendingRequestTimer = null;
   }
 }
 
@@ -14,5 +33,5 @@ export function rejectPending(connection: Connection, reason: string): void {
     pending.reject(new Error(reason));
   }
   connection.pending.clear();
-  stopDeadConnectionTimer(connection);
+  stopPendingRequestTimer(connection);
 }
