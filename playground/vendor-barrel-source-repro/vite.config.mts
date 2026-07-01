@@ -11,7 +11,13 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 const myUiLibTransformMarker = (): Plugin => ({
   name: "my-ui-lib-transform-marker",
   transform(code, id) {
-    if (id.includes("node_modules/my-ui-lib")) {
+    // Match both real node_modules paths and the resolved symlink source path.
+    // Skip virtual SSR bridge modules to avoid double-transforming.
+    if (
+      id.includes("/my-ui-lib/") &&
+      id.endsWith(".tsx") &&
+      !id.includes("virtual:rwsdk:ssr:")
+    ) {
       console.log(`[host-transform] Running host transform for ${id}`);
       return {
         code:
@@ -25,6 +31,12 @@ const myUiLibTransformMarker = (): Plugin => ({
 });
 
 export default defineConfig({
+  optimizeDeps: {
+    // Tell Vite not to pre-bundle this raw-source package. RedwoodSDK should
+    // honor this by treating the package's directive files like app files and
+    // including them in the app barrel instead of the pre-bundled vendor barrel.
+    exclude: ["my-ui-lib"],
+  },
   plugins: [
     cloudflare({
       viteEnvironment: { name: "worker" },

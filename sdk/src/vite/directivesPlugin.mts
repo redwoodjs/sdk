@@ -78,7 +78,8 @@ export const directivesPlugin = ({
       ) {
         return;
       }
-      const normalizedId = normalizeModulePath(id, projectRootDir);
+      const cleanId = id.split("?")[0];
+      const normalizedId = normalizeModulePath(cleanId, projectRootDir);
 
       const clientResult = await transformClientComponents(code, normalizedId, {
         environmentName: this.environment.name,
@@ -125,7 +126,8 @@ export const directivesPlugin = ({
       const directivesFileFilter = /\.(js|ts|jsx|tsx|mts|mjs|cjs)$/;
 
       async function handleDirectivesLoad(filePath: string) {
-        const normalizedPath = normalizeModulePath(filePath, projectRootDir);
+        const cleanFilePath = filePath.split("?")[0];
+        const normalizedPath = normalizeModulePath(cleanFilePath, projectRootDir);
 
         if (!filePath.includes("node_modules")) {
           if (clientFiles.has(normalizedPath)) {

@@ -4,6 +4,10 @@ import path from "path";
 import { Plugin, ViteDevServer } from "vite";
 import { addOptimizeDepsPlugin } from "./addOptimizeDepsPlugin.mjs";
 import {
+  isExcludedFromOptimization,
+  resolveOptimizeDepsExcludes,
+} from "./resolveOptimizeDepsExcludes.mjs";
+import {
   VENDOR_CLIENT_BARREL_EXPORT_PATH,
   VENDOR_SERVER_BARREL_EXPORT_PATH,
 } from "../lib/constants.mjs";
@@ -13,17 +17,28 @@ export function generateLookupMap({
   isDev,
   kind,
   exportName,
+  optimizeDepsExclude,
+  projectRootDir,
 }: {
   files: Set<string>;
   isDev: boolean;
   kind: "client" | "server";
   exportName: string;
+  optimizeDepsExclude?: string[];
+  projectRootDir?: string;
 }) {
+  const excludedRoots = optimizeDepsExclude ?? [];
   const s = new MagicString(`
 export const ${exportName} = {
   ${Array.from(files)
     .map((file: string) => {
-      if (file.includes("node_modules") && isDev) {
+      const excluded = isExcludedFromOptimization(
+        file,
+        excludedRoots,
+        projectRootDir,
+      );
+
+      if (file.includes("node_modules") && isDev && !excluded) {
         const barrelPath =
           kind === "client"
             ? VENDOR_CLIENT_BARREL_EXPORT_PATH
@@ -70,6 +85,8 @@ export const createDirectiveLookupPlugin = async ({
   const log = debug(debugNamespace);
   let isDev = false;
   let devServer: ViteDevServer;
+  let optimizeDepsExclude: string[] = [];
+  let excludedRootsPromise: Promise<string[]> | undefined;
 
   log(
     "Initializing %s plugin with projectRootDir=%s",
@@ -79,8 +96,13 @@ export const createDirectiveLookupPlugin = async ({
 
   return {
     name: `rwsdk:${config.pluginName}`,
-    config(_, { command, isPreview }) {
+    async config(config, { command, isPreview }) {
       isDev = !isPreview && command === "serve";
+      optimizeDepsExclude = config.optimizeDeps?.exclude ?? [];
+      excludedRootsPromise = resolveOptimizeDepsExcludes(
+        optimizeDepsExclude,
+        projectRootDir,
+      );
       log("Development mode: %s", isDev);
     },
     configureServer(server) {
@@ -222,11 +244,15 @@ export const createDirectiveLookupPlugin = async ({
         const environment = this.environment?.name || "client";
         log("Current environment: %s, isDev: %s", environment, isDev);
 
+        const excludedRoots = await excludedRootsPromise!;
+
         return generateLookupMap({
           files,
           isDev,
           kind: config.kind,
           exportName: config.exportName,
+          optimizeDepsExclude: excludedRoots,
+          projectRootDir,
         });
       }
     },

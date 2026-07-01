@@ -4,23 +4,13 @@
 
 In dev, RedwoodSDK routes every `"use client"` / `"use server"` file in
 `node_modules` through a pre-bundled **vendor barrel**. The barrel is processed
-by Vite's dependency optimizer (esbuild), which runs RedwoodSDK's directive
-transforms but does **not** run arbitrary host Vite plugins.
+by Vite's dependency optimizer (esbuild/Rolldown), which runs RedwoodSDK's
+directive transforms but does **not** run arbitrary host Vite plugins.
 
 For a meta-framework or component library that ships raw ESM source and relies
-on the host's Vite pipeline (e.g. per-component CSS-in-JS transforms), this
-means the transform never runs in dev.
-
-## Current behavior
-
-- `generateLookupMap` in `sdk/src/vite/createDirectiveLookupPlugin.mts` checks
-  `file.includes("node_modules")` and, in dev, routes matched files to the
-  barrel.
-- `generateVendorBarrelContent` in
-  `sdk/src/vite/directiveModulesDevPlugin.mts` builds the barrel from the same
-  `node_modules` filter.
-- `forceClientPaths` / `forceServerPaths` only add files to the client/server
-  sets; they do not change how the files are served.
+on the host's Vite pipeline (e.g. a CSS-in-JS transform that emits a
+per-component CSS import at build time), this means the transform never runs in
+dev.
 
 ## Reproduction
 
@@ -28,60 +18,101 @@ Created `sdk/playground/vendor-barrel-source-repro`.
 
 - `packages/my-ui-lib/src/button.tsx` is a `"use client"` component installed
   into `node_modules/my-ui-lib` via a `file:` dependency.
-- `vite.config.mts` defines a host Vite plugin that injects a CSS import and a
-  client-side console marker for any file inside `node_modules/my-ui-lib`.
+- `vite.config.mts` defines a host Vite plugin that injects a marker log and a
+  `import "./button.css"` into every `my-ui-lib` module.
 - `src/app/pages/Home.tsx` imports and renders `MyButton`.
+- The config sets `optimizeDeps.exclude: ["my-ui-lib"]`.
 
-### Verified buggy behavior
+### Before the fix
 
-Running `pnpm dev` and requesting the page renders the button, but the host
-plugin's `transform` hook never fires:
+- The terminal does **not** show `[host-transform] Running host transform for .../my-ui-lib/src/button.tsx`.
+- The browser console does **not** show the client-side marker.
+- The button renders without the red background.
 
-```
-# NOT present in server output:
-[host-transform] Running host transform for .../node_modules/my-ui-lib/src/button.tsx
-```
+### After the fix
 
-The injected CSS (red background) is also absent from the SSR HTML.
+- The terminal shows the host transform log.
+- The browser console shows the client-side marker.
+- The button renders with a red background (client-side injected in dev;
+  `<link>` tag in production).
 
-This confirms the component is being served from the vendor barrel, bypassing
-the host's Vite pipeline.
+## Implementation
 
-## Proposed fix direction from the issue
+Instead of serving raw-source `node_modules` files directly from source, the fix
+honors Vite's `optimizeDeps.exclude` by moving excluded directive files out of
+the pre-bundled **vendor barrel** and into the **app barrel**. The app barrel
+flows through the host's normal Vite plugin pipeline, so host transforms run.
 
-Add a `forceSourcePaths` option to `redwoodPlugin`:
+### Files changed
 
-1. Resolve patterns through the same `resolveForcedPaths` pipeline used by
-   `forceClientPaths`.
-2. In `generateLookupMap`, matched files take the existing source-import branch
-   even when they live in `node_modules`.
-3. In `generateVendorBarrelContent`, exclude matched files from the barrel.
-4. Supporting fix: strip Vite optimizer query strings (e.g. `?v=<hash>`) before
-   `normalizeModulePath` in `directivesPlugin`, so source-served modules
-   referenced through optimized chunks still register their client/server
-   reference ids under the clean lookup key.
+- `sdk/src/vite/resolveOptimizeDepsExcludes.mts` (new)
+  - Resolves `optimizeDeps.exclude` entries to absolute filesystem roots.
+  - Handles bare packages, scoped packages, package subpaths, relative paths,
+    and absolute paths.
+  - Resolves symlinked workspace packages (e.g. `file:./packages/my-ui-lib`) to
+    their real location on disk.
+  - Provides `isExcludedFromOptimization(file, excludedRoots, projectRootDir)`.
 
-## Open questions / concerns
+- `sdk/src/vite/directiveModulesDevPlugin.mts`
+  - Reads `config.optimizeDeps.exclude` in `configResolved` and resolves roots.
+  - `generateVendorBarrelContent` now skips files under excluded roots.
+  - `generateAppBarrelContent` now includes both app files and excluded
+    `node_modules` files, so they are processed through the app barrel pipeline.
 
-1. **Vite may still pre-bundle source-served files.** Even with the lookup-map
-   fix, Vite's dependency optimizer could still process the file unless the
-   package is also in `optimizeDeps.exclude`. The cleanest API may be to honor
-   `optimizeDeps.exclude` as an implicit source-path signal, or to auto-exclude
-   matched packages when `forceSourcePaths` is used.
-2. **Query stripping should be robust.** Only stripping `?v=<hash>` may not be
-   enough; Vite also uses `?import`, `?t=<timestamp>`, `?raw`, etc. Consider
-   stripping the query segment entirely when computing lookup keys.
-3. **API symmetry.** RedwoodSDK has `forceClientPaths` and `forceServerPaths`.
-   A single `forceSourcePaths` that applies to both is simple but not symmetric.
-   Consider `forceClientSourcePaths` / `forceServerSourcePaths`.
-4. **SSR bridge path.** Source-served `node_modules` client components will now
-   load through `ssrLoadModule` / the SSR bridge, which is currently exercised
-   for app source files but not for `node_modules` directive files in dev.
+- `sdk/src/vite/createDirectiveLookupPlugin.mts`
+  - Reads `config.optimizeDeps.exclude` in the `config` hook and resolves roots.
+  - In `generateLookupMap`, excluded `node_modules` files take the source-import
+    branch instead of the vendor-barrel branch (the app barrel already ensures
+    they are part of the normal pipeline).
 
-## Next steps
+- `sdk/src/vite/directivesPlugin.mts`
+  - Strips the query string (`?v=<hash>` etc.) before `normalizeModulePath` in
+    both the Vite `transform` hook and the optimizer `load` hook, so
+    source-served modules referenced through optimized chunks still register
+    under their clean lookup key.
 
-- Decide on API shape (`forceSourcePaths` vs. per-kind options vs. honoring
-  `optimizeDeps.exclude`).
-- Implement lookup-map / barrel exclusion and query stripping.
-- Add unit tests for `generateLookupMap` and `generateVendorBarrelContent`.
-- Verify the repro shows the host transform and red background after the fix.
+### Tests
+
+- `sdk/src/vite/createDirectiveLookupPlugin.test.mts`
+  - Added test for source-serving files under excluded roots.
+
+- `sdk/src/vite/directiveModulesDevPlugin.test.mts`
+  - Added tests for excluding files from the vendor barrel and including them in
+    the app barrel.
+
+- `sdk/src/vite/resolveOptimizeDepsExcludes.test.mts` (new)
+  - Tests package root resolution and the exclusion helper.
+
+## Why the app barrel approach
+
+Serving excluded `node_modules` files directly from source works, but it pushes
+them outside RedwoodSDK's barrel machinery. By moving them into the app barrel
+instead, they stay within the same pipeline as the app's own directive files:
+
+- They are processed by the host's Vite plugins (the app barrel is not
+  pre-bundled by the dependency optimizer).
+- They are included in the normal module graph for the target environment.
+- Production builds still emit CSS chunks into the manifest as expected.
+
+## Verification
+
+- `pnpm vitest --run -- createDirectiveLookupPlugin.test.mts directiveModulesDevPlugin.test.mts resolveOptimizeDepsExcludes.test.mts`
+  passes.
+- Full SDK test suite passes.
+- `pnpm test:e2e -- vendor-barrel-source-repro` dev test passes (deployment
+  test is skipped locally due to missing Cloudflare auth).
+- `pnpm build` in the repro produces a `dist/client/assets/button-*.css` chunk
+  and the manifest correctly associates it with
+  `packages/my-ui-lib/src/button.tsx`.
+
+## Known limitations
+
+- **Dev SSR stylesheets.** In dev, RedwoodSDK's `Stylesheets` component relies
+  on the production manifest, which is empty in dev. CSS imported by a
+  source-served client component is injected client-side by Vite during
+  hydration, so it will not appear in the SSR HTML. Production builds include
+  the CSS in the manifest and emit the expected `<link rel="stylesheet">` tags.
+
+- **Per-environment `optimizeDeps.exclude`.** The current implementation reads
+  the root-level `optimizeDeps.exclude`. Per-environment overrides are not yet
+  merged.

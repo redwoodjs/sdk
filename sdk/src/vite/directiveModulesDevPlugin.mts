@@ -12,6 +12,10 @@ import {
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { setVendorBarrelPaths } from "./barrelPaths.mjs";
 import {
+  isExcludedFromOptimization,
+  resolveOptimizeDepsExcludes,
+} from "./resolveOptimizeDepsExcludes.mjs";
+import {
   ConfigurableEsbuildOptions,
   runDirectivesScan,
 } from "./runDirectivesScan.mjs";
@@ -19,9 +23,14 @@ import {
 export const generateVendorBarrelContent = (
   files: Set<string>,
   projectRootDir: string,
+  excludedRoots: string[] = [],
 ) => {
   const imports = [...files]
-    .filter((file) => file.includes("node_modules"))
+    .filter(
+      (file) =>
+        file.includes("node_modules") &&
+        !isExcludedFromOptimization(file, excludedRoots, projectRootDir),
+    )
     .map(
       (file, i) =>
         `import * as M${i} from '${normalizeModulePath(file, projectRootDir, {
@@ -33,7 +42,11 @@ export const generateVendorBarrelContent = (
   const exports =
     "export default {\n" +
     [...files]
-      .filter((file) => file.includes("node_modules"))
+      .filter(
+        (file) =>
+          file.includes("node_modules") &&
+          !isExcludedFromOptimization(file, excludedRoots, projectRootDir),
+      )
       .map(
         (file, i) => `  '${normalizeModulePath(file, projectRootDir)}': M${i},`,
       )
@@ -46,9 +59,14 @@ export const generateVendorBarrelContent = (
 export const generateAppBarrelContent = (
   files: Set<string>,
   projectRootDir: string,
+  excludedRoots: string[] = [],
 ) => {
   return [...files]
-    .filter((file) => !file.includes("node_modules"))
+    .filter(
+      (file) =>
+        !file.includes("node_modules") ||
+        isExcludedFromOptimization(file, excludedRoots, projectRootDir),
+    )
     .map((file) => {
       const resolvedPath = normalizeModulePath(file, projectRootDir, {
         absolute: true,
@@ -77,6 +95,7 @@ export const directiveModulesDevPlugin = ({
     reject: rejectScanPromise,
   } = Promise.withResolvers<void>();
   const tempDir = mkdtempSync(path.join(realpathSync(os.tmpdir()), "rwsdk-"));
+  let excludedRoots: string[] = [];
   const APP_CLIENT_BARREL_PATH = path.join(tempDir, "app-client-barrel.js");
   const APP_SERVER_BARREL_PATH = path.join(tempDir, "app-server-barrel.js");
   const VENDOR_CLIENT_BARREL_PATH = path.join(
@@ -109,7 +128,7 @@ export const directiveModulesDevPlugin = ({
   );
   const BARREL_PREFIX = "\0rwsdk-app-barrel:";
 
-  const createAppBarrelBlockerPlugin = () => ({
+  const createAppBarrelBlockerPlugin = (excludedRoots: string[]) => ({
     name: "rwsdk:app-barrel-blocker",
     async resolveId(id: string) {
       await scanPromise;
@@ -161,7 +180,7 @@ export const directiveModulesDevPlugin = ({
       ) {
         const isServerBarrel = id.includes("server-barrel");
         const files = isServerBarrel ? serverFiles : clientFiles;
-        return generateVendorBarrelContent(files, projectRootDir);
+        return generateVendorBarrelContent(files, projectRootDir, excludedRoots);
       }
 
       // Handle app barrels
@@ -169,7 +188,7 @@ export const directiveModulesDevPlugin = ({
         const barrelPath = id.slice(BARREL_PREFIX.length);
         const isServerBarrel = barrelPath.includes("app-server-barrel");
         const files = isServerBarrel ? serverFiles : clientFiles;
-        return generateAppBarrelContent(files, projectRootDir);
+        return generateAppBarrelContent(files, projectRootDir, excludedRoots);
       }
     },
   });
@@ -180,7 +199,11 @@ export const directiveModulesDevPlugin = ({
     }
   };
 
-  const configureOptimizeDeps = (envName: string, env: any) => {
+  const configureOptimizeDeps = (
+    envName: string,
+    env: any,
+    excludedRoots: string[],
+  ) => {
     env.optimizeDeps ??= {};
     env.optimizeDeps.include ??= [];
     addUnique(env.optimizeDeps.include, VENDOR_CLIENT_BARREL_EXPORT_PATH);
@@ -207,7 +230,7 @@ export const directiveModulesDevPlugin = ({
       )
     ) {
       env.optimizeDeps.rolldownOptions.plugins.unshift(
-        createAppBarrelBlockerPlugin(),
+        createAppBarrelBlockerPlugin(excludedRoots),
       );
     }
   };
@@ -225,10 +248,18 @@ export const directiveModulesDevPlugin = ({
         id === SDK_VENDOR_SERVER_BARREL_PATH;
 
       if (isClientBarrel) {
-        return generateVendorBarrelContent(clientFiles, projectRootDir);
+        return generateVendorBarrelContent(
+          clientFiles,
+          projectRootDir,
+          excludedRoots,
+        );
       }
       if (isServerBarrel) {
-        return generateVendorBarrelContent(serverFiles, projectRootDir);
+        return generateVendorBarrelContent(
+          serverFiles,
+          projectRootDir,
+          excludedRoots,
+        );
       }
       return null;
     },
@@ -257,11 +288,19 @@ export const directiveModulesDevPlugin = ({
         .then(() => {
           writeFileSync(
             VENDOR_CLIENT_BARREL_PATH,
-            generateVendorBarrelContent(clientFiles, projectRootDir),
+            generateVendorBarrelContent(
+              clientFiles,
+              projectRootDir,
+              excludedRoots,
+            ),
           );
           writeFileSync(
             VENDOR_SERVER_BARREL_PATH,
-            generateVendorBarrelContent(serverFiles, projectRootDir),
+            generateVendorBarrelContent(
+              serverFiles,
+              projectRootDir,
+              excludedRoots,
+            ),
           );
           resolveScanPromise();
         })
@@ -275,11 +314,16 @@ export const directiveModulesDevPlugin = ({
       });
     },
 
-    configResolved(config) {
+    async configResolved(config) {
       if (config.command !== "serve") {
         resolveScanPromise();
         return;
       }
+
+      excludedRoots = await resolveOptimizeDepsExcludes(
+        config.optimizeDeps.exclude ?? [],
+        projectRootDir,
+      );
 
       mkdirSync(path.dirname(APP_CLIENT_BARREL_PATH), { recursive: true });
       writeFileSync(APP_CLIENT_BARREL_PATH, "");
@@ -292,7 +336,7 @@ export const directiveModulesDevPlugin = ({
       writeFileSync(VENDOR_SERVER_BARREL_PATH, "");
 
       for (const [envName, env] of Object.entries(config.environments || {})) {
-        configureOptimizeDeps(envName, env);
+        configureOptimizeDeps(envName, env, excludedRoots);
       }
     },
   };

@@ -7,8 +7,8 @@ This playground reproduces the issue described in
 
 In dev, RedwoodSDK routes every `"use client"` file found in `node_modules`
 through a pre-bundled **vendor barrel**. That barrel is processed by Vite's
-**dependency optimizer** (esbuild), which does not run the host application's
-normal Vite plugins.
+**dependency optimizer** (esbuild/Rolldown), which does not run the host
+application's normal Vite plugins.
 
 A meta-framework or component library that ships raw ESM source and relies on
 the host's Vite transforms therefore breaks in dev: the transform never runs.
@@ -25,33 +25,51 @@ The host `vite.config.mts` defines a small Vite plugin that should run on every
 2. It injects `import "./button.css"`, which styles the button with a **red
    background**.
 
+This simulates a compiled CSS-in-JS library where the component source does not
+statically import any CSS; the host's build-time transform emits the CSS import
+when the module loads.
+
+## Configuration
+
+The config opts the raw-source package out of Vite's dependency optimizer:
+
+```ts
+optimizeDeps: {
+  exclude: ["my-ui-lib"];
+}
+```
+
+RedwoodSDK now honors this by moving the package's directive files out of the
+pre-bundled vendor barrel and into the **app barrel**, which flows through the
+host's normal Vite plugin pipeline.
+
 ## Steps to reproduce
 
 ```bash
 cd playground/vendor-barrel-source-repro
-pnpm install
 pnpm dev
 ```
 
 Open the browser at the URL shown in the terminal.
 
-### Expected buggy behavior
-
-- The button is rendered with the browser's default button styling (no red
-  background).
-- The browser console does **not** contain a log starting with
-  `[host-transform] CLIENT-SIDE MARKER`.
-- The terminal does **not** show `[host-transform] Running host transform for
-  ...node_modules/my-ui-lib...`.
-
-This proves the host's Vite `transform` hook never ran for the `my-ui-lib`
-component because RedwoodSDK pulled it out of the vendor barrel instead.
-
 ### Expected behavior after the fix
 
-When `forceSourcePaths` (or an equivalent mechanism) is implemented and
-`my-ui-lib` is opted out of the vendor barrel:
-
-- The terminal shows the host transform running for the file.
+- The terminal shows `[host-transform] Running host transform for .../my-ui-lib/src/button.tsx`.
 - The browser console shows the client-side marker.
-- The button has a red background.
+- The button has a red background (injected client-side by Vite during hydration).
+
+### CSS note
+
+In dev, the red background is injected client-side by Vite when the component
+hydrates, so it will not appear in the SSR HTML. In production, the CSS chunk is
+included in the build manifest and emitted as a `<link rel="stylesheet">` tag by
+RedwoodSDK's `Stylesheets` component.
+
+## Build verification
+
+```bash
+pnpm build
+```
+
+Check that `dist/client/assets/` contains a CSS chunk for the button and that
+`dist/client/.vite/manifest.json` lists it under `packages/my-ui-lib/src/button.tsx`.
