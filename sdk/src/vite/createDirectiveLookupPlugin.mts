@@ -2,15 +2,16 @@ import debug from "debug";
 import MagicString from "magic-string";
 import path from "path";
 import { Plugin, ViteDevServer } from "vite";
-import { addOptimizeDepsPlugin } from "./addOptimizeDepsPlugin.mjs";
-import {
-  isExcludedFromOptimization,
-  resolveOptimizeDepsExcludes,
-} from "./resolveOptimizeDepsExcludes.mjs";
 import {
   VENDOR_CLIENT_BARREL_EXPORT_PATH,
   VENDOR_SERVER_BARREL_EXPORT_PATH,
 } from "../lib/constants.mjs";
+import { addOptimizeDepsPlugin } from "./addOptimizeDepsPlugin.mjs";
+import {
+  getOptimizeDepsExcludePatterns,
+  isExcludedFromOptimization,
+  resolveOptimizeDepsExcludes,
+} from "./resolveOptimizeDepsExcludes.mjs";
 
 export function generateLookupMap({
   files,
@@ -98,7 +99,7 @@ export const createDirectiveLookupPlugin = async ({
     name: `rwsdk:${config.pluginName}`,
     async config(config, { command, isPreview }) {
       isDev = !isPreview && command === "serve";
-      optimizeDepsExclude = config.optimizeDeps?.exclude ?? [];
+      optimizeDepsExclude = getOptimizeDepsExcludePatterns(config);
       excludedRootsPromise = resolveOptimizeDepsExcludes(
         optimizeDepsExclude,
         projectRootDir,

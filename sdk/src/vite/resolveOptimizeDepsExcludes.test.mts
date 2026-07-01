@@ -1,8 +1,41 @@
 import { describe, expect, it } from "vitest";
 import {
+  getOptimizeDepsExcludePatterns,
   isExcludedFromOptimization,
   resolveOptimizeDepsExcludes,
 } from "./resolveOptimizeDepsExcludes.mjs";
+
+describe("getOptimizeDepsExcludePatterns", () => {
+  it("should collect root-level excludes", () => {
+    const patterns = getOptimizeDepsExcludePatterns({
+      optimizeDeps: { exclude: ["foo", "bar"] },
+    });
+    expect(patterns).toEqual(["foo", "bar"]);
+  });
+
+  it("should collect per-environment excludes", () => {
+    const patterns = getOptimizeDepsExcludePatterns({
+      optimizeDeps: { exclude: ["foo"] },
+      environments: {
+        client: { optimizeDeps: { exclude: ["bar"] } },
+        worker: { optimizeDeps: { exclude: ["baz"] } },
+      },
+    });
+    expect(patterns).toEqual(expect.arrayContaining(["foo", "bar", "baz"]));
+    expect(patterns).toHaveLength(3);
+  });
+
+  it("should deduplicate excludes across root and environments", () => {
+    const patterns = getOptimizeDepsExcludePatterns({
+      optimizeDeps: { exclude: ["foo", "bar"] },
+      environments: {
+        client: { optimizeDeps: { exclude: ["bar", "baz"] } },
+      },
+    });
+    expect(patterns).toEqual(expect.arrayContaining(["foo", "bar", "baz"]));
+    expect(patterns).toHaveLength(3);
+  });
+});
 
 describe("resolveOptimizeDepsExcludes", () => {
   it("should resolve an installed package to its root", async () => {
@@ -17,9 +50,7 @@ describe("resolveOptimizeDepsExcludes", () => {
       process.cwd(),
     );
     expect(roots.length).toBe(1);
-    expect(roots[0]).toMatch(
-      /node_modules[\/\\]@cloudflare[\/\\]vite-plugin$/,
-    );
+    expect(roots[0]).toMatch(/node_modules[\/\\]@cloudflare[\/\\]vite-plugin$/);
   });
 
   it("should resolve a package subpath to the subpath directory", async () => {
@@ -46,9 +77,7 @@ describe("resolveOptimizeDepsExcludes", () => {
       process.cwd(),
     );
     expect(roots.length).toBe(1);
-    expect(roots[0]).toMatch(
-      /node_modules[\/\\]this-package-does-not-exist$/,
-    );
+    expect(roots[0]).toMatch(/node_modules[\/\\]this-package-does-not-exist$/);
   });
 });
 
@@ -85,5 +114,35 @@ describe("isExcludedFromOptimization", () => {
         "/project",
       ),
     ).toBe(true);
+  });
+
+  it("should match Vite-style project-relative paths", () => {
+    expect(
+      isExcludedFromOptimization(
+        "/node_modules/foo/index.js",
+        ["/project/node_modules/foo"],
+        "/project",
+      ),
+    ).toBe(true);
+  });
+
+  it("should still match external absolute paths that share no common root", () => {
+    expect(
+      isExcludedFromOptimization(
+        "/Users/chris/other/lib/index.js",
+        ["/Users/chris/other/lib"],
+        "/Users/chris/project",
+      ),
+    ).toBe(true);
+  });
+
+  it("should not match unrelated Vite-style paths", () => {
+    expect(
+      isExcludedFromOptimization(
+        "/node_modules/bar/index.js",
+        ["/project/node_modules/foo"],
+        "/project",
+      ),
+    ).toBe(false);
   });
 });

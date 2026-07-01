@@ -52,15 +52,20 @@ flows through the host's normal Vite plugin pipeline, so host transforms run.
   - Resolves symlinked workspace packages (e.g. `file:./packages/my-ui-lib`) to
     their real location on disk.
   - Provides `isExcludedFromOptimization(file, excludedRoots, projectRootDir)`.
+  - `isExcludedFromOptimization` now also resolves Vite-style project-relative
+    paths such as `/node_modules/foo/index.js` against `projectRootDir`, so
+    packages physically installed under `node_modules` are correctly matched.
 
 - `sdk/src/vite/directiveModulesDevPlugin.mts`
   - Reads `config.optimizeDeps.exclude` in `configResolved` and resolves roots.
+  - Merges root-level and per-environment `optimizeDeps.exclude` for Vite 8.
   - `generateVendorBarrelContent` now skips files under excluded roots.
   - `generateAppBarrelContent` now includes both app files and excluded
     `node_modules` files, so they are processed through the app barrel pipeline.
 
 - `sdk/src/vite/createDirectiveLookupPlugin.mts`
   - Reads `config.optimizeDeps.exclude` in the `config` hook and resolves roots.
+  - Merges root-level and per-environment `optimizeDeps.exclude` for Vite 8.
   - In `generateLookupMap`, excluded `node_modules` files take the source-import
     branch instead of the vendor-barrel branch (the app barrel already ensures
     they are part of the normal pipeline).
@@ -79,9 +84,13 @@ flows through the host's normal Vite plugin pipeline, so host transforms run.
 - `sdk/src/vite/directiveModulesDevPlugin.test.mts`
   - Added tests for excluding files from the vendor barrel and including them in
     the app barrel.
+  - Added tests for Vite-style `/node_modules/...` paths and for transitive
+    dependencies.
 
 - `sdk/src/vite/resolveOptimizeDepsExcludes.test.mts` (new)
   - Tests package root resolution and the exclusion helper.
+  - Tests Vite-style project-relative path matching.
+  - Tests collection of root-level and per-environment excludes.
 
 ## Why the app barrel approach
 
@@ -113,6 +122,7 @@ instead, they stay within the same pipeline as the app's own directive files:
   hydration, so it will not appear in the SSR HTML. Production builds include
   the CSS in the manifest and emit the expected `<link rel="stylesheet">` tags.
 
-- **Per-environment `optimizeDeps.exclude`.** The current implementation reads
-  the root-level `optimizeDeps.exclude`. Per-environment overrides are not yet
-  merged.
+- **Transitive dependencies.** Only packages explicitly listed in
+  `optimizeDeps.exclude` are moved into the app barrel. A transitive dependency
+  whose directive files also need host transforms must be excluded separately.
+  This mirrors Vite's own semantics.

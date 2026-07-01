@@ -55,6 +55,40 @@ async function resolveExcludeRoot(
   return normalizePathSeparators(path.join(projectRootDir, entry));
 }
 
+type OptimizeDepsConfig = {
+  optimizeDeps?: { exclude?: string[] };
+  environments?: Record<string, { optimizeDeps?: { exclude?: string[] } }>;
+};
+
+/**
+ * Collect `optimizeDeps.exclude` patterns from the root config and from every
+ * environment config. Vite 8 allows per-environment `optimizeDeps`, so a user
+ * may exclude a package globally or only for a specific environment. RedwoodSDK
+ * needs the union so that directive files from any excluded package are moved
+ * into the app barrel.
+ */
+export function getOptimizeDepsExcludePatterns(
+  config: OptimizeDepsConfig,
+): string[] {
+  const patterns = new Set<string>();
+
+  for (const entry of config.optimizeDeps?.exclude ?? []) {
+    if (entry) {
+      patterns.add(entry);
+    }
+  }
+
+  for (const env of Object.values(config.environments ?? {})) {
+    for (const entry of env?.optimizeDeps?.exclude ?? []) {
+      if (entry) {
+        patterns.add(entry);
+      }
+    }
+  }
+
+  return [...patterns];
+}
+
 /**
  * Resolve entries from Vite's `optimizeDeps.exclude` into absolute filesystem
  * roots that can be matched against discovered directive files.
@@ -98,14 +132,38 @@ export function isExcludedFromOptimization(
   excludedRoots: string[],
   projectRootDir?: string,
 ): boolean {
-  const normalizedFile = normalizePathSeparators(
-    projectRootDir && !path.isAbsolute(file)
-      ? path.resolve(projectRootDir, file)
-      : file,
-  );
+  const normalizedFile = normalizePathSeparators(file);
+  const candidates = new Set<string>();
+  candidates.add(normalizedFile);
 
-  return excludedRoots.some((root) => {
-    const prefix = root.endsWith(path.sep) ? root : root + path.sep;
-    return normalizedFile === root || normalizedFile.startsWith(prefix);
+  if (projectRootDir) {
+    const root = normalizePathSeparators(path.resolve(projectRootDir));
+
+    // If the file isn't already an absolute path inside the project root, also
+    // try resolving it from the project root. This covers both relative paths
+    // and Vite-style project-relative paths such as `/node_modules/foo/index.js`,
+    // which is how files inside the project root are represented after
+    // `normalizeModulePath`. We keep the original candidate too so external
+    // absolute paths (e.g. symlinked monorepo packages) still match their own
+    // excluded roots even if resolving from the project root produces a bogus
+    // path.
+    if (normalizedFile !== root && !normalizedFile.startsWith(root + "/")) {
+      const relativePart = normalizedFile.startsWith("/")
+        ? normalizedFile.slice(1)
+        : normalizedFile;
+      candidates.add(normalizePathSeparators(path.resolve(root, relativePart)));
+    }
+  }
+
+  return excludedRoots.some((excludedRoot) => {
+    const normalizedExcludedRoot = normalizePathSeparators(excludedRoot);
+    const prefix = normalizedExcludedRoot.endsWith("/")
+      ? normalizedExcludedRoot
+      : normalizedExcludedRoot + "/";
+
+    return Array.from(candidates).some(
+      (candidate) =>
+        candidate === normalizedExcludedRoot || candidate.startsWith(prefix),
+    );
   });
 }

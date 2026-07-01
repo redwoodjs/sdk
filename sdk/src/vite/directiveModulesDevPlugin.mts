@@ -12,6 +12,7 @@ import {
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { setVendorBarrelPaths } from "./barrelPaths.mjs";
 import {
+  getOptimizeDepsExcludePatterns,
   isExcludedFromOptimization,
   resolveOptimizeDepsExcludes,
 } from "./resolveOptimizeDepsExcludes.mjs";
@@ -121,8 +122,7 @@ export const directiveModulesDevPlugin = ({
   const VENDOR_SERVER_BARREL_OPTIMIZED_ID = slugifyOptimizeEntry(
     VENDOR_SERVER_BARREL_EXPORT_PATH,
   );
-  const escapeRegExp = (s: string) =>
-    s.replace(/[\\^$*+?.()|[\]{}]/g, "\\$&");
+  const escapeRegExp = (s: string) => s.replace(/[\\^$*+?.()|[\]{}]/g, "\\$&");
   const appBarrelFilter = new RegExp(
     `(${appBarrelPaths.map(escapeRegExp).join("|")})$`,
   );
@@ -180,7 +180,11 @@ export const directiveModulesDevPlugin = ({
       ) {
         const isServerBarrel = id.includes("server-barrel");
         const files = isServerBarrel ? serverFiles : clientFiles;
-        return generateVendorBarrelContent(files, projectRootDir, excludedRoots);
+        return generateVendorBarrelContent(
+          files,
+          projectRootDir,
+          excludedRoots,
+        );
       }
 
       // Handle app barrels
@@ -226,7 +230,8 @@ export const directiveModulesDevPlugin = ({
 
     if (
       !env.optimizeDeps.rolldownOptions.plugins.some(
-        (plugin: { name?: string }) => plugin.name === "rwsdk:app-barrel-blocker",
+        (plugin: { name?: string }) =>
+          plugin.name === "rwsdk:app-barrel-blocker",
       )
     ) {
       env.optimizeDeps.rolldownOptions.plugins.unshift(
@@ -321,7 +326,7 @@ export const directiveModulesDevPlugin = ({
       }
 
       excludedRoots = await resolveOptimizeDepsExcludes(
-        config.optimizeDeps.exclude ?? [],
+        getOptimizeDepsExcludePatterns(config),
         projectRootDir,
       );
 
