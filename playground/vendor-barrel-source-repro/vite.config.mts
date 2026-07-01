@@ -1,6 +1,6 @@
-import { defineConfig, Plugin } from "vite";
-import { redwood } from "rwsdk/vite";
 import { cloudflare } from "@cloudflare/vite-plugin";
+import { redwood } from "rwsdk/vite";
+import { defineConfig, Plugin } from "vite";
 
 /**
  * This plugin demonstrates the issue: files from my-ui-lib that live in
@@ -22,8 +22,8 @@ const myUiLibTransformMarker = (): Plugin => ({
       return {
         code:
           `import "./button.css";\n` +
-          code +
-          `\nconsole.log("[host-transform] CLIENT-SIDE MARKER for", ${JSON.stringify(id)});\n`,
+          `globalThis.__myUiLibHostTransformRan = true;\n` +
+          code,
         map: null,
       };
     }

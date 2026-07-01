@@ -8,7 +8,7 @@ There were two distinct but related challenges that needed to be solved to creat
 
 ### 1. Performance: Excessive Code-Splitting and Request Waterfalls
 
-The first problem was a performance bottleneck. To handle directive-marked modules (`"use client"`, `"use server"`) that might be internal to a third-party library, our initial discovery mechanism provided Vite's optimizer (`optimizeDeps`) with a list of *every individual file* containing a directive.
+The first problem was a performance bottleneck. To handle directive-marked modules (`"use client"`, `"use server"`) that might be internal to a third-party library, our initial discovery mechanism provided Vite's optimizer (`optimizeDeps`) with a list of _every individual file_ containing a directive.
 
 This forced `optimizeDeps` into an inefficient mode. Seeing hundreds of individual files as entry points, its underlying bundler (`esbuild`) would perform extreme code-splitting, creating a multitude of tiny, fragmented chunks. This led directly to an in-browser request waterfall, where the browser would have to make hundreds of sequential requests to render a single page, causing noticeable lag.
 
@@ -17,6 +17,7 @@ This forced `optimizeDeps` into an inefficient mode. Seeing hundreds of individu
 The second, more subtle problem was one of stability. After moving to a more streamlined directive scanning process, a new issue emerged: module-level state would be lost during the development session. This was caused by Vite's dependency re-optimization.
 
 The sequence of events was as follows:
+
 1. The server starts, and the application code is loaded.
 2. A request triggers the use of a new, previously undiscovered dependency from within the application's own source code (not `node_modules`).
 3. Vite's optimizer detects this new dependency, triggers a "re-optimization" pass, and reloads the worker.
@@ -30,7 +31,7 @@ The solution is a multi-pronged strategy. A proactive dependency scan solves the
 
 ### Solution 1: Proactive Scanning to Prevent Waterfalls and Reduce Re-Optimizations
 
-The first part of the solution is a unified strategy that proactively scans the *entire* dependency graph—both third-party and application code—and feeds this complete picture to Vite at startup. This solves the performance problem by ensuring all dependencies are discovered before they are needed, eliminating request waterfalls. It also mitigates the stability problem by making re-optimizations much less frequent, as the optimizer has a more complete picture of the graph from the outset.
+The first part of the solution is a unified strategy that proactively scans the _entire_ dependency graph—both third-party and application code—and feeds this complete picture to Vite at startup. This solves the performance problem by ensuring all dependencies are discovered before they are needed, eliminating request waterfalls. It also mitigates the stability problem by making re-optimizations much less frequent, as the optimizer has a more complete picture of the graph from the outset.
 
 However, this proactive scan cannot account for dependencies that are truly new, such as when a developer adds an import to a new package or module mid-session. When this happens, a re-optimization is still triggered, which leads to the second part of the solution.
 
@@ -52,9 +53,17 @@ A custom `esbuild` plugin intercepts resolution of the stable specifiers and ser
 
 For HMR, a matching temporary file is still written so the HMR plugin can invalidate the barrel module in Vite's module graph when a sub-scan discovers new directive files. On the next optimizer pass, the in-memory `onLoad` hook returns the updated content.
 
-This approach works *with* the bundler's expectations. By providing a small, consolidated list of entry points (the barrel files), we signal a complete and interconnected dependency graph. This allows `esbuild` to perform an efficient, comprehensive optimization pass that avoids both excessive chunking and the need for later re-optimization, while stable specifiers keep the pre-bundle cache coherent across server restarts.
+This approach works _with_ the bundler's expectations. By providing a small, consolidated list of entry points (the barrel files), we signal a complete and interconnected dependency graph. This allows `esbuild` to perform an efficient, comprehensive optimization pass that avoids both excessive chunking and the need for later re-optimization, while stable specifiers keep the pre-bundle cache coherent across server restarts.
 
-#### 3. Synchronized Execution and Assertive Resolution
+#### 3. Honoring `optimizeDeps.exclude`
+
+Vite allows users to opt specific dependencies out of pre-bundling via `optimizeDeps.exclude`. RedwoodSDK honors these exclusions for directive-bearing `node_modules` files: instead of routing excluded files through the pre-bundled **vendor barrel**, they are moved into the **app barrel**.
+
+This is important because files inside the vendor barrel are pre-bundled by `esbuild` / Rolldown and skip the host's Vite plugin pipeline. By placing excluded `node_modules` files in the app barrel, they are treated like application source and pass through the user's full Vite transform pipeline—including plugins that inject CSS imports, rewrite JSX, or add runtime markers.
+
+The implementation resolves each exclude pattern to an absolute package root, supporting bare package names, scoped packages, subpaths, relative or absolute paths, and symlinked packages. Both root-level and per-environment `optimizeDeps.exclude` configurations are unioned, so a package excluded in any environment is handled consistently. This logic lives in `resolveOptimizeDepsExcludes.mts` and is consumed by the barrel generator and the directive lookup map generator.
+
+#### 4. Synchronized Execution and Assertive Resolution
 
 A final challenge is the timing and execution of this process within Vite's lifecycle. Vite starts many processes in parallel, creating potential race conditions. Furthermore, Vite's dependency scanner is designed to treat application code as "external" by default, meaning it won't scan it for dependencies.
 
@@ -62,9 +71,9 @@ We solve this with a hybrid blocking and resolution strategy:
 
 1.  **Asynchronous Scan Start:** The scan is initiated early in the `configureServer` hook but is not awaited, allowing the Vite server to start up quickly.
 
-2.  **Optimizer Blocking:** A custom `esbuild` plugin is injected at the *start* of the `optimizeDeps` plugin chain. Its `onResolve` hook intercepts requests for app barrel files **and vendor barrel specifiers** and `await`s the scan's completion, pausing the optimizer until the barrels are populated with content.
+2.  **Optimizer Blocking:** A custom `esbuild` plugin is injected at the _start_ of the `optimizeDeps` plugin chain. Its `onResolve` hook intercepts requests for app barrel files **and vendor barrel specifiers** and `await`s the scan's completion, pausing the optimizer until the barrels are populated with content.
 
-3.  **Assertive Resolution:** The same `esbuild` plugin intercepts resolution requests for the application's own source files. It then explicitly returns a resolution result, claiming the file and signaling that it is *internal* code that must be scanned for dependencies. This preempts Vite's default behavior and ensures the entire application graph is traversed.
+3.  **Assertive Resolution:** The same `esbuild` plugin intercepts resolution requests for the application's own source files. It then explicitly returns a resolution result, claiming the file and signaling that it is _internal_ code that must be scanned for dependencies. This preempts Vite's default behavior and ensures the entire application graph is traversed.
 
 ### Solution 2: Mid-Session Barrel Invalidation
 
