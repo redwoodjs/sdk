@@ -229,6 +229,90 @@ describe("stitchDocumentAndAppStreams", () => {
 
       expect(result.trim().startsWith(`<!DOCTYPE html>`)).toBe(true);
     });
+
+    it("does not split an unclosed title tag across a chunk boundary", async () => {
+      const outerHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+</head>
+<body>
+  ${startMarker}
+  <script src="/client.js"></script>
+</body>
+</html>`;
+
+      // The ">" of the closing </title> arrives in the next chunk. A naive
+      // regex scan of the first chunk can falsely treat the "</title" as a
+      // non-hoisted tag boundary, leaving the <title> unclosed in <head>.
+      const innerHtmlChunks = [
+        `<title>Page Title</title`,
+        `><div>App content</div>${endMarker}`,
+      ];
+
+      const result = await streamToString(
+        stitchDocumentAndAppStreams(
+          stringToStream(outerHtml),
+          createChunkedStream(innerHtmlChunks),
+          startMarker,
+          endMarker,
+        ),
+      );
+
+      expect(result).toContain(`<title>Page Title</title>`);
+      expect(result).toMatch(
+        /<head>[\s\S]*<title>Page Title<\/title>[\s\S]*<\/head>/,
+      );
+      expect(result).toContain(`<div>App content</div>`);
+
+      const titleIndex = result.indexOf(`<title>Page Title</title>`);
+      const headCloseIndex = result.indexOf(`</head>`);
+      const bodyIndex = result.indexOf(`<body>`);
+
+      expect(titleIndex).toBeLessThan(headCloseIndex);
+      expect(titleIndex).toBeLessThan(bodyIndex);
+    });
+
+    it("does not truncate a hoisted tag name across a chunk boundary", async () => {
+      const outerHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+</head>
+<body>
+  ${startMarker}
+  <script src="/client.js"></script>
+</body>
+</html>`;
+
+      // The "<title" tag name is split between chunks. A naive regex scan of
+      // the first chunk (ending at "<t") can falsely treat that "<" as a
+      // non-hoisted tag boundary and fail to hoist the title.
+      const innerHtmlChunks = [
+        `<t`,
+        `itle>Page Title</title><div>App content</div>${endMarker}`,
+      ];
+
+      const result = await streamToString(
+        stitchDocumentAndAppStreams(
+          stringToStream(outerHtml),
+          createChunkedStream(innerHtmlChunks),
+          startMarker,
+          endMarker,
+        ),
+      );
+
+      expect(result).toContain(`<title>Page Title</title>`);
+      expect(result).toMatch(
+        /<head>[\s\S]*<title>Page Title<\/title>[\s\S]*<\/head>/,
+      );
+      expect(result).toContain(`<div>App content</div>`);
+
+      const titleIndex = result.indexOf(`<title>Page Title</title>`);
+      const headCloseIndex = result.indexOf(`</head>`);
+
+      expect(titleIndex).toBeLessThan(headCloseIndex);
+    });
   });
 
   describe("basic stitching flow", () => {
