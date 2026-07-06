@@ -319,16 +319,25 @@ export const directiveModulesDevPlugin = ({
       });
     },
 
-    async configResolved(config) {
-      if (config.command !== "serve") {
-        resolveScanPromise();
-        return;
-      }
-
+    async config(config) {
+      // context(justinvdm, 2026-07-02): Resolve optimizeDeps.exclude roots as
+      // early as possible so that configResolved can stay synchronous. This
+      // matters for Vite 7: the Vite 7 compat shim translates
+      // optimizeDeps.rolldownOptions.plugins in its configResolved hook, but
+      // Vite 7 does not await async configResolved hooks before running later
+      // plugins. If we add our app-barrel-blocker plugin asynchronously, it
+      // misses translation and the dev vendor barrel stays empty.
       excludedRoots = await resolveOptimizeDepsExcludes(
         getOptimizeDepsExcludePatterns(config),
         projectRootDir,
       );
+    },
+
+    configResolved(config) {
+      if (config.command !== "serve") {
+        resolveScanPromise();
+        return;
+      }
 
       mkdirSync(path.dirname(APP_CLIENT_BARREL_PATH), { recursive: true });
       writeFileSync(APP_CLIENT_BARREL_PATH, "");
