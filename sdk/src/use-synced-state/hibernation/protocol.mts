@@ -23,11 +23,11 @@ export type ClientMessage =
 
 // Messages sent by the DO back to the client.
 export type ServerMessage =
-  | { kind: "getState"; key: string; value: SyncedStateValue | undefined; id: string }
+  | { kind: "getState"; key: string; value?: SyncedStateValue | undefined; id: string }
   | { kind: "setState"; key: string; id: string }
   | { kind: "subscribe"; key: string; id: string }
   | { kind: "unsubscribe"; key: string; id: string }
-  | { kind: "update"; key: string; value: SyncedStateValue }
+  | { kind: "update"; key: string; value?: SyncedStateValue }
   | { kind: "error"; message: string; id?: string };
 
 export function packMessage(message: SyncedStateMessage): string {
@@ -62,13 +62,18 @@ function isClientMessage(message: SyncedStateMessage): message is ClientMessage 
 function isServerMessage(message: SyncedStateMessage): message is ServerMessage {
   switch (message.kind) {
     case "getState":
-      return "id" in message && typeof message.id === "string" && "value" in message;
+      return (
+        "id" in message &&
+        typeof message.id === "string" &&
+        "key" in message &&
+        typeof message.key === "string"
+      );
     case "setState":
     case "subscribe":
     case "unsubscribe":
       return "id" in message && typeof message.id === "string";
     case "update":
-      return "value" in message;
+      return "key" in message && typeof message.key === "string";
     case "error":
       return "message" in message && typeof message.message === "string";
     default:
