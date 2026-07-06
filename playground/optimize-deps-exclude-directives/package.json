@@ -1,5 +1,5 @@
 {
-  "name": "vendor-barrel-source-repro",
+  "name": "optimize-deps-exclude-directives",
   "version": "1.0.0",
   "description": "A bare-bones RedwoodSDK starter",
   "main": "index.js",

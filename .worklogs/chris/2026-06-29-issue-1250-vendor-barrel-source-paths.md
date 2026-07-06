@@ -14,7 +14,7 @@ dev.
 
 ## Reproduction
 
-Created `sdk/playground/vendor-barrel-source-repro`.
+Created `sdk/playground/optimize-deps-exclude-directives`.
 
 - `packages/my-ui-lib/src/button.tsx` is a `"use client"` component installed
   into `node_modules/my-ui-lib` via a `file:` dependency.
@@ -108,7 +108,7 @@ instead, they stay within the same pipeline as the app's own directive files:
 - `pnpm vitest --run -- createDirectiveLookupPlugin.test.mts directiveModulesDevPlugin.test.mts resolveOptimizeDepsExcludes.test.mts`
   passes.
 - Full SDK test suite passes.
-- `pnpm test:e2e -- vendor-barrel-source-repro` dev test passes (deployment
+- `pnpm test:e2e -- optimize-deps-exclude-directives` dev test passes (deployment
   test is skipped locally due to missing Cloudflare auth).
 - `pnpm build` in the repro produces a `dist/client/assets/button-*.css` chunk
   and the manifest correctly associates it with

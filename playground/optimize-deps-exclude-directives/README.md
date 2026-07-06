@@ -1,4 +1,4 @@
-# Vendor Barrel Source Repro
+# Optimize Deps Exclude Directives
 
 This playground reproduces the issue described in
 [redwoodjs/sdk#1250](https://github.com/redwoodjs/sdk/issues/1250).
@@ -46,7 +46,7 @@ host's normal Vite plugin pipeline.
 ## Steps to reproduce
 
 ```bash
-cd playground/vendor-barrel-source-repro
+cd playground/optimize-deps-exclude-directives
 pnpm dev
 ```
 
