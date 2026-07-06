@@ -320,7 +320,7 @@ export const directiveModulesDevPlugin = ({
     },
 
     async config(config) {
-      // context(justinvdm, 2026-07-02): Resolve optimizeDeps.exclude roots as
+      // context(chrisvdm, 2026-07-02): Resolve optimizeDeps.exclude roots as
       // early as possible so that configResolved can stay synchronous. This
       // matters for Vite 7: the Vite 7 compat shim translates
       // optimizeDeps.rolldownOptions.plugins in its configResolved hook, but
