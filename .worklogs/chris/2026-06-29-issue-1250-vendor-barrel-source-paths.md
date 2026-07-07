@@ -70,11 +70,6 @@ flows through the host's normal Vite plugin pipeline, so host transforms run.
     branch instead of the vendor-barrel branch (the app barrel already ensures
     they are part of the normal pipeline).
 
-- `sdk/src/vite/directivesPlugin.mts`
-  - Strips the query string (`?v=<hash>` etc.) before `normalizeModulePath` in
-    both the Vite `transform` hook and the optimizer `load` hook, so
-    source-served modules referenced through optimized chunks still register
-    under their clean lookup key.
 
 ### Tests
 
