@@ -12,9 +12,9 @@ import {
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { setVendorBarrelPaths } from "./barrelPaths.mjs";
 import {
-  getOptimizeDepsExcludePatterns,
+  getOptimizeDepsExcludePatternsByEnv,
   isExcludedFromOptimization,
-  resolveOptimizeDepsExcludes,
+  resolveOptimizeDepsExcludesByEnv,
 } from "./resolveOptimizeDepsExcludes.mjs";
 import {
   ConfigurableEsbuildOptions,
@@ -96,7 +96,9 @@ export const directiveModulesDevPlugin = ({
     reject: rejectScanPromise,
   } = Promise.withResolvers<void>();
   const tempDir = mkdtempSync(path.join(realpathSync(os.tmpdir()), "rwsdk-"));
-  let excludedRoots: string[] = [];
+  let excludedRootsByEnv: Record<string, string[]> = {};
+  let clientBarrelExcludedRoots: string[] = [];
+  let serverBarrelExcludedRoots: string[] = [];
   const APP_CLIENT_BARREL_PATH = path.join(tempDir, "app-client-barrel.js");
   const APP_SERVER_BARREL_PATH = path.join(tempDir, "app-server-barrel.js");
   const VENDOR_CLIENT_BARREL_PATH = path.join(
@@ -128,7 +130,10 @@ export const directiveModulesDevPlugin = ({
   );
   const BARREL_PREFIX = "\0rwsdk-app-barrel:";
 
-  const createAppBarrelBlockerPlugin = (excludedRoots: string[]) => ({
+  const createAppBarrelBlockerPlugin = (
+    clientExcludedRoots: string[],
+    serverExcludedRoots: string[],
+  ) => ({
     name: "rwsdk:app-barrel-blocker",
     async resolveId(id: string) {
       await scanPromise;
@@ -183,7 +188,7 @@ export const directiveModulesDevPlugin = ({
         return generateVendorBarrelContent(
           files,
           projectRootDir,
-          excludedRoots,
+          isServerBarrel ? serverExcludedRoots : clientExcludedRoots,
         );
       }
 
@@ -192,7 +197,11 @@ export const directiveModulesDevPlugin = ({
         const barrelPath = id.slice(BARREL_PREFIX.length);
         const isServerBarrel = barrelPath.includes("app-server-barrel");
         const files = isServerBarrel ? serverFiles : clientFiles;
-        return generateAppBarrelContent(files, projectRootDir, excludedRoots);
+        return generateAppBarrelContent(
+          files,
+          projectRootDir,
+          isServerBarrel ? serverExcludedRoots : clientExcludedRoots,
+        );
       }
     },
   });
@@ -206,7 +215,8 @@ export const directiveModulesDevPlugin = ({
   const configureOptimizeDeps = (
     envName: string,
     env: any,
-    excludedRoots: string[],
+    clientExcludedRoots: string[],
+    serverExcludedRoots: string[],
   ) => {
     env.optimizeDeps ??= {};
     env.optimizeDeps.include ??= [];
@@ -235,7 +245,7 @@ export const directiveModulesDevPlugin = ({
       )
     ) {
       env.optimizeDeps.rolldownOptions.plugins.unshift(
-        createAppBarrelBlockerPlugin(excludedRoots),
+        createAppBarrelBlockerPlugin(clientExcludedRoots, serverExcludedRoots),
       );
     }
   };
@@ -256,14 +266,14 @@ export const directiveModulesDevPlugin = ({
         return generateVendorBarrelContent(
           clientFiles,
           projectRootDir,
-          excludedRoots,
+          clientBarrelExcludedRoots,
         );
       }
       if (isServerBarrel) {
         return generateVendorBarrelContent(
           serverFiles,
           projectRootDir,
-          excludedRoots,
+          serverBarrelExcludedRoots,
         );
       }
       return null;
@@ -296,7 +306,7 @@ export const directiveModulesDevPlugin = ({
             generateVendorBarrelContent(
               clientFiles,
               projectRootDir,
-              excludedRoots,
+              clientBarrelExcludedRoots,
             ),
           );
           writeFileSync(
@@ -304,7 +314,7 @@ export const directiveModulesDevPlugin = ({
             generateVendorBarrelContent(
               serverFiles,
               projectRootDir,
-              excludedRoots,
+              serverBarrelExcludedRoots,
             ),
           );
           resolveScanPromise();
@@ -319,21 +329,25 @@ export const directiveModulesDevPlugin = ({
       });
     },
 
-    async config(config) {
-      // context(chrisvdm, 2026-07-02): Resolve optimizeDeps.exclude roots as
-      // early as possible so that configResolved can stay synchronous. This
-      // matters for Vite 7: the Vite 7 compat shim translates
-      // optimizeDeps.rolldownOptions.plugins in its configResolved hook, but
-      // Vite 7 does not await async configResolved hooks before running later
-      // plugins. If we add our app-barrel-blocker plugin asynchronously, it
-      // misses translation and the dev vendor barrel stays empty.
-      excludedRoots = await resolveOptimizeDepsExcludes(
-        getOptimizeDepsExcludePatterns(config),
+    configResolved(config) {
+      // context(chrisvdm, 2026-07-02): This hook must stay synchronous. Vite 7
+      // does not await async configResolved hooks before running later plugins,
+      // including the SDK's Vite 7 compat shim that translates
+      // optimizeDeps.rolldownOptions.plugins into esbuild plugins. If we add
+      // our app-barrel-blocker plugin after that shim has run, the optimizer
+      // never sees it and the dev vendor barrel stays empty.
+      excludedRootsByEnv = resolveOptimizeDepsExcludesByEnv(
+        getOptimizeDepsExcludePatternsByEnv(config),
         projectRootDir,
       );
-    },
+      clientBarrelExcludedRoots = [
+        ...new Set([
+          ...(excludedRootsByEnv.client ?? []),
+          ...(excludedRootsByEnv.ssr ?? []),
+        ]),
+      ];
+      serverBarrelExcludedRoots = [...(excludedRootsByEnv.worker ?? [])];
 
-    configResolved(config) {
       if (config.command !== "serve") {
         resolveScanPromise();
         return;
@@ -350,7 +364,12 @@ export const directiveModulesDevPlugin = ({
       writeFileSync(VENDOR_SERVER_BARREL_PATH, "");
 
       for (const [envName, env] of Object.entries(config.environments || {})) {
-        configureOptimizeDeps(envName, env, excludedRoots);
+        configureOptimizeDeps(
+          envName,
+          env,
+          clientBarrelExcludedRoots,
+          serverBarrelExcludedRoots,
+        );
       }
     },
   };

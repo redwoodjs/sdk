@@ -8,9 +8,9 @@ import {
 } from "../lib/constants.mjs";
 import { addOptimizeDepsPlugin } from "./addOptimizeDepsPlugin.mjs";
 import {
-  getOptimizeDepsExcludePatterns,
+  getOptimizeDepsExcludePatternsByEnv,
   isExcludedFromOptimization,
-  resolveOptimizeDepsExcludes,
+  resolveOptimizeDepsExcludesByEnv,
 } from "./resolveOptimizeDepsExcludes.mjs";
 
 export function generateLookupMap({
@@ -87,7 +87,7 @@ export const createDirectiveLookupPlugin = async ({
   let isDev = false;
   let devServer: ViteDevServer;
   let optimizeDepsExclude: string[] = [];
-  let excludedRootsPromise: Promise<string[]> | undefined;
+  let excludedRootsByEnv: Record<string, string[]> = {};
 
   log(
     "Initializing %s plugin with projectRootDir=%s",
@@ -97,11 +97,15 @@ export const createDirectiveLookupPlugin = async ({
 
   return {
     name: `rwsdk:${config.pluginName}`,
-    async config(config, { command, isPreview }) {
+    config(config, { command, isPreview }) {
       isDev = !isPreview && command === "serve";
-      optimizeDepsExclude = getOptimizeDepsExcludePatterns(config);
-      excludedRootsPromise = resolveOptimizeDepsExcludes(
-        optimizeDepsExclude,
+      optimizeDepsExclude = [
+        ...new Set(
+          Object.values(getOptimizeDepsExcludePatternsByEnv(config)).flat(),
+        ),
+      ];
+      excludedRootsByEnv = resolveOptimizeDepsExcludesByEnv(
+        getOptimizeDepsExcludePatternsByEnv(config),
         projectRootDir,
       );
       log("Development mode: %s", isDev);
@@ -245,14 +249,22 @@ export const createDirectiveLookupPlugin = async ({
         const environment = this.environment?.name || "client";
         log("Current environment: %s, isDev: %s", environment, isDev);
 
-        const excludedRoots = await excludedRootsPromise!;
+        const lookupExcludedRoots =
+          config.kind === "server"
+            ? [...(excludedRootsByEnv.worker ?? [])]
+            : [
+                ...new Set([
+                  ...(excludedRootsByEnv.client ?? []),
+                  ...(excludedRootsByEnv.ssr ?? []),
+                ]),
+              ];
 
         return generateLookupMap({
           files,
           isDev,
           kind: config.kind,
           exportName: config.exportName,
-          optimizeDepsExclude: excludedRoots,
+          optimizeDepsExclude: lookupExcludedRoots,
           projectRootDir,
         });
       }

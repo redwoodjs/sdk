@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   getOptimizeDepsExcludePatterns,
+  getOptimizeDepsExcludePatternsByEnv,
   isExcludedFromOptimization,
   resolveOptimizeDepsExcludes,
+  resolveOptimizeDepsExcludesByEnv,
 } from "./resolveOptimizeDepsExcludes.mjs";
 
 describe("getOptimizeDepsExcludePatterns", () => {
@@ -37,15 +39,38 @@ describe("getOptimizeDepsExcludePatterns", () => {
   });
 });
 
+describe("getOptimizeDepsExcludePatternsByEnv", () => {
+  it("should apply root-level excludes to every environment", () => {
+    const patterns = getOptimizeDepsExcludePatternsByEnv({
+      optimizeDeps: { exclude: ["foo"] },
+      environments: {
+        client: { optimizeDeps: { exclude: [] } },
+        worker: { optimizeDeps: { exclude: ["bar"] } },
+      },
+    });
+    expect(patterns.client).toEqual(["foo"]);
+    expect(patterns.worker).toEqual(["foo", "bar"]);
+  });
+
+  it("should fall back to known environments when none are configured", () => {
+    const patterns = getOptimizeDepsExcludePatternsByEnv({
+      optimizeDeps: { exclude: ["foo"] },
+    });
+    expect(patterns.client).toEqual(["foo"]);
+    expect(patterns.ssr).toEqual(["foo"]);
+    expect(patterns.worker).toEqual(["foo"]);
+  });
+});
+
 describe("resolveOptimizeDepsExcludes", () => {
-  it("should resolve an installed package to its root", async () => {
-    const roots = await resolveOptimizeDepsExcludes(["glob"], process.cwd());
+  it("should resolve an installed package to its root", () => {
+    const roots = resolveOptimizeDepsExcludes(["glob"], process.cwd());
     expect(roots.length).toBe(1);
     expect(roots[0]).toMatch(/node_modules[\/\\]glob$/);
   });
 
-  it("should resolve a scoped package to its root", async () => {
-    const roots = await resolveOptimizeDepsExcludes(
+  it("should resolve a scoped package to its root", () => {
+    const roots = resolveOptimizeDepsExcludes(
       ["@cloudflare/vite-plugin"],
       process.cwd(),
     );
@@ -53,17 +78,14 @@ describe("resolveOptimizeDepsExcludes", () => {
     expect(roots[0]).toMatch(/node_modules[\/\\]@cloudflare[\/\\]vite-plugin$/);
   });
 
-  it("should resolve a package subpath to the subpath directory", async () => {
-    const roots = await resolveOptimizeDepsExcludes(
-      ["glob/dist"],
-      process.cwd(),
-    );
+  it("should resolve a package subpath to the subpath directory", () => {
+    const roots = resolveOptimizeDepsExcludes(["glob/dist"], process.cwd());
     expect(roots.length).toBe(1);
     expect(roots[0]).toMatch(/node_modules[\/\\]glob[\/\\]dist$/);
   });
 
-  it("should resolve a relative path from the project root", async () => {
-    const roots = await resolveOptimizeDepsExcludes(
+  it("should resolve a relative path from the project root", () => {
+    const roots = resolveOptimizeDepsExcludes(
       ["./sdk/src/vite"],
       process.cwd(),
     );
@@ -71,13 +93,32 @@ describe("resolveOptimizeDepsExcludes", () => {
     expect(roots[0]).toMatch(/sdk[\/\\]src[\/\\]vite$/);
   });
 
-  it("should fall back to node_modules path for unresolvable patterns", async () => {
-    const roots = await resolveOptimizeDepsExcludes(
+  it("should fall back to node_modules path for unresolvable patterns", () => {
+    const roots = resolveOptimizeDepsExcludes(
       ["this-package-does-not-exist"],
       process.cwd(),
     );
     expect(roots.length).toBe(1);
     expect(roots[0]).toMatch(/node_modules[\/\\]this-package-does-not-exist$/);
+  });
+});
+
+describe("resolveOptimizeDepsExcludesByEnv", () => {
+  it("should resolve per environment", () => {
+    const roots = resolveOptimizeDepsExcludesByEnv(
+      {
+        client: ["glob"],
+        worker: ["this-package-does-not-exist"],
+      },
+      process.cwd(),
+    );
+
+    expect(roots.client).toHaveLength(1);
+    expect(roots.client![0]).toMatch(/node_modules[\/\\]glob$/);
+    expect(roots.worker).toHaveLength(1);
+    expect(roots.worker![0]).toMatch(
+      /node_modules[\/\\]this-package-does-not-exist$/,
+    );
   });
 });
 
