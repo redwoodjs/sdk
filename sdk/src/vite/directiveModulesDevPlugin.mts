@@ -11,6 +11,7 @@ import {
 } from "../lib/constants.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { setVendorBarrelPaths } from "./barrelPaths.mjs";
+import { SDK_ENVIRONMENT_NAMES } from "./constants.mjs";
 import {
   ConfigurableEsbuildOptions,
   runDirectivesScan,
@@ -102,8 +103,7 @@ export const directiveModulesDevPlugin = ({
   const VENDOR_SERVER_BARREL_OPTIMIZED_ID = slugifyOptimizeEntry(
     VENDOR_SERVER_BARREL_EXPORT_PATH,
   );
-  const escapeRegExp = (s: string) =>
-    s.replace(/[\\^$*+?.()|[\]{}]/g, "\\$&");
+  const escapeRegExp = (s: string) => s.replace(/[\\^$*+?.()|[\]{}]/g, "\\$&");
   const appBarrelFilter = new RegExp(
     `(${appBarrelPaths.map(escapeRegExp).join("|")})$`,
   );
@@ -203,7 +203,8 @@ export const directiveModulesDevPlugin = ({
 
     if (
       !env.optimizeDeps.rolldownOptions.plugins.some(
-        (plugin: { name?: string }) => plugin.name === "rwsdk:app-barrel-blocker",
+        (plugin: { name?: string }) =>
+          plugin.name === "rwsdk:app-barrel-blocker",
       )
     ) {
       env.optimizeDeps.rolldownOptions.plugins.unshift(
@@ -292,6 +293,12 @@ export const directiveModulesDevPlugin = ({
       writeFileSync(VENDOR_SERVER_BARREL_PATH, "");
 
       for (const [envName, env] of Object.entries(config.environments || {})) {
+        // context(chrisvdm, 2026-07-07): Skip environments the SDK does not own
+        // (e.g. auxiliary workers created by @cloudflare/vite-plugin). They are
+        // plain Workers and should not receive RSC barrel entries.
+        if (!SDK_ENVIRONMENT_NAMES.includes(envName as any)) {
+          continue;
+        }
         configureOptimizeDeps(envName, env);
       }
     },

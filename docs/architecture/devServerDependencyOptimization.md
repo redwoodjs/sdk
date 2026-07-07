@@ -54,6 +54,8 @@ For HMR, a matching temporary file is still written so the HMR plugin can invali
 
 This approach works *with* the bundler's expectations. By providing a small, consolidated list of entry points (the barrel files), we signal a complete and interconnected dependency graph. This allows `esbuild` to perform an efficient, comprehensive optimization pass that avoids both excessive chunking and the need for later re-optimization, while stable specifiers keep the pre-bundle cache coherent across server restarts.
 
+> **Note on auxiliary workers:** The barrel files are only injected into the `optimizeDeps` configuration of the three environments RedwoodSDK owns (`client`, `ssr`, `worker`). Additional environments, such as auxiliary workers created by `@cloudflare/vite-plugin`, do not receive these entries. This keeps auxiliary workers as plain Workers and avoids forcing RSC-specific dependencies into their optimizer bundles.
+
 #### 3. Synchronized Execution and Assertive Resolution
 
 A final challenge is the timing and execution of this process within Vite's lifecycle. Vite starts many processes in parallel, creating potential race conditions. Furthermore, Vite's dependency scanner is designed to treat application code as "external" by default, meaning it won't scan it for dependencies.

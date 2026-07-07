@@ -1,10 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
+  directiveModulesDevPlugin,
   generateAppBarrelContent,
   generateVendorBarrelContent,
 } from "./directiveModulesDevPlugin.mjs";
 
-describe("directiveModulesDevPlugin helpers", () => {
+const makeConfig = () => ({
+  command: "serve" as const,
+  environments: {
+    client: { optimizeDeps: {} as any },
+    ssr: { optimizeDeps: {} as any },
+    worker: { optimizeDeps: {} as any },
+    aux_email_worker: { optimizeDeps: {} as any },
+  },
+});
+
+describe("directiveModulesDevPlugin", () => {
   const projectRootDir = "/Users/test/project";
 
   describe("generateVendorBarrelContent", () => {
@@ -64,6 +75,47 @@ import "${projectRootDir}/src/component.tsx";`;
       const files = new Set<string>();
       const content = generateAppBarrelContent(files, projectRootDir);
       expect(content).toEqual("");
+    });
+  });
+
+  describe("configResolved", () => {
+    it("only injects barrels into SDK environments", () => {
+      const plugin = directiveModulesDevPlugin({
+        clientFiles: new Set(),
+        serverFiles: new Set(),
+        projectRootDir,
+        workerEntryPathname: "/Users/test/project/src/worker.tsx",
+        esbuildOptions: {},
+      });
+
+      const config = makeConfig();
+      (plugin as any).configResolved(config);
+
+      for (const envName of ["client", "ssr", "worker"]) {
+        const env = (config.environments as any)[envName];
+        expect(env.optimizeDeps.include).toContain(
+          "rwsdk/__vendor_client_barrel",
+        );
+        expect(env.optimizeDeps.include).toContain(
+          "rwsdk/__vendor_server_barrel",
+        );
+        expect(env.optimizeDeps.entries).toContain(
+          "rwsdk/__vendor_client_barrel",
+        );
+        expect(env.optimizeDeps.entries).toContain(
+          "rwsdk/__vendor_server_barrel",
+        );
+        expect(env.optimizeDeps.rolldownOptions.plugins).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ name: "rwsdk:app-barrel-blocker" }),
+          ]),
+        );
+      }
+
+      const auxEnv = (config.environments as any).aux_email_worker;
+      expect(auxEnv.optimizeDeps.include).toBeUndefined();
+      expect(auxEnv.optimizeDeps.entries).toBeUndefined();
+      expect(auxEnv.optimizeDeps.rolldownOptions?.plugins).toBeUndefined();
     });
   });
 });
