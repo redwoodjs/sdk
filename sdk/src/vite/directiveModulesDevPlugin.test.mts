@@ -47,6 +47,26 @@ export default {
       const content = generateVendorBarrelContent(files, projectRootDir);
       expect(content).toEqual("\n\nexport default {\n\n};");
     });
+
+    it("should exclude files under optimizeDeps.exclude roots", () => {
+      const files = new Set([
+        "node_modules/lib-a/index.js",
+        "node_modules/lib-b/component.tsx",
+      ]);
+      const excludedRoots = [`${projectRootDir}/node_modules/lib-a`];
+      const content = generateVendorBarrelContent(
+        files,
+        projectRootDir,
+        excludedRoots,
+      );
+      const expected = `import * as M0 from '${projectRootDir}/node_modules/lib-b/component.tsx';
+
+export default {
+  '/node_modules/lib-b/component.tsx': M0,
+};`;
+      expect(content).toEqual(expected);
+      expect(content).not.toContain("lib-a");
+    });
   });
 
   describe("generateAppBarrelContent", () => {
@@ -75,6 +95,66 @@ import "${projectRootDir}/src/component.tsx";`;
       const files = new Set<string>();
       const content = generateAppBarrelContent(files, projectRootDir);
       expect(content).toEqual("");
+    });
+
+    it("should include excluded node_modules files in the app barrel", () => {
+      const files = new Set([
+        "src/app.js",
+        "node_modules/lib-a/index.js",
+        "src/component.tsx",
+      ]);
+      const excludedRoots = [`${projectRootDir}/node_modules/lib-a`];
+      const content = generateAppBarrelContent(
+        files,
+        projectRootDir,
+        excludedRoots,
+      );
+      const expected = `import "${projectRootDir}/src/app.js";
+import "${projectRootDir}/node_modules/lib-a/index.js";
+import "${projectRootDir}/src/component.tsx";`;
+      expect(content).toEqual(expected);
+    });
+
+    it("should include excluded Vite-style /node_modules files in the app barrel", () => {
+      const files = new Set([
+        "/src/app.js",
+        "/node_modules/lib-a/index.js",
+        "/src/component.tsx",
+      ]);
+      const excludedRoots = [`${projectRootDir}/node_modules/lib-a`];
+      const content = generateAppBarrelContent(
+        files,
+        projectRootDir,
+        excludedRoots,
+      );
+      const expected = `import "${projectRootDir}/src/app.js";
+import "${projectRootDir}/node_modules/lib-a/index.js";
+import "${projectRootDir}/src/component.tsx";`;
+      expect(content).toEqual(expected);
+    });
+
+    it("should keep transitive node_modules files in the vendor barrel unless they are also excluded", () => {
+      const files = new Set([
+        "/node_modules/lib-a/index.js",
+        "/node_modules/lib-a-utils/index.js",
+      ]);
+      const excludedRoots = [`${projectRootDir}/node_modules/lib-a`];
+
+      const vendorContent = generateVendorBarrelContent(
+        files,
+        projectRootDir,
+        excludedRoots,
+      );
+      expect(vendorContent).toContain("lib-a-utils");
+      expect(vendorContent).not.toContain("lib-a/index");
+
+      const appContent = generateAppBarrelContent(
+        files,
+        projectRootDir,
+        excludedRoots,
+      );
+      expect(appContent).toContain("lib-a/index");
+      expect(appContent).not.toContain("lib-a-utils");
     });
   });
 

@@ -53,4 +53,22 @@ describe("generateLookupMap", () => {
       `"node_modules/lib-a/index.js": () => import("node_modules/lib-a/index.js")`,
     );
   });
+
+  it("should source-serve files under optimizeDeps.exclude roots in dev", () => {
+    const result = generateLookupMap({
+      files,
+      isDev: true,
+      kind: "client",
+      exportName: "clientLookup",
+      optimizeDepsExclude: ["/project/node_modules/lib-a"],
+      projectRootDir: "/project",
+    });
+
+    expect(result.code).toContain(
+      `"node_modules/lib-a/index.js": () => import("node_modules/lib-a/index.js")`,
+    );
+    expect(result.code).not.toContain(
+      `"node_modules/lib-a/index.js": () => import("${VENDOR_CLIENT_BARREL_EXPORT_PATH}")`,
+    );
+  });
 });

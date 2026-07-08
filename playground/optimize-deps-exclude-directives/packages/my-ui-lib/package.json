@@ -1,0 +1,11 @@
+{
+  "name": "my-ui-lib",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    "./button": {
+      "types": "./src/button.tsx",
+      "default": "./src/button.tsx"
+    }
+  }
+}
