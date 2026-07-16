@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import os from "os";
 import path from "path";
+import debug from "debug";
 import { Plugin } from "vite";
 
 import {
@@ -22,17 +23,20 @@ import {
   runDirectivesScan,
 } from "./runDirectivesScan.mjs";
 
+const log = debug("rwsdk:vite:directive-modules-dev:barrels");
+
 export const generateVendorBarrelContent = (
   files: Set<string>,
   projectRootDir: string,
   excludedRoots: string[] = [],
+  label: string = "vendor",
 ) => {
-  const imports = [...files]
-    .filter(
-      (file) =>
-        file.includes("node_modules") &&
-        !isExcludedFromOptimization(file, excludedRoots, projectRootDir),
-    )
+  const matchedFiles = [...files].filter(
+    (file) =>
+      file.includes("node_modules") &&
+      !isExcludedFromOptimization(file, excludedRoots, projectRootDir),
+  );
+  const imports = matchedFiles
     .map(
       (file, i) =>
         `import * as M${i} from '${normalizeModulePath(file, projectRootDir, {
@@ -43,32 +47,31 @@ export const generateVendorBarrelContent = (
 
   const exports =
     "export default {\n" +
-    [...files]
-      .filter(
-        (file) =>
-          file.includes("node_modules") &&
-          !isExcludedFromOptimization(file, excludedRoots, projectRootDir),
-      )
+    matchedFiles
       .map(
         (file, i) => `  '${normalizeModulePath(file, projectRootDir)}': M${i},`,
       )
       .join("\n") +
     "\n};";
 
-  return `${imports}\n\n${exports}`;
+  const content = `${imports}\n\n${exports}`;
+  log("%s barrel: files=%j", label, matchedFiles);
+  log("%s barrel: content=\n%s", label, content);
+  return content;
 };
 
 export const generateAppBarrelContent = (
   files: Set<string>,
   projectRootDir: string,
   excludedRoots: string[] = [],
+  label: string = "app",
 ) => {
-  return [...files]
-    .filter(
-      (file) =>
-        !file.includes("node_modules") ||
-        isExcludedFromOptimization(file, excludedRoots, projectRootDir),
-    )
+  const matchedFiles = [...files].filter(
+    (file) =>
+      !file.includes("node_modules") ||
+      isExcludedFromOptimization(file, excludedRoots, projectRootDir),
+  );
+  const content = matchedFiles
     .map((file) => {
       const resolvedPath = normalizeModulePath(file, projectRootDir, {
         absolute: true,
@@ -76,6 +79,9 @@ export const generateAppBarrelContent = (
       return `import "${resolvedPath}";`;
     })
     .join("\n");
+  log("%s barrel: files=%j", label, matchedFiles);
+  log("%s barrel: content=\n%s", label, content);
+  return content;
 };
 
 export const directiveModulesDevPlugin = ({
@@ -186,10 +192,12 @@ export const directiveModulesDevPlugin = ({
       ) {
         const isServerBarrel = id.includes("server-barrel");
         const files = isServerBarrel ? serverFiles : clientFiles;
+        const label = isServerBarrel ? "vendor-server" : "vendor-client";
         return generateVendorBarrelContent(
           files,
           projectRootDir,
           isServerBarrel ? serverExcludedRoots : clientExcludedRoots,
+          label,
         );
       }
 
@@ -198,10 +206,12 @@ export const directiveModulesDevPlugin = ({
         const barrelPath = id.slice(BARREL_PREFIX.length);
         const isServerBarrel = barrelPath.includes("app-server-barrel");
         const files = isServerBarrel ? serverFiles : clientFiles;
+        const label = isServerBarrel ? "app-server" : "app-client";
         return generateAppBarrelContent(
           files,
           projectRootDir,
           isServerBarrel ? serverExcludedRoots : clientExcludedRoots,
+          label,
         );
       }
     },
@@ -268,6 +278,7 @@ export const directiveModulesDevPlugin = ({
           clientFiles,
           projectRootDir,
           clientBarrelExcludedRoots,
+          "vendor-client",
         );
       }
       if (isServerBarrel) {
@@ -275,6 +286,7 @@ export const directiveModulesDevPlugin = ({
           serverFiles,
           projectRootDir,
           serverBarrelExcludedRoots,
+          "vendor-server",
         );
       }
       return null;
@@ -308,6 +320,7 @@ export const directiveModulesDevPlugin = ({
               clientFiles,
               projectRootDir,
               clientBarrelExcludedRoots,
+              "vendor-client",
             ),
           );
           writeFileSync(
@@ -316,6 +329,7 @@ export const directiveModulesDevPlugin = ({
               serverFiles,
               projectRootDir,
               serverBarrelExcludedRoots,
+              "vendor-server",
             ),
           );
           resolveScanPromise();

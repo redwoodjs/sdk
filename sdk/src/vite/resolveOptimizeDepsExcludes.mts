@@ -16,6 +16,26 @@ function getResolverForEnv(envName: string): EnvName {
   return envName in ENV_RESOLVERS ? (envName as EnvName) : "client";
 }
 
+function findPackageRoot(filePath: string): string | undefined {
+  let dir = path.dirname(normalizePathSeparators(filePath));
+  const root = normalizePathSeparators(path.parse(dir).root);
+
+  while (dir !== root) {
+    const candidate = normalizePathSeparators(path.join(dir, "package.json"));
+    if (fs.existsSync(candidate)) {
+      return dir;
+    }
+
+    const parent = path.dirname(dir);
+    if (parent === dir) {
+      break;
+    }
+    dir = parent;
+  }
+
+  return undefined;
+}
+
 function resolveExcludeRoot(
   entry: string,
   projectRootDir: string,
@@ -51,20 +71,28 @@ function resolveExcludeRoot(
     const pkg = match[0];
     const subpath = entry.slice(pkg.length);
 
-    const pkgJsonPath = maybeResolveEnvImport({
-      id: `${pkg}/package.json`,
+    // Resolve the package's main entry (not package.json) through the
+    // environment-aware resolver, then find the package.json by walking up.
+    // This works even when the package's `exports` field does not export its
+    // own `package.json`.
+    const resolvedEntry = maybeResolveEnvImport({
+      id: pkg,
       envName,
       projectRootDir,
     });
 
-    if (!pkgJsonPath) {
+    if (!resolvedEntry) {
       return undefined;
     }
 
-    const pkgRoot = normalizePathSeparators(path.dirname(pkgJsonPath));
+    const pkgRoot = findPackageRoot(resolvedEntry);
+    if (!pkgRoot) {
+      return undefined;
+    }
+
     const resolvedRoot = subpath
       ? normalizePathSeparators(path.join(pkgRoot, subpath))
-      : pkgRoot;
+      : normalizePathSeparators(pkgRoot);
 
     try {
       return normalizePathSeparators(fs.realpathSync(resolvedRoot));

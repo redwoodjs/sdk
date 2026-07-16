@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { normalizePath } from "vite";
 import {
   getOptimizeDepsExcludePatterns,
   getOptimizeDepsExcludePatternsByEnv,
@@ -82,6 +86,44 @@ describe("resolveOptimizeDepsExcludes", () => {
     const roots = resolveOptimizeDepsExcludes(["glob/dist"], process.cwd());
     expect(roots.length).toBe(1);
     expect(roots[0]).toMatch(/node_modules[\/\\]glob[\/\\]dist$/);
+  });
+
+  it("should resolve a package that does not export its own package.json", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "rwsdk-exclude-test-"));
+    const realPkgDir = path.join(tmpDir, "packages", "restricted-exports");
+    const nodeModulesDir = path.join(tmpDir, "node_modules");
+    const symlinkPkgDir = path.join(nodeModulesDir, "restricted-exports");
+
+    try {
+      fs.mkdirSync(realPkgDir, { recursive: true });
+      fs.mkdirSync(nodeModulesDir, { recursive: true });
+
+      fs.writeFileSync(
+        path.join(realPkgDir, "package.json"),
+        JSON.stringify({
+          name: "restricted-exports",
+          version: "1.0.0",
+          type: "module",
+          exports: "./index.js",
+        }),
+      );
+      fs.writeFileSync(
+        path.join(realPkgDir, "index.js"),
+        "export const foo = 'bar';\n",
+      );
+      fs.symlinkSync(realPkgDir, symlinkPkgDir);
+
+      const roots = resolveOptimizeDepsExcludes(
+        ["restricted-exports"],
+        tmpDir,
+      );
+      expect(roots).toHaveLength(1);
+      expect(normalizePath(roots[0])).toBe(
+        normalizePath(fs.realpathSync(realPkgDir)),
+      );
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 
   it("should resolve a relative path from the project root", () => {
