@@ -5,6 +5,7 @@ import type { ViteDevServer } from "vite";
 import { Plugin } from "vite";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { addOptimizeDepsPlugin } from "./addOptimizeDepsPlugin.mjs";
+import { SDK_ENVIRONMENT_NAMES } from "./constants.mjs";
 import { transformClientComponents } from "./transformClientComponents.mjs";
 import { transformServerFunctions } from "./transformServerFunctions.mjs";
 
@@ -113,6 +114,15 @@ export const directivesPlugin = ({
       // Removed: too noisy even in verbose mode
     },
     configEnvironment(env, config) {
+      // context(chrisvdm, 2026-07-07): Skip environments the SDK does not own
+      // (e.g. auxiliary workers created by @cloudflare/vite-plugin). They are
+      // plain Workers and should not have client components rewritten to
+      // registerClientReference.
+      if (!SDK_ENVIRONMENT_NAMES.includes(env as any)) {
+        process.env.VERBOSE && log("Skipping non-SDK environment: env=%s", env);
+        return;
+      }
+
       if (
         isBuild &&
         env === "worker" &&

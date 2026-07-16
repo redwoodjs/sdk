@@ -11,6 +11,7 @@ import {
 } from "../lib/constants.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { setVendorBarrelPaths } from "./barrelPaths.mjs";
+import { SDK_ENVIRONMENT_NAMES } from "./constants.mjs";
 import {
   getOptimizeDepsExcludePatternsByEnv,
   isExcludedFromOptimization,
@@ -364,6 +365,12 @@ export const directiveModulesDevPlugin = ({
       writeFileSync(VENDOR_SERVER_BARREL_PATH, "");
 
       for (const [envName, env] of Object.entries(config.environments || {})) {
+        // context(chrisvdm, 2026-07-07): Skip environments the SDK does not own
+        // (e.g. auxiliary workers created by @cloudflare/vite-plugin). They are
+        // plain Workers and should not receive RSC barrel entries.
+        if (!SDK_ENVIRONMENT_NAMES.includes(envName as any)) {
+          continue;
+        }
         configureOptimizeDeps(
           envName,
           env,

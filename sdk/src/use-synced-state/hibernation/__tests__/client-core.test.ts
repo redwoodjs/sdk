@@ -281,6 +281,44 @@ describe("client-core", () => {
     await expect(getStatePromise).rejects.toThrow("WebSocket closed");
   });
 
+  it("resolves getState with undefined when the server has no state", async () => {
+    const client = createClient();
+    const getStatePromise = client.getState("counter");
+
+    await waitForOpen(clients[0] as unknown as WebSocket);
+
+    const serverSocket = await waitForCondition(() => serverSockets[0]);
+    await waitForCondition(() =>
+      serverMessages[0].length >= 1 ? serverMessages[0] : undefined,
+    );
+
+    expect(serverMessages[0][0]).toMatchObject({
+      v: 1,
+      kind: "getState",
+      key: "counter",
+    });
+
+    // When the server has no state it sends a getState response with no value
+    // property (because JSON.stringify omits undefined values).
+    send(serverSocket, {
+      kind: "getState",
+      key: "counter",
+      id: serverMessages[0][0].id,
+    } as ServerMessage);
+
+    await wait(0);
+    await vi.advanceTimersByTimeAsync(PENDING_REQUEST_TIMEOUT_MS + 1000);
+
+    await expect(getStatePromise).resolves.toBeUndefined();
+
+    // The pending timeout should not fire; the socket should stay open.
+    const firstSocket = clients[0] as unknown as WebSocket;
+    const closeSpy = vi.fn();
+    firstSocket.once("close", closeSpy);
+    await vi.advanceTimersByTimeAsync(PENDING_REQUEST_TIMEOUT_MS + 1000);
+    expect(closeSpy).not.toHaveBeenCalled();
+  });
+
   it("queues messages sent before the socket opens", async () => {
     const client = createClient();
     const getStatePromise = client.getState("counter");

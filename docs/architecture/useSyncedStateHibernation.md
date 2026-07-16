@@ -64,6 +64,8 @@ Messages are JSON envelopes with a protocol version and a `kind` discriminator:
 
 Client message kinds are `getState`, `setState`, `subscribe`, and `unsubscribe`. Server message kinds are `getState`, `setState`, `subscribe`, `unsubscribe`, `update`, and `error`. The protocol is intentionally simple and does not support chunked streaming, because the payloads are small key/value operations.
 
+Because messages are serialized with `JSON.stringify`, an `undefined` value is omitted from the envelope. A `getState` response for an unset key, or an `update` for a state that was set to `undefined`, therefore arrives without a `value` property. The client treats a missing `value` as `undefined` rather than rejecting the message as malformed.
+
 ## Identity Extraction and Key Transformation
 
 Applications register an identity extractor with `SyncedStateServer.registerIdentityExtractor`. It runs in the Worker at upgrade time and must return a small JSON-serializable value from `requestInfo`:

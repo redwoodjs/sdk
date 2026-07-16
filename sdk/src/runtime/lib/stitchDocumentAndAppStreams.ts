@@ -24,6 +24,25 @@ function splitStreamOnFirstNonHoistedTag(
   const nonHoistedTagPattern =
     /<(?!(?:\/)?(?:title|meta|link|style|base)[\s>\/])(?![!?])/i;
 
+  // Longest hoistable name is 5 chars (title/style); a match candidate at
+  // index i needs buffer[i..] to have at least 1 (optional "/") + 5 (name)
+  // + 1 (terminating char) = 7 chars of context past "<" before it can be
+  // trusted as final. Otherwise the tag name may be mid-stream-truncated,
+  // causing a false-positive match on e.g. "<t" and severing <title>.
+  const MIN_TRAILING_CONTEXT = 7;
+  function findTrustedMatch(
+    buf: string,
+    streamDone: boolean,
+  ): RegExpMatchArray | null {
+    const match = buf.match(nonHoistedTagPattern);
+    if (!match || typeof match.index !== "number") return null;
+    if (streamDone) return match; // no more data coming; trust it
+    // buf.length - match.index counts the "<" itself, so subtract 1 to
+    // get the number of confirmed characters *after* it.
+    if (buf.length - match.index - 1 < MIN_TRAILING_CONTEXT) return null; // ambiguous, wait for more data
+    return match;
+  }
+
   let sourceReader: ReadableStreamDefaultReader<Uint8Array>;
   let appBodyController: ReadableStreamDefaultController<Uint8Array> | null =
     null;
@@ -45,7 +64,7 @@ function splitStreamOnFirstNonHoistedTag(
 
           if (done) {
             if (buffer) {
-              const match = buffer.match(nonHoistedTagPattern);
+              const match = findTrustedMatch(buffer, true);
               if (match && typeof match.index === "number") {
                 const hoistedPart = buffer.slice(0, match.index);
                 controller.enqueue(encoder.encode(hoistedPart));
@@ -62,7 +81,7 @@ function splitStreamOnFirstNonHoistedTag(
           }
 
           buffer += decoder.decode(value, { stream: true });
-          const match = buffer.match(nonHoistedTagPattern);
+          const match = findTrustedMatch(buffer, false);
 
           if (match && typeof match.index === "number") {
             const hoistedPart = buffer.slice(0, match.index);
@@ -89,11 +108,20 @@ function splitStreamOnFirstNonHoistedTag(
             }
           } else {
             const flushIndex = buffer.lastIndexOf("\n");
-            if (flushIndex !== -1) {
+            // Never flush past a point that could still be part of
+            // an ambiguous, not-yet-trusted candidate tag. Only
+            // flush content strictly before the last unresolved
+            // "<" in the buffer, so a truncated tag name can never
+            // be split across a flush boundary.
+            const earliestOpenBracket = buffer.lastIndexOf("<");
+            const safeFlushLimit =
+              earliestOpenBracket === -1 ? buffer.length : earliestOpenBracket;
+            const effectiveFlushIndex = Math.min(flushIndex, safeFlushLimit - 1);
+            if (flushIndex !== -1 && effectiveFlushIndex >= 0) {
               controller.enqueue(
-                encoder.encode(buffer.slice(0, flushIndex + 1)),
+                encoder.encode(buffer.slice(0, effectiveFlushIndex + 1)),
               );
-              buffer = buffer.slice(flushIndex + 1);
+              buffer = buffer.slice(effectiveFlushIndex + 1);
             }
             await pump();
           }
