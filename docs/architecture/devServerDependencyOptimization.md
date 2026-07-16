@@ -55,6 +55,8 @@ For HMR, a matching temporary file is still written so the HMR plugin can invali
 
 This approach works _with_ the bundler's expectations. By providing a small, consolidated list of entry points (the barrel files), we signal a complete and interconnected dependency graph. This allows `esbuild` to perform an efficient, comprehensive optimization pass that avoids both excessive chunking and the need for later re-optimization, while stable specifiers keep the pre-bundle cache coherent across server restarts.
 
+> **Note on auxiliary workers:** The barrel files are only injected into the `optimizeDeps` configuration of the three environments RedwoodSDK owns (`client`, `ssr`, `worker`). Additional environments, such as auxiliary workers created by `@cloudflare/vite-plugin`, do not receive these entries. This keeps auxiliary workers as plain Workers and avoids forcing RSC-specific dependencies into their optimizer bundles.
+
 #### 3. Honoring `optimizeDeps.exclude`
 
 Vite allows users to opt specific dependencies out of pre-bundling via `optimizeDeps.exclude`. RedwoodSDK honors these exclusions for directive-bearing `node_modules` files: instead of routing excluded files through the pre-bundled **vendor barrel**, they are moved into the **app barrel**.

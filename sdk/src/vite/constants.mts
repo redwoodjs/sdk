@@ -14,3 +14,10 @@ export const externalModules = [
 ];
 
 export const externalModulesSet = new Set(externalModules);
+
+/**
+ * The Vite environment names that RedwoodSDK owns and configures.
+ * Other environments (e.g. auxiliary workers created by the Cloudflare Vite
+ * plugin) should not receive RSC-specific directive/barrel setup.
+ */
+export const SDK_ENVIRONMENT_NAMES = ["client", "ssr", "worker"] as const;

@@ -1,0 +1,7 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "aux-worker-registerclientreference-aux",
+  "main": "worker.ts",
+  "compatibility_date": "2025-11-01",
+  "workers_dev": false
+}

@@ -17,6 +17,8 @@ Furthermore, a "use client" module might export more than just React components.
 
 The solution is to transform the module's code differently for each of Vite's three environments (`worker`, `ssr`, and `client`), using the SSR Bridge to connect them.
 
+> **Note on auxiliary workers:** These transformations are only applied to the environments RedwoodSDK owns (`worker`, `ssr`, `client`). Additional environments created by other plugins — for example, auxiliary workers configured via `@cloudflare/vite-plugin`'s `auxiliaryWorkers` option — are intentionally left untouched. They are plain Workers, not RSC renderers, so they do not receive the vendor barrel or the `registerClientReference` rewrite.
+
 #### The `worker` Environment Transformation
 
 This is the most complex case, as the `worker` environment handles both the RSC and SSR passes. The transformation replaces the module's contents with code that loads the SSR version of the module and creates proxies that can satisfy both contexts.
