@@ -42,9 +42,7 @@ jobs:
           cache: 'pnpm'
 
       - name: Update npm
-        # npm@12 requires Node ^24.15.0 or >=26.0.0, but the release image uses
-        # Node 24.14.0. Stay on the npm v11 line, which is compatible.
-        run: npm install -g npm@11
+        run: npm install -g npm@latest
 
       - name: Setup .npmrc for publishing
         working-directory: community
