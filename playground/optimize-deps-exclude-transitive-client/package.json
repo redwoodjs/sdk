@@ -1,5 +1,5 @@
 {
-  "name": "optimize-deps-exclude-querystring-repro",
+  "name": "optimize-deps-exclude-transitive-client",
   "version": "1.0.0",
   "description": "Repro for optimizeDeps.exclude query-string issue",
   "main": "index.js",

@@ -1644,7 +1644,7 @@ importers:
 
   playground/optimize-deps-exclude-directives/packages/my-ui-lib: {}
 
-  playground/optimize-deps-exclude-querystring-repro:
+  playground/optimize-deps-exclude-transitive-client:
     dependencies:
       dep-a:
         specifier: file:./packages/dep-a
@@ -1699,13 +1699,13 @@ importers:
         specifier: 4.85.0
         version: 4.85.0(@cloudflare/workers-types@4.20260426.1)
 
-  playground/optimize-deps-exclude-querystring-repro/packages/dep-a: {}
+  playground/optimize-deps-exclude-transitive-client/packages/dep-a: {}
 
-  playground/optimize-deps-exclude-querystring-repro/packages/dep-b: {}
+  playground/optimize-deps-exclude-transitive-client/packages/dep-b: {}
 
-  playground/optimize-deps-exclude-querystring-repro/packages/dep-c: {}
+  playground/optimize-deps-exclude-transitive-client/packages/dep-c: {}
 
-  playground/optimize-deps-exclude-querystring-repro/packages/dep-x: {}
+  playground/optimize-deps-exclude-transitive-client/packages/dep-x: {}
 
   playground/render-apis:
     dependencies:
