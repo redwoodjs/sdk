@@ -1,4 +1,4 @@
-import { $ } from "execa";
+import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -14,11 +14,6 @@ interface InstallLocalPackagesOptions {
    */
   targetDir: string;
   /**
-   * The package manager to use for installation.
-   * @default "pnpm"
-   */
-  packageManager?: "pnpm" | "npm" | "yarn";
-  /**
    * The names of the packages to install. If not provided, all packages
    * in `packagesDir` will be installed.
    */
@@ -26,19 +21,20 @@ interface InstallLocalPackagesOptions {
 }
 
 /**
- * Packs local packages into tarballs and installs them into the target
- * directory. This is useful for playground tests that need to install
- * local packages as regular dependencies (so they get prebundled by Vite)
- * without including them in the project's `package.json` dependencies
+ * Packs local packages into tarballs and extracts them into the target
+ * directory's `node_modules`. This is useful for playground tests that need
+ * to install local packages as regular dependencies (so they get prebundled by
+ * Vite) without including them in the project's `package.json` dependencies
  * (which would cause lockfile issues in CI).
  *
- * The packages are installed using `npm pack` followed by the package
- * manager's install command, using `file:` protocol for the tarball paths.
+ * We avoid the package manager's install command (e.g. `pnpm add`) because it
+ * can deadlock when run inside a `postinstall` script (the parent package
+ * manager install holds locks on the store/lockfile) or hang when modifying a
+ * lockfile inside a read-only E2E cache.
  */
 export async function installLocalPackages({
   packagesDir,
   targetDir,
-  packageManager = "pnpm",
   packageNames,
 }: InstallLocalPackagesOptions): Promise<void> {
   const packageDirs = await fs.promises.readdir(packagesDir, {
@@ -59,40 +55,34 @@ export async function installLocalPackages({
     `Installing local packages: ${packagesToInstall.join(", ")} from ${packagesDir}`,
   );
 
-  const tarballPaths: string[] = [];
+  const nodeModulesDir = path.join(targetDir, "node_modules");
+  await fs.promises.mkdir(nodeModulesDir, { recursive: true });
 
   for (const packageName of packagesToInstall) {
     const packageDir = path.join(packagesDir, packageName);
+    const targetPackageDir = path.join(nodeModulesDir, packageName);
 
-    // Pack the package
-    const packResult = await $({
-      cwd: packageDir,
-      stdio: "pipe",
-    })`npm pack --pack-destination=${packageDir}`;
+    const tarballName = execSync(
+      `npm pack --pack-destination=${packageDir}`,
+      { cwd: packageDir, encoding: "utf-8", stdio: "pipe" },
+    ).trim();
 
-    const tarballName = packResult.stdout?.trim();
     if (!tarballName) {
       throw new Error(`Failed to pack package ${packageName}`);
     }
 
     const tarballPath = path.join(packageDir, tarballName);
-    tarballPaths.push(tarballPath);
     log(`  Packed ${packageName} -> ${tarballName}`);
+
+    await fs.promises.rm(targetPackageDir, { recursive: true, force: true });
+    await fs.promises.mkdir(targetPackageDir, { recursive: true });
+
+    execSync(`tar -xzf ${tarballPath} -C ${targetPackageDir} --strip-components=1`, {
+      stdio: "pipe",
+    });
+
+    log(`  Installed ${packageName} -> ${targetPackageDir}`);
   }
 
-  // Install the tarballs
-  const installCommand = {
-    pnpm: ["pnpm", "add", ...tarballPaths],
-    npm: ["npm", "install", ...tarballPaths],
-    yarn: ["yarn", "add", ...tarballPaths],
-  }[packageManager];
-
-  log(`  Running ${installCommand.join(" ")}`);
-  const [command, ...args] = installCommand;
-  await $(command, args, {
-    cwd: targetDir,
-    stdio: "pipe",
-  });
-
-  log(`  Installed ${packagesToInstall.length} local packages`);
+  log(`Installed ${packagesToInstall.length} local packages`);
 }

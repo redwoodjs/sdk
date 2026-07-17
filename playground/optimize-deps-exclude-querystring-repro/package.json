@@ -19,13 +19,10 @@
     "release": "rw-scripts ensure-deploy-env && npm run clean && npm run build && wrangler deploy",
     "generate": "rw-scripts ensure-env && wrangler types --include-runtime false",
     "check": "npm run generate && npm run types",
-    "types": "tsc"
+    "types": "tsc",
+    "postinstall": "node ./scripts/install-local-packages.mjs"
   },
   "dependencies": {
-    "dep-a": "file:/Users/justin/rw/worktrees/sdk_excludes-query-string-issue/playground/optimize-deps-exclude-querystring-repro/packages/dep-a/dep-a-1.0.0.tgz",
-    "dep-b": "file:/Users/justin/rw/worktrees/sdk_excludes-query-string-issue/playground/optimize-deps-exclude-querystring-repro/packages/dep-b/dep-b-1.0.0.tgz",
-    "dep-c": "file:/Users/justin/rw/worktrees/sdk_excludes-query-string-issue/playground/optimize-deps-exclude-querystring-repro/packages/dep-c/dep-c-1.0.0.tgz",
-    "dep-x": "file:/Users/justin/rw/worktrees/sdk_excludes-query-string-issue/playground/optimize-deps-exclude-querystring-repro/packages/dep-x/dep-x-1.0.0.tgz",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "react-server-dom-webpack": "19.2.6",

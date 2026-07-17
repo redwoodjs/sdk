@@ -43,10 +43,6 @@ dist
 
 # Output of 'npm pack'
 *.tgz
-!packages/dep-a/dep-a-1.0.0.tgz
-!packages/dep-b/dep-b-1.0.0.tgz
-!packages/dep-c/dep-c-1.0.0.tgz
-!packages/dep-x/dep-x-1.0.0.tgz
 
 # pnpm store directory
 .pnpm-store
