@@ -38,6 +38,7 @@ import {
 } from "./release.mjs";
 import { setupTarballEnvironment } from "./tarball.mjs";
 import { ensureTmpDir } from "./utils.mjs";
+export { installLocalPackages } from "./installLocalPackages.mjs";
 export type { Browser, Page } from "puppeteer-core";
 
 export {
@@ -236,6 +237,16 @@ export interface SetupPlaygroundEnvironmentOptions {
    * is patched to use Vite 7 + @vitejs/plugin-react 5.
    */
   viteVersion?: number;
+  /**
+   * Callback invoked after dependencies are installed but before the dev
+   * server and deployment are started. Useful for installing additional
+   * local packages (e.g. test fixture packages) that should not be part of
+   * the committed package.json dependencies.
+   */
+  afterInstall?: (context: {
+    targetDir: string;
+    packageManager: "pnpm" | "npm" | "yarn";
+  }) => Promise<void>;
 }
 
 /**
@@ -254,6 +265,7 @@ export function setupPlaygroundEnvironment(
     deploy = true,
     autoStartDevServer = true,
     viteVersion: explicitViteVersion,
+    afterInstall,
   } = typeof options === "string"
     ? { sourceProjectDir: options, autoStartDevServer: true }
     : options;
@@ -279,18 +291,24 @@ export function setupPlaygroundEnvironment(
 
     console.log(`Setting up playground environment from ${projectDir}...`);
 
+    const packageManager =
+      (process.env.PACKAGE_MANAGER as "pnpm" | "npm" | "yarn") || "pnpm";
+
     if (dev) {
       const devEnv = await setupTarballEnvironment({
         projectDir,
         monorepoRoot,
-        packageManager:
-          (process.env.PACKAGE_MANAGER as "pnpm" | "npm" | "yarn") || "pnpm",
+        packageManager,
         viteVersion,
       });
       globalDevPlaygroundEnv = {
         projectDir: devEnv.targetDir,
         cleanup: devEnv.cleanup,
       };
+
+      if (afterInstall) {
+        await afterInstall({ targetDir: devEnv.targetDir, packageManager });
+      }
 
       if (autoStartDevServer) {
         const devControl = createDevServer();
@@ -310,14 +328,18 @@ export function setupPlaygroundEnvironment(
       const deployEnv = await setupTarballEnvironment({
         projectDir,
         monorepoRoot,
-        packageManager:
-          (process.env.PACKAGE_MANAGER as "pnpm" | "npm" | "yarn") || "pnpm",
+        packageManager,
         viteVersion,
       });
       globalDeployPlaygroundEnv = {
         projectDir: deployEnv.targetDir,
         cleanup: deployEnv.cleanup,
       };
+
+      if (afterInstall) {
+        await afterInstall({ targetDir: deployEnv.targetDir, packageManager });
+      }
+
       const deployControl = createDeployment();
       globalDeploymentInstancePromise = deployControl
         .start()

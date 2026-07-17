@@ -1647,16 +1647,16 @@ importers:
   playground/optimize-deps-exclude-querystring-repro:
     dependencies:
       dep-a:
-        specifier: file:packages/dep-a/dep-a-1.0.0.tgz
+        specifier: file:/Users/justin/rw/worktrees/sdk_excludes-query-string-issue/playground/optimize-deps-exclude-querystring-repro/packages/dep-a/dep-a-1.0.0.tgz
         version: file:playground/optimize-deps-exclude-querystring-repro/packages/dep-a/dep-a-1.0.0.tgz(dep-b@file:playground/optimize-deps-exclude-querystring-repro/packages/dep-b/dep-b-1.0.0.tgz(react@19.2.6))(react@19.2.6)
       dep-b:
-        specifier: file:packages/dep-b/dep-b-1.0.0.tgz
+        specifier: file:/Users/justin/rw/worktrees/sdk_excludes-query-string-issue/playground/optimize-deps-exclude-querystring-repro/packages/dep-b/dep-b-1.0.0.tgz
         version: file:playground/optimize-deps-exclude-querystring-repro/packages/dep-b/dep-b-1.0.0.tgz(react@19.2.6)
       dep-c:
-        specifier: file:packages/dep-c/dep-c-1.0.0.tgz
+        specifier: file:/Users/justin/rw/worktrees/sdk_excludes-query-string-issue/playground/optimize-deps-exclude-querystring-repro/packages/dep-c/dep-c-1.0.0.tgz
         version: file:playground/optimize-deps-exclude-querystring-repro/packages/dep-c/dep-c-1.0.0.tgz(dep-b@file:playground/optimize-deps-exclude-querystring-repro/packages/dep-b/dep-b-1.0.0.tgz(react@19.2.6))(react@19.2.6)
       dep-x:
-        specifier: file:packages/dep-x/dep-x-1.0.0.tgz
+        specifier: file:/Users/justin/rw/worktrees/sdk_excludes-query-string-issue/playground/optimize-deps-exclude-querystring-repro/packages/dep-x/dep-x-1.0.0.tgz
         version: file:playground/optimize-deps-exclude-querystring-repro/packages/dep-x/dep-x-1.0.0.tgz(dep-b@file:playground/optimize-deps-exclude-querystring-repro/packages/dep-b/dep-b-1.0.0.tgz(react@19.2.6))
       react:
         specifier: 19.2.6
