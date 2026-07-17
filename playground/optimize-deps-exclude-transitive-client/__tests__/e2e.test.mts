@@ -1,10 +1,7 @@
 import { poll, setupPlaygroundEnvironment, testDev } from "rwsdk/e2e";
 import { expect } from "vitest";
 
-setupPlaygroundEnvironment(import.meta.url, {
-  dev: process.env.RWSDK_SKIP_DEV !== "1",
-  deploy: false,
-});
+setupPlaygroundEnvironment(import.meta.url);
 
 testDev(
   "renders excluded client component reached through prebundled server component",
