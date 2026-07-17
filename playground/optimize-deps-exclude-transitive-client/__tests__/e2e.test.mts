@@ -1,9 +1,12 @@
-import { poll, setupPlaygroundEnvironment, testDevAndDeploy } from "rwsdk/e2e";
+import { poll, setupPlaygroundEnvironment, testDev } from "rwsdk/e2e";
 import { expect } from "vitest";
 
-setupPlaygroundEnvironment(import.meta.url);
+setupPlaygroundEnvironment(import.meta.url, {
+  dev: process.env.RWSDK_SKIP_DEV !== "1",
+  deploy: false,
+});
 
-testDevAndDeploy(
+testDev(
   "renders excluded client component reached through prebundled server component",
   async ({ page, url }) => {
     await page.goto(url);
