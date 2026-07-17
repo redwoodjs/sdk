@@ -79,7 +79,21 @@ export const directivesPlugin = ({
       ) {
         return;
       }
-      const normalizedId = normalizeModulePath(id, projectRootDir);
+      // context(justinvdm, 2026-07-17): Vite injects a `?v=<hash>` query into
+      // the resolved module ID for dependencies that are excluded from
+      // optimization, so the browser can cache them without re-validation.
+      // See https://github.com/vitejs/vite/blob/main/packages/vite/src/node/plugins/resolve.ts#L820-L845
+      //
+      // When an excluded "use client" package is reached through a prebundled
+      // chunk (e.g. a server component in node_modules), the transform hook
+      // receives this `?v=`-suffixed ID. We must strip the query before
+      // normalizing, otherwise the generated client-reference ID does not match
+      // the plain path key in `useClientLookup`, and `ssrLoadModule` throws
+      // `(ssr) No module found for '...?v=...'`.
+      const normalizedId = normalizeModulePath(
+        id.split("?")[0],
+        projectRootDir,
+      );
 
       const clientResult = await transformClientComponents(code, normalizedId, {
         environmentName: this.environment.name,

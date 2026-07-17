@@ -1,0 +1,12 @@
+{
+  "name": "dep-x",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": "./index.js",
+  "files": [
+    "index.js"
+  ],
+  "peerDependencies": {
+    "dep-b": "*"
+  }
+}

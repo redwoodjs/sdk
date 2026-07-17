@@ -1,0 +1,53 @@
+{
+  "name": "optimize-deps-exclude-querystring-repro",
+  "version": "1.0.0",
+  "description": "Repro for optimizeDeps.exclude query-string issue",
+  "main": "index.js",
+  "type": "module",
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite dev",
+    "dev:init": "rw-scripts dev-init",
+    "preview": "vite preview",
+    "worker:run": "rw-scripts worker-run",
+    "clean": "npm run clean:vite",
+    "clean:vite": "rm -rf ./node_modules/.vite",
+    "release": "rw-scripts ensure-deploy-env && npm run clean && npm run build && wrangler deploy",
+    "generate": "rw-scripts ensure-env && wrangler types --include-runtime false",
+    "check": "npm run generate && npm run types",
+    "types": "tsc",
+    "reinstall-deps": "cd packages/dep-b && npm pack && cd ../dep-a && npm pack && cd ../dep-c && npm pack && cd ../dep-x && npm pack && cd ../.. && pnpm add ./packages/dep-a/dep-a-1.0.0.tgz ./packages/dep-b/dep-b-1.0.0.tgz ./packages/dep-c/dep-c-1.0.0.tgz ./packages/dep-x/dep-x-1.0.0.tgz"
+  },
+  "dependencies": {
+    "dep-a": "file:packages/dep-a/dep-a-1.0.0.tgz",
+    "dep-b": "file:packages/dep-b/dep-b-1.0.0.tgz",
+    "dep-c": "file:packages/dep-c/dep-c-1.0.0.tgz",
+    "dep-x": "file:packages/dep-x/dep-x-1.0.0.tgz",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "react-server-dom-webpack": "19.2.6",
+    "rwsdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.33.2",
+    "@cloudflare/workers-types": "4.20260426.1",
+    "@types/node": "~25.6.0",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "typescript": "6.0.3",
+    "vite": "~8.1.0",
+    "vitest": "^4.1.2",
+    "wrangler": "4.85.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "workerd"
+    ]
+  }
+}
