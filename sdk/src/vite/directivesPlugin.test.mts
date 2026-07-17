@@ -6,6 +6,30 @@ const makeConfig = () => ({
 });
 
 describe("directivesPlugin", () => {
+  describe("transform", () => {
+    it("strips optimizer ?v= query strings from the module id before normalizing", async () => {
+      const plugin = directivesPlugin({
+        projectRootDir: "/Users/test/project",
+        clientFiles: new Set([
+          "/node_modules/my-ui-lib/index.js",
+        ]),
+        serverFiles: new Set(),
+      });
+
+      const result = await (plugin as any).transform.call(
+        { environment: { name: "worker" } },
+        '"use client";\nexport const Foo = () => {};',
+        "/Users/test/project/node_modules/my-ui-lib/index.js?v=abc123",
+      );
+
+      expect(result).toBeDefined();
+      expect(result!.code).toContain(
+        'registerClientReference(SSRModule, "/node_modules/my-ui-lib/index.js", "Foo")',
+      );
+      expect(result!.code).not.toContain("?v=abc123");
+    });
+  });
+
   describe("getLoader", () => {
     const testCases = [
       { path: "file.js", expected: "js" },
