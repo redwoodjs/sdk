@@ -1646,6 +1646,18 @@ importers:
 
   playground/optimize-deps-exclude-querystring-repro:
     dependencies:
+      dep-a:
+        specifier: file:./packages/dep-a
+        version: link:packages/dep-a
+      dep-b:
+        specifier: file:./packages/dep-b
+        version: link:packages/dep-b
+      dep-c:
+        specifier: file:./packages/dep-c
+        version: link:packages/dep-c
+      dep-x:
+        specifier: file:./packages/dep-x
+        version: link:packages/dep-x
       react:
         specifier: 19.2.6
         version: 19.2.6
@@ -1689,11 +1701,7 @@ importers:
 
   playground/optimize-deps-exclude-querystring-repro/packages/dep-a: {}
 
-  playground/optimize-deps-exclude-querystring-repro/packages/dep-b:
-    dependencies:
-      react:
-        specifier: ^19.0.0
-        version: 19.2.6
+  playground/optimize-deps-exclude-querystring-repro/packages/dep-b: {}
 
   playground/optimize-deps-exclude-querystring-repro/packages/dep-c: {}
 

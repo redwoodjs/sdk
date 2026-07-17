@@ -5,8 +5,5 @@
   "exports": "./index.js",
   "files": [
     "index.js"
-  ],
-  "peerDependencies": {
-    "react": "^19.0.0"
-  }
+  ]
 }

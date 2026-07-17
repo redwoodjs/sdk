@@ -19,10 +19,13 @@
     "release": "rw-scripts ensure-deploy-env && npm run clean && npm run build && wrangler deploy",
     "generate": "rw-scripts ensure-env && wrangler types --include-runtime false",
     "check": "npm run generate && npm run types",
-    "types": "tsc",
-    "postinstall": "node ./scripts/install-local-packages.mjs"
+    "types": "tsc"
   },
   "dependencies": {
+    "dep-a": "file:./packages/dep-a",
+    "dep-b": "file:./packages/dep-b",
+    "dep-c": "file:./packages/dep-c",
+    "dep-x": "file:./packages/dep-x",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "react-server-dom-webpack": "19.2.6",
