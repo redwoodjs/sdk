@@ -7,21 +7,12 @@ import {
   hasEntryAsAncestor,
   miniflareHMRPlugin,
 } from "./miniflareHMRPlugin.mjs";
-
-vi.mock("./runDirectivesScan.mjs", () => ({
-  runDirectivesScan: vi.fn(),
-}));
-
-vi.mock("./invalidateModule.mjs", () => ({
-  invalidateModule: vi.fn(),
-}));
-
-vi.mock("./barrelPaths.mjs", () => ({
-  getVendorClientBarrelPath: vi.fn(() => undefined),
-  getVendorServerBarrelPath: vi.fn(() => undefined),
-}));
-
-import { runDirectivesScan } from "./runDirectivesScan.mjs";
+import { invalidateModule as invalidateModuleImpl } from "./invalidateModule.mjs";
+import { runDirectivesScan as runDirectivesScanImpl } from "./runDirectivesScan.mjs";
+import {
+  getVendorClientBarrelPath as getVendorClientBarrelPathImpl,
+  getVendorServerBarrelPath as getVendorServerBarrelPathImpl,
+} from "./barrelPaths.mjs";
 
 interface MockModule {
   file: string;
@@ -42,9 +33,15 @@ const createMockServer = ({
   environment: string;
   file: string;
 }) => {
-  const workerModule = { file, id: file, url: file, importedModules: new Set() };
+  const workerModule = {
+    file,
+    id: file,
+    url: file,
+    importedModules: new Set(),
+  };
   const moduleGraph = {
-    getModulesByFile: (f: string) => (f === file ? new Set([workerModule]) : undefined),
+    getModulesByFile: (f: string) =>
+      f === file ? new Set([workerModule]) : undefined,
     idToModuleMap: new Map([[file, workerModule]]),
     urlToModuleMap: new Map([[file, workerModule]]),
   };
@@ -53,7 +50,10 @@ const createMockServer = ({
     config: { root: rootDir },
     environments: {
       [environment]: { moduleGraph, hot: { send: vi.fn() } },
-      client: { moduleGraph: { getModulesByFile: () => undefined }, hot: { send: vi.fn() } },
+      client: {
+        moduleGraph: { getModulesByFile: () => undefined },
+        hot: { send: vi.fn() },
+      },
       ssr: { moduleGraph: { getModulesByFile: () => undefined } },
     },
     hot: { send: vi.fn() },
@@ -217,21 +217,33 @@ describe("getImportSignature", () => {
 describe("miniflareHMRPlugin hotUpdate gating", () => {
   let tmpDir: string;
   let workerFile: string;
-  let plugins: any;
+  let runDirectivesScan: ReturnType<typeof vi.fn>;
+  let invalidateModule: ReturnType<typeof vi.fn>;
+  let getVendorClientBarrelPath: ReturnType<typeof vi.fn>;
+  let getVendorServerBarrelPath: ReturnType<typeof vi.fn>;
   let plugin: any;
 
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), "rwsdk-hmr-test-"));
     workerFile = join(tmpDir, "worker.ts");
-    plugins = miniflareHMRPlugin({
+
+    runDirectivesScan = vi.fn();
+    invalidateModule = vi.fn();
+    getVendorClientBarrelPath = vi.fn(() => undefined);
+    getVendorServerBarrelPath = vi.fn(() => undefined);
+
+    const plugins = miniflareHMRPlugin({
       clientFiles: new Set(),
       serverFiles: new Set(),
       rootDir: tmpDir,
       viteEnvironment: { name: "worker" },
       workerEntryPathname: "/src/worker.ts",
+      runDirectivesScan: runDirectivesScan as unknown as typeof runDirectivesScanImpl,
+      invalidateModule: invalidateModule as unknown as typeof invalidateModuleImpl,
+      getVendorClientBarrelPath: getVendorClientBarrelPath as unknown as typeof getVendorClientBarrelPathImpl,
+      getVendorServerBarrelPath: getVendorServerBarrelPath as unknown as typeof getVendorServerBarrelPathImpl,
     });
     plugin = plugins.find((p: any) => p.hotUpdate);
-    vi.clearAllMocks();
   });
 
   afterEach(() => {

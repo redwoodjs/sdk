@@ -87,12 +87,26 @@ export const hasEntryAsAncestor = ({
   return false;
 };
 
-export const miniflareHMRPlugin = (givenOptions: {
+export const miniflareHMRPlugin = ({
+  clientFiles,
+  serverFiles,
+  rootDir,
+  viteEnvironment: { name: environment },
+  workerEntryPathname: entry,
+  runDirectivesScan: runDirectivesScanFn = runDirectivesScan,
+  invalidateModule: invalidateModuleFn = invalidateModule,
+  getVendorClientBarrelPath: getVendorClientBarrelPathFn = getVendorClientBarrelPath,
+  getVendorServerBarrelPath: getVendorServerBarrelPathFn = getVendorServerBarrelPath,
+}: {
   clientFiles: Set<string>;
   serverFiles: Set<string>;
   rootDir: string;
   viteEnvironment: { name: string };
   workerEntryPathname: string;
+  runDirectivesScan?: typeof runDirectivesScan;
+  invalidateModule?: typeof invalidateModule;
+  getVendorClientBarrelPath?: typeof getVendorClientBarrelPath;
+  getVendorServerBarrelPath?: typeof getVendorServerBarrelPath;
 }): (Plugin | Plugin[])[] => [
   {
     name: "rwsdk:miniflare-hmr",
@@ -140,12 +154,7 @@ export const miniflareHMRPlugin = (givenOptions: {
         log("hmr: Full reload after error");
         return [];
       }
-      const {
-        clientFiles,
-        serverFiles,
-        viteEnvironment: { name: environment },
-        workerEntryPathname: entry,
-      } = givenOptions;
+
 
       if (process.env.VERBOSE) {
         log(
@@ -165,12 +174,12 @@ export const miniflareHMRPlugin = (givenOptions: {
 
       if (this.environment.name === "ssr") {
         log("SSR update, invalidating recursively", ctx.file);
-        invalidateModule(ctx.server, "ssr", ctx.file);
-        invalidateModule(
+        invalidateModuleFn(ctx.server, "ssr", ctx.file);
+        invalidateModuleFn(
           ctx.server,
           environment,
           VIRTUAL_SSR_PREFIX +
-            normalizeModulePath(ctx.file, givenOptions.rootDir),
+            normalizeModulePath(ctx.file, rootDir),
         );
         log("hmr: invalidated ssr module");
         return [];
@@ -190,35 +199,35 @@ export const miniflareHMRPlugin = (givenOptions: {
       let serverDirectiveChanged = false;
 
       if (!clientFiles.has(ctx.file) && hasClientDirective) {
-        clientFiles.add(normalizeModulePath(ctx.file, givenOptions.rootDir));
+        clientFiles.add(normalizeModulePath(ctx.file, rootDir));
         clientDirectiveChanged = true;
       } else if (clientFiles.has(ctx.file) && !hasClientDirective) {
-        clientFiles.delete(normalizeModulePath(ctx.file, givenOptions.rootDir));
+        clientFiles.delete(normalizeModulePath(ctx.file, rootDir));
         clientDirectiveChanged = true;
       }
 
       if (!serverFiles.has(ctx.file) && hasServerDirective) {
-        serverFiles.add(normalizeModulePath(ctx.file, givenOptions.rootDir));
+        serverFiles.add(normalizeModulePath(ctx.file, rootDir));
         serverDirectiveChanged = true;
       } else if (serverFiles.has(ctx.file) && !hasServerDirective) {
-        serverFiles.delete(normalizeModulePath(ctx.file, givenOptions.rootDir));
+        serverFiles.delete(normalizeModulePath(ctx.file, rootDir));
         serverDirectiveChanged = true;
       }
 
       if (clientDirectiveChanged) {
         ["client", "ssr", environment].forEach((environment) => {
-          invalidateModule(
+          invalidateModuleFn(
             ctx.server,
             environment,
             "virtual:use-client-lookup.js",
           );
         });
-        invalidateModule(
+        invalidateModuleFn(
           ctx.server,
           environment,
           VIRTUAL_SSR_PREFIX + "/@id/virtual:use-client-lookup.js",
         );
-        invalidateModule(
+        invalidateModuleFn(
           ctx.server,
           environment,
           VIRTUAL_SSR_PREFIX + "virtual:use-client-lookup.js",
@@ -227,18 +236,18 @@ export const miniflareHMRPlugin = (givenOptions: {
 
       if (serverDirectiveChanged) {
         ["client", "ssr", environment].forEach((environment) => {
-          invalidateModule(
+          invalidateModuleFn(
             ctx.server,
             environment,
             "virtual:use-server-lookup.js",
           );
         });
-        invalidateModule(
+        invalidateModuleFn(
           ctx.server,
           environment,
           VIRTUAL_SSR_PREFIX + "/@id/virtual:use-server-lookup.js",
         );
-        invalidateModule(
+        invalidateModuleFn(
           ctx.server,
           environment,
           VIRTUAL_SSR_PREFIX + "virtual:use-server-lookup.js",
@@ -270,7 +279,7 @@ export const miniflareHMRPlugin = (givenOptions: {
                 );
 
               for (const clientModule of clientModules ?? []) {
-                invalidateModule(ctx.server, "client", clientModule);
+                invalidateModuleFn(ctx.server, "client", clientModule);
               }
             }
           }
@@ -308,7 +317,7 @@ export const miniflareHMRPlugin = (givenOptions: {
           log("hmr: import signature unchanged, skipping directive scan");
         } else {
           log("hmr: import signature changed, running directive scan");
-          await runDirectivesScan({
+          await runDirectivesScanFn({
             rootConfig: ctx.server.config,
             environments: ctx.server.environments,
             clientFiles,
@@ -326,35 +335,35 @@ export const miniflareHMRPlugin = (givenOptions: {
             clientFilesAfter !== clientFilesBefore ||
             serverFilesAfter !== serverFilesBefore
           ) {
-            const clientBarrelPath = getVendorClientBarrelPath();
-            const serverBarrelPath = getVendorServerBarrelPath();
+            const clientBarrelPath = getVendorClientBarrelPathFn();
+            const serverBarrelPath = getVendorServerBarrelPathFn();
 
             if (clientBarrelPath) {
               writeFileSync(
                 clientBarrelPath,
-                generateVendorBarrelContent(clientFiles, givenOptions.rootDir),
+                generateVendorBarrelContent(clientFiles, rootDir),
               );
             }
             if (serverBarrelPath) {
               writeFileSync(
                 serverBarrelPath,
-                generateVendorBarrelContent(serverFiles, givenOptions.rootDir),
+                generateVendorBarrelContent(serverFiles, rootDir),
               );
             }
 
             for (const envName of ["client", "ssr", environment]) {
               if (clientBarrelPath) {
-                invalidateModule(ctx.server, envName, clientBarrelPath);
+                invalidateModuleFn(ctx.server, envName, clientBarrelPath);
               }
               if (serverBarrelPath) {
-                invalidateModule(ctx.server, envName, serverBarrelPath);
+                invalidateModuleFn(ctx.server, envName, serverBarrelPath);
               }
-              invalidateModule(
+              invalidateModuleFn(
                 ctx.server,
                 envName,
                 VENDOR_CLIENT_BARREL_EXPORT_PATH,
               );
-              invalidateModule(
+              invalidateModuleFn(
                 ctx.server,
                 envName,
                 VENDOR_SERVER_BARREL_EXPORT_PATH,
@@ -363,18 +372,18 @@ export const miniflareHMRPlugin = (givenOptions: {
 
             if (clientFilesAfter !== clientFilesBefore) {
               for (const envName of ["client", "ssr", environment]) {
-                invalidateModule(
+                invalidateModuleFn(
                   ctx.server,
                   envName,
                   "virtual:use-client-lookup.js",
                 );
               }
-              invalidateModule(
+              invalidateModuleFn(
                 ctx.server,
                 environment,
                 VIRTUAL_SSR_PREFIX + "/@id/virtual:use-client-lookup.js",
               );
-              invalidateModule(
+              invalidateModuleFn(
                 ctx.server,
                 environment,
                 VIRTUAL_SSR_PREFIX + "virtual:use-client-lookup.js",
@@ -383,18 +392,18 @@ export const miniflareHMRPlugin = (givenOptions: {
 
             if (serverFilesAfter !== serverFilesBefore) {
               for (const envName of ["client", "ssr", environment]) {
-                invalidateModule(
+                invalidateModuleFn(
                   ctx.server,
                   envName,
                   "virtual:use-server-lookup.js",
                 );
               }
-              invalidateModule(
+              invalidateModuleFn(
                 ctx.server,
                 environment,
                 VIRTUAL_SSR_PREFIX + "/@id/virtual:use-server-lookup.js",
               );
-              invalidateModule(
+              invalidateModuleFn(
                 ctx.server,
                 environment,
                 VIRTUAL_SSR_PREFIX + "virtual:use-server-lookup.js",
@@ -403,7 +412,7 @@ export const miniflareHMRPlugin = (givenOptions: {
           }
         }
 
-        invalidateModule(ctx.server, environment, ctx.file);
+        invalidateModuleFn(ctx.server, environment, ctx.file);
         const shortName = getShortName(ctx.file, ctx.server.config.root);
 
         this.environment.logger.info(
@@ -416,18 +425,18 @@ export const miniflareHMRPlugin = (givenOptions: {
 
         const m = ctx.server.environments.client.moduleGraph
           .getModulesByFile(
-            resolve(givenOptions.rootDir, "src", "app", "style.css"),
+            resolve(rootDir, "src", "app", "style.css"),
           )
           ?.values()
           .next().value;
 
         if (m) {
-          invalidateModule(ctx.server, environment, m);
+          invalidateModuleFn(ctx.server, environment, m);
         }
 
         let virtualSSRModuleId =
           VIRTUAL_SSR_PREFIX +
-          normalizeModulePath(ctx.file, givenOptions.rootDir);
+          normalizeModulePath(ctx.file, rootDir);
 
         if (ctx.file.endsWith(".css")) {
           virtualSSRModuleId += ".js";
@@ -439,7 +448,7 @@ export const miniflareHMRPlugin = (givenOptions: {
           );
 
         if (virtualSSRModule) {
-          invalidateModule(ctx.server, environment, virtualSSRModule);
+          invalidateModuleFn(ctx.server, environment, virtualSSRModule);
         }
 
         ctx.server.environments.client.hot.send({
