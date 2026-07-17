@@ -1648,16 +1648,16 @@ importers:
     dependencies:
       dep-a:
         specifier: file:/Users/justin/rw/worktrees/sdk_excludes-query-string-issue/playground/optimize-deps-exclude-querystring-repro/packages/dep-a/dep-a-1.0.0.tgz
-        version: file:playground/optimize-deps-exclude-querystring-repro/packages/dep-a/dep-a-1.0.0.tgz(dep-b@file:playground/optimize-deps-exclude-querystring-repro/packages/dep-b/dep-b-1.0.0.tgz(react@19.2.6))(react@19.2.6)
+        version: file:playground/optimize-deps-exclude-querystring-repro/packages/dep-a/dep-a-1.0.0.tgz
       dep-b:
         specifier: file:/Users/justin/rw/worktrees/sdk_excludes-query-string-issue/playground/optimize-deps-exclude-querystring-repro/packages/dep-b/dep-b-1.0.0.tgz
         version: file:playground/optimize-deps-exclude-querystring-repro/packages/dep-b/dep-b-1.0.0.tgz(react@19.2.6)
       dep-c:
         specifier: file:/Users/justin/rw/worktrees/sdk_excludes-query-string-issue/playground/optimize-deps-exclude-querystring-repro/packages/dep-c/dep-c-1.0.0.tgz
-        version: file:playground/optimize-deps-exclude-querystring-repro/packages/dep-c/dep-c-1.0.0.tgz(dep-b@file:playground/optimize-deps-exclude-querystring-repro/packages/dep-b/dep-b-1.0.0.tgz(react@19.2.6))(react@19.2.6)
+        version: file:playground/optimize-deps-exclude-querystring-repro/packages/dep-c/dep-c-1.0.0.tgz
       dep-x:
         specifier: file:/Users/justin/rw/worktrees/sdk_excludes-query-string-issue/playground/optimize-deps-exclude-querystring-repro/packages/dep-x/dep-x-1.0.0.tgz
-        version: file:playground/optimize-deps-exclude-querystring-repro/packages/dep-x/dep-x-1.0.0.tgz(dep-b@file:playground/optimize-deps-exclude-querystring-repro/packages/dep-b/dep-b-1.0.0.tgz(react@19.2.6))
+        version: file:playground/optimize-deps-exclude-querystring-repro/packages/dep-x/dep-x-1.0.0.tgz
       react:
         specifier: 19.2.6
         version: 19.2.6
@@ -1699,14 +1699,7 @@ importers:
         specifier: 4.85.0
         version: 4.85.0(@cloudflare/workers-types@4.20260426.1)
 
-  playground/optimize-deps-exclude-querystring-repro/packages/dep-a:
-    dependencies:
-      dep-b:
-        specifier: '*'
-        version: 0.0.1-security
-      react:
-        specifier: ^19.0.0
-        version: 19.2.6
+  playground/optimize-deps-exclude-querystring-repro/packages/dep-a: {}
 
   playground/optimize-deps-exclude-querystring-repro/packages/dep-b:
     dependencies:
@@ -1714,20 +1707,9 @@ importers:
         specifier: ^19.0.0
         version: 19.2.6
 
-  playground/optimize-deps-exclude-querystring-repro/packages/dep-c:
-    dependencies:
-      dep-b:
-        specifier: '*'
-        version: 0.0.1-security
-      react:
-        specifier: ^19.0.0
-        version: 19.2.6
+  playground/optimize-deps-exclude-querystring-repro/packages/dep-c: {}
 
-  playground/optimize-deps-exclude-querystring-repro/packages/dep-x:
-    dependencies:
-      dep-b:
-        specifier: '*'
-        version: 0.0.1-security
+  playground/optimize-deps-exclude-querystring-repro/packages/dep-x: {}
 
   playground/render-apis:
     dependencies:
@@ -7528,14 +7510,8 @@ packages:
     engines: {node: '>= 14'}
 
   dep-a@file:playground/optimize-deps-exclude-querystring-repro/packages/dep-a/dep-a-1.0.0.tgz:
-    resolution: {integrity: sha512-ejQKTLj9qvJHp+t1mPZrcBPGBfXtbH4A1tsjfgfMvEtuKdZZOJvguCnVpVqrc/y/iXuXSC/uPd4AnbdIVabPSw==, tarball: file:playground/optimize-deps-exclude-querystring-repro/packages/dep-a/dep-a-1.0.0.tgz}
+    resolution: {integrity: sha512-6b4f2bOD9W6IFy/H6zfomRCGxvJhg+oCyb/7j4WceoA/uGDAOFUKw7WkkX1wS0+5+yT636SSDe8TVM6cp6w1Yw==, tarball: file:playground/optimize-deps-exclude-querystring-repro/packages/dep-a/dep-a-1.0.0.tgz}
     version: 1.0.0
-    peerDependencies:
-      dep-b: '*'
-      react: ^19.0.0
-
-  dep-b@0.0.1-security:
-    resolution: {integrity: sha512-OxAGc4g3QcRBkQA47Tv/GRo1FgTZCvraCBGNO3ka1gpyo0FOMiQ4Do+stm8zgCzLt55DwQpvv7cPCyqqdQ3ixA==}
 
   dep-b@file:playground/optimize-deps-exclude-querystring-repro/packages/dep-b/dep-b-1.0.0.tgz:
     resolution: {integrity: sha512-VvsTD35CROxsazyI1QM0gUiS817l2EZuIjbzSZRwjD0apVi5x86pafRiGmIHMT+4VRHMKFN92CJyYibT0VhUoQ==, tarball: file:playground/optimize-deps-exclude-querystring-repro/packages/dep-b/dep-b-1.0.0.tgz}
@@ -7544,17 +7520,12 @@ packages:
       react: ^19.0.0
 
   dep-c@file:playground/optimize-deps-exclude-querystring-repro/packages/dep-c/dep-c-1.0.0.tgz:
-    resolution: {integrity: sha512-hItr1NCeDSR/OFT+LBh6l1YVlIxksR1sZ/KGFNLoLEM74ZNvBM46EM2cEAkDBeNgm9MQza1x6pcD5JgWUbURQg==, tarball: file:playground/optimize-deps-exclude-querystring-repro/packages/dep-c/dep-c-1.0.0.tgz}
+    resolution: {integrity: sha512-pl8FVn63Yas227Vj6ediCImRtzfV7KLsahIcQvSFEoB+t5x7B8nY2XF/vAVOZ5Vr7JSGn33wDfeTnDh9h2cHXA==, tarball: file:playground/optimize-deps-exclude-querystring-repro/packages/dep-c/dep-c-1.0.0.tgz}
     version: 1.0.0
-    peerDependencies:
-      dep-b: '*'
-      react: ^19.0.0
 
   dep-x@file:playground/optimize-deps-exclude-querystring-repro/packages/dep-x/dep-x-1.0.0.tgz:
-    resolution: {integrity: sha512-8pRJwBR3o9JOLIu2xKjcVhmQWPVpEzSOEmqEwWCJpAUICcWVYsSwmADH4U3Hb46sjKaPJLi8pm60FVkbCpGQDg==, tarball: file:playground/optimize-deps-exclude-querystring-repro/packages/dep-x/dep-x-1.0.0.tgz}
+    resolution: {integrity: sha512-WaNXYbk3KfSs604/r678QG5WSb86/rPjtr5peTvhAXeyewx7Z67hzAG/YpjyomXnSawBmWYMaAzFDY/dLDgNKw==, tarball: file:playground/optimize-deps-exclude-querystring-repro/packages/dep-x/dep-x-1.0.0.tgz}
     version: 1.0.0
-    peerDependencies:
-      dep-b: '*'
 
   depd@2.0.0:
     resolution: {integrity: sha512-g7nH6P6dyDioJogAAGprGpCtVImJhpPk/roCzdb3fIh61/s/nPsfR6onyMwkCAR/OlC3yBC0lESvUoQEAssIrw==}
@@ -16443,25 +16414,15 @@ snapshots:
       escodegen: 2.1.0
       esprima: 4.0.1
 
-  dep-a@file:playground/optimize-deps-exclude-querystring-repro/packages/dep-a/dep-a-1.0.0.tgz(dep-b@file:playground/optimize-deps-exclude-querystring-repro/packages/dep-b/dep-b-1.0.0.tgz(react@19.2.6))(react@19.2.6):
-    dependencies:
-      dep-b: file:playground/optimize-deps-exclude-querystring-repro/packages/dep-b/dep-b-1.0.0.tgz(react@19.2.6)
-      react: 19.2.6
-
-  dep-b@0.0.1-security: {}
+  dep-a@file:playground/optimize-deps-exclude-querystring-repro/packages/dep-a/dep-a-1.0.0.tgz: {}
 
   dep-b@file:playground/optimize-deps-exclude-querystring-repro/packages/dep-b/dep-b-1.0.0.tgz(react@19.2.6):
     dependencies:
       react: 19.2.6
 
-  dep-c@file:playground/optimize-deps-exclude-querystring-repro/packages/dep-c/dep-c-1.0.0.tgz(dep-b@file:playground/optimize-deps-exclude-querystring-repro/packages/dep-b/dep-b-1.0.0.tgz(react@19.2.6))(react@19.2.6):
-    dependencies:
-      dep-b: file:playground/optimize-deps-exclude-querystring-repro/packages/dep-b/dep-b-1.0.0.tgz(react@19.2.6)
-      react: 19.2.6
+  dep-c@file:playground/optimize-deps-exclude-querystring-repro/packages/dep-c/dep-c-1.0.0.tgz: {}
 
-  dep-x@file:playground/optimize-deps-exclude-querystring-repro/packages/dep-x/dep-x-1.0.0.tgz(dep-b@file:playground/optimize-deps-exclude-querystring-repro/packages/dep-b/dep-b-1.0.0.tgz(react@19.2.6)):
-    dependencies:
-      dep-b: file:playground/optimize-deps-exclude-querystring-repro/packages/dep-b/dep-b-1.0.0.tgz(react@19.2.6)
+  dep-x@file:playground/optimize-deps-exclude-querystring-repro/packages/dep-x/dep-x-1.0.0.tgz: {}
 
   depd@2.0.0: {}
 
