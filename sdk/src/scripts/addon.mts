@@ -1,4 +1,4 @@
-import decompress from "decompress";
+import decompress from "@xhmikosr/decompress";
 import { findUp } from "find-up";
 import { createWriteStream } from "node:fs";
 import fs from "node:fs/promises";
