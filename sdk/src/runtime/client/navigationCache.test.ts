@@ -537,6 +537,69 @@ describe("navigationCache", () => {
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
+    it("should skip links with data-reload attribute", async () => {
+      const env: NavigationCacheEnvironment = {
+        isSecureContext: true,
+        origin: "https://example.com",
+        caches: mockCacheStorage,
+        fetch: mockFetch,
+      };
+
+      const mockDoc = {
+        querySelectorAll: vi.fn().mockReturnValue([
+          {
+            getAttribute: (attr: string) =>
+              attr === "href" ? "/page1" : null,
+            hasAttribute: (attr: string) => attr === "data-reload",
+          },
+          {
+            getAttribute: (attr: string) =>
+              attr === "href" ? "/page2" : null,
+            hasAttribute: () => false,
+          },
+        ]),
+      } as unknown as Document;
+
+      await preloadFromLinkTags(mockDoc, env);
+
+      // Should only preload /page2
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("should skip links when shouldIntercept returns false", async () => {
+      const env: NavigationCacheEnvironment = {
+        isSecureContext: true,
+        origin: "https://example.com",
+        caches: mockCacheStorage,
+        fetch: mockFetch,
+      };
+
+      const shouldIntercept = vi.fn(({ toUrl }: { toUrl: URL }) => {
+        return toUrl.pathname !== "/admin";
+      });
+
+      const mockDoc = {
+        querySelectorAll: vi.fn().mockReturnValue([
+          {
+            getAttribute: (attr: string) =>
+              attr === "href" ? "/admin" : null,
+            hasAttribute: () => false,
+          },
+          {
+            getAttribute: (attr: string) =>
+              attr === "href" ? "/page2" : null,
+            hasAttribute: () => false,
+          },
+        ]),
+      } as unknown as Document;
+
+      await preloadFromLinkTags(mockDoc, env, undefined, shouldIntercept);
+
+      // Should only preload /page2
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(shouldIntercept).toHaveBeenCalledTimes(2);
+    });
+
     it("should use custom cacheStorage when provided", async () => {
       const customCache: NavigationCache = {
         put: vi.fn().mockResolvedValue(undefined),
