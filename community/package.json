@@ -38,7 +38,7 @@
     "wrangler": "^4.118.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "~5.20260731.1",
+    "@cloudflare/workers-types": "~5.20260801.1",
     "fs-extra": "~11.4.0",
     "@types/fs-extra": "~11.0.4",
     "@types/react": "~19.2.18",
