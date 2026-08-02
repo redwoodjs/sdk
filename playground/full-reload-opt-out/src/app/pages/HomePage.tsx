@@ -5,6 +5,7 @@ export function HomePage({ ctx }: RequestInfo) {
   return (
     <div>
       <h1>Home Page</h1>
+      <p>The home section uses a light blue stylesheet.</p>
       <a href="/admin" id="admin-link">
         Go to Admin (shouldIntercept reload)
       </a>
