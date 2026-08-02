@@ -22,13 +22,18 @@
     "types": "tsc"
   },
   "dependencies": {
-    "@react-email/components": "^1.0.12",
     "@react-email/render": "^2.1.0",
     "resend": "^6.18.1",
     "rwsdk": "workspace:*",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "react-server-dom-webpack": "19.2.8"
+    "react-server-dom-webpack": "19.2.8",
+    "@react-email/html": "0.0.12",
+    "@react-email/body": "0.3.0",
+    "@react-email/container": "0.0.16",
+    "@react-email/head": "0.0.13",
+    "@react-email/heading": "0.0.16",
+    "@react-email/preview": "0.0.14"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.50.0",
