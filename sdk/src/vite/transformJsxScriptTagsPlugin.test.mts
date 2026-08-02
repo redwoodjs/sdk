@@ -1,4 +1,4 @@
-import ts from "typescript";
+import { ts } from "ts-morph";
 import { beforeEach, describe, expect, it } from "vitest";
 import stubEnvVars from "../lib/testUtils/stubEnvVars.mjs";
 import { transformJsxScriptTagsCode } from "./transformJsxScriptTagsPlugin.mjs";

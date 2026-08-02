@@ -1,6 +1,11 @@
 import { glob } from "glob";
 import path from "path";
-import ts from "typescript";
+// context(justinvdm, 2026-08-02): typescript v7 is the native compiler and
+// no longer ships the JS compiler API (ts.sys, findConfigFile, ...). We only
+// need tsconfig resolution here, so we use the compiler API bundled with
+// ts-morph (already an SDK dependency) instead of keeping typescript v6
+// around just for this.
+import { ts } from "ts-morph";
 
 /**
  * Gets all source file paths by parsing tsconfig.json using TypeScript's compiler API.

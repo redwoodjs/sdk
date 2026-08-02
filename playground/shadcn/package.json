@@ -81,7 +81,7 @@
     "@types/node": "~26.1.2",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
-    "typescript": "6.0.3",
+    "typescript": "7.0.2",
     "vite": "~8.2.0",
     "vitest": "^4.1.10",
     "wrangler": "4.118.0"
