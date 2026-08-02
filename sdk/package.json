@@ -175,7 +175,6 @@
     "@puppeteer/browsers": "~3.0.6",
     "@types/debug": "~4.1.13",
     "@types/fs-extra": "~11.0.4",
-    "@types/glob": "^9.0.0",
     "@types/react": "~19.2.18",
     "@types/react-dom": "~19.2.4",
     "@types/react-is": "~19.2.0",
