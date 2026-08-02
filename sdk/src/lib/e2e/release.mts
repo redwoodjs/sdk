@@ -1,5 +1,5 @@
 import debug from "debug";
-import { execaCommand } from "execa";
+import { execa, parseCommandString } from "execa";
 import { existsSync, readFileSync } from "fs";
 import { pathExists } from "fs-extra";
 import * as fs from "fs/promises";
@@ -129,7 +129,10 @@ export async function $expect(
 ): Promise<ExpectResult> {
   return new Promise((resolve, reject) => {
     // Spawn the process with pipes for interaction
-    const childProcess = execaCommand(command, {
+    // context(justinvdm, 2026-08-02): execa v10 removed execaCommand; the
+    // supported path for a command *string* is parseCommandString + execa.
+    const [commandFile, ...commandArguments] = parseCommandString(command);
+    const childProcess = execa(commandFile, commandArguments, {
       cwd: options.cwd ?? process.cwd(),
       stdio: "pipe",
       reject: false, // Never reject so we can handle the error ourselves
@@ -250,24 +253,30 @@ export async function $expect(
     }
 
     // Handle process completion
-    childProcess.on("close", (code) => {
-      log("Process closed with code: %s", code);
-      // Check if any required patterns were not matched
-      const unmatchedPatterns = Array.from(matchHistory.entries())
-        .filter(([_, count]) => count === 0)
-        .map(([pattern, _]) => pattern.toString());
+    // context(justinvdm, 2026-08-02): execa v10's ResultPromise is not an
+    // EventEmitter — completion is the promise itself (with reject: false it
+    // resolves even for non-zero exits), so the old 'close'/'error' listeners
+    // become then/catch handlers.
+    childProcess.then(
+      (result) => {
+        const code = result.exitCode ?? null;
+        log("Process closed with code: %s", code);
+        // Check if any required patterns were not matched
+        const unmatchedPatterns = Array.from(matchHistory.entries())
+          .filter(([_, count]) => count === 0)
+          .map(([pattern, _]) => pattern.toString());
 
-      resolve({ stdout, stderr, code });
-    });
-
-    childProcess.on("error", (err) => {
-      log("Process error: %O", err);
-      if (options.reject) {
-        reject(new Error(`Failed to execute command: ${err.message}`));
-      } else {
-        resolve({ stdout, stderr, code: null });
-      }
-    });
+        resolve({ stdout, stderr, code });
+      },
+      (err) => {
+        log("Process error: %O", err);
+        if (options.reject) {
+          reject(new Error(`Failed to execute command: ${err.message}`));
+        } else {
+          resolve({ stdout, stderr, code: null });
+        }
+      },
+    );
   });
 }
 
