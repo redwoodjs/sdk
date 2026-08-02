@@ -36,12 +36,5 @@
     "typescript": "7.0.2",
     "vite": "~8.2.0",
     "wrangler": "4.118.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "sharp",
-      "workerd"
-    ]
   }
 }
