@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { initClientNavigation, validateClickEvent } from "./navigation";
+import { initClientNavigation, navigate, validateClickEvent } from "./navigation";
 import {
   getNavigationSnapshot,
   resetNavigationStateForTests,
@@ -138,7 +138,12 @@ describe("full-reload opt-out (data-reload and shouldIntercept)", () => {
       }),
     });
     vi.stubGlobal("window", {
-      location: { href: "http://localhost/", pathname: "/", search: "" },
+      location: {
+        href: "http://localhost/",
+        pathname: "/",
+        search: "",
+        replace: vi.fn(),
+      },
       addEventListener: vi.fn((event: string, handler: any) => {
         if (event === "popstate") capturedPopstateHandler = handler;
       }),
@@ -264,16 +269,12 @@ describe("full-reload opt-out (data-reload and shouldIntercept)", () => {
     expect((globalThis as any).__rsc_callServer).toHaveBeenCalled();
   });
 
-  it("shouldIntercept returning false on popstate forces a full reload", async () => {
+  it("shouldIntercept returning false on navigate() forces a full load", async () => {
     const shouldIntercept = vi.fn(() => false);
 
     initClientNavigation({ shouldIntercept });
 
-    (window.location as unknown as { href: string; pathname: string }).href =
-      "http://localhost/admin";
-    (window.location as unknown as { pathname: string }).pathname = "/admin";
-
-    await capturedPopstateHandler!();
+    await navigate("/admin");
 
     expect(shouldIntercept).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -281,7 +282,39 @@ describe("full-reload opt-out (data-reload and shouldIntercept)", () => {
         toUrl: expect.objectContaining({ href: "http://localhost/admin" }),
       }),
     );
+    expect(window.location.href).toBe("/admin");
+    expect(window.history.pushState).not.toHaveBeenCalled();
     expect((globalThis as any).__rsc_callServer).not.toHaveBeenCalled();
+  });
+
+  it("shouldIntercept returning false on navigate(..., { history: 'replace' }) uses location.replace", async () => {
+    const shouldIntercept = vi.fn(() => false);
+    const replaceSpy = vi.spyOn(window.location, "replace");
+
+    initClientNavigation({ shouldIntercept });
+
+    await navigate("/admin", { history: "replace" });
+
+    expect(replaceSpy).toHaveBeenCalledWith("/admin");
+    expect(window.location.href).toBe("http://localhost/");
+    expect((globalThis as any).__rsc_callServer).not.toHaveBeenCalled();
+  });
+
+  it("shouldIntercept returning true on navigate() allows normal soft navigation", async () => {
+    const shouldIntercept = vi.fn(() => true);
+
+    initClientNavigation({ shouldIntercept });
+
+    await navigate("/admin");
+
+    expect(shouldIntercept).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fromUrl: expect.objectContaining({ href: "http://localhost/" }),
+        toUrl: expect.objectContaining({ href: "http://localhost/admin" }),
+      }),
+    );
+    expect(window.history.pushState).toHaveBeenCalled();
+    expect((globalThis as any).__rsc_callServer).toHaveBeenCalled();
   });
 });
 
@@ -307,7 +340,12 @@ describe("onNavigate callback (issue #1123 regression)", () => {
       }),
     });
     vi.stubGlobal("window", {
-      location: { href: "http://localhost/", pathname: "/", search: "" },
+      location: {
+        href: "http://localhost/",
+        pathname: "/",
+        search: "",
+        replace: vi.fn(),
+      },
       addEventListener: vi.fn((event: string, handler: any) => {
         if (event === "popstate") capturedPopstateHandler = handler;
       }),
@@ -458,7 +496,12 @@ describe("initClientNavigation", () => {
     });
 
     vi.stubGlobal("window", {
-      location: { href: "http://localhost/", pathname: "/", search: "" },
+      location: {
+        href: "http://localhost/",
+        pathname: "/",
+        search: "",
+        replace: vi.fn(),
+      },
       addEventListener: vi.fn((event: string, handler: () => void) => {
         if (event === "scroll") {
           capturedScrollHandler = handler;

@@ -92,6 +92,7 @@ export function validateClickEvent(event: MouseEvent, target: HTMLElement) {
 
 let IS_CLIENT_NAVIGATION = false;
 
+let clientNavigationOptions: ClientNavigationOptions = {};
 let scrollRestoration: ScrollRestorationController | null = null;
 let currentPathKey: string | null = null;
 let currentUrl: URL | null = null;
@@ -122,7 +123,22 @@ export async function navigate(
     return;
   }
 
-  const url = new URL(href, window.location.href);
+  const toUrl = new URL(href, window.location.href);
+  const fromUrl = currentUrl ?? new URL(window.location.href);
+
+  if (
+    clientNavigationOptions.shouldIntercept &&
+    !shouldInterceptNavigation(clientNavigationOptions, toUrl, fromUrl)
+  ) {
+    if (options.history === "replace") {
+      window.location.replace(href);
+    } else {
+      window.location.href = href;
+    }
+    return;
+  }
+
+  const url = toUrl;
 
   const scrollToTop = options.info?.scrollToTop ?? true;
   const scrollBehavior = (options.info?.scrollBehavior ??
@@ -203,6 +219,7 @@ export async function navigate(
  */
 export function initClientNavigation(opts: ClientNavigationOptions = {}) {
   IS_CLIENT_NAVIGATION = true;
+  clientNavigationOptions = opts;
   scrollRestoration = createScrollRestoration();
   scrollRestoration.initialize();
   currentPathKey = getLocationPathKey();
