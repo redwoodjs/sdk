@@ -24,32 +24,12 @@ import { generateVendorBarrelContent } from "./directiveModulesDevPlugin.mjs";
 import { hasDirective as sourceHasDirective } from "./hasDirective.mjs";
 import { invalidateModule } from "./invalidateModule.mjs";
 import { isJsFile } from "./isJsFile.mjs";
-import { findImportSpecifiers } from "./findSpecifiers.mjs";
 import { runDirectivesScan } from "./runDirectivesScan.mjs";
 import { VIRTUAL_SSR_PREFIX } from "./ssrVirtualModule.mjs";
 
 const log = debug("rwsdk:vite:hmr-plugin");
 
 let hasErrored = false;
-
-const importSignatureCache = new Map<string, string>();
-
-export const getImportSignature = (id: string, code: string): string => {
-  const specifiers = findImportSpecifiers(id, code, []);
-  const seenPositions = new Set<string>();
-  const seenSpecifiers = new Set<string>();
-
-  for (const specifier of specifiers) {
-    const positionKey = `${specifier.s}:${specifier.e}`;
-    if (seenPositions.has(positionKey)) {
-      continue;
-    }
-    seenPositions.add(positionKey);
-    seenSpecifiers.add(specifier.raw);
-  }
-
-  return Array.from(seenSpecifiers).sort().join("\n");
-};
 
 const hasDirective = async (filepath: string, directive: string) => {
   if (!isJsFile(filepath)) {
@@ -87,26 +67,12 @@ export const hasEntryAsAncestor = ({
   return false;
 };
 
-export const miniflareHMRPlugin = ({
-  clientFiles,
-  serverFiles,
-  rootDir,
-  viteEnvironment: { name: environment },
-  workerEntryPathname: entry,
-  runDirectivesScan: runDirectivesScanFn = runDirectivesScan,
-  invalidateModule: invalidateModuleFn = invalidateModule,
-  getVendorClientBarrelPath: getVendorClientBarrelPathFn = getVendorClientBarrelPath,
-  getVendorServerBarrelPath: getVendorServerBarrelPathFn = getVendorServerBarrelPath,
-}: {
+export const miniflareHMRPlugin = (givenOptions: {
   clientFiles: Set<string>;
   serverFiles: Set<string>;
   rootDir: string;
   viteEnvironment: { name: string };
   workerEntryPathname: string;
-  runDirectivesScan?: typeof runDirectivesScan;
-  invalidateModule?: typeof invalidateModule;
-  getVendorClientBarrelPath?: typeof getVendorClientBarrelPath;
-  getVendorServerBarrelPath?: typeof getVendorServerBarrelPath;
 }): (Plugin | Plugin[])[] => [
   {
     name: "rwsdk:miniflare-hmr",
@@ -154,7 +120,12 @@ export const miniflareHMRPlugin = ({
         log("hmr: Full reload after error");
         return [];
       }
-
+      const {
+        clientFiles,
+        serverFiles,
+        viteEnvironment: { name: environment },
+        workerEntryPathname: entry,
+      } = givenOptions;
 
       if (process.env.VERBOSE) {
         log(
@@ -174,12 +145,12 @@ export const miniflareHMRPlugin = ({
 
       if (this.environment.name === "ssr") {
         log("SSR update, invalidating recursively", ctx.file);
-        invalidateModuleFn(ctx.server, "ssr", ctx.file);
-        invalidateModuleFn(
+        invalidateModule(ctx.server, "ssr", ctx.file);
+        invalidateModule(
           ctx.server,
           environment,
           VIRTUAL_SSR_PREFIX +
-            normalizeModulePath(ctx.file, rootDir),
+            normalizeModulePath(ctx.file, givenOptions.rootDir),
         );
         log("hmr: invalidated ssr module");
         return [];
@@ -199,35 +170,35 @@ export const miniflareHMRPlugin = ({
       let serverDirectiveChanged = false;
 
       if (!clientFiles.has(ctx.file) && hasClientDirective) {
-        clientFiles.add(normalizeModulePath(ctx.file, rootDir));
+        clientFiles.add(normalizeModulePath(ctx.file, givenOptions.rootDir));
         clientDirectiveChanged = true;
       } else if (clientFiles.has(ctx.file) && !hasClientDirective) {
-        clientFiles.delete(normalizeModulePath(ctx.file, rootDir));
+        clientFiles.delete(normalizeModulePath(ctx.file, givenOptions.rootDir));
         clientDirectiveChanged = true;
       }
 
       if (!serverFiles.has(ctx.file) && hasServerDirective) {
-        serverFiles.add(normalizeModulePath(ctx.file, rootDir));
+        serverFiles.add(normalizeModulePath(ctx.file, givenOptions.rootDir));
         serverDirectiveChanged = true;
       } else if (serverFiles.has(ctx.file) && !hasServerDirective) {
-        serverFiles.delete(normalizeModulePath(ctx.file, rootDir));
+        serverFiles.delete(normalizeModulePath(ctx.file, givenOptions.rootDir));
         serverDirectiveChanged = true;
       }
 
       if (clientDirectiveChanged) {
         ["client", "ssr", environment].forEach((environment) => {
-          invalidateModuleFn(
+          invalidateModule(
             ctx.server,
             environment,
             "virtual:use-client-lookup.js",
           );
         });
-        invalidateModuleFn(
+        invalidateModule(
           ctx.server,
           environment,
           VIRTUAL_SSR_PREFIX + "/@id/virtual:use-client-lookup.js",
         );
-        invalidateModuleFn(
+        invalidateModule(
           ctx.server,
           environment,
           VIRTUAL_SSR_PREFIX + "virtual:use-client-lookup.js",
@@ -236,18 +207,18 @@ export const miniflareHMRPlugin = ({
 
       if (serverDirectiveChanged) {
         ["client", "ssr", environment].forEach((environment) => {
-          invalidateModuleFn(
+          invalidateModule(
             ctx.server,
             environment,
             "virtual:use-server-lookup.js",
           );
         });
-        invalidateModuleFn(
+        invalidateModule(
           ctx.server,
           environment,
           VIRTUAL_SSR_PREFIX + "/@id/virtual:use-server-lookup.js",
         );
-        invalidateModuleFn(
+        invalidateModule(
           ctx.server,
           environment,
           VIRTUAL_SSR_PREFIX + "virtual:use-server-lookup.js",
@@ -260,7 +231,7 @@ export const miniflareHMRPlugin = ({
         ) ?? [],
       );
 
-      const isWorkerUpdate = modules.length > 0;
+      const isWorkerUpdate = Boolean(modules);
 
       // The worker needs an update, but this is the client environment
       // => Notify for HMR update of any css files imported by in worker, that are also in the client module graph
@@ -279,7 +250,7 @@ export const miniflareHMRPlugin = ({
                 );
 
               for (const clientModule of clientModules ?? []) {
-                invalidateModuleFn(ctx.server, "client", clientModule);
+                invalidateModule(ctx.server, "client", clientModule);
               }
             }
           }
@@ -309,110 +280,99 @@ export const miniflareHMRPlugin = ({
         // becomes a bottleneck, we should look into caching scan results and/or
         // making the sub-scan incremental so we only pay the cost once per new
         // dependency rather than on every unrelated edit.
-        const code = await readFile(ctx.file, "utf-8");
-        const importSignature = getImportSignature(ctx.file, code);
-        const cachedSignature = importSignatureCache.get(ctx.file);
+        await runDirectivesScan({
+          rootConfig: ctx.server.config,
+          environments: ctx.server.environments,
+          clientFiles,
+          serverFiles,
+          entries: [ctx.file],
+          esbuildOptions: {},
+        });
 
-        if (importSignature === cachedSignature) {
-          log("hmr: import signature unchanged, skipping directive scan");
-        } else {
-          log("hmr: import signature changed, running directive scan");
-          await runDirectivesScanFn({
-            rootConfig: ctx.server.config,
-            environments: ctx.server.environments,
-            clientFiles,
-            serverFiles,
-            entries: [ctx.file],
-            esbuildOptions: {},
-          });
+        const clientFilesAfter = clientFiles.size;
+        const serverFilesAfter = serverFiles.size;
 
-          importSignatureCache.set(ctx.file, importSignature);
+        if (
+          clientFilesAfter !== clientFilesBefore ||
+          serverFilesAfter !== serverFilesBefore
+        ) {
+          const clientBarrelPath = getVendorClientBarrelPath();
+          const serverBarrelPath = getVendorServerBarrelPath();
 
-          const clientFilesAfter = clientFiles.size;
-          const serverFilesAfter = serverFiles.size;
+          if (clientBarrelPath) {
+            writeFileSync(
+              clientBarrelPath,
+              generateVendorBarrelContent(clientFiles, givenOptions.rootDir),
+            );
+          }
+          if (serverBarrelPath) {
+            writeFileSync(
+              serverBarrelPath,
+              generateVendorBarrelContent(serverFiles, givenOptions.rootDir),
+            );
+          }
 
-          if (
-            clientFilesAfter !== clientFilesBefore ||
-            serverFilesAfter !== serverFilesBefore
-          ) {
-            const clientBarrelPath = getVendorClientBarrelPathFn();
-            const serverBarrelPath = getVendorServerBarrelPathFn();
-
+          for (const envName of ["client", "ssr", environment]) {
             if (clientBarrelPath) {
-              writeFileSync(
-                clientBarrelPath,
-                generateVendorBarrelContent(clientFiles, rootDir),
-              );
+              invalidateModule(ctx.server, envName, clientBarrelPath);
             }
             if (serverBarrelPath) {
-              writeFileSync(
-                serverBarrelPath,
-                generateVendorBarrelContent(serverFiles, rootDir),
-              );
+              invalidateModule(ctx.server, envName, serverBarrelPath);
             }
+            invalidateModule(
+              ctx.server,
+              envName,
+              VENDOR_CLIENT_BARREL_EXPORT_PATH,
+            );
+            invalidateModule(
+              ctx.server,
+              envName,
+              VENDOR_SERVER_BARREL_EXPORT_PATH,
+            );
+          }
 
+          if (clientFilesAfter !== clientFilesBefore) {
             for (const envName of ["client", "ssr", environment]) {
-              if (clientBarrelPath) {
-                invalidateModuleFn(ctx.server, envName, clientBarrelPath);
-              }
-              if (serverBarrelPath) {
-                invalidateModuleFn(ctx.server, envName, serverBarrelPath);
-              }
-              invalidateModuleFn(
+              invalidateModule(
                 ctx.server,
                 envName,
-                VENDOR_CLIENT_BARREL_EXPORT_PATH,
+                "virtual:use-client-lookup.js",
               );
-              invalidateModuleFn(
+            }
+            invalidateModule(
+              ctx.server,
+              environment,
+              VIRTUAL_SSR_PREFIX + "/@id/virtual:use-client-lookup.js",
+            );
+            invalidateModule(
+              ctx.server,
+              environment,
+              VIRTUAL_SSR_PREFIX + "virtual:use-client-lookup.js",
+            );
+          }
+
+          if (serverFilesAfter !== serverFilesBefore) {
+            for (const envName of ["client", "ssr", environment]) {
+              invalidateModule(
                 ctx.server,
                 envName,
-                VENDOR_SERVER_BARREL_EXPORT_PATH,
+                "virtual:use-server-lookup.js",
               );
             }
-
-            if (clientFilesAfter !== clientFilesBefore) {
-              for (const envName of ["client", "ssr", environment]) {
-                invalidateModuleFn(
-                  ctx.server,
-                  envName,
-                  "virtual:use-client-lookup.js",
-                );
-              }
-              invalidateModuleFn(
-                ctx.server,
-                environment,
-                VIRTUAL_SSR_PREFIX + "/@id/virtual:use-client-lookup.js",
-              );
-              invalidateModuleFn(
-                ctx.server,
-                environment,
-                VIRTUAL_SSR_PREFIX + "virtual:use-client-lookup.js",
-              );
-            }
-
-            if (serverFilesAfter !== serverFilesBefore) {
-              for (const envName of ["client", "ssr", environment]) {
-                invalidateModuleFn(
-                  ctx.server,
-                  envName,
-                  "virtual:use-server-lookup.js",
-                );
-              }
-              invalidateModuleFn(
-                ctx.server,
-                environment,
-                VIRTUAL_SSR_PREFIX + "/@id/virtual:use-server-lookup.js",
-              );
-              invalidateModuleFn(
-                ctx.server,
-                environment,
-                VIRTUAL_SSR_PREFIX + "virtual:use-server-lookup.js",
-              );
-            }
+            invalidateModule(
+              ctx.server,
+              environment,
+              VIRTUAL_SSR_PREFIX + "/@id/virtual:use-server-lookup.js",
+            );
+            invalidateModule(
+              ctx.server,
+              environment,
+              VIRTUAL_SSR_PREFIX + "virtual:use-server-lookup.js",
+            );
           }
         }
 
-        invalidateModuleFn(ctx.server, environment, ctx.file);
+        invalidateModule(ctx.server, environment, ctx.file);
         const shortName = getShortName(ctx.file, ctx.server.config.root);
 
         this.environment.logger.info(
@@ -425,18 +385,18 @@ export const miniflareHMRPlugin = ({
 
         const m = ctx.server.environments.client.moduleGraph
           .getModulesByFile(
-            resolve(rootDir, "src", "app", "style.css"),
+            resolve(givenOptions.rootDir, "src", "app", "style.css"),
           )
           ?.values()
           .next().value;
 
         if (m) {
-          invalidateModuleFn(ctx.server, environment, m);
+          invalidateModule(ctx.server, environment, m);
         }
 
         let virtualSSRModuleId =
           VIRTUAL_SSR_PREFIX +
-          normalizeModulePath(ctx.file, rootDir);
+          normalizeModulePath(ctx.file, givenOptions.rootDir);
 
         if (ctx.file.endsWith(".css")) {
           virtualSSRModuleId += ".js";
@@ -448,7 +408,7 @@ export const miniflareHMRPlugin = ({
           );
 
         if (virtualSSRModule) {
-          invalidateModuleFn(ctx.server, environment, virtualSSRModule);
+          invalidateModule(ctx.server, environment, virtualSSRModule);
         }
 
         ctx.server.environments.client.hot.send({
