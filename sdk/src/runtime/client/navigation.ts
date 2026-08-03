@@ -26,6 +26,17 @@ export interface ClientNavigationOptions {
   scrollBehavior?: "auto" | "smooth" | "instant";
   cacheStorage?: NavigationCacheStorage;
   /**
+   * Called for navigation events that would otherwise be handled by client
+   * navigation (anchor clicks, `navigate()` calls, and popstate / back-forward
+   * navigations). Return `true` to intercept the navigation and perform a soft
+   * (RSC) navigation, or `false` to let the browser perform a full document load.
+   */
+  shouldIntercept?: (args: {
+    toUrl: URL;
+    fromUrl: URL;
+    element?: HTMLElement | Element;
+  }) => boolean;
+  /**
    * Milliseconds a navigation may stay uncommitted before the framework
    * recovers by hard-navigating to the pending URL. Unset or 0 disables
    * the watchdog (default: disabled).
@@ -37,6 +48,18 @@ export interface ClientNavigationOptions {
    * to the pending URL. Has no effect unless `navigationTimeoutMs` is set.
    */
   onNavigationTimeout?: (args: NavigationTimeoutArgs) => void;
+}
+
+function shouldInterceptNavigation(
+  opts: ClientNavigationOptions,
+  toUrl: URL,
+  fromUrl: URL,
+  element?: HTMLElement | Element,
+): boolean {
+  if (opts.shouldIntercept) {
+    return opts.shouldIntercept({ toUrl, fromUrl, element });
+  }
+  return true;
 }
 
 export function validateClickEvent(event: MouseEvent, target: HTMLElement) {
@@ -83,8 +106,10 @@ export function validateClickEvent(event: MouseEvent, target: HTMLElement) {
 
 let IS_CLIENT_NAVIGATION = false;
 
+let clientNavigationOptions: ClientNavigationOptions = {};
 let scrollRestoration: ScrollRestorationController | null = null;
 let currentPathKey: string | null = null;
+let currentUrl: URL | null = null;
 
 function getLocationPathKey() {
   return `${window.location.pathname ?? ""}${window.location.search ?? ""}`;
@@ -112,7 +137,22 @@ export async function navigate(
     return;
   }
 
-  const url = new URL(href, window.location.href);
+  const toUrl = new URL(href, window.location.href);
+  const fromUrl = currentUrl ?? new URL(window.location.href);
+
+  if (
+    clientNavigationOptions.shouldIntercept &&
+    !shouldInterceptNavigation(clientNavigationOptions, toUrl, fromUrl)
+  ) {
+    if (options.history === "replace") {
+      window.location.replace(href);
+    } else {
+      window.location.href = href;
+    }
+    return;
+  }
+
+  const url = toUrl;
 
   const scrollToTop = options.info?.scrollToTop ?? true;
   const scrollBehavior = (options.info?.scrollBehavior ??
@@ -143,6 +183,7 @@ export async function navigate(
     await options.onNavigate?.();
 
     await globalThis.__rsc_callServer(null, null, "navigation");
+    currentUrl = url;
   } catch (error) {
     abortPendingNavigation(pendingNavigation.id);
     throw error;
@@ -192,6 +233,7 @@ export async function navigate(
  */
 export function initClientNavigation(opts: ClientNavigationOptions = {}) {
   IS_CLIENT_NAVIGATION = true;
+  clientNavigationOptions = opts;
   configureNavigationTimeout({
     timeoutMs: opts.navigationTimeoutMs,
     onTimeout: opts.onNavigationTimeout,
@@ -199,6 +241,7 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
   scrollRestoration = createScrollRestoration();
   scrollRestoration.initialize();
   currentPathKey = getLocationPathKey();
+  currentUrl = new URL(window.location.href);
 
   document.addEventListener(
     "click",
@@ -207,13 +250,23 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
         return;
       }
 
+      const el = event.target as HTMLElement;
+      const a = el.closest("a") as HTMLAnchorElement;
+      const href = a.getAttribute("href") as string;
+      const fromUrl = currentUrl ?? new URL(window.location.href);
+      const toUrl = new URL(href, window.location.href);
+
+      if (
+        a.hasAttribute("data-reload") ||
+        !shouldInterceptNavigation(opts, toUrl, fromUrl, a)
+      ) {
+        return;
+      }
+
       event.preventDefault();
 
-      const el = event.target as HTMLElement;
-      const a = el.closest("a");
-      const href = a?.getAttribute("href") as string;
-
       await navigate(href, { history: "push", onNavigate: opts.onNavigate });
+      currentUrl = toUrl;
     },
     true,
   );
@@ -226,6 +279,18 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
     if (isHashOnlyChange) {
       return;
     }
+
+    const fromUrl = currentUrl ?? new URL(window.location.href);
+    const toUrl = new URL(window.location.href);
+
+    if (!shouldInterceptNavigation(opts, toUrl, fromUrl)) {
+      // Let the browser finish the back/forward navigation as a full document
+      // load so the target's Document and client program are loaded fresh.
+      window.location.href = window.location.href;
+      return;
+    }
+
+    currentUrl = toUrl;
 
     scrollRestoration?.restorePopStateScroll();
     const pendingNavigation = beginPendingNavigation(window.location.href);
@@ -318,7 +383,7 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
     // then warm the navigation cache based on any <link rel="x-prefetch"> tags
     // rendered for the current location.
     onNavigationCommit(undefined, opts.cacheStorage);
-    void preloadFromLinkTags(undefined, undefined, opts.cacheStorage);
+    void preloadFromLinkTags(undefined, undefined, opts.cacheStorage, opts.shouldIntercept);
   }
 
   // Return callbacks for use with initClient

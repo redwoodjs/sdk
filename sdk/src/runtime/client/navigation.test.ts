@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { initClientNavigation, validateClickEvent } from "./navigation";
+import { initClientNavigation, navigate, validateClickEvent } from "./navigation";
 import {
   getNavigationSnapshot,
   resetNavigationStateForTests,
@@ -119,6 +119,205 @@ describe("clientNavigation", () => {
   });
 });
 
+describe("full-reload opt-out (data-reload and shouldIntercept)", () => {
+  let capturedClickHandler: ((event: MouseEvent) => void) | null = null;
+  let capturedPopstateHandler: (() => void) | null = null;
+
+  beforeEach(() => {
+    capturedClickHandler = null;
+    capturedPopstateHandler = null;
+    vi.clearAllMocks();
+
+    let historyState: Record<string, unknown> = {};
+
+    vi.stubGlobal("document", {
+      visibilityState: "visible",
+      querySelectorAll: vi.fn().mockReturnValue([]),
+      addEventListener: vi.fn((event: string, handler: any) => {
+        if (event === "click") capturedClickHandler = handler;
+      }),
+    });
+    vi.stubGlobal("window", {
+      location: {
+        href: "http://localhost/",
+        pathname: "/",
+        search: "",
+        replace: vi.fn(),
+      },
+      addEventListener: vi.fn((event: string, handler: any) => {
+        if (event === "popstate") capturedPopstateHandler = handler;
+      }),
+      history: {
+        scrollRestoration: "auto",
+        get state() {
+          return historyState;
+        },
+        pushState: vi.fn((state: Record<string, unknown>) => {
+          historyState = state;
+        }),
+        replaceState: vi.fn((state: Record<string, unknown>) => {
+          historyState = state;
+        }),
+      },
+      scrollX: 0,
+      scrollY: 0,
+      scrollTo: vi.fn(),
+    });
+    vi.stubGlobal("history", {
+      scrollRestoration: "auto",
+      pushState: vi.fn(),
+      replaceState: vi.fn(),
+      state: {},
+    });
+    (globalThis as any).__rsc_callServer = vi.fn().mockResolvedValue(undefined);
+  });
+
+  function createFakeAnchor(props: {
+    href: string;
+    target?: string;
+    dataReload?: boolean;
+  }) {
+    const fakeAnchor = {
+      getAttribute: (attr: string) =>
+        attr === "href" ? props.href : props.target ?? null,
+      hasAttribute: (attr: string) =>
+        attr === "data-reload" ? Boolean(props.dataReload) : false,
+      target: props.target ?? "",
+      closest: (sel: string) => (sel === "a" ? fakeAnchor : null),
+    };
+    const fakeTarget = {
+      closest: (sel: string) => (sel === "a" ? fakeAnchor : null),
+    };
+    return { fakeAnchor, fakeTarget };
+  }
+
+  function createFakeClickEvent(fakeTarget: any) {
+    return {
+      button: 0,
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      altKey: false,
+      target: fakeTarget,
+      preventDefault: vi.fn(),
+    } as unknown as MouseEvent;
+  }
+
+  it("data-reload attribute prevents client-side interception", async () => {
+    initClientNavigation();
+
+    const { fakeTarget } = createFakeAnchor({ href: "/admin", dataReload: true });
+    const fakeClickEvent = createFakeClickEvent(fakeTarget);
+
+    await capturedClickHandler!(fakeClickEvent);
+
+    expect(fakeClickEvent.preventDefault).not.toHaveBeenCalled();
+    expect(window.history.pushState).not.toHaveBeenCalled();
+    expect((globalThis as any).__rsc_callServer).not.toHaveBeenCalled();
+  });
+
+  it("shouldIntercept returning false prevents client-side interception", async () => {
+    const shouldIntercept = vi.fn(() => false);
+
+    initClientNavigation({ shouldIntercept });
+
+    const { fakeTarget } = createFakeAnchor({ href: "/admin" });
+    const fakeClickEvent = createFakeClickEvent(fakeTarget);
+
+    await capturedClickHandler!(fakeClickEvent);
+
+    expect(shouldIntercept).toHaveBeenCalled();
+    expect(fakeClickEvent.preventDefault).not.toHaveBeenCalled();
+    expect(window.history.pushState).not.toHaveBeenCalled();
+    expect((globalThis as any).__rsc_callServer).not.toHaveBeenCalled();
+  });
+
+  it("shouldIntercept receives correct toUrl and fromUrl for anchor clicks", async () => {
+    const shouldIntercept = vi.fn(() => false);
+
+    initClientNavigation({ shouldIntercept });
+
+    const { fakeTarget } = createFakeAnchor({ href: "/admin" });
+    const fakeClickEvent = createFakeClickEvent(fakeTarget);
+
+    await capturedClickHandler!(fakeClickEvent);
+
+    expect(shouldIntercept).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fromUrl: expect.objectContaining({
+          href: "http://localhost/",
+        }),
+        toUrl: expect.objectContaining({
+          href: "http://localhost/admin",
+        }),
+      }),
+    );
+  });
+
+  it("shouldIntercept returning true allows normal client-side navigation", async () => {
+    const shouldIntercept = vi.fn(() => true);
+
+    initClientNavigation({ shouldIntercept });
+
+    const { fakeTarget } = createFakeAnchor({ href: "/admin" });
+    const fakeClickEvent = createFakeClickEvent(fakeTarget);
+
+    await capturedClickHandler!(fakeClickEvent);
+
+    expect(fakeClickEvent.preventDefault).toHaveBeenCalled();
+    expect(window.history.pushState).toHaveBeenCalled();
+    expect((globalThis as any).__rsc_callServer).toHaveBeenCalled();
+  });
+
+  it("shouldIntercept returning false on navigate() forces a full load", async () => {
+    const shouldIntercept = vi.fn(() => false);
+
+    initClientNavigation({ shouldIntercept });
+
+    await navigate("/admin");
+
+    expect(shouldIntercept).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fromUrl: expect.objectContaining({ href: "http://localhost/" }),
+        toUrl: expect.objectContaining({ href: "http://localhost/admin" }),
+      }),
+    );
+    expect(window.location.href).toBe("/admin");
+    expect(window.history.pushState).not.toHaveBeenCalled();
+    expect((globalThis as any).__rsc_callServer).not.toHaveBeenCalled();
+  });
+
+  it("shouldIntercept returning false on navigate(..., { history: 'replace' }) uses location.replace", async () => {
+    const shouldIntercept = vi.fn(() => false);
+    const replaceSpy = vi.spyOn(window.location, "replace");
+
+    initClientNavigation({ shouldIntercept });
+
+    await navigate("/admin", { history: "replace" });
+
+    expect(replaceSpy).toHaveBeenCalledWith("/admin");
+    expect(window.location.href).toBe("http://localhost/");
+    expect((globalThis as any).__rsc_callServer).not.toHaveBeenCalled();
+  });
+
+  it("shouldIntercept returning true on navigate() allows normal soft navigation", async () => {
+    const shouldIntercept = vi.fn(() => true);
+
+    initClientNavigation({ shouldIntercept });
+
+    await navigate("/admin");
+
+    expect(shouldIntercept).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fromUrl: expect.objectContaining({ href: "http://localhost/" }),
+        toUrl: expect.objectContaining({ href: "http://localhost/admin" }),
+      }),
+    );
+    expect(window.history.pushState).toHaveBeenCalled();
+    expect((globalThis as any).__rsc_callServer).toHaveBeenCalled();
+  });
+});
+
 // Regression tests for issue #1123: onNavigate callback was never called
 // Root cause: commit c543ef7 extracted navigate() but dropped onNavigate wiring
 describe("onNavigate callback (issue #1123 regression)", () => {
@@ -141,7 +340,12 @@ describe("onNavigate callback (issue #1123 regression)", () => {
       }),
     });
     vi.stubGlobal("window", {
-      location: { href: "http://localhost/", pathname: "/", search: "" },
+      location: {
+        href: "http://localhost/",
+        pathname: "/",
+        search: "",
+        replace: vi.fn(),
+      },
       addEventListener: vi.fn((event: string, handler: any) => {
         if (event === "popstate") capturedPopstateHandler = handler;
       }),
@@ -292,7 +496,12 @@ describe("initClientNavigation", () => {
     });
 
     vi.stubGlobal("window", {
-      location: { href: "http://localhost/", pathname: "/", search: "" },
+      location: {
+        href: "http://localhost/",
+        pathname: "/",
+        search: "",
+        replace: vi.fn(),
+      },
       addEventListener: vi.fn((event: string, handler: () => void) => {
         if (event === "scroll") {
           capturedScrollHandler = handler;

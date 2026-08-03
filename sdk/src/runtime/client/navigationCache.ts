@@ -381,6 +381,11 @@ export async function preloadFromLinkTags(
   doc: Document = document,
   env?: NavigationCacheEnvironment,
   cacheStorage?: NavigationCacheStorage,
+  shouldIntercept?: (args: {
+    toUrl: URL;
+    fromUrl: URL;
+    element?: HTMLElement | Element;
+  }) => boolean,
 ): Promise<void> {
   if (typeof doc === "undefined") {
     return;
@@ -405,8 +410,22 @@ export async function preloadFromLinkTags(
       }
 
       try {
-        const url = new URL(href, env?.origin ?? window.location.origin);
-        return preloadNavigationUrl(url, env, cacheStorage);
+        const toUrl = new URL(href, env?.origin ?? window.location.origin);
+
+        if (link.hasAttribute?.("data-reload")) {
+          return;
+        }
+
+        if (shouldIntercept) {
+          const fromUrl = window.location.href
+            ? new URL(window.location.href)
+            : new URL(window.location.origin);
+          if (shouldIntercept({ toUrl, fromUrl, element: link }) === false) {
+            return;
+          }
+        }
+
+        return preloadNavigationUrl(toUrl, env, cacheStorage);
       } catch {
         return;
       }
