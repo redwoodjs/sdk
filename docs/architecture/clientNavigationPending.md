@@ -88,7 +88,7 @@ When a navigation response returns, the transport checks whether the browser is 
 
 If the discarded response belongs to the active pending navigation, the pending promise is resolved via `abortPendingNavigation()` so Suspense does not wait forever.
 
-`Content` stores both the RSC payload promise and metadata in state, then wraps rendering with `NavigationPayloadProvider`. After the payload commits, a React effect calls `onHydrated(meta)`. This is what makes the commit signal mean "visible React tree committed" instead of "fetch finished".
+`Content` stores both the RSC payload promise and metadata in state, then wraps rendering with `NavigationPayloadProvider`. Navigation payloads commit via a default-priority (non-interruptible) update — see [Client Navigation Commit Integrity](./clientNavigationCommitIntegrity.md). After the payload commits, a React effect calls `onHydrated(meta)`. This is what makes the commit signal mean "visible React tree committed" instead of "fetch finished".
 
 ### `navigationPending.tsx`
 
@@ -158,7 +158,7 @@ If metadata is omitted, `onHydrated` falls back to the historical behavior and t
 
 ## Correctness Invariants
 
-- A pending navigation resolves when it commits, is superseded, is aborted, or is redirected away.
+- A pending navigation resolves when it commits, is superseded, is aborted, is redirected away, or its commit watchdog times out (see [Client Navigation Commit Integrity](./clientNavigationCommitIntegrity.md)).
 - A navigation response may only update the tree if it still matches the current browser document URL.
 - Hash-only changes do not make an RSC navigation response stale.
 - Action payload commits do not resolve navigation pending state.

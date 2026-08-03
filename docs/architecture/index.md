@@ -59,6 +59,9 @@ This collection of documents provides a high-level overview of the core architec
 - [**Client Navigation Pending Boundaries**](./clientNavigationPending.md)
   Explains how `NavigationPending` and `useNavigationPending` expose Suspense-aware pending state for client-side RSC navigations.
 
+- [**Client Navigation Commit Integrity**](./clientNavigationCommitIntegrity.md)
+  Explains how RedwoodSDK guarantees a client navigation either commits its payload or recovers, so the URL and the rendered page can never desync permanently.
+
 - [**Router Architecture**](./router.md)
   Describes the core principles of the router, its flattened route table structure, and its performance characteristics.
 
