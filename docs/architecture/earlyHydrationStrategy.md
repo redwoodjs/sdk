@@ -14,8 +14,6 @@ This creates a significant challenge for script loading:
 2.  **Conflict with Streaming:** In a streaming context with `<Suspense>`, the closing `</body>` tag is not sent until the very last piece of suspended content has been streamed.
 3.  **The User Experience Problem:** This combination means that if a page has a slow data fetch, the client-side JavaScript will not run until that fetch is complete. The user is left looking at a visible UI (e.g., buttons, menus from the initial shell) that is completely non-interactive, sometimes for several seconds. This negates the primary benefit of streaming.
 
-As documented in historical pull requests ([#369](https://github.com/redwoodjs/sdk/pull/369)), this delayed hydration was a critical issue that needed to be solved.
-
 ## The Solution: Immediate Execution with Inline `import()`
 
 To solve this, our framework adopts a different strategy. The user places an inline script in their `Document.tsx`:
