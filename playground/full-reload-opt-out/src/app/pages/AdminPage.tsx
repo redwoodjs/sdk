@@ -12,6 +12,9 @@ export function AdminPage({ ctx }: RequestInfo) {
       <a href="/admin/details" id="admin-details-link">
         Go to Admin Details (soft nav)
       </a>
+      <a href="/admin/details" id="admin-details-reload-link" data-reload>
+        Go to Admin Details (data-reload)
+      </a>
     </div>
   );
 }

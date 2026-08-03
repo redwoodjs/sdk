@@ -67,6 +67,28 @@ testDevAndDeploy(
 );
 
 testDevAndDeploy(
+  "data-reload attribute forces a full reload even within the same section",
+  async ({ page, url }) => {
+    await page.goto(new URL("admin", url).href);
+    await waitForHydration(page);
+
+    const tokenBefore = await getLoadToken(page);
+
+    await page.click("#admin-details-reload-link");
+
+    await poll(async () => {
+      const content = await page.content();
+      expect(content).toContain("Admin Details Page");
+      return true;
+    });
+
+    const tokenAfter = await getLoadToken(page);
+    expect(tokenAfter).not.toBe(tokenBefore);
+    expect(page.url()).toContain("/admin/details");
+  },
+);
+
+testDevAndDeploy(
   "in-section navigation remains a soft client navigation",
   async ({ page, url }) => {
     await page.goto(new URL("admin", url).href);
