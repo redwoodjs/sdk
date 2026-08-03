@@ -5,9 +5,9 @@ description: How RedwoodSDK guarantees that a client navigation either commits i
 
 ## Problem
 
-Client-side navigation is URL-first: `navigate()` pushes the new URL into history, then fetches the RSC payload, then commits it to the visible React tree. [Client Navigation Pending Boundaries](./clientNavigationPending.md) covers the transient version of the gap this creates — the old tree stays visible while the new payload is in flight, and apps can hide it behind Suspense fallbacks.
+Client-side navigation is URL-first: `navigate()` pushes the new URL into history, then fetches the RSC payload, then commits it to the visible React tree. So for a short while after every navigation, the address bar shows the new route while the screen still shows the old page. That brief mismatch is normal — it is simply the new page loading — and [Client Navigation Pending Boundaries](./clientNavigationPending.md) describes how apps can hide it behind Suspense fallback UI.
 
-There is a terminal version of the same gap. In production builds under main-thread CPU starvation, a navigation can update the URL while its payload never commits at all. The page keeps rendering the previous route indefinitely; only a manual reload restores consistency. Reported in [#1245](https://github.com/redwoodjs/sdk/issues/1245) and reproduced with per-navigation lifecycle instrumentation.
+This document is about the case where the mismatch is not brief. In production builds under main-thread CPU starvation, a navigation can update the URL while its payload never commits at all. The page keeps rendering the previous route indefinitely; only a manual reload restores consistency. Reported in [#1245](https://github.com/redwoodjs/sdk/issues/1245) and reproduced with per-navigation lifecycle instrumentation.
 
 The failure lives in the last step of the pipeline. Every observed failure showed the same signature: the `?__rsc` fetch completes with a 200 for the correct URL, the resolved payload is handed to React, and the commit never follows. The navigation cache was not involved (no cache hits in the failing runs), the payload stream did not error, and the stale-response guard never fired — that guard covers superseded navigations, which is not this case.
 
