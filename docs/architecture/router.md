@@ -53,7 +53,7 @@ Based on our benchmarking of the optimized implementation, the router has the fo
 
 The primary performance bottleneck remains the linear scan through the flattened route table, but its constant factor has been significantly reduced via caching and pre-compilation.
 
-- **Performance scales with route count**: 100 routes now typically take on the order of 3–6μs to scan, while 200 routes are ~5–6μs on our reference hardware (measured via `sdk/src/runtime/lib/router.bench.ts`).
+- **Performance scales with route count**: 100 routes typically take on the order of 3–6μs to scan, while 200 routes take ~5–6μs on reference hardware.
 - **Worst-case**: A "404 Not Found" result (no route matches) still requires checking every route, but is now roughly an order of magnitude faster than the original implementation.
 
 ### What is Efficient
