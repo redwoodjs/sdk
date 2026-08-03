@@ -41,7 +41,7 @@ Deferring the URL push until after the commit ("URL-last") was considered and re
 
 ### Commit watchdog
 
-The non-interruptible commit closes the loss window for link clicks and `navigate()` calls, but it cannot cover every path — browser back/forward changes the URL before the framework runs, and future loss modes are by definition unknown. The watchdog (proposed in [#1240](https://github.com/redwoodjs/sdk/issues/1240) as `navigationTimeoutMs`/`onNavigationTimeout`) is the backstop.
+The non-interruptible commit closes the loss window for every path that reaches `setRscPayload` — link clicks, `navigate()` calls, and `popstate` navigations all share that path, so all of them get the same guarantee. What it cannot cover is a commit that never begins: the `?__rsc` fetch hanging forever so no payload ever exists, the new tree throwing during render, a custom transport that never delivers a payload, and loss modes not yet known. The watchdog (proposed in [#1240](https://github.com/redwoodjs/sdk/issues/1240) as `navigationTimeoutMs`/`onNavigationTimeout`) is the backstop for those: it bounds the worst case of any commit loss, from any cause, to one timeout plus a reload.
 
 When a pending navigation begins, the navigation-state tracker arms a timer. A commit or abort clears it. If the timer wins, the pending navigation is aborted and recovery runs: the app's `onNavigationTimeout({ href })` handler if one is configured, otherwise a hard navigation via `window.location.assign(href)`. A hard navigation always lands on matching URL and content, so the terminal desync state becomes self-healing everywhere it can occur.
 
@@ -111,3 +111,4 @@ if the commit never happens:
 - [#1242](https://github.com/redwoodjs/sdk/issues/1242): request ids would distinguish rapid navigations to the exact same URL.
 - [#1243](https://github.com/redwoodjs/sdk/issues/1243): aborting superseded in-flight fetches remains a resource optimization.
 - Why the abandoned transition is lost rather than merely delayed is a React scheduler question left open; the framework no longer depends on the answer.
+- The mid-stream error path (the `?__rsc` fetch returns 200 but decoding the payload fails) aborts the pending navigation and rethrows, leaving the URL updated with old content and no recovery — aborting clears the watchdog timer, so the watchdog does not fire there either. Whether error aborts should also trigger recovery is a design question for a follow-up.
