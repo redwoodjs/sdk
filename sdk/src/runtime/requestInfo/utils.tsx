@@ -21,11 +21,17 @@ export const constructWithDefaultRequestInfo = (
     path: "/",
     params: {},
     ctx: {},
+    // context(justinvdm, 2026-07-31): @cloudflare/workers-types v5 made
+    // `exports` and `tracing` required on ExecutionContext. This default
+    // requestInfo is a placeholder for non-Worker contexts (its waitUntil
+    // and passThroughOnException were already no-op stubs), so we keep the
+    // same stub shape and cast rather than fabricate tracing machinery the
+    // placeholder would never exercise.
     cf: {
       waitUntil: () => {},
       passThroughOnException: () => {},
       props: {},
-    },
+    } as unknown as ExecutionContext,
     response: {
       status: 200,
       headers: new Headers(),

@@ -83,7 +83,7 @@ function callWithLegacyContext<Result>(
 // handlers to have exactly three parameters. In practice the only handlers
 // that need the shim are the public capnweb-style ones, and the dedicated
 // hibernation subpath remains available for the new API.
-type DurableObjectStubLike = DurableObjectStub<any>;
+type DurableObjectStubLike = DurableObjectStub;
 
 function isLegacyKeyHandler(
   handler: Function,

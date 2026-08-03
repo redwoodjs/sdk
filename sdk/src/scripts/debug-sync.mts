@@ -344,6 +344,9 @@ export const debugSync = async (opts: DebugSyncOptions) => {
   console.log("👀 Watching for changes...");
 
   let childProc: ReturnType<typeof $> | null = null;
+  // context(justinvdm, 2026-08-02): execa v10 dropped the `killed` property
+  // from ResultPromise, so we track kill state ourselves.
+  let childProcKilled = false;
   const runWatchedCommand = () => {
     if (typeof watch === "string") {
       console.log(`\n> ${watch}\n`);
@@ -378,8 +381,9 @@ export const debugSync = async (opts: DebugSyncOptions) => {
       console.log(`\nDetected change, re-syncing...`);
     }
 
-    if (childProc && !childProc.killed) {
+    if (childProc && !childProcKilled) {
       console.log("Stopping running process...");
+      childProcKilled = true;
       childProc.kill();
       await childProc.catch(() => {
         /* ignore kill errors */
@@ -414,7 +418,8 @@ export const debugSync = async (opts: DebugSyncOptions) => {
 
   const cleanup = async () => {
     console.log("\nCleaning up...");
-    if (childProc && !childProc.killed) {
+    if (childProc && !childProcKilled) {
+      childProcKilled = true;
       childProc.kill();
     }
     await release();

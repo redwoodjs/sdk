@@ -23,25 +23,25 @@
   },
   "dependencies": {
     "rwsdk": "workspace:*",
-    "react": "19.2.6",
-    "react-dom": "19.2.6",
-    "react-server-dom-webpack": "19.2.6",
-    "@base-ui-components/react": "^1.0.0-rc.0"
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-server-dom-webpack": "19.2.8",
+    "@base-ui/react": "^1.6.0"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.33.2",
-    "@cloudflare/workers-types": "4.20260426.1",
-    "@types/node": "~25.6.0",
-    "@types/react": "19.2.14",
-    "@types/react-dom": "19.2.3",
-    "typescript": "6.0.3",
-    "vite": "~8.1.0",
-    "wrangler": "4.85.0"
+    "@cloudflare/vite-plugin": "1.50.0",
+    "@cloudflare/workers-types": "5.20260801.1",
+    "@types/node": "~26.1.2",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "typescript": "7.0.2",
+    "vite": "~8.2.0",
+    "wrangler": "4.118.0"
   },
   "overrides": {
-    "react": "19.2.6",
-    "react-dom": "19.2.6",
-    "react-server-dom-webpack": "19.2.6"
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-server-dom-webpack": "19.2.8"
   },
   "pnpm": {}
 }
