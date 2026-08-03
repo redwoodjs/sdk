@@ -29,7 +29,9 @@ const listeners = new Set<NavigationListener>();
 // otherwise leaves the URL and the rendered tree desynced forever. When the
 // timeout wins, the pending record is aborted and recovery runs: the app's
 // handler if provided, else a hard navigation to the pending URL, which
-// always lands on matching URL and content.
+// always lands on matching URL and content. The watchdog is opt-in (unset
+// or 0 disables it) so existing apps see no behavior change unless they
+// enable it.
 export interface NavigationTimeoutArgs {
   /** URL of the navigation that failed to commit in time. */
   href: string;
@@ -37,19 +39,17 @@ export interface NavigationTimeoutArgs {
 
 export type NavigationTimeoutHandler = (args: NavigationTimeoutArgs) => void;
 
-const DEFAULT_NAVIGATION_TIMEOUT_MS = 10_000;
-
-let navigationTimeoutMs = DEFAULT_NAVIGATION_TIMEOUT_MS;
+let navigationTimeoutMs = 0;
 let navigationTimeoutHandler: NavigationTimeoutHandler | null = null;
 let navigationTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 export function configureNavigationTimeout(options: {
-  /** Milliseconds a navigation may stay uncommitted before recovery runs. Set to 0 to disable. */
+  /** Milliseconds a navigation may stay uncommitted before recovery runs. Unset or 0 disables the watchdog. */
   timeoutMs?: number;
-  /** Recovery handler. Defaults to a hard navigation to the pending URL. */
+  /** Recovery handler. Defaults to a hard navigation to the pending URL. Has no effect unless timeoutMs is set. */
   onTimeout?: NavigationTimeoutHandler;
 }) {
-  navigationTimeoutMs = options.timeoutMs ?? DEFAULT_NAVIGATION_TIMEOUT_MS;
+  navigationTimeoutMs = options.timeoutMs ?? 0;
   navigationTimeoutHandler = options.onTimeout ?? null;
 }
 
@@ -243,7 +243,7 @@ export function abortPendingNavigation(id?: number) {
 
 export function resetNavigationStateForTests(href = "http://localhost/") {
   clearNavigationTimeout();
-  navigationTimeoutMs = DEFAULT_NAVIGATION_TIMEOUT_MS;
+  navigationTimeoutMs = 0;
   navigationTimeoutHandler = null;
   pendingNavigation?.resolve();
   pendingNavigation = null;

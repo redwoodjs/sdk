@@ -43,9 +43,9 @@ Deferring the URL push until after the commit ("URL-last") was considered and re
 
 The non-interruptible commit closes the loss window for every path that reaches `setRscPayload` — link clicks, `navigate()` calls, and `popstate` navigations all share that path, so all of them get the same guarantee. What it cannot cover is a commit that never begins: the `?__rsc` fetch hanging forever so no payload ever exists, the new tree throwing during render, a custom transport that never delivers a payload, and loss modes not yet known. The watchdog (proposed in [#1240](https://github.com/redwoodjs/sdk/issues/1240) as `navigationTimeoutMs`/`onNavigationTimeout`) is the backstop for those: it bounds the worst case of any commit loss, from any cause, to one timeout plus a reload.
 
-When a pending navigation begins, the navigation-state tracker arms a timer. A commit or abort clears it. If the timer wins, the pending navigation is aborted and recovery runs: the app's `onNavigationTimeout({ href })` handler if one is configured, otherwise a hard navigation via `window.location.assign(href)`. A hard navigation always lands on matching URL and content, so the terminal desync state becomes self-healing everywhere it can occur.
+When a pending navigation begins and the watchdog is enabled, the navigation-state tracker arms a timer. A commit or abort clears it. If the timer wins, the pending navigation is aborted and recovery runs: the app's `onNavigationTimeout({ href })` handler if one is configured, otherwise a hard navigation via `window.location.assign(href)`. A hard navigation always lands on matching URL and content, so the terminal desync state becomes self-healing everywhere it can occur.
 
-Defaults: `navigationTimeoutMs` is 10 seconds; `0` disables the watchdog. The timeout races legitimately slow navigations too — a hard navigation to the pending URL is still correct in that case, just heavier.
+The watchdog is opt-in: it stays disabled unless the app sets `navigationTimeoutMs` (in milliseconds), so existing apps see no behavior change. `onNavigationTimeout` has no effect unless the timeout is set. The timeout races legitimately slow navigations too — a hard navigation to the pending URL is still correct in that case, just heavier — which is one reason the watchdog is opt-in rather than always on.
 
 ## Main Pieces
 
@@ -72,7 +72,7 @@ Owns the watchdog alongside the pending-navigation tracker:
 user clicks link / app calls navigate / browser fires popstate
   -> history is updated
   -> beginPendingNavigation(targetUrl)
-  -> watchdog timer armed (navigationTimeoutMs)
+  -> watchdog timer armed (if navigationTimeoutMs is enabled)
   -> RSC navigation request starts
   -> response returns (or cache serves it)
   -> stale-response guard discards it if the browser has moved on
@@ -93,12 +93,12 @@ if the commit never happens:
 ## Trade-offs
 
 - Navigation renders are no longer time-sliced. A heavy navigation render blocks the main thread until it completes, so a slow device may render a navigation in one uninterrupted pass instead of yielding. This favors correctness — the commit always lands — over smoothness during the commit.
-- The watchdog can fire for a navigation that is merely slow (e.g. a slow network), not stuck. Recovery is still correct — the hard navigation lands on the pending URL — but the page load is heavier than the client-side commit would have been. The 10 second default is chosen so this is rare in practice.
+- The watchdog can fire for a navigation that is merely slow (e.g. a slow network), not stuck. Recovery is still correct — the hard navigation lands on the pending URL — but the page load is heavier than the client-side commit would have been. Apps that enable it should pick a duration that a healthy navigation rarely exceeds.
 
 ## Correctness Invariants
 
 - A resolved navigation payload must not be dropped by render scheduling.
-- A pending navigation resolves when it commits, is superseded, is aborted, is redirected away, or its watchdog times out.
+- A pending navigation resolves when it commits, is superseded, is aborted, is redirected away, or — if the watchdog is enabled — its watchdog times out.
 - Watchdog recovery must always end at a URL whose content and address bar agree, which is why the default recovery is a hard navigation rather than a retry of the client-side pipeline.
 - Action payload commits are unchanged and do not resolve navigation pending state.
 

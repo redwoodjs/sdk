@@ -27,14 +27,14 @@ export interface ClientNavigationOptions {
   cacheStorage?: NavigationCacheStorage;
   /**
    * Milliseconds a navigation may stay uncommitted before the framework
-   * recovers by hard-navigating to the pending URL (default 10000).
-   * Set to 0 to disable the watchdog.
+   * recovers by hard-navigating to the pending URL. Unset or 0 disables
+   * the watchdog (default: disabled).
    */
   navigationTimeoutMs?: number;
   /**
    * Recovery handler invoked when a navigation exceeds
    * `navigationTimeoutMs` without committing. Defaults to a hard navigation
-   * to the pending URL.
+   * to the pending URL. Has no effect unless `navigationTimeoutMs` is set.
    */
   onNavigationTimeout?: (args: NavigationTimeoutArgs) => void;
 }

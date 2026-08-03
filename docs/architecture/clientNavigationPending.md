@@ -158,7 +158,7 @@ If metadata is omitted, `onHydrated` falls back to the historical behavior and t
 
 ## Correctness Invariants
 
-- A pending navigation resolves when it commits, is superseded, is aborted, is redirected away, or its commit watchdog times out (see [Client Navigation Commit Integrity](./clientNavigationCommitIntegrity.md)).
+- A pending navigation resolves when it commits, is superseded, is aborted, is redirected away, or — if the opt-in commit watchdog is enabled — its watchdog times out (see [Client Navigation Commit Integrity](./clientNavigationCommitIntegrity.md)).
 - A navigation response may only update the tree if it still matches the current browser document URL.
 - Hash-only changes do not make an RSC navigation response stale.
 - Action payload commits do not resolve navigation pending state.

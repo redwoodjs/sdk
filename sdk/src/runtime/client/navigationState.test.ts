@@ -26,7 +26,17 @@ describe("navigation commit watchdog", () => {
     vi.useRealTimers();
   });
 
+  it("is disabled by default", () => {
+    beginPendingNavigation("http://localhost/results?page=2");
+
+    vi.advanceTimersByTime(60_000);
+
+    expect(assignMock).not.toHaveBeenCalled();
+    expect(getNavigationSnapshot().pending).not.toBeNull();
+  });
+
   it("recovers with a hard navigation when a navigation never commits", () => {
+    configureNavigationTimeout({ timeoutMs: 10_000 });
     beginPendingNavigation("http://localhost/results?page=2");
 
     vi.advanceTimersByTime(10_000);
@@ -36,6 +46,7 @@ describe("navigation commit watchdog", () => {
   });
 
   it("does not fire when the navigation commits in time", () => {
+    configureNavigationTimeout({ timeoutMs: 10_000 });
     const pending = beginPendingNavigation("http://localhost/results?page=2");
     commitPendingNavigation(pending.pendingUrl);
 
@@ -45,6 +56,7 @@ describe("navigation commit watchdog", () => {
   });
 
   it("does not fire when the navigation is aborted in time", () => {
+    configureNavigationTimeout({ timeoutMs: 10_000 });
     const pending = beginPendingNavigation("http://localhost/results?page=2");
     abortPendingNavigation(pending.id);
 
@@ -54,6 +66,7 @@ describe("navigation commit watchdog", () => {
   });
 
   it("does not fire for a superseded navigation; the newer navigation gets the timeout", () => {
+    configureNavigationTimeout({ timeoutMs: 10_000 });
     beginPendingNavigation("http://localhost/results?page=2");
     vi.advanceTimersByTime(5_000);
     beginPendingNavigation("http://localhost/results?page=3");
@@ -78,8 +91,8 @@ describe("navigation commit watchdog", () => {
     expect(assignMock).not.toHaveBeenCalled();
   });
 
-  it("is disabled with timeoutMs 0", () => {
-    configureNavigationTimeout({ timeoutMs: 0 });
+  it("does not fire for a handler configured without a timeout", () => {
+    configureNavigationTimeout({ onTimeout: vi.fn() });
 
     beginPendingNavigation("http://localhost/results?page=2");
     vi.advanceTimersByTime(60_000);
