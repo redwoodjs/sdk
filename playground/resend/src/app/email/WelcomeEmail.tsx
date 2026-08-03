@@ -1,12 +1,5 @@
 "use client";
-import {
-  Body,
-  Container,
-  Head,
-  Heading,
-  Html,
-  Preview,
-} from "@react-email/components";
+import { Body, Container, Head, Heading, Html, Preview } from "react-email";
 
 export default function WelcomeEmail({ name }: { name: string }) {
   return (

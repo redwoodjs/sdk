@@ -189,15 +189,15 @@ export async function runDevServer(
     }
 
     // Also try listening to the raw process events
-    if (devProcess.child) {
+    if (devProcess.nodeChildProcess) {
       log("Setting up child process events listeners");
-      devProcess.child.on("spawn", () => {
+      devProcess.nodeChildProcess.on("spawn", () => {
         log("Child process spawned successfully.");
       });
-      devProcess.child.on("error", (err: Error) => {
+      devProcess.nodeChildProcess.on("error", (err: Error) => {
         log("Child process error: %O", err);
       });
-      devProcess.child.on(
+      devProcess.nodeChildProcess.on(
         "exit",
         (code: number | null, signal: string | null) => {
           log("Child process exited with code %s and signal %s", code, signal);
@@ -250,14 +250,14 @@ export async function runDevServer(
         }
 
         // Check if the process is still running
-        if (devProcess.exitCode !== null) {
+        if (devProcess.nodeChildProcess?.exitCode != null) {
           log(
             "ERROR: Development server process exited with code %d. Final output: %s",
-            devProcess.exitCode,
+            devProcess.nodeChildProcess?.exitCode,
             allOutput,
           );
           throw new Error(
-            `Development server process exited with code ${devProcess.exitCode}`,
+            `Development server process exited with code ${devProcess.nodeChildProcess?.exitCode}`,
           );
         }
 

@@ -23,27 +23,27 @@
   },
   "dependencies": {
     "rwsdk": "workspace:*",
-    "react": "19.2.6",
-    "react-dom": "19.2.6",
-    "react-server-dom-webpack": "19.2.6",
-    "@content-collections/core": "0.14.3",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-server-dom-webpack": "19.2.8",
+    "@content-collections/core": "0.15.2",
     "@content-collections/markdown": "^0.1.4",
-    "@content-collections/vite": "0.2.9",
-    "zod": "^4.3.6"
+    "@content-collections/vite": "0.3.0",
+    "zod": "^4.4.3"
   },
   "overrides": {
     "@content-collections/core": "0.14.2"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.33.2",
-    "@cloudflare/workers-types": "4.20260426.1",
-    "@types/node": "~25.6.0",
-    "@types/react": "19.2.14",
-    "@types/react-dom": "19.2.3",
-    "typescript": "6.0.3",
-    "vite": "~8.1.0",
-    "vitest": "^4.1.2",
-    "wrangler": "4.85.0"
+    "@cloudflare/vite-plugin": "1.50.0",
+    "@cloudflare/workers-types": "5.20260801.1",
+    "@types/node": "~26.1.2",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "typescript": "7.0.2",
+    "vite": "~8.2.0",
+    "vitest": "^4.1.10",
+    "wrangler": "4.118.0"
   },
   "pnpm": {}
 }

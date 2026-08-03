@@ -4,12 +4,12 @@
   "version": "0.0.0",
   "dependencies": {
     "@simplewebauthn/browser": "13.3.0",
-    "@simplewebauthn/server": "13.3.0",
+    "@simplewebauthn/server": "13.3.2",
     "rwsdk": "workspace:*"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "4.20260426.1",
-    "@types/react": "19.2.14",
-    "@types/react-dom": "19.2.3"
+    "@cloudflare/workers-types": "5.20260801.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4"
   }
 }

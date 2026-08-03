@@ -34,6 +34,8 @@ export type {
 } from "./navigationPending.js";
 export type {
   NavigationSnapshot,
+  NavigationTimeoutArgs,
+  NavigationTimeoutHandler,
   PendingNavigationSnapshot,
 } from "./navigationState.js";
 export type { ActionResponseData, RscPayloadMeta } from "./types";
@@ -363,10 +365,23 @@ export const initClient = async ({
         : null,
     );
     const [_isPending, startTransition] = React.useTransition();
-    transportContext.setRscPayload = (v, meta) =>
-      startTransition(() => {
+    transportContext.setRscPayload = (v, meta) => {
+      // context(justinvdm, 30 Jul 2026): Navigation payloads must not commit
+      // through an interruptible transition. Under main-thread starvation a
+      // transition carrying a resolved navigation payload can be abandoned
+      // and never re-committed, leaving the URL and the rendered tree
+      // permanently desynced (redwoodjs/sdk#1245). Commit navigation payloads
+      // with a default-priority update instead; actions keep the transition
+      // path.
+      if (meta?.source === "navigation") {
+        setStreamState({ data: v, meta });
+        return;
+      }
+
+      return startTransition(() => {
         setStreamState({ data: v, meta });
       });
+    };
 
     React.useEffect(() => {
       if (!streamState) return;

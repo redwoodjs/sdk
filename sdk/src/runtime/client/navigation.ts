@@ -8,7 +8,9 @@ import {
   abortPendingNavigation,
   beginPendingNavigation,
   commitPendingNavigation,
+  configureNavigationTimeout,
   isPendingNavigationCommit,
+  type NavigationTimeoutArgs,
 } from "./navigationState.js";
 import {
   createScrollRestoration,
@@ -34,6 +36,18 @@ export interface ClientNavigationOptions {
     fromUrl: URL;
     element?: HTMLElement | Element;
   }) => boolean;
+  /**
+   * Milliseconds a navigation may stay uncommitted before the framework
+   * recovers by hard-navigating to the pending URL. Unset or 0 disables
+   * the watchdog (default: disabled).
+   */
+  navigationTimeoutMs?: number;
+  /**
+   * Recovery handler invoked when a navigation exceeds
+   * `navigationTimeoutMs` without committing. Defaults to a hard navigation
+   * to the pending URL. Has no effect unless `navigationTimeoutMs` is set.
+   */
+  onNavigationTimeout?: (args: NavigationTimeoutArgs) => void;
 }
 
 function shouldInterceptNavigation(
@@ -220,6 +234,10 @@ export async function navigate(
 export function initClientNavigation(opts: ClientNavigationOptions = {}) {
   IS_CLIENT_NAVIGATION = true;
   clientNavigationOptions = opts;
+  configureNavigationTimeout({
+    timeoutMs: opts.navigationTimeoutMs,
+    onTimeout: opts.onNavigationTimeout,
+  });
   scrollRestoration = createScrollRestoration();
   scrollRestoration.initialize();
   currentPathKey = getLocationPathKey();

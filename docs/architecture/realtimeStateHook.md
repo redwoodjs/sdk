@@ -47,7 +47,3 @@ When no handler is registered, keys pass through unchanged, and the worker route
 - If the Durable Object binding is missing, worker routes return a 500 response instructing the developer to restart the dev server.
 
 For planned enhancements to error handling, retry logic, and offline queues, see [Realtime State Error Handling and Offline Queue](./realtimeStateErrorHandling.md).
-
-## Testing
-
-- Unit tests cover the Durable Object's subscription handling and the client hook's optimistic updates, subscription dispatch, and cleanup logic using injected dependencies.
