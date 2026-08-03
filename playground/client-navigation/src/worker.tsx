@@ -4,6 +4,7 @@ import { defineApp } from "rwsdk/worker";
 import { Document } from "@/app/Document";
 import { About } from "@/app/pages/About";
 import { Home } from "@/app/pages/Home";
+import { List } from "@/app/pages/List";
 import { SuspensePageOne } from "@/app/pages/SuspensePageOne";
 import { SuspensePageTwo } from "@/app/pages/SuspensePageTwo";
 
@@ -18,6 +19,7 @@ export default defineApp([
   render(Document, [
     route("/", Home),
     route("/about", About),
+    route("/list", List),
     route("/suspense-one", SuspensePageOne),
     route("/suspense-two", SuspensePageTwo),
   ]),

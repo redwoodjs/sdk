@@ -23,6 +23,70 @@ type NavigationListener = () => void;
 
 const listeners = new Set<NavigationListener>();
 
+// context(justinvdm, 30 Jul 2026): Commit watchdog (proposed in #1240 as
+// `navigationTimeoutMs`/`onNavigationTimeout`). A pending navigation that
+// never commits (e.g. an abandoned transition under main-thread starvation)
+// otherwise leaves the URL and the rendered tree desynced forever. When the
+// timeout wins, the pending record is aborted and recovery runs: the app's
+// handler if provided, else a hard navigation to the pending URL, which
+// always lands on matching URL and content.
+export interface NavigationTimeoutArgs {
+  /** URL of the navigation that failed to commit in time. */
+  href: string;
+}
+
+export type NavigationTimeoutHandler = (args: NavigationTimeoutArgs) => void;
+
+const DEFAULT_NAVIGATION_TIMEOUT_MS = 10_000;
+
+let navigationTimeoutMs = DEFAULT_NAVIGATION_TIMEOUT_MS;
+let navigationTimeoutHandler: NavigationTimeoutHandler | null = null;
+let navigationTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+export function configureNavigationTimeout(options: {
+  /** Milliseconds a navigation may stay uncommitted before recovery runs. Set to 0 to disable. */
+  timeoutMs?: number;
+  /** Recovery handler. Defaults to a hard navigation to the pending URL. */
+  onTimeout?: NavigationTimeoutHandler;
+}) {
+  navigationTimeoutMs = options.timeoutMs ?? DEFAULT_NAVIGATION_TIMEOUT_MS;
+  navigationTimeoutHandler = options.onTimeout ?? null;
+}
+
+function clearNavigationTimeout() {
+  if (navigationTimeoutId !== null) {
+    clearTimeout(navigationTimeoutId);
+    navigationTimeoutId = null;
+  }
+}
+
+function armNavigationTimeout(pending: PendingNavigationInternal) {
+  clearNavigationTimeout();
+
+  if (navigationTimeoutMs <= 0 || typeof window === "undefined") {
+    return;
+  }
+
+  navigationTimeoutId = setTimeout(() => {
+    navigationTimeoutId = null;
+
+    // Already committed, aborted, or superseded by a newer navigation.
+    if (pendingNavigation?.id !== pending.id) {
+      return;
+    }
+
+    const href = pending.pendingUrl.href;
+    abortPendingNavigation(pending.id);
+
+    if (navigationTimeoutHandler) {
+      navigationTimeoutHandler({ href });
+      return;
+    }
+
+    window.location.assign(href);
+  }, navigationTimeoutMs);
+}
+
 let nextNavigationId = 0;
 let currentUrl = readWindowUrl();
 let pendingNavigation: PendingNavigationInternal | null = null;
@@ -119,6 +183,8 @@ export function beginPendingNavigation(url: string | URL) {
     resolve,
   };
 
+  armNavigationTimeout(pendingNavigation);
+
   updateSnapshot();
   notifyListeners();
   supersededNavigation?.resolve();
@@ -147,6 +213,7 @@ export function commitPendingNavigation(href?: string | URL) {
   pendingNavigation = null;
   currentUrl = cloneUrl(committedNavigation.pendingUrl);
 
+  clearNavigationTimeout();
   updateSnapshot();
   notifyListeners();
   committedNavigation.resolve();
@@ -166,6 +233,7 @@ export function abortPendingNavigation(id?: number) {
   const abortedNavigation = pendingNavigation;
   pendingNavigation = null;
 
+  clearNavigationTimeout();
   updateSnapshot();
   notifyListeners();
   abortedNavigation.resolve();
@@ -174,6 +242,9 @@ export function abortPendingNavigation(id?: number) {
 }
 
 export function resetNavigationStateForTests(href = "http://localhost/") {
+  clearNavigationTimeout();
+  navigationTimeoutMs = DEFAULT_NAVIGATION_TIMEOUT_MS;
+  navigationTimeoutHandler = null;
   pendingNavigation?.resolve();
   pendingNavigation = null;
   nextNavigationId = 0;

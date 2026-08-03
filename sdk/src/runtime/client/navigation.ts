@@ -8,7 +8,9 @@ import {
   abortPendingNavigation,
   beginPendingNavigation,
   commitPendingNavigation,
+  configureNavigationTimeout,
   isPendingNavigationCommit,
+  type NavigationTimeoutArgs,
 } from "./navigationState.js";
 import {
   createScrollRestoration,
@@ -23,6 +25,18 @@ export interface ClientNavigationOptions {
   scrollToTop?: boolean;
   scrollBehavior?: "auto" | "smooth" | "instant";
   cacheStorage?: NavigationCacheStorage;
+  /**
+   * Milliseconds a navigation may stay uncommitted before the framework
+   * recovers by hard-navigating to the pending URL (default 10000).
+   * Set to 0 to disable the watchdog.
+   */
+  navigationTimeoutMs?: number;
+  /**
+   * Recovery handler invoked when a navigation exceeds
+   * `navigationTimeoutMs` without committing. Defaults to a hard navigation
+   * to the pending URL.
+   */
+  onNavigationTimeout?: (args: NavigationTimeoutArgs) => void;
 }
 
 export function validateClickEvent(event: MouseEvent, target: HTMLElement) {
@@ -178,6 +192,10 @@ export async function navigate(
  */
 export function initClientNavigation(opts: ClientNavigationOptions = {}) {
   IS_CLIENT_NAVIGATION = true;
+  configureNavigationTimeout({
+    timeoutMs: opts.navigationTimeoutMs,
+    onTimeout: opts.onNavigationTimeout,
+  });
   scrollRestoration = createScrollRestoration();
   scrollRestoration.initialize();
   currentPathKey = getLocationPathKey();
