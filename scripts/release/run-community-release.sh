@@ -73,7 +73,15 @@ cd community
 CURRENT_VERSION="$(npm pkg get version | tr -d '"')"
 
 if [[ "$DRY_RUN" == "true" ]]; then
-  NEW_VERSION="v$(npx semver -i "$VERSION_TYPE" "$CURRENT_VERSION")"
+  # Only patch|minor|major reach here (validated above), so the bump is
+  # simple arithmetic — no semver dependency needed.
+  IFS='.' read -r V_MAJOR V_MINOR V_PATCH <<< "$CURRENT_VERSION"
+  case "$VERSION_TYPE" in
+    patch) V_PATCH=$((V_PATCH + 1)) ;;
+    minor) V_MINOR=$((V_MINOR + 1)); V_PATCH=0 ;;
+    major) V_MAJOR=$((V_MAJOR + 1)); V_MINOR=0; V_PATCH=0 ;;
+  esac
+  NEW_VERSION="v$V_MAJOR.$V_MINOR.$V_PATCH"
   echo "==> [DRY RUN] npm version $VERSION_TYPE --no-git-tag-version  ($CURRENT_VERSION -> $NEW_VERSION)"
 else
   NEW_VERSION="$(npm version "$VERSION_TYPE" --no-git-tag-version)"
