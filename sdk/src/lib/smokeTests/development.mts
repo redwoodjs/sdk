@@ -1,6 +1,6 @@
 import { runDevServer as runE2EDevServer } from "../../lib/e2e/dev.mjs";
 import { checkServerUp, checkUrl, launchBrowser } from "./browser.mjs";
-import { log, RETRIES } from "./constants.mjs";
+import { DEV_SERVER_CHECK_TIMEOUT, log } from "./constants.mjs";
 import { state } from "./state.mjs";
 
 /**
@@ -36,7 +36,15 @@ export async function runDevTest(
   try {
     const testUrl = new URL("/__smoke_test", url).toString();
     // DRY: check both root and custom path
-    await checkServerUp(url, "/", RETRIES, bail);
+    // context(justinvdm, 2026-08-04): The root probe triggers a cold SSR
+    // render; give it the shared readiness budget instead of 3 quick
+    // attempts so slow container cold starts are not misread as outages.
+    await checkServerUp(
+      url,
+      "/",
+      Math.max(1, Math.ceil(DEV_SERVER_CHECK_TIMEOUT / 2000)),
+      bail,
+    );
 
     // Pass the target directory to checkUrl for HMR testing
     const targetDir = state.resources.targetDir;
