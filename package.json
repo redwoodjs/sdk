@@ -17,7 +17,7 @@
     "setup:e2e": "cd sdk && pnpm setup:e2e",
     "unrelease": "node scripts/unrelease.mjs",
     "release": "./scripts/release-docker.sh",
-    "release:community": "RELEASE_TARGET=community ./scripts/release-docker.sh",
+    "release:community": "RELEASE_TARGET=community ./scripts/release-docker.sh"
   },
   "engines": {
     "node": ">=24.14.0",
