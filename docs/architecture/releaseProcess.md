@@ -11,23 +11,25 @@ Managing dependencies and ensuring compatibility between a core framework, a sta
 
 ## The Solution: A Tiered, Automated Release Strategy
 
-The entire process is orchestrated through a series of GitHub Actions workflows, creating a clear, multi-stage pipeline from development to consumption. The strategy is built on three release tiers: **Stable/Beta**, **Pre-release**, and **Test**.
+The process combines local release tooling with GitHub Actions for the artifact stage, creating a clear, multi-stage pipeline from development to consumption. The strategy is built on three release tiers: **Stable/Beta**, **Pre-release**, and **Test**.
+
+Releases are always performed on a maintainer's machine, never in GitHub Actions: hosted runners expose OIDC tokens and npm credentials, and a poisoned cache or compromised action could steal them and publish malicious packages. `pnpm release` and `pnpm release:community` run the release inside a plain Docker container built from `scripts/release/Dockerfile`, which pins the entire toolchain (ubuntu 24.04, Node, pnpm via corepack, npm, gh, and the chromium system libraries used by the smoke tests).
 
 ### Stage 1: Local Development & CI
 
 -   **`workspace:*` Protocol**: For local development, all internal dependencies within the monorepo (e.g., the `starter` project's dependency on `rwsdk`) use pnpm's `workspace:*` protocol. This symlinks the packages, ensuring that any changes to the SDK are immediately available to the starter and addons.
 -   **Unified CI (`code-quality.yml`)**: On every push and pull request, a unified CI workflow runs type-checking across the SDK, the starter, and all addons simultaneously. This catches integration issues early by validating them against the very latest source code in the branch.
 
-### Stage 2: The SDK Release (`release.yml`)
+### Stage 2: The SDK Release (`pnpm release`)
 
 This is the primary, manually-triggered event that kicks off a release. It determines the release's *intent* and publishes the package to npm.
 
-1.  **Trigger**: A core contributor triggers the `release.yml` workflow via the GitHub Actions UI, specifying the version type (e.g., `patch`, `minor`, `explicit`, `test`). Test releases can be run from any branch, while others run from `main`.
+1.  **Trigger**: A maintainer runs `pnpm release <patch|minor|beta|test|canary|explicit>` locally. The host script (`scripts/release-docker.sh`) builds the release container image once, passes npm and GitHub credentials through from `~/.npmrc` and `gh auth token`, and starts the container. The in-container script (`scripts/release/run-in-container.sh`) clones the repository and checks out the remote tip of the release branch, so releases always start from the pushed state rather than a stale or unmerged local checkout. Test releases can be run from any branch, while others run from `main`.
 2.  **Version & npm Tag**: The `sdk/scripts/release.sh` script calculates the new version and determines the correct npm tag:
     -   **Stable & Beta versions** (e.g., `v1.2.3`, `v1.3.0-beta.0`) get the `latest` npm tag.
     -   **Pre-releases** (e.g., `v1.3.0-alpha.0`) get the `pre` npm tag.
     -   **Test releases** (e.g., `v1.3.0-alpha.0-test.12345`) get the `test` npm tag.
-    -   When the script runs under agent-ci, it first resets tracked changes and checks out `origin/$RWSDK_RELEASE_BRANCH` so the release starts from the remote branch tip instead of a stale workspace.
+    -   When the release runs in the container, it first checks out `origin/$RWSDK_RELEASE_BRANCH` so the release starts from the remote branch tip instead of a stale workspace.
 3.  **Build & Pack**: The SDK is built and packed into a `.tgz` tarball.
 4.  **Smoke Test**: A comprehensive smoke test is performed against the packed tarball to ensure it works correctly in a fresh project.
 5.  **Publish to npm**: If tests pass, the tarball is published to npm with the appropriate tag.
@@ -49,7 +51,7 @@ The push of any new git tag automatically triggers this final stage, which prepa
 
 The `create-rwsdk` CLI is designed to intelligently consume these releases, providing clear pathways for users.
 
--   **Default (`npx create-rwsdk my-app`)**: The CLI queries GitHub's `/releases/latest` API endpoint. Because our `release.yml` workflow correctly uses the `--latest` flag, this endpoint returns the most recent stable or beta release.
+-   **Default (`npx create-rwsdk my-app`)**: The CLI queries GitHub's `/releases/latest` API endpoint. Because our release flow correctly uses the `--latest` flag, this endpoint returns the most recent stable or beta release.
 -   **Pre-release (`--pre` flag)**: The CLI queries the `/releases` API to get a list of all releases. It then filters out any release containing `-test.` in its tag name and selects the most recent remaining pre-release. This gives users access to the latest alphas and release candidates without including internal test builds.
 -   **Specific Version (`--release` flag)**: The CLI downloads the artifacts for a specific tag (e.g., `v1.3.0-alpha.0-test.12345`), allowing developers to test any version, including test builds.
 

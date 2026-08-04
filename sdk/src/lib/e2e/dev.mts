@@ -208,7 +208,16 @@ export async function runDevServer(
     // Wait for URL with timeout
     const waitForUrl = async (): Promise<string> => {
       const start = Date.now();
-      const timeout = 60000; // 60 seconds
+      // context(justinvdm, 2026-08-04): A cold `vite dev` start inside a
+      // Linux container on macOS (the release container) takes ~80-100s with
+      // an almost-idle CPU, while the same start takes seconds on macOS and
+      // x86_64 CI. 60s was calibrated on the fast paths and produced false
+      // "Timed out waiting for dev server URL" failures in the release
+      // container. The budget exists to catch genuinely hung servers, which
+      // 5 minutes still does.
+      const timeout = process.env.RWSDK_DEV_SERVER_URL_TIMEOUT
+        ? parseInt(process.env.RWSDK_DEV_SERVER_URL_TIMEOUT, 10)
+        : 5 * 60 * 1000;
 
       while (Date.now() - start < timeout) {
         if (url) {

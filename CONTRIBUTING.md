@@ -574,7 +574,7 @@ When the smoke tests or playground E2E tests fail on a peer dependency update, i
 
 ## Releasing Versions
 
-Releases are performed locally by maintainers. For security, release workflows do not run in GitHub Actions — they run via agent-ci on your local machine.
+Releases are performed locally by maintainers. For security, release workflows do not run in GitHub Actions — they run inside a plain Docker container on your local machine.
 
 ### Prerequisites
 
@@ -605,23 +605,27 @@ Use `pnpm release --dry` to simulate without publishing.
 
 ### Community Package Release
 
+Runs in the same release container as the core SDK release (see below), minus smoke tests and the GitHub release step.
+
 ```sh
-pnpm release:community        # interactive
 pnpm release:community patch  # explicit version type
 pnpm release:community minor
 pnpm release:community major
+pnpm release:community patch --dry   # simulate without publishing
 ```
 
-### Containerized Release (agent-ci)
+### Release container
 
-If you prefer to run releases inside a container, use the agent-ci workflows directly:
+`pnpm release` builds (once) and runs the container defined in `scripts/release/Dockerfile`, then executes `scripts/release/run-in-container.sh` inside it. The container clones the repo from your local git dir, checks out the remote tip of the current branch (so releases always come from the pushed state), installs dependencies, installs the chromium build matching the repo's `playwright-core`, and runs `sdk/scripts/release.sh`. `pnpm release:community` runs the same image with `scripts/release/run-community-release.sh` instead.
+
+Useful knobs:
 
 ```sh
-NPM_TOKEN=<token> GH_TOKEN_FOR_RELEASES=<token> VERSION_TYPE=patch \
-  npx agent-ci run --workflow .agent-ci/workflows/release.yml
+RWSDK_RELEASE_SOURCE=local pnpm release patch --dry   # dry-run the local branch tip instead of origin's
+RWSDK_RELEASE_IMAGE_REBUILD=1 pnpm release patch      # force a rebuild of the container image
 ```
 
-See `.agent-ci/workflows/release.yml` for all available parameters.
+npm and GitHub credentials are picked up from `~/.npmrc` and `gh auth token` unless `NPM_TOKEN` / `GH_TOKEN_FOR_RELEASES` are set explicitly.
 
 ## Unreleasing a Version
 
