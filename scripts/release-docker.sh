@@ -127,7 +127,9 @@ DOCKER_ARGS=(
   # in the smoke tests (temp projects, .vite optimizer state, miniflare's
   # sqlite state, the packed tarball, artifacts) lives under /tmp, so back
   # /tmp with RAM. The size is a cap; tmpfs allocates lazily and can swap.
-  --tmpfs "/tmp:size=4g"
+  # `exec` is required because docker mounts tmpfs noexec by default, which
+  # breaks the native binaries the install runs (esbuild, workerd).
+  --tmpfs "/tmp:exec,size=4g"
   --mount "type=bind,src=$GIT_COMMON_DIR,dst=/src-git,readonly"
   --mount "type=bind,src=$SCRIPT_DIR/release/run-in-container.sh,dst=/scripts/run-in-container.sh,readonly"
   --mount "type=bind,src=$OUT_DIR,dst=/out"
