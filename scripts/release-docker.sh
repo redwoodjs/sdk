@@ -119,13 +119,21 @@ fi
 
 DOCKER_ARGS=(
   --rm
+  # context(justinvdm, 2026-08-04): OrbStack's VM disk is btrfs, and its
+  # transaction-commit writeback stalls block processes doing disk I/O for
+  # seconds at a time (measured: workerd parked in D state inside
+  # write_all_supers; vite cold dev start 80-96s on btrfs vs 7s on tmpfs,
+  # root renders 38s/HTTP 500 vs 41ms/HTTP 200). Everything latency-critical
+  # in the smoke tests (temp projects, .vite optimizer state, miniflare's
+  # sqlite state, the packed tarball, artifacts) lives under /tmp, so back
+  # /tmp with RAM. The size is a cap; tmpfs allocates lazily and can swap.
+  --tmpfs "/tmp:size=4g"
   --mount "type=bind,src=$GIT_COMMON_DIR,dst=/src-git,readonly"
   --mount "type=bind,src=$SCRIPT_DIR/release/run-in-container.sh,dst=/scripts/run-in-container.sh,readonly"
   --mount "type=bind,src=$OUT_DIR,dst=/out"
   --mount "type=volume,src=rwsdk-release-pnpm-store,dst=/root/.local/share/pnpm/store"
   --mount "type=volume,src=rwsdk-release-playwright,dst=/root/.cache/ms-playwright"
   --mount "type=volume,src=rwsdk-release-corepack,dst=/root/.cache/node/corepack"
-  --mount "type=volume,src=rwsdk-release-e2e,dst=/tmp/rwsdk-e2e"
   --env "NPM_TOKEN=$NPM_TOKEN"
   --env "GH_TOKEN_FOR_RELEASES=$GH_TOKEN_FOR_RELEASES"
   --env "RWSDK_RELEASE_BRANCH=$CURRENT_BRANCH"
