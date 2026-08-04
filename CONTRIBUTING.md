@@ -605,16 +605,18 @@ Use `pnpm release --dry` to simulate without publishing.
 
 ### Community Package Release
 
+Runs in the same release container as the core SDK release (see below), minus smoke tests and the GitHub release step.
+
 ```sh
-pnpm release:community        # interactive
 pnpm release:community patch  # explicit version type
 pnpm release:community minor
 pnpm release:community major
+pnpm release:community patch --dry   # simulate without publishing
 ```
 
 ### Release container
 
-`pnpm release` builds (once) and runs the container defined in `scripts/release/Dockerfile`, then executes `scripts/release/run-in-container.sh` inside it. The container clones the repo from your local git dir, checks out the remote tip of the current branch (so releases always come from the pushed state), installs dependencies, installs the chromium build matching the repo's `playwright-core`, and runs `sdk/scripts/release.sh`.
+`pnpm release` builds (once) and runs the container defined in `scripts/release/Dockerfile`, then executes `scripts/release/run-in-container.sh` inside it. The container clones the repo from your local git dir, checks out the remote tip of the current branch (so releases always come from the pushed state), installs dependencies, installs the chromium build matching the repo's `playwright-core`, and runs `sdk/scripts/release.sh`. `pnpm release:community` runs the same image with `scripts/release/run-community-release.sh` instead.
 
 Useful knobs:
 

@@ -2,6 +2,9 @@
 # Host entrypoint for rwsdk releases: runs the release inside a plain Docker
 # container (see scripts/release/Dockerfile and scripts/release/run-in-container.sh).
 #
+# RELEASE_TARGET=sdk (default) runs the core SDK release;
+# RELEASE_TARGET=community runs the rwsdk-community package release.
+#
 # Releases must run on a maintainer's machine, not in GitHub Actions: hosted
 # runners expose OIDC tokens and npm credentials, and a poisoned cache or
 # compromised action could publish malicious packages. Running the release in
@@ -9,6 +12,7 @@
 # debuggable with plain `docker`.
 #
 # Usage: pnpm release <patch|minor|beta|test|canary|explicit> [--version <v>] [--dry] [--skip-smoke-tests] [--no-create-gh-release]
+#        pnpm release:community <patch|minor|major> [--dry]
 #
 # Environment:
 #   NPM_TOKEN                 npm publish token (default: read from ~/.npmrc)
@@ -22,6 +26,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
 
 IMAGE="rwsdk-release:local"
+RELEASE_TARGET="${RELEASE_TARGET:-sdk}"
+
+case "$RELEASE_TARGET" in
+  sdk)     ENTRYPOINT_SCRIPT="run-in-container.sh" ;;
+  community) ENTRYPOINT_SCRIPT="run-community-release.sh" ;;
+  *)
+    echo "Error: RELEASE_TARGET must be 'sdk' or 'community' (got '$RELEASE_TARGET')." >&2
+    exit 1
+    ;;
+esac
 
 if [[ " $* " == *" --help "* ]]; then
   cd sdk
@@ -119,6 +133,7 @@ fi
 
 DOCKER_ARGS=(
   --rm
+  --entrypoint "/scripts/$ENTRYPOINT_SCRIPT"
   # context(justinvdm, 2026-08-04): OrbStack's VM disk is btrfs, and its
   # transaction-commit writeback stalls block processes doing disk I/O for
   # seconds at a time (measured: workerd parked in D state inside
@@ -131,7 +146,7 @@ DOCKER_ARGS=(
   # breaks the native binaries the install runs (esbuild, workerd).
   --tmpfs "/tmp:exec,size=4g"
   --mount "type=bind,src=$GIT_COMMON_DIR,dst=/src-git,readonly"
-  --mount "type=bind,src=$SCRIPT_DIR/release/run-in-container.sh,dst=/scripts/run-in-container.sh,readonly"
+  --mount "type=bind,src=$SCRIPT_DIR/release,dst=/scripts,readonly"
   --mount "type=bind,src=$OUT_DIR,dst=/out"
   --mount "type=volume,src=rwsdk-release-pnpm-store,dst=/root/.local/share/pnpm/store"
   --mount "type=volume,src=rwsdk-release-playwright,dst=/root/.cache/ms-playwright"
