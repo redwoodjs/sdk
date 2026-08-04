@@ -141,35 +141,13 @@ echo -e "\n🔄 Pulling for changes..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] git pull --rebase"
 else
-  if [[ -n "$AGENT_CI_LOCAL" ]]; then
-    # context(justinvdm, 2026-05-31): agent-ci releases must start from the remote branch tip so we do not
-    # publish from a stale checkout and then lose the final push to a fetch-first rejection.
-    RELEASE_BRANCH_FOR_CHECKOUT="${RWSDK_RELEASE_BRANCH:-main}"
-    echo "  [AGENT CI] Resetting tracked workspace changes and checking out origin/${RELEASE_BRANCH_FOR_CHECKOUT}"
-    git reset --hard HEAD
-    # agent-ci installs a git shim that intercepts fetch/checkout. Use the real git
-    # binary so we can pull the actual remote branch history into the container.
-    GIT_REAL="git"
-    if [[ -x /usr/bin/git.real ]]; then
-      GIT_REAL="/usr/bin/git.real"
-    fi
-    # The container's origin remote points at a localhost mirror. Set it to the
-    # real GitHub URL so fetch and push work against the actual remote.
-    REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-    RELEASE_REMOTE_URL_FILE="$REPO_ROOT/.agent-ci/runtime/release-remote-url"
-    RELEASE_REMOTE_URL=""
-    if [[ -f "$RELEASE_REMOTE_URL_FILE" ]]; then
-      RELEASE_REMOTE_URL="$(tr -d '\r\n' < "$RELEASE_REMOTE_URL_FILE")"
-    fi
-    if [[ -z "$RELEASE_REMOTE_URL" ]]; then
-      RELEASE_REMOTE_URL="$($GIT_REAL remote get-url origin 2>/dev/null || true)"
-    fi
-    if [[ -n "$RELEASE_REMOTE_URL" ]]; then
-      echo "  - Updating origin remote to $RELEASE_REMOTE_URL"
-      $GIT_REAL remote set-url origin "$RELEASE_REMOTE_URL"
-    fi
-    $GIT_REAL fetch origin "$RELEASE_BRANCH_FOR_CHECKOUT" --tags
-    $GIT_REAL checkout -B "$RELEASE_BRANCH_FOR_CHECKOUT" "origin/$RELEASE_BRANCH_FOR_CHECKOUT"
+  if [[ -n "$RWSDK_RELEASE_CONTAINER" ]]; then
+    # context(justinvdm, 2026-08-04): In the release container, the clone and
+    # branch checkout already happened (scripts/release/run-in-container.sh)
+    # before this script runs — releases always start from the remote branch
+    # tip so we do not publish from a stale checkout and then lose the final
+    # push to a fetch-first rejection. Nothing to pull here.
+    echo "  [container] checkout prepared by run-in-container.sh, skipping pull"
   else
     git pull --rebase
   fi
@@ -472,19 +450,12 @@ if [[ "$DRY_RUN" == true ]]; then
     echo "    - Push: origin with tags"
   fi
 else
-  REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-  RELEASE_REMOTE_URL_FILE="$REPO_ROOT/.agent-ci/runtime/release-remote-url"
-  RELEASE_REMOTE_URL=""
-  if [[ -f "$RELEASE_REMOTE_URL_FILE" ]]; then
-    RELEASE_REMOTE_URL="$(tr -d '\r\n' < "$RELEASE_REMOTE_URL_FILE")"
-    rm -f "$RELEASE_REMOTE_URL_FILE"
-  fi
-  if [[ -z "$RELEASE_REMOTE_URL" ]]; then
-    RELEASE_REMOTE_URL="$(git remote get-url origin 2>/dev/null || true)"
-  fi
-  if [[ -n "$RELEASE_REMOTE_URL" ]]; then
-    echo "  - Updating origin remote to $RELEASE_REMOTE_URL"
-    git remote set-url origin "$RELEASE_REMOTE_URL"
+  # context(justinvdm, 2026-08-04): In the release container, origin already
+  # points at the real GitHub remote (set at clone time by
+  # scripts/release/run-in-container.sh). No re-pointing needed here.
+  if [[ -n "${RWSDK_RELEASE_REMOTE_URL:-}" ]]; then
+    echo "  - Updating origin remote to $RWSDK_RELEASE_REMOTE_URL"
+    git remote set-url origin "$RWSDK_RELEASE_REMOTE_URL"
   fi
   if command -v gh >/dev/null 2>&1; then
     gh auth setup-git >/dev/null 2>&1 || true
