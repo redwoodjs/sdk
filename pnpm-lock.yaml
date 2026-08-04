@@ -27,7 +27,7 @@ overrides:
   glob@10.4.5: 13.0.6
   h3: 1.15.9
   hono: 4.12.33
-  ip-address: 10.1.1
+  ip-address: 10.4.0
   js-cookie@<=3.0.5: 3.0.7
   js-yaml@<=4.1.1: 4.3.0
   mdast-util-to-hast@13.2.0: 13.2.1
@@ -8739,8 +8739,8 @@ packages:
     resolution: {integrity: sha512-5Hh7Y1wQbvY5ooGgPbDaL5iYLAPzMTUrjMulskHLH6wnv/A+1q5rgEaiuqEjB+oxGXIVZs1FF+R/KPN3ZSQYYg==}
     engines: {node: '>=12'}
 
-  ip-address@10.1.1:
-    resolution: {integrity: sha512-1FMu8/N15Ck1BL551Jf42NYIoin2unWjLQ2Fze/DXryJRl5twqtwNHlO39qERGbIOcKYWHdgRryhOC+NG4eaLw==}
+  ip-address@10.4.0:
+    resolution: {integrity: sha512-oSK96Grm3aP6OrS263xVxbNDGVL7rzBtYdpGqlDG8iQdoenDoTs/nkki+DflYbAEE8Xl6o5YxhxlrKvI3nqKXQ==}
     engines: {node: '>= 12'}
 
   ipaddr.js@1.9.1:
@@ -16993,7 +16993,7 @@ snapshots:
   express-rate-limit@8.2.2(express@5.2.1(supports-color@10.2.2)):
     dependencies:
       express: 5.2.1(supports-color@10.2.2)
-      ip-address: 10.1.1
+      ip-address: 10.4.0
 
   express@5.2.1(supports-color@10.2.2):
     dependencies:
@@ -17559,7 +17559,7 @@ snapshots:
 
   internmap@2.0.3: {}
 
-  ip-address@10.1.1: {}
+  ip-address@10.4.0: {}
 
   ipaddr.js@1.9.1: {}
 
