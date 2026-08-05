@@ -61,11 +61,12 @@ afterEach(() => {
 });
 
 describe("navigation error recovery", () => {
-  it("recovers a failed navigate() with a hard navigation to the intended URL instead of rethrowing", async () => {
+  it("recovers a failed navigate() while preserving its rejection", async () => {
     initClientNavigation({});
-    callServerMock.mockRejectedValue(new Error("boom"));
+    const failure = new Error("boom");
+    callServerMock.mockRejectedValue(failure);
 
-    await expect(navigate("/settings")).resolves.toBeUndefined();
+    await expect(navigate("/settings")).rejects.toBe(failure);
 
     expect(assignMock).toHaveBeenCalledWith("http://localhost/settings");
     expect(console.error).toHaveBeenCalled();
@@ -77,7 +78,7 @@ describe("navigation error recovery", () => {
     const failure = new Error("boom");
     callServerMock.mockRejectedValue(failure);
 
-    await navigate("/settings");
+    await expect(navigate("/settings")).rejects.toBe(failure);
 
     expect(onNavigationError).toHaveBeenCalledWith({
       error: failure,
@@ -91,9 +92,10 @@ describe("navigation error recovery", () => {
     // state by choice; the framework's own bookkeeping must still allow a
     // back/forward retry of the failed route.
     initClientNavigation({ onNavigationError: () => {} });
-    callServerMock.mockRejectedValueOnce(new Error("boom"));
+    const failure = new Error("boom");
+    callServerMock.mockRejectedValueOnce(failure);
 
-    await navigate("/settings");
+    await expect(navigate("/settings")).rejects.toBe(failure);
     expect(callServerMock).toHaveBeenCalledTimes(1);
 
     // Browser goes back/forward to the failed target.
@@ -106,14 +108,43 @@ describe("navigation error recovery", () => {
     expect(callServerMock).toHaveBeenCalledTimes(2);
   });
 
-  it("recovers a failed popstate navigation with a hard navigation to the current location", async () => {
+  it("recovers a failed popstate navigation while preserving its rejection", async () => {
     initClientNavigation({});
-    callServerMock.mockRejectedValue(new Error("boom"));
+    const failure = new Error("boom");
+    callServerMock.mockRejectedValue(failure);
 
     // The browser has already moved to the target when popstate fires.
     locationStub._href = "http://localhost/settings";
-    await listeners.get("popstate")?.();
+    const handlePopState = listeners.get("popstate");
+    expect(handlePopState).toBeDefined();
+    await expect(handlePopState!()).rejects.toBe(failure);
 
     expect(assignMock).toHaveBeenCalledWith("http://localhost/settings");
+  });
+
+  it("restores the rendered URL used by interception after a failed popstate", async () => {
+    const shouldIntercept = vi.fn(
+      (_args: { toUrl: URL; fromUrl: URL; element?: HTMLElement | Element }) =>
+        true,
+    );
+    initClientNavigation({
+      onNavigationError: () => {},
+      shouldIntercept,
+    });
+    const failure = new Error("boom");
+    callServerMock.mockRejectedValueOnce(failure);
+    const handlePopState = listeners.get("popstate");
+    expect(handlePopState).toBeDefined();
+
+    locationStub._href = "http://localhost/settings";
+    await expect(handlePopState!()).rejects.toBe(failure);
+
+    locationStub._href = "http://localhost/profile";
+    callServerMock.mockResolvedValue(undefined);
+    await handlePopState!();
+
+    expect(shouldIntercept.mock.calls[1]?.[0].fromUrl.href).toBe(
+      "http://localhost/",
+    );
   });
 });

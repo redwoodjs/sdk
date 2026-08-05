@@ -198,10 +198,13 @@ export async function navigate(
     // context(justinvdm, 30 Jul 2026): The navigation failed after history
     // and currentPathKey were already advanced. Repair the bookkeeping so a
     // later popstate to the failed target is not swallowed as a hash-only
-    // change, then recover instead of rethrowing into an unhandled
-    // rejection — a stranded URL with no recovery is strictly worse.
-    currentPathKey = getUrlPathKey(getNavigationSnapshot().currentUrl);
+    // change, then start recovery before preserving the existing rejection
+    // contract — a stranded URL with no recovery is strictly worse.
+    const committedUrl = getNavigationSnapshot().currentUrl;
+    currentPathKey = getUrlPathKey(committedUrl);
+    currentUrl = committedUrl;
     recoverFromNavigationError({ error, href: url.href });
+    throw error;
   }
 }
 
@@ -318,9 +321,13 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
       abortPendingNavigation(pendingNavigation.id);
       // context(justinvdm, 30 Jul 2026): Same failure repair as navigate() —
       // the browser already changed the URL, so recover to the (now current)
-      // location and restore the bookkeeping for retries.
-      currentPathKey = getUrlPathKey(getNavigationSnapshot().currentUrl);
+      // location and restore the bookkeeping for retries. Rethrowing keeps
+      // the existing failure semantics after recovery starts.
+      const committedUrl = getNavigationSnapshot().currentUrl;
+      currentPathKey = getUrlPathKey(committedUrl);
+      currentUrl = committedUrl;
       recoverFromNavigationError({ error, href: window.location.href });
+      throw error;
     }
   });
 
@@ -403,7 +410,12 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
     // then warm the navigation cache based on any <link rel="x-prefetch"> tags
     // rendered for the current location.
     onNavigationCommit(undefined, opts.cacheStorage);
-    void preloadFromLinkTags(undefined, undefined, opts.cacheStorage, opts.shouldIntercept);
+    void preloadFromLinkTags(
+      undefined,
+      undefined,
+      opts.cacheStorage,
+      opts.shouldIntercept,
+    );
   }
 
   // Return callbacks for use with initClient

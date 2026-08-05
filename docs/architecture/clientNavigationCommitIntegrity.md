@@ -33,7 +33,7 @@ The pending-navigation tracker described in [Client Navigation Pending Boundarie
 
 When the payload request itself fails — a network error, or a stream that dies mid-decode — the navigation's promise chain rejects. Because history was already updated, a rejection left alone strands the browser: the address bar shows the new route, the screen shows the old page, and the framework's own guards against redundant work then block every retry of that route.
 
-A failed navigation is therefore recovered immediately: the pending record is abandoned, the framework's bookkeeping is rolled back to the page that is actually on screen (so a later back/forward to the failed target is treated as a real navigation, not a hash-only change), and the default recovery performs a hard navigation to the intended URL, logged with the original error. Apps that prefer their own policy — an error toast, a redirect to an error page — can take over through `onNavigationError`, in which case the framework performs no recovery of its own.
+A failed navigation is therefore recovered immediately: the pending record is abandoned, the framework's bookkeeping is rolled back to the page that is actually on screen (so a later back/forward to the failed target is treated as a real navigation, not a hash-only change), and the default recovery performs a hard navigation to the intended URL, logged with the original error. Recovery then rethrows the original error, preserving the existing rejection contract for programmatic callers. Apps that prefer their own recovery policy — an error toast, a redirect to an error page — can take over through `onNavigationError`; the original rejection remains observable after their handler returns.
 
 ### The commit watchdog
 
