@@ -8,8 +8,11 @@ import {
   abortPendingNavigation,
   beginPendingNavigation,
   commitPendingNavigation,
-  configureNavigationTimeout,
+  configureNavigationRecovery,
+  getNavigationSnapshot,
   isPendingNavigationCommit,
+  recoverFromNavigationError,
+  type NavigationErrorArgs,
   type NavigationTimeoutArgs,
 } from "./navigationState.js";
 import {
@@ -48,6 +51,12 @@ export interface ClientNavigationOptions {
    * to the pending URL. Has no effect unless `navigationTimeoutMs` is set.
    */
   onNavigationTimeout?: (args: NavigationTimeoutArgs) => void;
+  /**
+   * Recovery handler invoked when a navigation throws (failed fetch or
+   * failed payload decode). Defaults to a hard navigation to the intended
+   * URL, logged with the original error.
+   */
+  onNavigationError?: (args: NavigationErrorArgs) => void;
 }
 
 function shouldInterceptNavigation(
@@ -186,7 +195,13 @@ export async function navigate(
     currentUrl = url;
   } catch (error) {
     abortPendingNavigation(pendingNavigation.id);
-    throw error;
+    // context(justinvdm, 30 Jul 2026): The navigation failed after history
+    // and currentPathKey were already advanced. Repair the bookkeeping so a
+    // later popstate to the failed target is not swallowed as a hash-only
+    // change, then recover instead of rethrowing into an unhandled
+    // rejection — a stranded URL with no recovery is strictly worse.
+    currentPathKey = getUrlPathKey(getNavigationSnapshot().currentUrl);
+    recoverFromNavigationError({ error, href: url.href });
   }
 }
 
@@ -234,9 +249,10 @@ export async function navigate(
 export function initClientNavigation(opts: ClientNavigationOptions = {}) {
   IS_CLIENT_NAVIGATION = true;
   clientNavigationOptions = opts;
-  configureNavigationTimeout({
+  configureNavigationRecovery({
     timeoutMs: opts.navigationTimeoutMs,
     onTimeout: opts.onNavigationTimeout,
+    onError: opts.onNavigationError,
   });
   scrollRestoration = createScrollRestoration();
   scrollRestoration.initialize();
@@ -300,7 +316,11 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
       await globalThis.__rsc_callServer(null, null, "navigation");
     } catch (error) {
       abortPendingNavigation(pendingNavigation.id);
-      throw error;
+      // context(justinvdm, 30 Jul 2026): Same failure repair as navigate() —
+      // the browser already changed the URL, so recover to the (now current)
+      // location and restore the bookkeeping for retries.
+      currentPathKey = getUrlPathKey(getNavigationSnapshot().currentUrl);
+      recoverFromNavigationError({ error, href: window.location.href });
     }
   });
 

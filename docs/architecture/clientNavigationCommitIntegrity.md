@@ -29,9 +29,15 @@ Server-action payloads keep the transition path. Actions do not change the URL, 
 
 The pending-navigation tracker described in [Client Navigation Pending Boundaries](./clientNavigationPending.md) records, for each navigation, that a commit is outstanding, and resolves that record only when the payload actually commits to the visible tree — not when the fetch finishes. A navigation whose commit never arrives is therefore an observable state: the pending record simply never resolves.
 
+### Recovering from failed navigations
+
+When the payload request itself fails — a network error, or a stream that dies mid-decode — the navigation's promise chain rejects. Because history was already updated, a rejection left alone strands the browser: the address bar shows the new route, the screen shows the old page, and the framework's own guards against redundant work then block every retry of that route.
+
+A failed navigation is therefore recovered immediately: the pending record is abandoned, the framework's bookkeeping is rolled back to the page that is actually on screen (so a later back/forward to the failed target is treated as a real navigation, not a hash-only change), and the default recovery performs a hard navigation to the intended URL, logged with the original error. Apps that prefer their own policy — an error toast, a redirect to an error page — can take over through `onNavigationError`, in which case the framework performs no recovery of its own.
+
 ### The commit watchdog
 
-Observing a missing commit is not enough; the framework must also leave the state. Apps can arm a commit budget (`navigationTimeoutMs`). If a navigation is still uncommitted when its budget expires, the framework abandons the client-side attempt and performs a hard navigation to the pending URL. A full page load always produces a page whose content matches its URL, so recovery restores agreement no matter what prevented the commit — scheduler loss, a hung request, a decode failure, a render error, or a cause not yet known. Apps can substitute their own recovery through `onNavigationTimeout` — for example, surfacing an error — instead of the hard navigation.
+Error recovery handles navigations that fail loudly. What remains is the navigation that neither commits nor errors: a request that hangs forever, a payload that a custom transport never delivers, a render that never completes, or a cause not yet known. Observing a missing commit is not enough; the framework must also leave the state. Apps can arm a commit budget (`navigationTimeoutMs`). If a navigation is still uncommitted when its budget expires, the framework abandons the client-side attempt and performs a hard navigation to the pending URL. A full page load always produces a page whose content matches its URL, so recovery restores agreement no matter what prevented the commit. Apps can substitute their own recovery through `onNavigationTimeout` — for example, surfacing an error — instead of the hard navigation.
 
 The watchdog is opt-in. Recovery is a full page load, and a budget that is too tight turns slow-but-healthy navigations into reloads; whether that trade is acceptable depends on the application's latency profile, so the application chooses the budget, or chooses not to arm the watchdog at all.
 
@@ -47,6 +53,7 @@ An alternative design would defer the history push until the payload commits, ma
 ## Correctness Invariants
 
 - A resolved navigation payload must not be dropped by render scheduling.
+- A navigation that throws must not strand the browser: it recovers immediately, ending at a page whose content and URL agree.
 - A pending navigation resolves when it commits, is superseded, is aborted, is redirected away, or — if the watchdog is armed — its budget expires.
 - Watchdog recovery must always end at a page whose content and URL agree; that is why the default recovery is a hard navigation rather than a retry of the client-side pipeline.
 - Action payloads never change the commit semantics of navigation payloads, and vice versa.
