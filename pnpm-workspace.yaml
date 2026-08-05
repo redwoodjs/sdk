@@ -32,7 +32,7 @@ overrides:
   "glob@10.4.5": "13.0.6"
   h3: "1.15.9"
   hono: "4.12.33"
-  ip-address: "10.1.1"
+  ip-address: "10.4.0"
   "js-cookie@<=3.0.5": "3.0.7"
   "js-yaml@<=4.1.1": "4.3.0"
   "mdast-util-to-hast@13.2.0": "13.2.1"
