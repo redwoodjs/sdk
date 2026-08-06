@@ -1,7 +1,7 @@
 import {
   poll,
   setupPlaygroundEnvironment,
-  testDeploy,
+  testDevAndDeploy,
   waitForHydration,
 } from "rwsdk/e2e";
 import { expect } from "vitest";
@@ -14,7 +14,7 @@ setupPlaygroundEnvironment(import.meta.url);
 // content. This test aborts the navigation fetch once and asserts the page
 // recovers to the target route.
 
-testDeploy(
+testDevAndDeploy(
   "failed client navigation recovers with a full page load",
   async ({ browser, url }) => {
     const context = await browser.createBrowserContext();
