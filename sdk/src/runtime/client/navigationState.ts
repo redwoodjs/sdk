@@ -39,18 +39,50 @@ export interface NavigationTimeoutArgs {
 
 export type NavigationTimeoutHandler = (args: NavigationTimeoutArgs) => void;
 
+export interface NavigationErrorArgs {
+  /** The error thrown by the failed navigation. */
+  error: unknown;
+  /** URL the navigation was trying to reach. */
+  href: string;
+}
+
+export type NavigationErrorHandler = (args: NavigationErrorArgs) => void;
+
 let navigationTimeoutMs = 0;
 let navigationTimeoutHandler: NavigationTimeoutHandler | null = null;
+let navigationErrorHandler: NavigationErrorHandler | null = null;
 let navigationTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
-export function configureNavigationTimeout(options: {
+export function configureNavigationRecovery(options: {
   /** Milliseconds a navigation may stay uncommitted before recovery runs. Unset or 0 disables the watchdog. */
   timeoutMs?: number;
-  /** Recovery handler. Defaults to a hard navigation to the pending URL. Has no effect unless timeoutMs is set. */
+  /** Watchdog recovery handler. Defaults to a hard navigation to the pending URL. Has no effect unless timeoutMs is set. */
   onTimeout?: NavigationTimeoutHandler;
+  /** Error recovery handler. Defaults to a hard navigation to the intended URL. */
+  onError?: NavigationErrorHandler;
 }) {
   navigationTimeoutMs = options.timeoutMs ?? 0;
   navigationTimeoutHandler = options.onTimeout ?? null;
+  navigationErrorHandler = options.onError ?? null;
+}
+
+// context(justinvdm, 30 Jul 2026): One recovery policy for a navigation that
+// failed — whether the watchdog timed out or the fetch/commit threw. The
+// default is a hard navigation to the intended URL, which always lands on
+// matching URL and content. Without this, a thrown navigation strands the
+// browser on the new URL with the old page rendered, and the framework's own
+// retry guards make the state permanent.
+export function recoverFromNavigationError(args: NavigationErrorArgs) {
+  if (navigationErrorHandler) {
+    navigationErrorHandler(args);
+    return;
+  }
+
+  console.error(
+    "[rwsdk] client navigation failed — recovering with a full page load",
+    args.error,
+  );
+  window.location.assign(args.href);
 }
 
 function clearNavigationTimeout() {
@@ -245,6 +277,7 @@ export function resetNavigationStateForTests(href = "http://localhost/") {
   clearNavigationTimeout();
   navigationTimeoutMs = 0;
   navigationTimeoutHandler = null;
+  navigationErrorHandler = null;
   pendingNavigation?.resolve();
   pendingNavigation = null;
   nextNavigationId = 0;

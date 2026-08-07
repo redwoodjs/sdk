@@ -11,6 +11,33 @@ const DEV_SERVER_CHECK_TIMEOUT = process.env.RWSDK_DEV_SERVER_CHECK_TIMEOUT
 
 const log = debug("rwsdk:e2e:dev");
 
+// context(justinvdm, 06 Aug 2026): Dev startup can run initialization
+// commands that start their own temporary servers (for example `dev:init` ->
+// `worker-run`) before Vite announces the real dev server. Accept only Vite's
+// own announcements; a bare localhost URL in initialization output may belong
+// to a helper server that exits before the tests run.
+const DEV_SERVER_URL_PATTERNS = [
+  // Standard Vite output: "Local:   http://localhost:5173/"
+  /Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
+  // Alternative Vite output: "➜  Local:   http://localhost:5173/"
+  /[➜→]\s*Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
+  // Unicode-safe arrow pattern
+  /[\u27A1\u2192\u279C]\s*Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
+  // Explicit debug announcement: "Debug: http://localhost:5173/__debug"
+  /Debug:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)\/__debug/i,
+];
+
+function parseDevServerUrl(output: string) {
+  for (const pattern of DEV_SERVER_URL_PATTERNS) {
+    const match = output.match(pattern);
+    if (match?.[1]) {
+      return match[1];
+    }
+  }
+
+  return null;
+}
+
 /**
  * Run the local development server and return the URL
  */
@@ -137,34 +164,9 @@ export async function runDevServer(
       allOutput += output; // Accumulate all output
 
       if (!url) {
-        // Multiple patterns to catch different package manager outputs
-        const patterns = [
-          // Standard Vite output: "Local:   http://localhost:5173/"
-          /Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
-          // Alternative Vite output: "➜  Local:   http://localhost:5173/"
-          /[➜→]\s*Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
-          // Unicode-safe arrow pattern
-          /[\u27A1\u2192\u279C]\s*Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
-          // Direct URL pattern: "http://localhost:5173"
-          /(https?:\/\/localhost:\d+)/i,
-          // Port-only pattern: "localhost:5173"
-          /localhost:(\d+)/i,
-          // Server ready messages
-          /server.*ready.*localhost:(\d+)/i,
-          /dev server.*localhost:(\d+)/i,
-        ];
-
-        for (const pattern of patterns) {
-          const match = output.match(pattern);
-          if (match) {
-            if (match[1] && match[1].startsWith("http")) {
-              url = match[1];
-              break;
-            } else if (match[1] && /^\d+$/.test(match[1])) {
-              url = `http://localhost:${match[1]}`;
-              break;
-            }
-          }
+        const detectedUrl = parseDevServerUrl(output);
+        if (detectedUrl) {
+          url = detectedUrl;
         }
       }
     };
@@ -226,35 +228,11 @@ export async function runDevServer(
 
         // Fallback: check accumulated output if stream listeners aren't working
         if (!url && allOutput) {
-          const patterns = [
-            /Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
-            /[➜→]\s*Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
-            /[\u27A1\u2192\u279C]\s*Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
-            /(https?:\/\/localhost:\d+)/i,
-            /localhost:(\d+)/i,
-          ];
-
-          for (const pattern of patterns) {
-            const match = allOutput.match(pattern);
-            if (match) {
-              if (match[1] && match[1].startsWith("http")) {
-                url = match[1];
-                log(
-                  "Found URL in accumulated output with pattern %s: %s",
-                  pattern.source,
-                  url,
-                );
-                return url;
-              } else if (match[1] && /^\d+$/.test(match[1])) {
-                url = `http://localhost:${match[1]}`;
-                log(
-                  "Found URL in accumulated output with port pattern %s: %s",
-                  pattern.source,
-                  url,
-                );
-                return url;
-              }
-            }
+          const detectedUrl = parseDevServerUrl(allOutput);
+          if (detectedUrl) {
+            url = detectedUrl;
+            log("Found dev server URL in accumulated output: %s", url);
+            return url;
           }
         }
 

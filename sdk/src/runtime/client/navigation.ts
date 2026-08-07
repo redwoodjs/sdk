@@ -8,8 +8,11 @@ import {
   abortPendingNavigation,
   beginPendingNavigation,
   commitPendingNavigation,
-  configureNavigationTimeout,
+  configureNavigationRecovery,
+  getNavigationSnapshot,
   isPendingNavigationCommit,
+  recoverFromNavigationError,
+  type NavigationErrorArgs,
   type NavigationTimeoutArgs,
 } from "./navigationState.js";
 import {
@@ -48,6 +51,12 @@ export interface ClientNavigationOptions {
    * to the pending URL. Has no effect unless `navigationTimeoutMs` is set.
    */
   onNavigationTimeout?: (args: NavigationTimeoutArgs) => void;
+  /**
+   * Recovery handler invoked when a navigation throws (failed fetch or
+   * failed payload decode). Defaults to a hard navigation to the intended
+   * URL, logged with the original error.
+   */
+  onNavigationError?: (args: NavigationErrorArgs) => void;
 }
 
 function shouldInterceptNavigation(
@@ -186,6 +195,15 @@ export async function navigate(
     currentUrl = url;
   } catch (error) {
     abortPendingNavigation(pendingNavigation.id);
+    // context(justinvdm, 30 Jul 2026): The navigation failed after history
+    // and currentPathKey were already advanced. Repair the bookkeeping so a
+    // later popstate to the failed target is not swallowed as a hash-only
+    // change, then start recovery before preserving the existing rejection
+    // contract — a stranded URL with no recovery is strictly worse.
+    const committedUrl = getNavigationSnapshot().currentUrl;
+    currentPathKey = getUrlPathKey(committedUrl);
+    currentUrl = committedUrl;
+    recoverFromNavigationError({ error, href: url.href });
     throw error;
   }
 }
@@ -234,9 +252,10 @@ export async function navigate(
 export function initClientNavigation(opts: ClientNavigationOptions = {}) {
   IS_CLIENT_NAVIGATION = true;
   clientNavigationOptions = opts;
-  configureNavigationTimeout({
+  configureNavigationRecovery({
     timeoutMs: opts.navigationTimeoutMs,
     onTimeout: opts.onNavigationTimeout,
+    onError: opts.onNavigationError,
   });
   scrollRestoration = createScrollRestoration();
   scrollRestoration.initialize();
@@ -300,6 +319,14 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
       await globalThis.__rsc_callServer(null, null, "navigation");
     } catch (error) {
       abortPendingNavigation(pendingNavigation.id);
+      // context(justinvdm, 30 Jul 2026): Same failure repair as navigate() —
+      // the browser already changed the URL, so recover to the (now current)
+      // location and restore the bookkeeping for retries. Rethrowing keeps
+      // the existing failure semantics after recovery starts.
+      const committedUrl = getNavigationSnapshot().currentUrl;
+      currentPathKey = getUrlPathKey(committedUrl);
+      currentUrl = committedUrl;
+      recoverFromNavigationError({ error, href: window.location.href });
       throw error;
     }
   });
@@ -383,7 +410,12 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
     // then warm the navigation cache based on any <link rel="x-prefetch"> tags
     // rendered for the current location.
     onNavigationCommit(undefined, opts.cacheStorage);
-    void preloadFromLinkTags(undefined, undefined, opts.cacheStorage, opts.shouldIntercept);
+    void preloadFromLinkTags(
+      undefined,
+      undefined,
+      opts.cacheStorage,
+      opts.shouldIntercept,
+    );
   }
 
   // Return callbacks for use with initClient

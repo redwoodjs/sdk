@@ -33,6 +33,8 @@ export type {
   NavigationSearchParamsWatch,
 } from "./navigationPending.js";
 export type {
+  NavigationErrorArgs,
+  NavigationErrorHandler,
   NavigationSnapshot,
   NavigationTimeoutArgs,
   NavigationTimeoutHandler,
