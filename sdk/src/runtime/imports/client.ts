@@ -1,36 +1,14 @@
 import React from "react";
 import { ClientOnly } from "../client/client";
-import {
-  isDynamicImportFailure,
-  isRecoveryConfigured,
-  startRecovery,
-} from "../client/recovery.js";
 import { memoizeOnId } from "../lib/memoizeOnId";
+import { loadClientModule } from "./loadClientModule.js";
 
 // @ts-ignore
 import { useClientLookup } from "virtual:use-client-lookup.js";
 
-export const loadModule = memoizeOnId(async (id: string) => {
-  const moduleFn = useClientLookup[id];
-
-  if (!moduleFn) {
-    throw new Error(
-      `(client) No module found for '${id}' in module lookup for "use client" directive`,
-    );
-  }
-
-  try {
-    return await moduleFn();
-  } catch (error) {
-    if (isDynamicImportFailure(error) && isRecoveryConfigured()) {
-      startRecovery("module-not-found");
-      // Stall this import forever so React doesn't crash before the recovery
-      // flow reloads the page.
-      return new Promise(() => {});
-    }
-    throw error;
-  }
-});
+export const loadModule = memoizeOnId((id: string) =>
+  loadClientModule({ id, moduleFn: useClientLookup[id] }),
+);
 
 // context(justinvdm, 2 Dec 2024): re memoize(): React relies on the same promise instance being returned for the same id
 export const clientWebpackRequire = memoizeOnId(async (id: string) => {
