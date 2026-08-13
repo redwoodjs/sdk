@@ -49,9 +49,9 @@ Applications that want to reload on disconnect can do so through `onStatusChange
 
 ## Hooking the failure path
 
-Every `"use client"` module is loaded through the framework's module lookup in `sdk/src/runtime/imports/client.ts`. `loadModule()` starts recovery when the requested ID is absent from that lookup. It also starts recovery when invoking a known lookup entry fails with a dynamic import error whose message matches `dynamically imported module`. Other errors are rethrown so application failures do not turn into reload attempts.
+Every `"use client"` module is resolved through the framework's module lookup in `sdk/src/runtime/imports/client.ts`, which delegates loading to `loadClientModule()` in `sdk/src/runtime/imports/loadClientModule.ts`. The loader starts recovery when the requested ID is absent from the lookup. It also starts recovery when a known lookup entry fails with a dynamic import error whose message matches `dynamically imported module`. Other errors are rethrown so application failures do not turn into reload attempts.
 
-Both recovery paths call `suspendForRecovery()`. It returns a promise that intentionally remains pending, which keeps React's Suspense boundary suspended while the controller waits to reload. It does not block the browser's main thread. When recovery reloads the page, the browser replaces the entire document and JavaScript environment, including the old React root and the pending promise.
+Both recovery paths call `suspendForRecovery()`. It returns a promise that intentionally remains pending, which keeps React waiting for the module load while the controller prepares to reload. It does not block the browser's main thread. When recovery reloads the page, the browser replaces the entire document and JavaScript environment, including the old React root and the pending promise.
 
 While recovery is waiting, the previous page can remain visible even though the address bar contains the destination URL, and navigation indicators can remain pending. During initial hydration, server-rendered HTML can remain visible without becoming interactive. If a deployment is permanently broken, a fresh document can encounter the same failure and start recovery again; this flow does not persist a reload-loop counter across documents.
 
