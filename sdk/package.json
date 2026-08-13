@@ -16,7 +16,7 @@
   "scripts": {
     "build": "tsc --build --clean && tsc",
     "build:watch": "npm run build -- --watch",
-    "release": "./scripts/release.sh",
+    "release": "pnpm --dir .. run release",
     "test": "vitest --run",
     "bench": "vitest bench --run",
     "bench:baseline": "vitest bench --run --outputJson=benchmarks/router-bench-baseline.json",
