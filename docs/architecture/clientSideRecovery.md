@@ -6,6 +6,8 @@ A RedwoodSDK application is split between a worker that runs on the server and a
 
 The most common way this surfaces is after a redeploy. RedwoodSDK ships client components as individual JavaScript files whose filenames include content hashes. A new build renames those files. A tab that was opened before the redeploy still references the old names, so when it later tries to load a chunk it has not yet needed, the browser fails to fetch it and React crashes into a blank page.
 
+A stale tab can also receive new page data during client-side navigation. If the new deployment added a client component, that response can refer to a module ID that is absent from the old tab's in-memory lookup. No JavaScript request is made in this case because the old client does not know which file contains the new module. Without recovery, the lookup error reaches React and produces the same blank page.
+
 This can also happen outside of deploys. A CDN or edge node can serve a stale HTML shell that references chunks the origin no longer has. A long-lived tab can sit idle long enough that its assets are evicted from the edge. In each case the tab is holding code that may no longer be valid, and the safest recovery is to reload once the application is confirmed reachable.
 
 ## Why immediate reload is not enough
@@ -18,7 +20,7 @@ The recovery flow therefore separates detection from the decision to reload. It 
 
 The recovery flow is exposed through `initClient()` as a single trigger:
 
-- `onModuleNotFound` fires when a `"use client"` dynamic import fails with a missing-chunk error.
+- `onModuleNotFound` fires when a `"use client"` module is absent from the stale client's lookup or its dynamic import fails with a missing-chunk error.
 
 It accepts either the built-in `"reloadWhenReady"` preset string or a callback that receives a `RecoveryController`. The SDK does not enable recovery by default, because an unexpected page reload can be worse than a stale tab, so the application opts in explicitly.
 
@@ -45,9 +47,13 @@ Only one recovery controller runs at a time. If a second failure occurs while re
 
 Applications that want to reload on disconnect can do so through `onStatusChange` or other application-level hooks; it is not part of the built-in recovery flow.
 
-## Hooking the failure path
+## How module failures trigger recovery
 
-The dynamic import path is caught inside `sdk/src/runtime/imports/client.ts`. Every `"use client"` module is loaded through the framework's module lookup. When `loadModule()` catches a dynamic import failure whose message matches `dynamically imported module`, it starts recovery and returns a never-resolving promise. That promise keeps React's Suspense boundary suspended until the reload, so the tab does not crash before recovery completes.
+Recovery begins in two situations. First, a stale tab can receive page data from a newer deployment that refers to a client module absent from the tab's in-memory lookup. Second, a module can be present in the lookup but fail to load, for example because its old content-hashed JavaScript file is no longer available after a deployment. Errors unrelated to loading client modules continue to surface normally so application failures do not turn into reload attempts.
+
+In either case, the framework starts recovery and intentionally leaves the module load pending. This keeps the failure from reaching React while the framework waits to reload, without blocking the browser's main thread. When recovery reloads the page, the browser replaces the entire document and JavaScript environment, including the old React tree and the pending module load.
+
+While recovery is waiting, the previous page can remain visible even though the address bar contains the destination URL, and navigation indicators can remain pending. During initial hydration, server-rendered HTML can remain visible without becoming interactive. If a deployment is permanently broken, a fresh document can encounter the same failure and start recovery again; this flow does not persist a reload-loop counter across documents.
 
 ## Configuring recovery
 
@@ -81,6 +87,6 @@ The health check is a full HTML GET with `cache: "no-store"`. This is heavier th
 
 ## What is not covered
 
-This mechanism is intentionally scoped to the missing-client-chunk path.
+This mechanism is intentionally scoped to missing client modules.
 
 It does not intercept ordinary RSC or action fetches that fail for other reasons, such as validation errors or transient network blips. It does not queue requests transparently. It does not use a service worker. It does not maintain a persistent connection or try to remap old module names to new asset names. It also does not add any server-side stale detection, build-version plumbing, or dedicated health endpoint. The recovery is driven entirely by what the client can observe and by whether the current route is loadable.

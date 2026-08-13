@@ -266,6 +266,15 @@ export function startRecovery(reason: "module-not-found"): void {
   void run();
 }
 
+export function suspendForRecovery(reason: "module-not-found"): Promise<never> {
+  startRecovery(reason);
+
+  // context(chrsnymn, 12 Aug 2026): Keep this module load pending until
+  // recovery reloads the document. Returning the missing-module error would
+  // let React fail the render before recovery can replace the stale page.
+  return new Promise<never>(() => {});
+}
+
 export function isDynamicImportFailure(error: unknown): boolean {
   return (
     error instanceof TypeError &&
