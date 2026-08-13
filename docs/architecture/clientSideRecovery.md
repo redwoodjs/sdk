@@ -47,11 +47,11 @@ Only one recovery controller runs at a time. If a second failure occurs while re
 
 Applications that want to reload on disconnect can do so through `onStatusChange` or other application-level hooks; it is not part of the built-in recovery flow.
 
-## Hooking the failure path
+## How module failures trigger recovery
 
-Every `"use client"` module is resolved through the framework's module lookup in `sdk/src/runtime/imports/client.ts`, which delegates loading to `loadClientModule()` in `sdk/src/runtime/imports/loadClientModule.ts`. The loader starts recovery when the requested ID is absent from the lookup. It also starts recovery when a known lookup entry fails with a dynamic import error whose message matches `dynamically imported module`. Other errors are rethrown so application failures do not turn into reload attempts.
+Recovery begins in two situations. First, a stale tab can receive page data from a newer deployment that refers to a client module absent from the tab's in-memory lookup. Second, a module can be present in the lookup but fail to load, for example because its old content-hashed JavaScript file is no longer available after a deployment. Errors unrelated to loading client modules continue to surface normally so application failures do not turn into reload attempts.
 
-Both recovery paths call `suspendForRecovery()`. It returns a promise that intentionally remains pending, which keeps React waiting for the module load while the controller prepares to reload. It does not block the browser's main thread. When recovery reloads the page, the browser replaces the entire document and JavaScript environment, including the old React root and the pending promise.
+In either case, the framework starts recovery and intentionally leaves the module load pending. This keeps the failure from reaching React while the framework waits to reload, without blocking the browser's main thread. When recovery reloads the page, the browser replaces the entire document and JavaScript environment, including the old React tree and the pending module load.
 
 While recovery is waiting, the previous page can remain visible even though the address bar contains the destination URL, and navigation indicators can remain pending. During initial hydration, server-rendered HTML can remain visible without becoming interactive. If a deployment is permanently broken, a fresh document can encounter the same failure and start recovery again; this flow does not persist a reload-loop counter across documents.
 
