@@ -141,5 +141,11 @@ still intact, and the raw response again contained zero `EF BF BD` sequences.
 - `AI_AGENT=1 npx @redwoodjs/agent-ci run --all`
   - Attempted after the refactor. The workflows could not start because Docker
     was not running. The selected release workflow also requires a
-    `GITHUB_TOKEN`. This validation remains pending and must be rerun once
-    those local prerequisites are available.
+    `GITHUB_TOKEN`. No release, push, or deployment was attempted. We chose not
+    to start Docker or provide release credentials for this change.
+- `pnpm check`
+  - Passed as the Docker-free repository check. This built the SDK, checked the
+    addons and starter, built the community package, and checked community
+    projects. Wrangler reported that sandbox restrictions prevented writing
+    its optional debug logs outside the workspace, but type generation
+    completed and the command exited successfully.
