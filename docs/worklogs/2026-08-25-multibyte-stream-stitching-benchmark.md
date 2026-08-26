@@ -94,6 +94,22 @@ Output byte sizes and chunk counts stayed unchanged. The 100-row development
 E2E response no longer contains a Unicode replacement character. Repeated
 measurements will also be used for the text-stream refactor comparison.
 
+## After internal text-stream refactor
+
+Two runs after changing the private application streams from bytes to text:
+
+| Scenario             | Mean, run 1 | Mean, run 2 | Focused-fix average | Change |
+| -------------------- | ----------: | ----------: | ------------------: | -----: |
+| Small ASCII page     |   0.0722 ms |   0.0713 ms |           0.0765 ms |  -6.1% |
+| 100 multibyte rows   |   0.3628 ms |   0.3586 ms |           0.3756 ms |  -4.0% |
+| 2,000 multibyte rows |   7.5457 ms |   7.4239 ms |           7.5534 ms |  -0.9% |
+
+The refactor removes one application text-to-bytes-to-text conversion and is
+slightly faster in these runs. Output sizes remained 610, 4,721, and 93,122
+bytes, each response still used seven output chunks, and all profiles reported
+zero replacement characters. One-off first-chunk timings remained dominated by
+React stream startup and showed no consistent delay attributable to stitching.
+
 ## Local production validation
 
 The `meta-hoisting` playground was built with `vite build` and served through
@@ -102,3 +118,28 @@ Vite's local production preview. No Cloudflare deployment was used.
 The local response returned HTTP 200 with 20,414 bytes, contained both customer
 1 and customer 100 with intact bullets, and contained zero decoded replacement
 characters and zero `EF BF BD` replacement-character byte sequences.
+
+After the internal text-stream refactor, the same local build and preview check
+returned HTTP 200 with 20,462 bytes. The small size difference comes from newly
+generated build asset names and payload data. Customer 1 and customer 100 were
+still intact, and the raw response again contained zero `EF BF BD` sequences.
+
+## Validation record
+
+- `cd sdk && pnpm exec vitest --run src/runtime/lib/stitchDocumentAndAppStreams.test.ts`
+  - 25 tests passed.
+- `cd sdk && pnpm build`
+  - TypeScript build passed.
+- `cd sdk && pnpm test`
+  - 50 files passed; 620 tests passed and 1 was skipped.
+- `RWSDK_SKIP_DEPLOY=1 pnpm test:e2e playground/meta-hoisting/__tests__/e2e.test.mts`
+  - 2 development tests passed and 1 deployment test was skipped.
+- `cd playground/meta-hoisting && pnpm build`
+  - Local production build passed.
+- `cd playground/meta-hoisting && pnpm preview --host 127.0.0.1 --port 4173`
+  - Local response verified manually; no cloud deployment.
+- `AI_AGENT=1 npx @redwoodjs/agent-ci run --all`
+  - Attempted after the refactor. The workflows could not start because Docker
+    was not running. The selected release workflow also requires a
+    `GITHUB_TOKEN`. This validation remains pending and must be rerun once
+    those local prerequisites are available.

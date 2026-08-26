@@ -58,6 +58,29 @@ To solve both, the framework uses a multi-phase stream interleaving strategy, or
 
 Before stitching begins, the application HTML stream is pre-processed. The utility reads from the start of the stream to isolate the block of hoisted tags (`<title>`, `<meta>`, etc.) that React places at the beginning. The stream is effectively split into two new virtual streams: one containing only the hoisted tags, and a second containing the rest of the application body.
 
+The React renderers expose HTML as UTF-8 byte streams, but byte chunks are not
+guaranteed to end between characters. A character may begin in one chunk and
+finish in the next. The pre-processing step therefore owns one decoder for the
+entire application source and exposes its two private outputs as text. The
+stitcher never switches from decoded text back to untouched bytes partway
+through that source.
+
+The document source has its own decoder because it is a separate byte stream.
+The application and document remain text while the stitcher searches for
+markers and changes phases. A single encoder converts the combined text back
+to response bytes at the output boundary:
+
+```text
+document bytes -> document decoder -------------------+
+                                                       +-> response encoder -> response bytes
+app bytes      -> application decoder -> private text -+
+```
+
+Keeping decoder state with the source that produced the bytes prevents a
+partial UTF-8 character from being lost or combined with bytes from the other
+render. This is an internal boundary only; callers still provide byte streams
+and receive a byte stream.
+
 **2. Multi-Phase Interleaving**
 
 The utility then proceeds through a series of phases to construct the final HTML:
@@ -75,6 +98,12 @@ The utility then proceeds through a series of phases to construct the final HTML
 *   **Phase 6: Finish Document:** Finally, the process returns to the document stream to send any remaining content, typically the closing `</body>` and `</html>` tags.
 
 This precise interleaving process guarantees that the doctype is sent first, hoisted tags are correctly placed in the head, and the browser receives the static HTML and the script needed to make it interactive as quickly as possible, fulfilling the promise of a non-blocking, SEO-friendly, streaming-first architecture.
+
+Only the initial HTML response uses this stitching path. Direct RSC responses,
+including client-side navigation and Server Function stream results, bypass
+HTML stitching. Realtime updates travel over WebSockets after hydration and
+also bypass it. Those features depend on the initial page hydrating, but their
+message transports are not decoded or re-encoded by this utility.
 
 #### Client-Side Hydration
 
