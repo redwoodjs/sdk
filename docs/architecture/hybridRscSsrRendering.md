@@ -60,26 +60,25 @@ Before stitching begins, the application HTML stream is pre-processed. The utili
 
 The React renderers expose HTML as UTF-8 byte streams, but byte chunks are not
 guaranteed to end between characters. A character may begin in one chunk and
-finish in the next. The pre-processing step therefore owns one decoder for the
-entire application source and exposes its two private outputs as text. The
-stitcher never switches from decoded text back to untouched bytes partway
-through that source.
+finish in the next. The pre-processing step therefore keeps using the same
+decoder for the entire application source, re-encodes complete text for its two
+private byte streams, and flushes the decoder when the source ends. It never
+switches to untouched bytes while the decoder may still be holding part of a
+character.
 
-The document source has its own decoder because it is a separate byte stream.
-The application and document remain text while the stitcher searches for
-markers and changes phases. A single encoder converts the combined text back
-to response bytes at the output boundary:
+The hoisted tags, document, and application body are separate byte streams, so
+the stitcher gives each one its own decoder. Every decoder receives chunks only
+from its own stream and is flushed when that stream ends:
 
 ```text
-document bytes -> document decoder -------------------+
-                                                       +-> response encoder -> response bytes
-app bytes      -> application decoder -> private text -+
+document bytes ------------------------> document decoder --+
+                                                               +-> response bytes
+app bytes -> splitter decoder -> private bytes -> app decoders -+
 ```
 
 Keeping decoder state with the source that produced the bytes prevents a
 partial UTF-8 character from being lost or combined with bytes from the other
-render. This is an internal boundary only; callers still provide byte streams
-and receive a byte stream.
+render. The public and private streams remain byte streams.
 
 **2. Multi-Phase Interleaving**
 

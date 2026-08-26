@@ -16,12 +16,11 @@
  * @param endMarker The marker in the app stream that signals the end of the initial, non-suspended render.
  */
 
-// Decode the app source once for its entire lifetime. The private streams carry
-// text so neither consumer can abandon or mix partial UTF-8 decoder state.
 function splitStreamOnFirstNonHoistedTag(
   sourceStream: ReadableStream<Uint8Array>,
-): [ReadableStream<string>, ReadableStream<string>] {
+): [ReadableStream<Uint8Array>, ReadableStream<Uint8Array>] {
   const decoder = new TextDecoder();
+  const encoder = new TextEncoder();
   const nonHoistedTagPattern =
     /<(?!(?:\/)?(?:title|meta|link|style|base)[\s>\/])(?![!?])/i;
 
@@ -45,11 +44,12 @@ function splitStreamOnFirstNonHoistedTag(
   }
 
   let sourceReader: ReadableStreamDefaultReader<Uint8Array>;
-  let appBodyController: ReadableStreamDefaultController<string> | null = null;
+  let appBodyController: ReadableStreamDefaultController<Uint8Array> | null =
+    null;
   let buffer = "";
   let hoistedTagsDone = false;
 
-  const hoistedTagsStream = new ReadableStream<string>({
+  const hoistedTagsStream = new ReadableStream<Uint8Array>({
     start(controller) {
       sourceReader = sourceStream.getReader();
 
@@ -68,9 +68,9 @@ function splitStreamOnFirstNonHoistedTag(
               const match = findTrustedMatch(buffer, true);
               if (match && typeof match.index === "number") {
                 const hoistedPart = buffer.slice(0, match.index);
-                controller.enqueue(hoistedPart);
+                controller.enqueue(encoder.encode(hoistedPart));
               } else {
-                controller.enqueue(buffer);
+                controller.enqueue(encoder.encode(buffer));
               }
             }
             controller.close();
@@ -89,13 +89,13 @@ function splitStreamOnFirstNonHoistedTag(
             const appPart = buffer.slice(match.index);
             buffer = "";
 
-            controller.enqueue(hoistedPart);
+            controller.enqueue(encoder.encode(hoistedPart));
             controller.close();
             hoistedTagsDone = true;
 
             if (appBodyController) {
               if (appPart) {
-                appBodyController.enqueue(appPart);
+                appBodyController.enqueue(encoder.encode(appPart));
               }
 
               while (true) {
@@ -103,14 +103,14 @@ function splitStreamOnFirstNonHoistedTag(
                 if (done) {
                   const remainingText = decoder.decode();
                   if (remainingText) {
-                    appBodyController.enqueue(remainingText);
+                    appBodyController.enqueue(encoder.encode(remainingText));
                   }
                   appBodyController.close();
                   return;
                 }
                 const text = decoder.decode(value, { stream: true });
                 if (text) {
-                  appBodyController.enqueue(text);
+                  appBodyController.enqueue(encoder.encode(text));
                 }
               }
             }
@@ -129,7 +129,9 @@ function splitStreamOnFirstNonHoistedTag(
               safeFlushLimit - 1,
             );
             if (flushIndex !== -1 && effectiveFlushIndex >= 0) {
-              controller.enqueue(buffer.slice(0, effectiveFlushIndex + 1));
+              controller.enqueue(
+                encoder.encode(buffer.slice(0, effectiveFlushIndex + 1)),
+              );
               buffer = buffer.slice(effectiveFlushIndex + 1);
             }
             await pump();
@@ -151,7 +153,7 @@ function splitStreamOnFirstNonHoistedTag(
     },
   });
 
-  const appBodyStream = new ReadableStream<string>({
+  const appBodyStream = new ReadableStream<Uint8Array>({
     start(controller) {
       appBodyController = controller;
     },
@@ -235,12 +237,14 @@ export function stitchDocumentAndAppStreams(
   const [hoistedTagsStream, appBodyStream] =
     splitStreamOnFirstNonHoistedTag(innerHtml);
 
+  const hoistedTagsDecoder = new TextDecoder();
   const outerDecoder = new TextDecoder();
+  const innerDecoder = new TextDecoder();
   const encoder = new TextEncoder();
 
   let outerReader: ReadableStreamDefaultReader<Uint8Array>;
-  let innerReader: ReadableStreamDefaultReader<string>;
-  let hoistedTagsReader: ReadableStreamDefaultReader<string>;
+  let innerReader: ReadableStreamDefaultReader<Uint8Array>;
+  let hoistedTagsReader: ReadableStreamDefaultReader<Uint8Array>;
 
   let buffer = "";
   let outerBufferRemains = "";
@@ -279,11 +283,14 @@ export function stitchDocumentAndAppStreams(
         const { done, value } = await hoistedTagsReader.read();
         // When the stream is done, we're ready to process the document head.
         if (done) {
+          hoistedTagsBuffer += hoistedTagsDecoder.decode();
           hoistedTagsReady = true;
           phase = "outer-head";
         } else {
           // Otherwise, keep appending to the buffer.
-          hoistedTagsBuffer += value;
+          hoistedTagsBuffer += hoistedTagsDecoder.decode(value, {
+            stream: true,
+          });
         }
       } else if (phase === "outer-head") {
         // Read from the document stream. Search for the closing `</head>` tag
@@ -360,11 +367,12 @@ export function stitchDocumentAndAppStreams(
         const { done, value } = await innerReader.read();
         // Handle the case where the app stream ends.
         if (done) {
+          buffer += innerDecoder.decode();
           if (buffer) enqueue(buffer);
           phase = "outer-tail";
         } else {
           // As chunks arrive, append them to the buffer.
-          buffer += value;
+          buffer += innerDecoder.decode(value, { stream: true });
           const markerIndex = buffer.indexOf(endMarker);
           // If the end marker is found, enqueue content up to the marker,
           // buffer the rest, and switch to the document tail phase.
@@ -433,9 +441,13 @@ export function stitchDocumentAndAppStreams(
         const { done, value } = await innerReader.read();
         // When the app stream is done, transition to the final phase.
         if (done) {
+          enqueue(innerDecoder.decode());
           phase = "outer-end";
         } else {
-          enqueue(value);
+          // The app-body splitter has already normalized each output chunk to
+          // end on a complete UTF-8 character, so it is safe to pass through
+          // the remaining app chunks without decoding them a second time.
+          controller.enqueue(value);
         }
       } else if (phase === "outer-end") {
         // Finally, switch back to the document stream one last time to send

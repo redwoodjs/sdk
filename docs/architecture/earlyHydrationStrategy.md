@@ -35,9 +35,9 @@ This strategy provides the best of both worlds: we achieve the immediate interac
 The document and application render as separate UTF-8 streams and are joined
 by the stream stitcher described in
 [Hybrid Rendering with Stream Stitching](./hybridRscSsrRendering.md). The
-stitcher works with text internally, but it preserves this ordering: initial
-application shell, hydration script, suspended application content. Changing
-the internal byte-to-text boundary must not delay the hydration script until
-suspended content completes.
+stitcher keeps decoder state with each stream while preserving this ordering:
+initial application shell, hydration script, suspended application content.
+Handling a character split across byte chunks must not delay the hydration
+script until suspended content completes.
 
 For details on how this user-defined script tag is discovered at build time and transformed for production, see the [Document Component Transformations](./documentTransforms.md) and [Unified Script Discovery](./unifiedScriptDiscovery.md) architecture documents.
