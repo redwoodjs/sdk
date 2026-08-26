@@ -63,6 +63,7 @@ function splitStreamOnFirstNonHoistedTag(
           const { done, value } = await sourceReader.read();
 
           if (done) {
+            buffer += decoder.decode();
             if (buffer) {
               const match = findTrustedMatch(buffer, true);
               if (match && typeof match.index === "number") {
@@ -100,10 +101,17 @@ function splitStreamOnFirstNonHoistedTag(
               while (true) {
                 const { done, value } = await sourceReader.read();
                 if (done) {
+                  const remainingText = decoder.decode();
+                  if (remainingText) {
+                    appBodyController.enqueue(encoder.encode(remainingText));
+                  }
                   appBodyController.close();
                   return;
                 }
-                appBodyController.enqueue(value);
+                const text = decoder.decode(value, { stream: true });
+                if (text) {
+                  appBodyController.enqueue(encoder.encode(text));
+                }
               }
             }
           } else {
@@ -116,7 +124,10 @@ function splitStreamOnFirstNonHoistedTag(
             const earliestOpenBracket = buffer.lastIndexOf("<");
             const safeFlushLimit =
               earliestOpenBracket === -1 ? buffer.length : earliestOpenBracket;
-            const effectiveFlushIndex = Math.min(flushIndex, safeFlushLimit - 1);
+            const effectiveFlushIndex = Math.min(
+              flushIndex,
+              safeFlushLimit - 1,
+            );
             if (flushIndex !== -1 && effectiveFlushIndex >= 0) {
               controller.enqueue(
                 encoder.encode(buffer.slice(0, effectiveFlushIndex + 1)),
@@ -226,7 +237,9 @@ export function stitchDocumentAndAppStreams(
   const [hoistedTagsStream, appBodyStream] =
     splitStreamOnFirstNonHoistedTag(innerHtml);
 
-  const decoder = new TextDecoder();
+  const hoistedTagsDecoder = new TextDecoder();
+  const outerDecoder = new TextDecoder();
+  const innerDecoder = new TextDecoder();
   const encoder = new TextEncoder();
 
   let outerReader: ReadableStreamDefaultReader<Uint8Array>;
@@ -270,11 +283,14 @@ export function stitchDocumentAndAppStreams(
         const { done, value } = await hoistedTagsReader.read();
         // When the stream is done, we're ready to process the document head.
         if (done) {
+          hoistedTagsBuffer += hoistedTagsDecoder.decode();
           hoistedTagsReady = true;
           phase = "outer-head";
         } else {
           // Otherwise, keep appending to the buffer.
-          hoistedTagsBuffer += decoder.decode(value, { stream: true });
+          hoistedTagsBuffer += hoistedTagsDecoder.decode(value, {
+            stream: true,
+          });
         }
       } else if (phase === "outer-head") {
         // Read from the document stream. Search for the closing `</head>` tag
@@ -284,6 +300,7 @@ export function stitchDocumentAndAppStreams(
         const { done, value } = await outerReader.read();
         // Handle the case where the document stream ends.
         if (done) {
+          buffer += outerDecoder.decode();
           // If there's content left in the buffer, process it for markers.
           if (buffer) {
             const headCloseIndex = buffer.indexOf("</head>");
@@ -317,7 +334,7 @@ export function stitchDocumentAndAppStreams(
           phase = "inner-shell";
         } else {
           // As chunks arrive, append them to the buffer.
-          buffer += decoder.decode(value, { stream: true });
+          buffer += outerDecoder.decode(value, { stream: true });
 
           // Search for the closing head tag to inject hoisted tags.
           const headCloseIndex = buffer.indexOf("</head>");
@@ -350,11 +367,12 @@ export function stitchDocumentAndAppStreams(
         const { done, value } = await innerReader.read();
         // Handle the case where the app stream ends.
         if (done) {
+          buffer += innerDecoder.decode();
           if (buffer) enqueue(buffer);
           phase = "outer-tail";
         } else {
           // As chunks arrive, append them to the buffer.
-          buffer += decoder.decode(value, { stream: true });
+          buffer += innerDecoder.decode(value, { stream: true });
           const markerIndex = buffer.indexOf(endMarker);
           // If the end marker is found, enqueue content up to the marker,
           // buffer the rest, and switch to the document tail phase.
@@ -382,6 +400,7 @@ export function stitchDocumentAndAppStreams(
         const { done, value } = await outerReader.read();
         // Handle the case where the document stream ends.
         if (done) {
+          buffer += outerDecoder.decode();
           if (buffer) {
             // Search the remaining buffer for the closing body tag.
             const markerIndex = buffer.indexOf("</body>");
@@ -397,7 +416,7 @@ export function stitchDocumentAndAppStreams(
           phase = "inner-suspended";
         } else {
           // As chunks arrive, append them to the buffer.
-          buffer += decoder.decode(value, { stream: true });
+          buffer += outerDecoder.decode(value, { stream: true });
           // Search for the closing body tag to switch to suspended content.
           const markerIndex = buffer.indexOf("</body>");
           if (markerIndex !== -1) {
@@ -422,9 +441,12 @@ export function stitchDocumentAndAppStreams(
         const { done, value } = await innerReader.read();
         // When the app stream is done, transition to the final phase.
         if (done) {
+          enqueue(innerDecoder.decode());
           phase = "outer-end";
         } else {
-          // Otherwise, pass through the remaining app content directly.
+          // The app-body splitter has already normalized each output chunk to
+          // end on a complete UTF-8 character, so it is safe to pass through
+          // the remaining app chunks without decoding them a second time.
           controller.enqueue(value);
         }
       } else if (phase === "outer-end") {
@@ -438,11 +460,13 @@ export function stitchDocumentAndAppStreams(
         const { done, value } = await outerReader.read();
         // When the document stream is done, we're finished.
         if (done) {
+          enqueue(outerDecoder.decode());
           controller.close();
           return;
         }
-        // Otherwise, pass through the final document content.
-        controller.enqueue(value);
+        // Otherwise, continue decoding the document stream so any multibyte
+        // character split across chunks keeps its decoder state.
+        enqueue(outerDecoder.decode(value, { stream: true }));
       }
       await pump(controller);
     } catch (e) {

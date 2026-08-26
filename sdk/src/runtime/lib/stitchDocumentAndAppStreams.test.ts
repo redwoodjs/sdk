@@ -46,6 +46,30 @@ function createChunkedStream(chunks: string[]): ReadableStream<Uint8Array> {
   });
 }
 
+function createStreamSplitInsideCharacter(
+  str: string,
+  character: string,
+): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  const characterIndex = str.indexOf(character);
+  if (characterIndex === -1) {
+    throw new Error(`Character ${character} was not found in the stream`);
+  }
+
+  const bytes = encoder.encode(str);
+  const characterByteIndex = encoder.encode(
+    str.slice(0, characterIndex),
+  ).byteLength;
+
+  return new ReadableStream({
+    start(controller) {
+      controller.enqueue(bytes.slice(0, characterByteIndex + 1));
+      controller.enqueue(bytes.slice(characterByteIndex + 1));
+      controller.close();
+    },
+  });
+}
+
 describe("stitchDocumentAndAppStreams", () => {
   const startMarker = '<div id="rwsdk-app-start" />';
   const endMarker = '<div id="rwsdk-app-end"></div>';
@@ -743,6 +767,59 @@ describe("stitchDocumentAndAppStreams", () => {
       expect(result).toContain(endMarker);
       expect(result).toContain(`<div>More content</div>`);
       expect(result).not.toContain(startMarker);
+    });
+  });
+
+  describe("multibyte characters", () => {
+    it("preserves a character split when hoisted-tag scanning ends", async () => {
+      const outerHtml = `<html><head></head><body>${startMarker}</body></html>`;
+      const innerHtml = `<div>Customer 42: ••• 1234</div>${endMarker}`;
+
+      const result = await streamToString(
+        stitchDocumentAndAppStreams(
+          stringToStream(outerHtml),
+          createStreamSplitInsideCharacter(innerHtml, "•"),
+          startMarker,
+          endMarker,
+        ),
+      );
+
+      expect(result).toContain("Customer 42: ••• 1234");
+      expect(result).not.toContain("�");
+    });
+
+    it("keeps document decoder state separate while reading the app", async () => {
+      const outerHtml = `<html><head></head><body>${startMarker}<p>Document • content</p></body></html>`;
+      const innerHtml = `<div>App content</div>${endMarker}`;
+
+      const result = await streamToString(
+        stitchDocumentAndAppStreams(
+          createStreamSplitInsideCharacter(outerHtml, "•"),
+          stringToStream(innerHtml),
+          startMarker,
+          endMarker,
+        ),
+      );
+
+      expect(result).toContain("Document • content");
+      expect(result).not.toContain("�");
+    });
+
+    it("preserves a character split after the closing body tag", async () => {
+      const outerHtml = `<html><head></head><body>${startMarker}</body><!-- • --></html>`;
+      const innerHtml = `<div>App content</div>${endMarker}`;
+
+      const result = await streamToString(
+        stitchDocumentAndAppStreams(
+          createStreamSplitInsideCharacter(outerHtml, "•"),
+          stringToStream(innerHtml),
+          startMarker,
+          endMarker,
+        ),
+      );
+
+      expect(result).toContain("<!-- • -->");
+      expect(result).not.toContain("�");
     });
   });
 });
