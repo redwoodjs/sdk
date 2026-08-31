@@ -290,3 +290,11 @@ Test Files  1 passed (1)
 Tests  17 passed (17)
 Duration  497ms
 ```
+
+## Recorded the implementation commit
+
+We committed the isolated repair and its evidence artifacts without merging or pushing:
+
+```text
+ab84f195 fix(vite): refresh CSS module classes after reload
+```
