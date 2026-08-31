@@ -58,6 +58,20 @@ To solve both, the framework uses a multi-phase stream interleaving strategy, or
 
 Before stitching begins, the application HTML stream is pre-processed. The utility reads from the start of the stream to isolate the block of hoisted tags (`<title>`, `<meta>`, etc.) that React places at the beginning. The stream is effectively split into two new virtual streams: one containing only the hoisted tags, and a second containing the rest of the application body.
 
+One subtlety shapes everything that follows: a chunk can end at any byte, but some characters are made of several bytes — the bullet `•`, for example, takes three — so a chunk can end in the middle of a character, with the rest of it arriving only in a later chunk. To read the HTML it is stitching, the utility turns bytes into text with a translator that refuses to guess: when a chunk ends mid-character, the translator sets the unfinished piece aside and waits, and when the next chunk arrives, it picks the piece back up and completes the character.
+
+Because the translator can be holding a piece of a character at any moment, two rules keep the text intact. The first concerns what happens once the search is over. The utility translates chunks in the first place only so it can search the text for markers, and once the last marker is found there is nothing left to search for — the chunks still to arrive only need to reach the browser. The tempting shortcut at that point is to skip the translator and send those chunks onward as raw bytes, and that shortcut is exactly what loses text: a piece of a character in the translator's pocket has only one route to the browser, which is for the translator to combine it with the next chunk and hand it over. If the next chunk bypasses the translator, the handover never happens. The held piece goes nowhere, while the rest of the character travels on without it, and the browser receives the tail of a character whose start never arrives — shown as `�`. So the first rule: every chunk of a stream goes through that stream's translator, from the first chunk to the last. Searching ends when the markers are found; translating must not.
+
+The second rule: each stream needs its own translator. If the document stream and the application stream shared one, a piece of a character from one stream could be completed with bytes from the other, corrupting both.
+
+The pre-processing step follows both rules. The entire application stream goes through one translator — including the chunks after the hoisted-tag block, which are translated and turned back into bytes unchanged rather than shipped raw — and when the stream ends, the translator hands over anything it is still holding, so nothing is lost. Because every chunk it sends on is built from complete text, each one ends on a whole character; Phase 5 below relies on this to pass application chunks straight to the response without translating them again. The stitcher then gives each of its three input streams its own translator, emptied when that stream ends:
+
+```text
+document stream    -> document translator --+
+hoisted-tag stream -> hoisted translator  --+--> response
+app body stream    -> app translator      --+
+```
+
 **2. Multi-Phase Interleaving**
 
 The utility then proceeds through a series of phases to construct the final HTML:
@@ -75,6 +89,8 @@ The utility then proceeds through a series of phases to construct the final HTML
 *   **Phase 6: Finish Document:** Finally, the process returns to the document stream to send any remaining content, typically the closing `</body>` and `</html>` tags.
 
 This precise interleaving process guarantees that the doctype is sent first, hoisted tags are correctly placed in the head, and the browser receives the static HTML and the script needed to make it interactive as quickly as possible, fulfilling the promise of a non-blocking, SEO-friendly, streaming-first architecture.
+
+None of this applies beyond the initial page load. Client-side navigations and Server Function results are served as direct RSC responses, and realtime updates travel over WebSockets after hydration. Only the initial HTML document passes through the stitcher; those transports bypass it entirely.
 
 #### Client-Side Hydration
 

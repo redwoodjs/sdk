@@ -30,4 +30,6 @@ This approach has several key advantages:
 
 This strategy provides the best of both worlds: we achieve the immediate interactivity required for a good streaming experience while retaining the performance benefits of ESM and code splitting.
 
+The document and application render as separate HTML streams and are joined by the stream stitcher described in [Hybrid Rendering with Stream Stitching](./hybridRscSsrRendering.md). The stitcher's handling of characters split across byte chunks does not change the ordering this strategy depends on: the hydration script is still sent immediately after the initial application shell, before any suspended content.
+
 For details on how this user-defined script tag is discovered at build time and transformed for production, see the [Document Component Transformations](./documentTransforms.md) and [Unified Script Discovery](./unifiedScriptDiscovery.md) architecture documents.

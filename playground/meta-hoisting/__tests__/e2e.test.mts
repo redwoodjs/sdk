@@ -1,4 +1,9 @@
-import { poll, setupPlaygroundEnvironment, testDevAndDeploy } from "rwsdk/e2e";
+import {
+  poll,
+  setupPlaygroundEnvironment,
+  testDev,
+  testDevAndDeploy,
+} from "rwsdk/e2e";
 import { expect } from "vitest";
 
 setupPlaygroundEnvironment(import.meta.url);
@@ -21,4 +26,14 @@ testDevAndDeploy("hoists meta tags", async ({ page, url }) => {
     );
     return true;
   });
+});
+
+testDev("preserves multibyte characters in streamed HTML", async ({ url }) => {
+  const response = await fetch(url);
+  const html = await response.text();
+
+  expect(response.status).toBe(200);
+  expect(html).toContain("Customer 1: ••• 1234");
+  expect(html).toContain("Customer 100: ••• 1234");
+  expect(html.includes("�")).toBe(false);
 });
