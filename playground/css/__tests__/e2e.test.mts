@@ -1,12 +1,71 @@
+import { readFile, writeFile } from "fs/promises";
+import { join } from "path";
 import {
   poll,
   setupPlaygroundEnvironment,
+  testDev,
   testDeploy,
   testDevAndDeploy,
 } from "rwsdk/e2e";
 import { expect } from "vitest";
 
 setupPlaygroundEnvironment(import.meta.url);
+
+testDev(
+  "keeps a client component's CSS Module class after editing the CSS and reloading",
+  async ({ page, url, projectDir }) => {
+    const cssPath = join(projectDir, "src/app/pages/Welcome.module.css");
+    const originalCss = await readFile(cssPath, "utf8");
+    const editedCss = originalCss.replace(
+      "background: rgb(0, 0, 255)",
+      "background: rgb(0, 128, 0)",
+    );
+
+    const readStyles = () =>
+      page.$eval("#hydrate-root > div", (element) => ({
+        bodyBackground: getComputedStyle(document.body).backgroundColor,
+        className: element.className,
+        containerBackground: getComputedStyle(element).backgroundColor,
+      }));
+
+    try {
+      await page.goto(url, { waitUntil: "domcontentloaded" });
+      await page.waitForSelector("#hydrate-root > div");
+      await page.waitForFunction(
+        () =>
+          getComputedStyle(document.querySelector("#hydrate-root > div")!)
+            .backgroundColor === "rgb(0, 0, 255)",
+      );
+
+      const before = await readStyles();
+      console.log("issue-1266 before CSS edit", before);
+      expect(before).toMatchObject({
+        bodyBackground: "rgb(240, 240, 240)",
+        containerBackground: "rgb(0, 0, 255)",
+      });
+
+      await writeFile(cssPath, editedCss);
+      await page.waitForFunction(
+        () =>
+          getComputedStyle(document.querySelector("#hydrate-root > div")!)
+            .backgroundColor === "rgb(0, 128, 0)",
+      );
+      const afterHotUpdate = await readStyles();
+      console.log("issue-1266 after CSS edit before reload", afterHotUpdate);
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.waitForSelector("#hydrate-root > div");
+
+      const after = await readStyles();
+      console.log("issue-1266 after CSS edit and reload", after);
+      expect(after).toMatchObject({
+        bodyBackground: "rgb(240, 240, 240)",
+        containerBackground: "rgb(0, 128, 0)",
+      });
+    } finally {
+      await writeFile(cssPath, originalCss);
+    }
+  },
+);
 
 testDevAndDeploy("renders page with styled content", async ({ page, url }) => {
   await page.goto(url);
