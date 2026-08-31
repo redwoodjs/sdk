@@ -58,27 +58,17 @@ To solve both, the framework uses a multi-phase stream interleaving strategy, or
 
 Before stitching begins, the application HTML stream is pre-processed. The utility reads from the start of the stream to isolate the block of hoisted tags (`<title>`, `<meta>`, etc.) that React places at the beginning. The stream is effectively split into two new virtual streams: one containing only the hoisted tags, and a second containing the rest of the application body.
 
-The React renderers expose HTML as UTF-8 byte streams, but byte chunks are not
-guaranteed to end between characters. A character may begin in one chunk and
-finish in the next. The pre-processing step therefore keeps using the same
-decoder for the entire application source, re-encodes complete text for its two
-private byte streams, and flushes the decoder when the source ends. It never
-switches to untouched bytes while the decoder may still be holding part of a
-character.
+There is one subtlety that shapes all of the code that follows: a character can be split across chunk boundaries. UTF-8 encodes some characters as several bytes — the bullet `•`, for example, is three bytes — and a stream may end a chunk at any byte position, including the middle of such a sequence. The utility converts bytes to text with a `TextDecoder` in streaming mode, which handles this by keeping an incomplete trailing sequence to itself instead of emitting it: the held bytes are emitted only once the rest of the character arrives in a later chunk.
 
-The hoisted tags, document, and application body are separate byte streams, so
-the stitcher gives each one its own decoder. Every decoder receives chunks only
-from its own stream and is flushed when that stream ends:
+This holding behavior makes decoding stateful, and it leads to two rules. First, a stream's chunks must keep going through that stream's decoder for as long as more bytes are coming. If the code decoded chunks while searching for a marker and then forwarded the remaining chunks as raw bytes — the tempting shortcut, since those chunks no longer need to be searched — any bytes the decoder was holding at that moment would be silently lost, and the browser would render the orphaned remainder as replacement characters (`�`). Second, each stream needs its own decoder, because held bytes belong to exactly one stream: a single decoder shared between the document and application streams would attach a held fragment from one render to the text of the other, corrupting both.
+
+The pre-processing step therefore runs the entire application stream through a single decoder: the chunks after the hoisted-tag block are decoded and re-encoded unchanged rather than forwarded as raw bytes, and the decoder is flushed — emitting any bytes it is still holding — when the stream ends. Since every emitted chunk is re-encoded from complete text, each chunk of the two resulting streams ends on a character boundary; Phase 5 below relies on this guarantee to pass application chunks through without decoding them again. The stitcher then gives each of its three input streams a dedicated decoder, flushed when that stream ends:
 
 ```text
-document bytes ------------------------> document decoder --+
-                                                               +-> response bytes
-app bytes -> splitter decoder -> private bytes -> app decoders -+
+document stream    -> outerDecoder       --+
+hoisted-tag stream -> hoistedTagsDecoder --+--> response bytes
+app body stream    -> innerDecoder       --+
 ```
-
-Keeping decoder state with the source that produced the bytes prevents a
-partial UTF-8 character from being lost or combined with bytes from the other
-render. The public and private streams remain byte streams.
 
 **2. Multi-Phase Interleaving**
 
@@ -98,11 +88,7 @@ The utility then proceeds through a series of phases to construct the final HTML
 
 This precise interleaving process guarantees that the doctype is sent first, hoisted tags are correctly placed in the head, and the browser receives the static HTML and the script needed to make it interactive as quickly as possible, fulfilling the promise of a non-blocking, SEO-friendly, streaming-first architecture.
 
-Only the initial HTML response uses this stitching path. Direct RSC responses,
-including client-side navigation and Server Function stream results, bypass
-HTML stitching. Realtime updates travel over WebSockets after hydration and
-also bypass it. Those features depend on the initial page hydrating, but their
-message transports are not decoded or re-encoded by this utility.
+None of this applies beyond the initial page load. Client-side navigations and Server Function results are served as direct RSC responses, and realtime updates travel over WebSockets after hydration. Only the initial HTML document passes through the stitcher; those transports bypass it entirely.
 
 #### Client-Side Hydration
 

@@ -32,12 +32,6 @@ This approach has several key advantages:
 
 This strategy provides the best of both worlds: we achieve the immediate interactivity required for a good streaming experience while retaining the performance benefits of ESM and code splitting.
 
-The document and application render as separate UTF-8 streams and are joined
-by the stream stitcher described in
-[Hybrid Rendering with Stream Stitching](./hybridRscSsrRendering.md). The
-stitcher keeps decoder state with each stream while preserving this ordering:
-initial application shell, hydration script, suspended application content.
-Handling a character split across byte chunks must not delay the hydration
-script until suspended content completes.
+The document and application render as separate HTML streams and are joined by the stream stitcher described in [Hybrid Rendering with Stream Stitching](./hybridRscSsrRendering.md). The stitcher's handling of characters split across byte chunks does not change the ordering this strategy depends on: the hydration script is still sent immediately after the initial application shell, before any suspended content.
 
 For details on how this user-defined script tag is discovered at build time and transformed for production, see the [Document Component Transformations](./documentTransforms.md) and [Unified Script Discovery](./unifiedScriptDiscovery.md) architecture documents.
