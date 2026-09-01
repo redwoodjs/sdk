@@ -359,3 +359,11 @@ The CSS playground now covers the full development sequence: wait for hydration,
 ```
 
 The PR draft contains only RedwoodSDK behavior and generic development context. It does not claim that the incomplete local-ci run passed.
+
+## Recorded the contribution-guide follow-up commit
+
+We committed the explicit hydration wait and PR draft without opening or pushing a pull request:
+
+```text
+bde4a5260 test(playground): wait for hydration in CSS reload repro
+```
