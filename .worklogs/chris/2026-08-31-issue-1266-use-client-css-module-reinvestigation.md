@@ -458,3 +458,11 @@ $ PATH=/Users/chris/.nvm/versions/node/v24.20.0/bin:$PATH CI=1 pnpm --filter rws
 $ git diff --check
 (no output)
 ```
+
+## Recorded the CSS-only scope correction
+
+We committed the verified scope correction without merging or pushing:
+
+```text
+b4ece5478 fix(vite): limit recursive SSR invalidation to CSS
+```
