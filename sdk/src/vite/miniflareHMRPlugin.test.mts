@@ -288,6 +288,29 @@ describe("miniflareHMRPlugin hotUpdate gating", () => {
     );
   });
 
+  it("keeps worker invalidation scoped to the virtual module for a JavaScript SSR update", async () => {
+    const server = createMockServer({
+      rootDir: tmpDir,
+      environment: "worker",
+      file: workerFile,
+    });
+
+    await callHotUpdate(plugin, { file: workerFile, server }, "ssr");
+
+    expect(invalidateModule).toHaveBeenNthCalledWith(
+      1,
+      server,
+      "ssr",
+      workerFile,
+    );
+    expect(invalidateModule).toHaveBeenNthCalledWith(
+      2,
+      server,
+      "worker",
+      "virtual:rwsdk:ssr:/worker.ts",
+    );
+  });
+
   it("skips runDirectivesScan when only the file body changes", async () => {
     writeFileSync(
       workerFile,

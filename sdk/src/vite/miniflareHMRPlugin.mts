@@ -187,9 +187,13 @@ export const miniflareHMRPlugin = ({
           virtualSSRModuleId += ".js";
         }
 
-        invalidateModuleFn(ctx.server, environment, virtualSSRModuleId, {
-          invalidateImportersRecursively: true,
-        });
+        if (ctx.file.endsWith(".css")) {
+          invalidateModuleFn(ctx.server, environment, virtualSSRModuleId, {
+            invalidateImportersRecursively: true,
+          });
+        } else {
+          invalidateModuleFn(ctx.server, environment, virtualSSRModuleId);
+        }
         log("hmr: invalidated ssr module");
         return [];
       }

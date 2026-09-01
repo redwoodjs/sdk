@@ -367,3 +367,94 @@ We committed the explicit hydration wait and PR draft without opening or pushing
 ```text
 bde4a5260 test(playground): wait for hydration in CSS reload repro
 ```
+
+## Verified that recursive SSR invalidation is intentional for all source types
+
+During a later scope review, we questioned whether `{ invalidateImportersRecursively: true }` should apply only to CSS updates. We checked the implementation history before changing it and found that narrowing it would undo intended behavior.
+
+Commit `f773e31e34c7ca813ff100e850fa39adfd080cf5` introduced the SSR update path in July 2025. Its code passed recursive invalidation for both the changed module in the SSR graph and the matching virtual module in the worker graph. Its commit explanation states that both modules and their importers must be cleared recursively. That rule covered JavaScript, TypeScript, and CSS updates.
+
+Commit `dee26966902135a13abebd4ab7fd1a0e7763c4d1` later added dependency injection while addressing issue #1263. Its diff replaced `invalidateModule(...)` with the injected `invalidateModuleFn(...)`, but it also dropped the recursive options from the two SSR calls. The commit describes directive-scan gating and does not describe a decision to narrow SSR invalidation.
+
+The issue #1266 repair therefore restores the earlier recursive behavior rather than broadening the intended behavior. CSS still receives one distinct treatment: the worker-side target gains the `.js` suffix because the SSR bridge stores CSS under that name. We will not make the proposed CSS-only narrowing because the repository history contradicts it.
+
+Raw history commands used for this check:
+
+```text
+$ git blame -L 168,198 upstream/main -- sdk/src/vite/miniflareHMRPlugin.mts
+f773e31e34 ... if (this.environment.name === "ssr") {
+f773e31e34 ... log("SSR update, invalidating recursively", ctx.file);
+dee2696690 ... invalidateModuleFn(ctx.server, "ssr", ctx.file);
+
+$ git show f773e31e34 -- sdk/src/vite/miniflareHMRPlugin.mts
+invalidateModule(ctx.server, "ssr", ctx.file, {
+  invalidateImportersRecursively: true,
+});
+invalidateModule(ctx.server, environment, virtualSSRModuleId, {
+  invalidateImportersRecursively: true,
+});
+
+$ git show dee2696690 -- sdk/src/vite/miniflareHMRPlugin.mts
+- invalidateModule(ctx.server, "ssr", ctx.file);
++ invalidateModuleFn(ctx.server, "ssr", ctx.file);
+- invalidateModule(ctx.server, environment, virtualSSRModuleId);
++ invalidateModuleFn(ctx.server, environment, virtualSSRModuleId);
+```
+
+The current repair restores recursion only on the worker-side call. The first SSR-graph call remains non-recursive, as it was on current `main`. That smaller reach is sufficient for the reproduced CSS failure because the stale component instance was in the worker graph. Restoring recursion to the SSR-graph call would be separate work and is not necessary for issue #1266.
+
+## Corrected the recursive invalidation history and kept the repair CSS-only
+
+The preceding history review stopped one commit too early and reached the wrong conclusion. We then searched the complete file history for `invalidateImportersRecursively` and found commit `76e986544ae4aeadcd6ea3e3032b7ed75e9574ca`, made one day after recursion was introduced. Its stated change is “Avoid recursive invalidating for SSR modules,” and its diff deliberately removes recursive invalidation from both SSR update calls. The later dependency-injection work preserved that chosen behavior; it did not remove recursion accidentally.
+
+This evidence confirms the scope concern. Issue #1266 proves that CSS is the exception: the worker must also clear the importing component because that component holds the old generated class map. JavaScript and TypeScript updates do not need issue #1266's exception and should retain current `main` behavior.
+
+We changed the branch so only CSS worker invalidation passes `{ invalidateImportersRecursively: true }`. JavaScript and TypeScript worker invalidation still clears only the matching virtual module. We added a focused JavaScript SSR-update test beside the CSS test so both sides of this boundary are explicit.
+
+Raw history evidence:
+
+```text
+$ git log -p -S'invalidateImportersRecursively' -- sdk/src/vite/miniflareHMRPlugin.mts
+commit 76e986544ae4aeadcd6ea3e3032b7ed75e9574ca
+...
+## Avoid recursive invalidating for SSR modules
+Turns out we only need to invalidate the SSR modules themselves - not their importers as well - for HMR to work correctly for SSR.
+...
+- invalidateModule(ctx.server, "ssr", ctx.file, {
+-   invalidateImportersRecursively: true,
+- });
++ invalidateModule(ctx.server, "ssr", ctx.file);
+...
+- { invalidateImportersRecursively: true },
+```
+
+## Proved the CSS-only invalidation boundary
+
+The focused plugin suite passes 18 tests. The CSS test requires the `.css.js` worker target and recursive importer clearing; the JavaScript test requires the unchanged virtual filename and no recursive option.
+
+```text
+$ PATH=/Users/chris/.nvm/versions/node/v24.20.0/bin:$PATH CI=1 pnpm test src/vite/miniflareHMRPlugin.test.mts
+Test Files  1 passed (1)
+Tests  18 passed (18)
+Duration  370ms
+```
+
+The first rerun selected Node 22.13.0 and stopped during pnpm's dependency check before any test ran. We selected the installed Node 24.20.0 runtime required by the repository and reran the unchanged test command successfully.
+
+The same browser example still passes after limiting recursion to CSS:
+
+```text
+$ PATH=/Users/chris/.nvm/versions/node/v24.20.0/bin:$PATH CI=1 RWSDK_E2E_DEBUG=true RWSDK_TEST_MAX_RETRIES=1 RWSDK_SKIP_DEPLOY=1 pnpm exec vitest run css/__tests__/e2e.test.mts -t "keeps a client component"
+[vite] (client) hmr update /src/app/pages/Welcome.tsx
+Test Files  1 passed (1)
+Tests  1 passed | 3 skipped (4)
+Duration  24.92s
+```
+
+The SDK build and whitespace check also pass:
+
+```text
+$ PATH=/Users/chris/.nvm/versions/node/v24.20.0/bin:$PATH CI=1 pnpm --filter rwsdk build
+$ git diff --check
+(no output)
+```
