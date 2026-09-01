@@ -6,6 +6,7 @@ import {
   testDev,
   testDeploy,
   testDevAndDeploy,
+  waitForHydration,
 } from "rwsdk/e2e";
 import { expect } from "vitest";
 
@@ -31,6 +32,7 @@ testDev(
     try {
       await page.goto(url, { waitUntil: "domcontentloaded" });
       await page.waitForSelector("#hydrate-root > div");
+      await waitForHydration(page);
       await page.waitForFunction(
         () =>
           getComputedStyle(document.querySelector("#hydrate-root > div")!)

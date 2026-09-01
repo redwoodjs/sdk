@@ -298,3 +298,64 @@ We committed the isolated repair and its evidence artifacts without merging or p
 ```text
 ab84f195 fix(vite): refresh CSS module classes after reload
 ```
+
+## Aligned the regression test with the contribution guide
+
+We reviewed all of `CONTRIBUTING.md`. It requires E2E coverage for SDK fixes, minimal official playground examples, local verification commands in the pull request, and recommends waiting for client hydration before interacting with a page. The existing repair already meets the coverage and playground requirements. We added `waitForHydration(page)` after the initial page load and before editing the CSS file. This makes the sequence explicit: React finishes connecting the server-rendered HTML to the client code, then the test changes CSS, waits for the live update, and reloads.
+
+We will rerun the focused browser path and plugin unit test before committing this follow-up. We will also prepare a public PR description framed only in terms of RedwoodSDK behavior and generic development use, with the exact verification commands and the local-ci limitation stated plainly.
+
+## Proved the hydration-aware test and drafted the pull request
+
+The focused browser check passed on its first attempt after adding the explicit hydration wait:
+
+```text
+$ RWSDK_E2E_DEBUG=true RWSDK_TEST_MAX_RETRIES=1 RWSDK_SKIP_DEPLOY=1 pnpm exec vitest run css/__tests__/e2e.test.mts -t "keeps a client component"
+[vite] (client) hmr update /src/app/pages/Welcome.tsx
+Test Files  1 passed (1)
+Tests  1 passed | 3 skipped (4)
+Duration  32.10s
+```
+
+Vitest again took ten seconds to close the Vite process after reporting success, then exited with code 0. The focused plugin suite and whitespace check also passed:
+
+```text
+$ git diff --check
+(no output)
+$ cd sdk && pnpm test src/vite/miniflareHMRPlugin.test.mts
+Test Files  1 passed (1)
+Tests  17 passed (17)
+Duration  295ms
+```
+
+Prepared public pull request title:
+
+```text
+fix(vite): preserve client CSS Module styles after reload
+```
+
+Prepared public pull request body:
+
+```markdown
+## Problem
+
+During development, editing a CSS Module imported by a `"use client"` component can leave a later page reload with old generated class names. The browser has the updated stylesheet, but the server-rendered HTML uses the previous class names, so the component loses its class-based styling.
+
+## Solution
+
+The SSR bridge represents CSS Modules in the worker as virtual JavaScript modules whose IDs end in `.css.js`. The HMR handler previously tried to invalidate the `.css` ID, which did not match the stored worker module.
+
+This change targets the actual `.css.js` module and invalidates its importers. The next server render therefore evaluates the component with the current CSS class map.
+
+The CSS playground now covers the full development sequence: wait for hydration, edit the CSS Module, confirm the live update, reload, and confirm that the edited class style remains.
+
+## Verification
+
+- `pnpm --filter rwsdk build`
+- `cd sdk && pnpm test src/vite/miniflareHMRPlugin.test.mts` — 17 passed
+- `cd sdk && pnpm test` — 656 passed, 1 skipped
+- `RWSDK_SKIP_DEPLOY=1 pnpm test:e2e playground/css/__tests__/e2e.test.mts` — 2 passed, 2 deployment checks skipped
+- `AI_AGENT=1 npx @redwoodjs/agent-ci run --all` — 10 of 12 local jobs passed; two playground jobs could not launch the downloaded x86 Chrome binary in the local ARM container. No test assertion ran in those two jobs.
+```
+
+The PR draft contains only RedwoodSDK behavior and generic development context. It does not claim that the incomplete local-ci run passed.
