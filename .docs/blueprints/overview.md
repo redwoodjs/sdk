@@ -57,6 +57,8 @@ The typical request path through a RedwoodSDK application:
 
 **Directives** — `"use client"` and `"use server"` directives are discovered via an `esbuild`-based scanner (`runDirectivesScan.mts`) and transformed by Vite plugins. `"use server"` modules become RPC proxies; `"use client"` modules are handled differently for RSC and SSR bundles.
 
+During development, the SSR bridge presents CSS to the worker as virtual JavaScript modules whose IDs end in `.css.js`. When a CSS file changes, the HMR plugin invalidates that virtual module and its importers in the worker module graph. Clearing the importer chain matters because an already-evaluated client component holds the generated CSS class map; clearing only the CSS leaf lets a later server render reuse the previous class names while the browser has the updated stylesheet.
+
 **Server Functions** — Functions marked with `"use server"` are wrapped at build time. At runtime, `registerServerFunctionWrap` allows global interception (e.g., for observability). The action handler in `worker.tsx` deserializes calls, invokes the function, and normalizes results back into the RSC stream.
 
 **Client Navigation** — `initClientNavigation` in `sdk/src/runtime/client/navigation.ts` provides SPA-like navigation by fetching RSC payloads over the network and updating the DOM. It maintains a navigation cache and integrates with browser history.

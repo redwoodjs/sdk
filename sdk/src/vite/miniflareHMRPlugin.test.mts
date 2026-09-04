@@ -67,12 +67,13 @@ const callHotUpdate = async (
     server: any;
     modules?: any[];
   },
+  environment = "worker",
 ) => {
   const hotUpdate = plugin.hotUpdate;
   return hotUpdate.call(
     {
       environment: {
-        name: "worker",
+        name: environment,
         logger: { info: vi.fn() },
       },
     },
@@ -265,6 +266,49 @@ describe("miniflareHMRPlugin hotUpdate gating", () => {
     await callHotUpdate(plugin, { file: workerFile, server });
 
     expect(runDirectivesScan).toHaveBeenCalledTimes(1);
+  });
+
+  it("invalidates the worker's virtual CSS module and its importers on an SSR update", async () => {
+    const cssFile = join(tmpDir, "styles.module.css");
+    const server = createMockServer({
+      rootDir: tmpDir,
+      environment: "worker",
+      file: cssFile,
+    });
+
+    await callHotUpdate(plugin, { file: cssFile, server }, "ssr");
+
+    expect(invalidateModule).toHaveBeenNthCalledWith(1, server, "ssr", cssFile);
+    expect(invalidateModule).toHaveBeenNthCalledWith(
+      2,
+      server,
+      "worker",
+      "virtual:rwsdk:ssr:/styles.module.css.js",
+      { invalidateImportersRecursively: true },
+    );
+  });
+
+  it("keeps worker invalidation scoped to the virtual module for a JavaScript SSR update", async () => {
+    const server = createMockServer({
+      rootDir: tmpDir,
+      environment: "worker",
+      file: workerFile,
+    });
+
+    await callHotUpdate(plugin, { file: workerFile, server }, "ssr");
+
+    expect(invalidateModule).toHaveBeenNthCalledWith(
+      1,
+      server,
+      "ssr",
+      workerFile,
+    );
+    expect(invalidateModule).toHaveBeenNthCalledWith(
+      2,
+      server,
+      "worker",
+      "virtual:rwsdk:ssr:/worker.ts",
+    );
   });
 
   it("skips runDirectivesScan when only the file body changes", async () => {

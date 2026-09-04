@@ -175,12 +175,25 @@ export const miniflareHMRPlugin = ({
       if (this.environment.name === "ssr") {
         log("SSR update, invalidating recursively", ctx.file);
         invalidateModuleFn(ctx.server, "ssr", ctx.file);
-        invalidateModuleFn(
-          ctx.server,
-          environment,
-          VIRTUAL_SSR_PREFIX +
-            normalizeModulePath(ctx.file, rootDir),
-        );
+
+        let virtualSSRModuleId =
+          VIRTUAL_SSR_PREFIX + normalizeModulePath(ctx.file, rootDir);
+
+        if (ctx.file.endsWith(".css")) {
+          // context(chrisvdm, 31 Aug 2026): The SSR bridge represents a virtual
+          // CSS module as JavaScript so the worker can import its class map.
+          // Invalidate that resolved ID and its importers so a reload cannot
+          // reuse a component evaluated with the previous class map.
+          virtualSSRModuleId += ".js";
+        }
+
+        if (ctx.file.endsWith(".css")) {
+          invalidateModuleFn(ctx.server, environment, virtualSSRModuleId, {
+            invalidateImportersRecursively: true,
+          });
+        } else {
+          invalidateModuleFn(ctx.server, environment, virtualSSRModuleId);
+        }
         log("hmr: invalidated ssr module");
         return [];
       }
