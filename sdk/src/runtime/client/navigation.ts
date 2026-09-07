@@ -71,6 +71,40 @@ function shouldInterceptNavigation(
   return true;
 }
 
+function isAbsoluteHref(href: string) {
+  try {
+    new URL(href);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function isClientNavigationHref(href: string) {
+  let url: URL;
+
+  try {
+    url = new URL(href, window.location.href);
+  } catch {
+    return false;
+  }
+
+  const isHttp = url.protocol === "http:" || url.protocol === "https:";
+  const isSameOrigin = url.origin === window.location.origin;
+
+  if (!isHttp || !isSameOrigin) {
+    return false;
+  }
+
+  if (isAbsoluteHref(href)) {
+    // context(justinvdm, 4 Sep 2026): Keep absolute HTTP(S) links as full page
+    // loads, even when they point to this app.
+    return false;
+  }
+
+  return true;
+}
+
 export function validateClickEvent(event: MouseEvent, target: HTMLElement) {
   // should this only work for left click?
   if (event.button !== 0) {
@@ -101,7 +135,7 @@ export function validateClickEvent(event: MouseEvent, target: HTMLElement) {
     return false;
   }
 
-  if (href.startsWith("http")) {
+  if (!isClientNavigationHref(href)) {
     return false;
   }
 
