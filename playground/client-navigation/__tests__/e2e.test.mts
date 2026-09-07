@@ -74,6 +74,42 @@ testDevAndDeploy("navigates on link click", async ({ page, url }) => {
   expect(page.url()).toContain("/about");
 });
 
+testDevAndDeploy(
+  "leaves an ordinary mailto link to the browser",
+  async ({ page, url }) => {
+    const pageErrors: Error[] = [];
+    page.on("pageerror", (error) => {
+      pageErrors.push(error);
+    });
+
+    await page.goto(url);
+    await waitForHydration(page);
+
+    await page.evaluate(() => {
+      const originalPushState = window.history.pushState.bind(window.history);
+      const pushStateUrls: string[] = [];
+      (
+        window as typeof window & { __pushStateUrls: string[] }
+      ).__pushStateUrls = pushStateUrls;
+      window.history.pushState = (data, unused, nextUrl) => {
+        pushStateUrls.push(String(nextUrl));
+        originalPushState(data, unused, nextUrl);
+      };
+    });
+
+    await page.click("#email-link");
+
+    const pushStateUrls = await page.evaluate(
+      () =>
+        (window as typeof window & { __pushStateUrls: string[] })
+          .__pushStateUrls,
+    );
+    expect(pushStateUrls).toEqual([]);
+    expect(pageErrors).toEqual([]);
+    expect(page.url()).toBe(new URL(url).href);
+  },
+);
+
 // Regression test for https://github.com/redwoodjs/sdk/issues/1104.
 // The browser's default scroll restoration runs before the RSC payload
 // commits, causing the old DOM to flash at the new scroll offset. We take

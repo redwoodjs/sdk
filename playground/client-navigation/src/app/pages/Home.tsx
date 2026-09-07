@@ -39,6 +39,17 @@ export function Home({ ctx }: RequestInfo) {
         Go to About Page with Link
       </a>
 
+      <section style={{ marginTop: "2rem" }}>
+        <h2>Browser-handled links</h2>
+        <p>
+          This ordinary email link should ask the browser to open the configured
+          mail app.
+        </p>
+        <a href="mailto:someone@example.com" id="email-link">
+          Email someone@example.com
+        </a>
+      </section>
+
       <nav style={{ marginTop: "2rem" }}>
         <h2>Suspense Pages</h2>
         <a href="/suspense-one" id="suspense-one-link">
