@@ -97,7 +97,7 @@ function isClientNavigationHref(href: string) {
   }
 
   if (isAbsoluteHref(href)) {
-    // context(justinvdm, 4 Sep 2026): Keep absolute HTTP(S) links as full page
+    // context(chrsnym, 4 Sep 2026): Keep absolute HTTP(S) links as full page
     // loads, even when they point to this app.
     return false;
   }
