@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { initClientNavigation, navigate, validateClickEvent } from "./navigation";
+import {
+  initClientNavigation,
+  navigate,
+  validateClickEvent,
+} from "./navigation";
 import {
   getNavigationSnapshot,
   resetNavigationStateForTests,
@@ -12,7 +16,7 @@ beforeEach(() => {
 
 // Mocking browser globals
 vi.stubGlobal("window", {
-  location: { href: "http://localhost/" },
+  location: { href: "http://localhost/", origin: "http://localhost" },
   addEventListener: vi.fn(),
   history: {
     scrollRestoration: "auto",
@@ -48,6 +52,12 @@ vi.stubGlobal(
 );
 
 describe("clientNavigation", () => {
+  beforeEach(() => {
+    window.location.href = "https://myapp.com/";
+    (window.location as unknown as { origin: string }).origin =
+      "https://myapp.com";
+  });
+
   let mockEvent: MouseEvent = {
     button: 0,
     metaKey: false,
@@ -55,14 +65,23 @@ describe("clientNavigation", () => {
     shiftKey: false,
     ctrlKey: false,
   } as unknown as MouseEvent;
-  let mockTarget = {
-    closest: () => {
-      return {
-        getAttribute: () => "/test",
-        hasAttribute: () => false,
-      };
-    },
-  } as unknown as HTMLElement;
+  function createMockTarget(
+    href: string,
+    options: { target?: string; download?: boolean } = {},
+  ) {
+    const link = {
+      getAttribute: (attribute: string) => (attribute === "href" ? href : null),
+      hasAttribute: (attribute: string) =>
+        attribute === "download" && options.download === true,
+      target: options.target ?? "",
+    };
+
+    return {
+      closest: () => link,
+    } as unknown as HTMLElement;
+  }
+
+  const mockTarget = createMockTarget("/test");
 
   it("should return true", () => {
     expect(validateClickEvent(mockEvent, mockTarget)).toBe(true);
@@ -74,11 +93,14 @@ describe("clientNavigation", () => {
     );
   });
 
-  it("none of the modifier keys are pressed", () => {
-    expect(
-      validateClickEvent({ ...mockEvent, metaKey: true }, mockTarget),
-    ).toBe(false);
-  });
+  it.each(["ctrlKey", "metaKey", "shiftKey", "altKey"] as const)(
+    "leaves clicks using %s to the browser",
+    (modifierKey) => {
+      expect(
+        validateClickEvent({ ...mockEvent, [modifierKey]: true }, mockTarget),
+      ).toBe(false);
+    },
+  );
 
   it("the target is not an anchor tag", () => {
     expect(
@@ -96,26 +118,54 @@ describe("clientNavigation", () => {
     ).toBe(false);
   });
 
-  it("should not include an #hash", () => {
+  it.each(["/about", "./about", "//myapp.com/about"])(
+    "allows the in-app href %s",
+    (href) => {
+      expect(validateClickEvent(mockEvent, createMockTarget(href))).toBe(true);
+    },
+  );
+
+  it.each([
+    "mailto:someone@example.com",
+    "tel:+27123456789",
+    "sms:+27123456789",
+    "data:text/plain,hello",
+    "blob:https://myapp.com/12345678-1234-1234-1234-123456789abc",
+    "https://external.example.com/about",
+    "//external.example.com/about",
+  ])("leaves the browser-owned href %s to the browser", (href) => {
+    expect(validateClickEvent(mockEvent, createMockTarget(href))).toBe(false);
+  });
+
+  it.each(["https://myapp.com/about", "HTTPS://myapp.com/about"])(
+    "keeps the absolute same-origin href %s as a full page load",
+    (href) => {
+      expect(validateClickEvent(mockEvent, createMockTarget(href))).toBe(false);
+    },
+  );
+
+  it("leaves hash links to the browser", () => {
     expect(
-      validateClickEvent(mockEvent, {
-        closest: () => ({
-          getAttribute: () => "/test#hash",
-          hasAttribute: () => false,
-        }),
-      } as unknown as HTMLElement),
+      validateClickEvent(mockEvent, createMockTarget("/about#details")),
     ).toBe(false);
   });
 
-  it("should be a relative link", () => {
+  it("leaves links with another target to the browser", () => {
     expect(
-      validateClickEvent(mockEvent, {
-        closest: () => ({
-          getAttribute: () => "/test",
-          hasAttribute: () => false,
-        }),
-      } as unknown as HTMLElement),
-    ).toBe(true);
+      validateClickEvent(
+        mockEvent,
+        createMockTarget("/about", { target: "_blank" }),
+      ),
+    ).toBe(false);
+  });
+
+  it("leaves download links to the browser", () => {
+    expect(
+      validateClickEvent(
+        mockEvent,
+        createMockTarget("/report.pdf", { download: true }),
+      ),
+    ).toBe(false);
   });
 });
 
@@ -140,6 +190,7 @@ describe("full-reload opt-out (data-reload and shouldIntercept)", () => {
     vi.stubGlobal("window", {
       location: {
         href: "http://localhost/",
+        origin: "http://localhost",
         pathname: "/",
         search: "",
         replace: vi.fn(),
@@ -179,7 +230,7 @@ describe("full-reload opt-out (data-reload and shouldIntercept)", () => {
   }) {
     const fakeAnchor = {
       getAttribute: (attr: string) =>
-        attr === "href" ? props.href : props.target ?? null,
+        attr === "href" ? props.href : (props.target ?? null),
       hasAttribute: (attr: string) =>
         attr === "data-reload" ? Boolean(props.dataReload) : false,
       target: props.target ?? "",
@@ -206,7 +257,10 @@ describe("full-reload opt-out (data-reload and shouldIntercept)", () => {
   it("data-reload attribute prevents client-side interception", async () => {
     initClientNavigation();
 
-    const { fakeTarget } = createFakeAnchor({ href: "/admin", dataReload: true });
+    const { fakeTarget } = createFakeAnchor({
+      href: "/admin",
+      dataReload: true,
+    });
     const fakeClickEvent = createFakeClickEvent(fakeTarget);
 
     await capturedClickHandler!(fakeClickEvent);
@@ -342,6 +396,7 @@ describe("onNavigate callback (issue #1123 regression)", () => {
     vi.stubGlobal("window", {
       location: {
         href: "http://localhost/",
+        origin: "http://localhost",
         pathname: "/",
         search: "",
         replace: vi.fn(),
@@ -498,6 +553,7 @@ describe("initClientNavigation", () => {
     vi.stubGlobal("window", {
       location: {
         href: "http://localhost/",
+        origin: "http://localhost",
         pathname: "/",
         search: "",
         replace: vi.fn(),

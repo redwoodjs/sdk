@@ -23,7 +23,7 @@ RedwoodSDK's client-side navigation intercepts clicks on internal links and fetc
 
 1.  **Initialization**: The developer calls `initClientNavigation()` in their `src/client.tsx` file. This sets up a global click event listener on the `document`.
 
-2.  **Event Interception**: When a user clicks anywhere on the page, the event listener checks if the click target is an `<a>` tag with an `href` attribute pointing to a same-origin URL. It also performs several checks to ensure it doesn't interfere with expected browser behaviors, such as ignoring clicks with modifier keys (e.g., `Cmd+click` to open in a new tab), links with a `target` attribute, or download links.
+2.  **Event Interception**: When someone clicks anywhere on the page, the event listener looks for an `<a>` tag with a relative `href` that resolves to an HTTP(S) URL on the current site. The listener leaves other links to the browser, including non-HTTP schemes, links to other sites, and absolute HTTP(S) links that name the current site. It also leaves modified clicks (such as `Cmd+click`), links with another `target`, download links, and hash links to the browser.
 
 3.  **URL Update**: If the click is a candidate for client-side navigation, the default browser navigation is prevented. The new URL is then pushed to the browser's history using `window.history.pushState()`. This updates the URL in the address bar without triggering a page load.
 
