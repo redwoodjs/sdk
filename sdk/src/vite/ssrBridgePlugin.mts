@@ -1,8 +1,8 @@
 import debug from "debug";
 import MagicString from "magic-string";
 import type { Plugin, ViteDevServer } from "vite";
-import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import { addOptimizeDepsPlugin } from "./addOptimizeDepsPlugin.mjs";
+import type { BuildPaths } from "./buildPaths.mjs";
 import { externalModulesSet } from "./constants.mjs";
 import { findSsrImportCallSites } from "./findSsrSpecifiers.mjs";
 import {
@@ -16,10 +16,12 @@ const log = debug("rwsdk:vite:ssr-bridge-plugin");
 export const ssrBridgePlugin = ({
   clientFiles,
   serverFiles,
+  buildPaths,
 }: {
   clientFiles: Set<string>;
   serverFiles: Set<string>;
   projectRootDir: string;
+  buildPaths: BuildPaths;
 }): Plugin => {
   let devServer: ViteDevServer;
   let isDev = false;
@@ -174,14 +176,14 @@ export const ssrBridgePlugin = ({
             log(
               "Bridge module case (build-worker pass): resolving to external path",
             );
-            return { id: INTERMEDIATE_SSR_BRIDGE_PATH, external: true };
+            return { id: buildPaths.ssrBridgePath, external: true };
           } else if (process.env.RWSDK_BUILD_PASS === "linker") {
             // Second pass (linker): resolve to the real intermediate build
             // artifact so it can be bundled in.
             log(
               "Bridge module case (build-linker pass): resolving to bundleable path",
             );
-            return { id: INTERMEDIATE_SSR_BRIDGE_PATH, external: false };
+            return { id: buildPaths.ssrBridgePath, external: false };
           }
         }
       }

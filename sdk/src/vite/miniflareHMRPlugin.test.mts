@@ -7,6 +7,7 @@ import {
   hasEntryAsAncestor,
   miniflareHMRPlugin,
 } from "./miniflareHMRPlugin.mjs";
+import { createBuildPaths } from "./buildPaths.mjs";
 import { invalidateModule as invalidateModuleImpl } from "./invalidateModule.mjs";
 import { runDirectivesScan as runDirectivesScanImpl } from "./runDirectivesScan.mjs";
 import {
@@ -239,6 +240,7 @@ describe("miniflareHMRPlugin hotUpdate gating", () => {
       rootDir: tmpDir,
       viteEnvironment: { name: "worker" },
       workerEntryPathname: "/src/worker.ts",
+      buildPaths: createBuildPaths(tmpDir),
       runDirectivesScan: runDirectivesScan as unknown as typeof runDirectivesScanImpl,
       invalidateModule: invalidateModule as unknown as typeof invalidateModuleImpl,
       getVendorClientBarrelPath: getVendorClientBarrelPath as unknown as typeof getVendorClientBarrelPathImpl,
