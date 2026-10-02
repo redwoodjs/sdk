@@ -338,7 +338,7 @@ export const runDirectivesScan = async ({
             const normalizedPath = normalizeModulePath(
               resolvedPath,
               rootConfig.root,
-              { absolute: true },
+              { absolute: true, isViteStyle: false },
             );
             log("Normalized path:", normalizedPath);
 
@@ -387,11 +387,19 @@ export const runDirectivesScan = async ({
               // Finally, populate the output sets if the file has a directive.
               if (isClient) {
                 log("Discovered 'use client' in:", realPath);
-                clientFiles.add(normalizeModulePath(realPath, rootConfig.root));
+                clientFiles.add(
+                  normalizeModulePath(realPath, rootConfig.root, {
+                    isViteStyle: false,
+                  }),
+                );
               }
               if (isServer) {
                 log("Discovered 'use server' in:", realPath);
-                serverFiles.add(normalizeModulePath(realPath, rootConfig.root));
+                serverFiles.add(
+                  normalizeModulePath(realPath, rootConfig.root, {
+                    isViteStyle: false,
+                  }),
+                );
               }
 
               let code: string;
