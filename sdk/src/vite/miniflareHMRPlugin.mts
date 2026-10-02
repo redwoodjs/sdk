@@ -20,6 +20,7 @@ import {
   getVendorClientBarrelPath,
   getVendorServerBarrelPath,
 } from "./barrelPaths.mjs";
+import type { BuildPaths } from "./buildPaths.mjs";
 import { generateVendorBarrelContent } from "./directiveModulesDevPlugin.mjs";
 import { hasDirective as sourceHasDirective } from "./hasDirective.mjs";
 import { invalidateModule } from "./invalidateModule.mjs";
@@ -93,6 +94,7 @@ export const miniflareHMRPlugin = ({
   rootDir,
   viteEnvironment: { name: environment },
   workerEntryPathname: entry,
+  buildPaths,
   runDirectivesScan: runDirectivesScanFn = runDirectivesScan,
   invalidateModule: invalidateModuleFn = invalidateModule,
   getVendorClientBarrelPath: getVendorClientBarrelPathFn = getVendorClientBarrelPath,
@@ -103,6 +105,7 @@ export const miniflareHMRPlugin = ({
   rootDir: string;
   viteEnvironment: { name: string };
   workerEntryPathname: string;
+  buildPaths: BuildPaths;
   runDirectivesScan?: typeof runDirectivesScan;
   invalidateModule?: typeof invalidateModule;
   getVendorClientBarrelPath?: typeof getVendorClientBarrelPath;
@@ -337,6 +340,7 @@ export const miniflareHMRPlugin = ({
             serverFiles,
             entries: [ctx.file],
             esbuildOptions: {},
+            directiveScanOutDir: buildPaths.directiveScanOutDir,
           });
 
           importSignatureCache.set(ctx.file, importSignature);

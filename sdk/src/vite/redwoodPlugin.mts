@@ -20,6 +20,7 @@ import { devServerTimingPlugin } from "./devServerTimingPlugin.mjs";
 import { directiveModulesDevPlugin } from "./directiveModulesDevPlugin.mjs";
 import { directivesFilteringPlugin } from "./directivesFilteringPlugin.mjs";
 import { ConfigurableEsbuildOptions } from "./runDirectivesScan.mjs";
+import { createBuildPaths } from "./buildPaths.mjs";
 import { directivesPlugin } from "./directivesPlugin.mjs";
 import { injectVitePreamble } from "./injectVitePreamblePlugin.mjs";
 import { knownDepsResolverPlugin } from "./knownDepsResolverPlugin.mjs";
@@ -79,6 +80,7 @@ export const redwoodPlugin = async (
 ): Promise<InlineConfig["plugins"]> => {
   const projectRootDir = process.cwd();
   const esbuildOptions = options.esbuildOptions ?? {};
+  const buildPaths = createBuildPaths(projectRootDir);
 
   if (options.forceClientPaths) {
     const clientPaths = await resolveForcedPaths({
@@ -145,6 +147,7 @@ export const redwoodPlugin = async (
       projectRootDir,
       workerEntryPathname,
       esbuildOptions,
+      buildPaths,
     }),
     configPlugin({
       silent: options.silent ?? false,
@@ -154,11 +157,13 @@ export const redwoodPlugin = async (
       serverFiles,
       clientEntryPoints,
       esbuildOptions,
+      buildPaths,
     }),
     ssrBridgePlugin({
       clientFiles,
       serverFiles,
       projectRootDir,
+      buildPaths,
     }),
     knownDepsResolverPlugin({ projectRootDir }),
     cloudflarePreInitPlugin(),
@@ -176,6 +181,7 @@ export const redwoodPlugin = async (
       rootDir: projectRootDir,
       viteEnvironment: { name: "worker" },
       workerEntryPathname,
+      buildPaths,
     }),
     shouldIncludeReactPlugin ? reactPlugin() : [],
     directivesPlugin({

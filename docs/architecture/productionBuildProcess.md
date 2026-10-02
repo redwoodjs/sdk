@@ -16,6 +16,20 @@ The previous production build process had several limitations that led to both p
 
 To resolve this, we implement a five-step process that begins with a broad discovery scan, followed by a sequence of Vite builds that progressively refine the artifacts.
 
+### Application-Owned Intermediate Artifacts
+
+Each application owns the temporary files that connect the production build
+stages. RedwoodSDK derives their paths from the application root and writes them
+beneath `node_modules/.cache/rwsdk/__intermediate_builds`. This keeps two
+applications isolated when a package manager links both of them to one physical
+RedwoodSDK installation and a task runner builds them at the same time.
+
+The path set is created once for a RedwoodSDK plugin instance and passed to the
+SSR producer and worker linker. Both stages therefore exchange the bridge through
+the same application-owned path. Fixed marker files used by RedwoodSDK package
+exports remain beneath the SDK's own `dist` directory because they describe the
+installed package rather than a particular application build.
+
 ### Step 1: Initial Directive Scan
 
 Before any Vite environments are built, we run a standalone `esbuild` scan on the application's `worker` entry point to traverse the entire potential dependency graph and create a master list of every file that contains a `"use client"` or `"use server"` directive.

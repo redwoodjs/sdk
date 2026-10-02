@@ -7,7 +7,6 @@ import { glob } from "glob";
 import fsp from "node:fs/promises";
 import path from "node:path";
 import { Environment, ResolvedConfig } from "vite";
-import { INTERMEDIATES_OUTPUT_DIR } from "../lib/constants.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { externalModules } from "./constants.mjs";
 import { createViteAwareResolver } from "./createViteAwareResolver.mjs";
@@ -145,6 +144,7 @@ export const runDirectivesScan = async ({
   serverFiles,
   entries: initialEntries,
   esbuildOptions,
+  directiveScanOutDir,
 }: {
   rootConfig: ResolvedConfig;
   environments: Record<string, Environment>;
@@ -152,6 +152,7 @@ export const runDirectivesScan = async ({
   serverFiles: Set<string>;
   entries?: string[];
   esbuildOptions: ConfigurableEsbuildOptions;
+  directiveScanOutDir: string;
 }) => {
   deferredLog(
     "\n… (rwsdk) Scanning for 'use client' and 'use server' directives...",
@@ -337,7 +338,7 @@ export const runDirectivesScan = async ({
             const normalizedPath = normalizeModulePath(
               resolvedPath,
               rootConfig.root,
-              { absolute: true },
+              { absolute: true, isViteStyle: false },
             );
             log("Normalized path:", normalizedPath);
 
@@ -386,11 +387,19 @@ export const runDirectivesScan = async ({
               // Finally, populate the output sets if the file has a directive.
               if (isClient) {
                 log("Discovered 'use client' in:", realPath);
-                clientFiles.add(normalizeModulePath(realPath, rootConfig.root));
+                clientFiles.add(
+                  normalizeModulePath(realPath, rootConfig.root, {
+                    isViteStyle: false,
+                  }),
+                );
               }
               if (isServer) {
                 log("Discovered 'use server' in:", realPath);
-                serverFiles.add(normalizeModulePath(realPath, rootConfig.root));
+                serverFiles.add(
+                  normalizeModulePath(realPath, rootConfig.root, {
+                    isViteStyle: false,
+                  }),
+                );
               }
 
               let code: string;
@@ -433,7 +442,7 @@ export const runDirectivesScan = async ({
       bundle: true,
       write: false,
       splitting: true,
-      outdir: path.join(INTERMEDIATES_OUTPUT_DIR, "directive-scan"),
+      outdir: directiveScanOutDir,
       platform: "node",
       format: "esm",
       logLevel: "silent",

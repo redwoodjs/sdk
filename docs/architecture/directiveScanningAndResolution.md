@@ -45,6 +45,8 @@ When resolving an import, the process is as follows:
     *   A **client resolver**, configured with browser-side conditions (e.g., `"browser"`, `"module"`).
 3.  The selected resolver is then used to find the requested module, ensuring the correct conditional exports are used. This resolution process is still fully integrated with Vite's plugin ecosystem, allowing user-configured aliases and paths to work seamlessly in both contexts.
 
+The resolver returns real filesystem paths. The scanner preserves that path type when it prepares files for `esbuild` and when it records canonical client and server modules. This matters for linked packages that live outside the application's top-level directory: a path such as `/opt/shared/client.js` names the file on disk and must not be interpreted as Vite's root-relative shorthand for `/work/app/opt/shared/client.js`.
+
 This two-phase approach—combining a comprehensive glob pre-scan with a context-aware `esbuild` traversal—results in a reliable and accurate scan that is resilient to both complex package structures and mid-session code changes.
 
 ## The Challenge: Mid-Session Discovery of `node_modules` Directives

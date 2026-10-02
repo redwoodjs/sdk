@@ -3,8 +3,11 @@ import { existsSync } from "node:fs";
 import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import type { ViteBuilder } from "vite";
-import { INTERMEDIATES_OUTPUT_DIR } from "../lib/constants.mjs";
-import { ConfigurableEsbuildOptions, runDirectivesScan } from "./runDirectivesScan.mjs";
+import type { BuildPaths } from "./buildPaths.mjs";
+import {
+  ConfigurableEsbuildOptions,
+  runDirectivesScan,
+} from "./runDirectivesScan.mjs";
 
 const log = debug("rwsdk:vite:build-app");
 
@@ -23,6 +26,7 @@ export async function buildApp({
   projectRootDir,
   workerEntryPathname,
   esbuildOptions,
+  buildPaths,
 }: {
   builder: ViteBuilder;
   clientEntryPoints: Set<string>;
@@ -31,6 +35,7 @@ export async function buildApp({
   projectRootDir: string;
   workerEntryPathname: string;
   esbuildOptions: ConfigurableEsbuildOptions;
+  buildPaths: BuildPaths;
 }) {
   await rm(resolve(projectRootDir, "dist"), { recursive: true, force: true });
 
@@ -41,7 +46,7 @@ export async function buildApp({
   console.log("Running plugin setup pass...");
   process.env.RWSDK_BUILD_PASS = "plugin-setup";
 
-  const tempEntryPath = resolve(INTERMEDIATES_OUTPUT_DIR, "temp-entry.js");
+  const tempEntryPath = buildPaths.tempEntryPath;
 
   try {
     if (!existsSync(dirname(tempEntryPath))) {
@@ -76,6 +81,7 @@ export async function buildApp({
     serverFiles,
     entries: [workerEntryPathname],
     esbuildOptions,
+    directiveScanOutDir: buildPaths.directiveScanOutDir,
   });
 
   // context(justinvdm, 2026-05-13): In Vite 8 (Rolldown), the worker build
