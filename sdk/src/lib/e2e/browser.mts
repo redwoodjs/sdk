@@ -18,6 +18,14 @@ import { ensureTmpDir } from "./utils.mjs";
 
 const log = debug("rwsdk:e2e:browser");
 
+export async function closeBrowser(browser: Browser): Promise<void> {
+  const child = browser.process();
+  await browser.close();
+  child?.stdin?.destroy();
+  child?.stdout?.destroy();
+  child?.stderr?.destroy();
+}
+
 /**
  * Launch a browser instance
  */

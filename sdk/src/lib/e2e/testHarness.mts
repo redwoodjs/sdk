@@ -1,6 +1,6 @@
 import fs from "fs-extra";
 import path, { basename, dirname, join as pathJoin } from "path";
-import puppeteer, { type Browser, type Page } from "puppeteer-core";
+import type { Browser, Page } from "puppeteer-core";
 import { fileURLToPath } from "url";
 import {
   afterAll,
@@ -10,7 +10,11 @@ import {
   describe,
   test,
 } from "vitest";
-import { launchBrowser } from "./browser.mjs";
+import {
+  acquireBrowser,
+  type BrowserConnection,
+} from "./browserConnection.mjs";
+import { recordDiagnostic } from "./diagnostics.mjs";
 import {
   DEPLOYMENT_CHECK_TIMEOUT,
   DEPLOYMENT_MIN_TRIES,
@@ -37,7 +41,6 @@ import {
   runRelease,
 } from "./release.mjs";
 import { setupTarballEnvironment } from "./tarball.mjs";
-import { ensureTmpDir } from "./utils.mjs";
 export type { Browser, Page } from "puppeteer-core";
 
 export {
@@ -112,6 +115,11 @@ function ensureHooksRegistered() {
 
   // Register global afterAll to clean up the playground environment
   afterAll(async () => {
+    await Promise.allSettled([
+      globalDevInstancePromise,
+      globalDeploymentInstancePromise,
+    ]);
+
     const cleanupPromises = [];
     for (const instance of devInstances) {
       cleanupPromises.push(
@@ -137,6 +145,9 @@ function ensureHooksRegistered() {
         }),
       );
     }
+    await Promise.all(cleanupPromises);
+    cleanupPromises.length = 0;
+
     if (globalDevPlaygroundEnv) {
       cleanupPromises.push(
         globalDevPlaygroundEnv.cleanup().catch((error) => {
@@ -625,6 +636,10 @@ export async function runTestWithRetries(
       return; // Success
     } catch (e: any) {
       lastError = e;
+      console.error(
+        `[runTestWithRetries] ${name}, attempt ${attempt}:`,
+        e instanceof Error ? (e.stack ?? e.message) : String(e),
+      );
       const errorCode = e?.code;
 
       if (typeof errorCode === "string" && errorCode) {
@@ -700,27 +715,14 @@ function createTestRunner(
       let instance: DevServerInstance | DeploymentInstance | null;
       let browser: Browser;
 
+      let connection: BrowserConnection | undefined;
       beforeAll(async () => {
-        const tempDir = path.join(await ensureTmpDir(), "rwsdk-e2e-tests");
-        const wsEndpointFile = path.join(tempDir, "wsEndpoint");
-
-        try {
-          const wsEndpoint = await fs.readFile(wsEndpointFile, "utf-8");
-          browser = await puppeteer.connect({ browserWSEndpoint: wsEndpoint });
-        } catch (error) {
-          console.warn(
-            "Failed to connect to existing browser instance. " +
-              "This might happen if you are running a single test file. " +
-              "Launching a new browser instance instead.",
-          );
-          browser = await launchBrowser();
-        }
+        connection = await acquireBrowser();
+        browser = connection.browser;
       }, SETUP_WAIT_TIMEOUT);
 
       afterAll(async () => {
-        if (browser) {
-          await browser.disconnect();
-        }
+        await connection?.release();
       });
 
       beforeEach(async () => {
@@ -743,14 +745,18 @@ function createTestRunner(
           );
         }
 
+        recordDiagnostic("page.create.start", { name });
         page = await browser.newPage();
+        recordDiagnostic("page.create.end", { name });
         page.setDefaultTimeout(PUPPETEER_TIMEOUT);
       }, SETUP_WAIT_TIMEOUT);
 
       afterEach(async () => {
         if (page) {
           try {
+            recordDiagnostic("page.close.start", { name });
             await page.close();
+            recordDiagnostic("page.close.end", { name });
           } catch (error) {
             // Suppress errors during page close, as the browser might already be disconnecting
             // due to the test suite finishing.
@@ -800,35 +806,14 @@ function createSDKTestRunner(): SDKRunnerWithHelpers {
         let page: Page;
         let browser: Browser;
 
+        let connection: BrowserConnection | undefined;
         beforeAll(async () => {
-          const tempDir = path.join(await ensureTmpDir(), "rwsdk-e2e-tests");
-          const wsEndpointFile = path.join(tempDir, "wsEndpoint");
-
-          try {
-            const wsEndpoint = await fs.readFile(wsEndpointFile, "utf-8");
-            browser = await puppeteer.connect({
-              browserWSEndpoint: wsEndpoint,
-            });
-          } catch (error) {
-            console.warn(
-              "Failed to connect to existing browser instance. " +
-                "This might happen if you are running a single test file. " +
-                "Launching a new browser instance instead.",
-            );
-            // Check for RWSDK_HEADLESS environment variable (default to true if not set)
-            // Set RWSDK_HEADLESS=0 or RWSDK_HEADLESS=false to run in headed mode
-            const headless =
-              process.env.RWSDK_HEADLESS === undefined ||
-              process.env.RWSDK_HEADLESS === "1" ||
-              process.env.RWSDK_HEADLESS === "true";
-            browser = await launchBrowser(undefined, headless);
-          }
+          connection = await acquireBrowser();
+          browser = connection.browser;
         }, SETUP_WAIT_TIMEOUT);
 
         afterAll(async () => {
-          if (browser) {
-            await browser.disconnect();
-          }
+          await connection?.release();
         });
 
         beforeEach(async () => {
@@ -838,14 +823,18 @@ function createSDKTestRunner(): SDKRunnerWithHelpers {
             );
           }
 
+          recordDiagnostic("page.create.start", { name });
           page = await browser.newPage();
+          recordDiagnostic("page.create.end", { name });
           page.setDefaultTimeout(PUPPETEER_TIMEOUT);
         }, SETUP_WAIT_TIMEOUT);
 
         afterEach(async () => {
           if (page) {
             try {
+              recordDiagnostic("page.close.start", { name });
               await page.close();
+              recordDiagnostic("page.close.end", { name });
             } catch (error) {
               console.warn(
                 `Suppressing error during page.close() in test "${name}":`,

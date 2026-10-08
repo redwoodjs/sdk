@@ -1,7 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 // Example component that demonstrates error handling
 export function ErrorDemo() {
+  const [interactive, setInteractive] = useState(false);
+  useEffect(() => setInteractive(true), []);
+
   return (
     <div
       style={{ marginTop: "2rem", padding: "1rem", border: "1px solid #ccc" }}
@@ -12,15 +17,15 @@ export function ErrorDemo() {
         handling APIs configured in <code>client.tsx</code>.
       </p>
       <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
-        <UncaughtErrorButton />
-        <AsyncErrorButton />
+        <UncaughtErrorButton disabled={!interactive} />
+        <AsyncErrorButton disabled={!interactive} />
       </div>
     </div>
   );
 }
 
 // Component that throws an error in an event handler (uncaught error)
-function UncaughtErrorButton() {
+function UncaughtErrorButton({ disabled }: { disabled: boolean }) {
   const handleClick = () => {
     const err = new Error("This is an uncaught error from an event handler");
     throw err;
@@ -28,6 +33,7 @@ function UncaughtErrorButton() {
 
   return (
     <button
+      disabled={disabled}
       onClick={handleClick}
       style={{
         padding: "0.5rem 1rem",
@@ -44,7 +50,7 @@ function UncaughtErrorButton() {
 }
 
 // Component that throws an error in an async operation (uncaught error)
-function AsyncErrorButton() {
+function AsyncErrorButton({ disabled }: { disabled: boolean }) {
   const handleClick = () => {
     setTimeout(() => {
       throw new Error("This is an uncaught async error");
@@ -53,6 +59,7 @@ function AsyncErrorButton() {
 
   return (
     <button
+      disabled={disabled}
       onClick={handleClick}
       style={{
         padding: "0.5rem 1rem",

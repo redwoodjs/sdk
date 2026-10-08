@@ -51,6 +51,26 @@ To solve the resource contention issue and further improve performance, the test
 - **Per-Test Connection**: The test harness in each suite reads this endpoint and uses `puppeteer.connect()` to connect to the existing browser instance.
 - **Test Isolation**: Instead of creating a browser, each test now creates a new, isolated browser `page`. This is faster and avoids the race condition, while still ensuring that tests do not share state.
 
+### Browser ownership and failure evidence
+
+Global setup launches Chrome and writes its connection address to the path returned by `getBrowserEndpointPath()`. Both runner types use that same helper when reading the address. This keeps the producer and readers aligned under `ensureTmpDir()/rwsdk-e2e-tests/wsEndpoint`; independently assembling these paths previously made the readers look in a different directory.
+
+Each runner obtains a browser and a release function from `acquireBrowser()`. When it connects to the shared Chrome process, releasing it disconnects only that runner. Global teardown closes Chrome after the suites finish. If reading the address or connecting fails, the runner launches its own Chrome process and its release function closes that process. Merely disconnecting from a browser that the runner launched leaves Chrome running.
+
+When `RWSDK_E2E_ARTIFACT_DIR` is set, the command wrapper preserves build and test output in `runner.log`, preview processes append their output to `preview-<port>.log`, and the harness records timestamped browser/page lifecycle events in process-specific JSON-lines files. The retry loop prints each caught exception before another attempt so a later timeout does not hide the first failure. These files live outside disposable app directories. CI uploads this directory even when tests fail, including the hidden `.tmp` parent. The wrapper passes test arguments as individual arguments and returns the child command's exit code.
+
+The browser-lifecycle regression runs against real Chrome: one shared connection can disconnect while another continues to render a page, and an independently launched browser exits when released. These checks establish resource ownership behavior; they do not establish the cause of a historical CI timeout whose original exception was not retained.
+
+The owner also destroys the launched child's input/output pipes after Chrome exits. Chrome's parent can exit while its output pipes remain open, which kept the test runner alive in a CSS-suite teardown. Both global setup and fallback browser ownership use this cleanup; shared connections only disconnect.
+
+### Waiting for interactive controls
+
+Server-rendered HTML can contain buttons before React has attached their event handlers. The kitchen-sink error demo keeps its buttons disabled until its mount effect runs. Its click tests wait for an enabled button, then register the navigation waiter before clicking and assert the error page. Waiting only for `document.readyState` to become `complete` allowed a click before the handler existed; no error was thrown and no redirect followed.
+
+Development styles arrive when Vite's browser code imports the CSS and inserts a style element. Parsing the HTML does not guarantee that this code has run. The CSS edit-and-reload regression waits for the named stylesheet to contain rules, then checks both the visible colors and the class name in the original server response. The wait does not depend on the expected color or class, so a loaded stylesheet paired with stale server classes still fails. Production checks separately require stylesheet links in the initial HTML.
+
+Teardown waits for both environment startup promises to settle, including an unused preview build in a filtered development-only run. It then stops servers before removing their temporary app folders. Without this ordering, a build could try to read a package manifest after cleanup had deleted it, or finish starting a server after cleanup had already collected the servers to stop.
+
 ### 3. A Flexible, Two-Tiered Test Runner System
 
 To provide a clean API that supports both high-performance and high-isolation testing, the harness offers two types of test runners.
@@ -99,4 +119,3 @@ pnpm test:e2e
 
 ```
 This hybrid architecture provides a fast, reliable, and scalable foundation for the E2E test suite, allowing for both high-performance and high-isolation testing of RedwoodSDK's features.
-
