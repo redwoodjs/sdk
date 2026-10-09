@@ -9,6 +9,7 @@ import { setTimeout } from "node:timers/promises";
 import { basename, dirname, join, relative, resolve } from "path";
 import { $ } from "../../lib/$.mjs";
 import { checkServerUp } from "./browser.mjs";
+import { appendDiagnosticFile, recordDiagnostic } from "./diagnostics.mjs";
 import { extractLastJson, parseJson } from "../../lib/jsonUtils.mjs";
 import { IS_DEBUG_MODE, PREVIEW_SERVER_TIMEOUT } from "./constants.mjs";
 
@@ -644,6 +645,7 @@ export async function runPreviewServer(
     if (!previewProcess || !previewProcess.pid) {
       return;
     }
+    recordDiagnostic("preview.stop.start", { port });
     console.log("Stopping preview server...");
     if (process.platform !== "win32") {
       try {
@@ -652,6 +654,7 @@ export async function runPreviewServer(
     }
     await previewProcess.catch(() => {});
     console.log("Preview server stopped");
+    recordDiagnostic("preview.stop.end", { port });
   };
 
   previewProcess = $(pm, ["run", "preview", "--port", String(port), "--strictPort"], {
@@ -665,6 +668,7 @@ export async function runPreviewServer(
   });
 
   previewProcess.all?.on("data", (data: Buffer) => {
+    appendDiagnosticFile(`preview-${port}.log`, data.toString());
     if (IS_DEBUG_MODE) {
       process.stdout.write(data.toString());
     }

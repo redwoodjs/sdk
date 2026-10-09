@@ -10,6 +10,7 @@ import {
   VENDOR_CLIENT_BARREL_EXPORT_PATH,
   VENDOR_SERVER_BARREL_EXPORT_PATH,
 } from "../lib/constants.mjs";
+import type { BuildPaths } from "./buildPaths.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { setVendorBarrelPaths } from "./barrelPaths.mjs";
 import { SDK_ENVIRONMENT_NAMES } from "./constants.mjs";
@@ -90,12 +91,14 @@ export const directiveModulesDevPlugin = ({
   projectRootDir,
   workerEntryPathname,
   esbuildOptions,
+  buildPaths,
 }: {
   clientFiles: Set<string>;
   serverFiles: Set<string>;
   projectRootDir: string;
   workerEntryPathname: string;
   esbuildOptions: ConfigurableEsbuildOptions;
+  buildPaths: BuildPaths;
 }): Plugin => {
   const {
     promise: scanPromise,
@@ -312,6 +315,7 @@ export const directiveModulesDevPlugin = ({
         serverFiles,
         entries: [workerEntryPathname],
         esbuildOptions,
+        directiveScanOutDir: buildPaths.directiveScanOutDir,
       })
         .then(() => {
           writeFileSync(

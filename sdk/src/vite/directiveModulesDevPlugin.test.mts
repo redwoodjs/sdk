@@ -4,6 +4,7 @@ import {
   generateAppBarrelContent,
   generateVendorBarrelContent,
 } from "./directiveModulesDevPlugin.mjs";
+import { createBuildPaths } from "./buildPaths.mjs";
 
 const makeConfig = () => ({
   command: "serve" as const,
@@ -166,6 +167,7 @@ import "${projectRootDir}/src/component.tsx";`;
         projectRootDir,
         workerEntryPathname: "/Users/test/project/src/worker.tsx",
         esbuildOptions: {},
+        buildPaths: createBuildPaths(projectRootDir),
       });
 
       const config = makeConfig();

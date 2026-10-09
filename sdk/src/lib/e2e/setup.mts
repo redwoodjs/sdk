@@ -1,2 +1,3 @@
 export type { Browser } from "puppeteer-core";
-export { launchBrowser } from "./browser.mjs";
+export { closeBrowser, launchBrowser } from "./browser.mjs";
+export { getBrowserEndpointPath } from "./browserConnection.mjs";

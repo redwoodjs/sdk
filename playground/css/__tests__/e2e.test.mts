@@ -29,6 +29,21 @@ testDev(
         containerBackground: getComputedStyle(element).backgroundColor,
       }));
 
+    const waitForStylesheet = () =>
+      page.waitForFunction(() =>
+        Array.from(
+          document.querySelectorAll<HTMLStyleElement>(
+            "style[data-vite-dev-id]",
+          ),
+        ).some(
+          (style) =>
+            style
+              .getAttribute("data-vite-dev-id")
+              ?.endsWith("/src/app/pages/Welcome.module.css") &&
+            (style.sheet?.cssRules.length ?? 0) > 0,
+        ),
+      );
+
     try {
       await page.goto(url, { waitUntil: "domcontentloaded" });
       await page.waitForSelector("#hydrate-root > div");
@@ -54,12 +69,25 @@ testDev(
       );
       const afterHotUpdate = await readStyles();
       console.log("issue-1266 after CSS edit before reload", afterHotUpdate);
-      await page.reload({ waitUntil: "domcontentloaded" });
+      expect(afterHotUpdate.className).not.toBe(before.className);
+      const response = await page.reload({ waitUntil: "domcontentloaded" });
       await page.waitForSelector("#hydrate-root > div");
+      await waitForStylesheet();
+
+      expect(response).not.toBeNull();
+      const renderedClass = await page.evaluate(
+        (html) =>
+          new DOMParser()
+            .parseFromString(html, "text/html")
+            .querySelector("#hydrate-root > div")?.className,
+        await response!.text(),
+      );
+      expect(renderedClass).toBe(afterHotUpdate.className);
 
       const after = await readStyles();
       console.log("issue-1266 after CSS edit and reload", after);
       expect(after).toMatchObject({
+        className: afterHotUpdate.className,
         bodyBackground: "rgb(240, 240, 240)",
         containerBackground: "rgb(0, 128, 0)",
       });

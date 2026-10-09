@@ -18,7 +18,7 @@ testDevAndDeploy("renders Hello World", async ({ page, url }) => {
 testDevAndDeploy("error handling demo is visible", async ({ page, url }) => {
   await page.goto(url);
 
-  // Wait for page to be fully interactive
+  // Wait for the document to finish loading
   await page.waitForFunction("document.readyState === 'complete'");
 
   const getErrorDemo = () => page.$("text=Error Handling Demo");
@@ -35,7 +35,7 @@ testDevAndDeploy(
   async ({ page, url }) => {
     await page.goto(url);
 
-    // Wait for page to be fully interactive
+    // Wait for the document to finish loading
     await page.waitForFunction("document.readyState === 'complete'");
 
     // Wait for the error demo buttons to be available
@@ -43,7 +43,10 @@ testDevAndDeploy(
       const buttons = await page.$$("button");
       for (const button of buttons) {
         const text = await page.evaluate((el) => el.textContent, button);
-        if (text?.includes("Trigger Uncaught Error")) {
+        if (
+          text?.includes("Trigger Uncaught Error") &&
+          (await button.evaluate((el) => !el.disabled))
+        ) {
           return button;
         }
       }
@@ -89,7 +92,7 @@ testDevAndDeploy(
   async ({ page, url }) => {
     await page.goto(url);
 
-    // Wait for page to be fully interactive
+    // Wait for the document to finish loading
     await page.waitForFunction("document.readyState === 'complete'");
 
     // Wait for the error demo buttons to be available
@@ -97,7 +100,10 @@ testDevAndDeploy(
       const buttons = await page.$$("button");
       for (const button of buttons) {
         const text = await page.evaluate((el) => el.textContent, button);
-        if (text?.includes("Trigger Async Error")) {
+        if (
+          text?.includes("Trigger Async Error") &&
+          (await button.evaluate((el) => !el.disabled))
+        ) {
           return button;
         }
       }
@@ -114,10 +120,10 @@ testDevAndDeploy(
 
     // Click the button that triggers an async error
     // Async errors happen after a setTimeout, so navigation may be delayed
-    await asyncErrorButton!.click();
-
-    // Wait for navigation to /error (with longer timeout for async error)
-    await page.waitForNavigation({ waitUntil: "networkidle0", timeout: 10000 });
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: "networkidle0", timeout: 10000 }),
+      asyncErrorButton!.click(),
+    ]);
 
     // Verify we were redirected to /error
     expect(page.url()).toContain("/error");
@@ -198,7 +204,7 @@ testDevAndDeploy(
   async ({ page, url }) => {
     await page.goto(url);
 
-    // Wait for page to be fully interactive
+    // Wait for the document to finish loading
     await page.waitForFunction("document.readyState === 'complete'");
 
     // 1. Verify Button.client.tsx works

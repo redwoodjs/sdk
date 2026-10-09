@@ -62,6 +62,7 @@ concurrency:
 # (install/build) do not have them in process scope.
 env:
   FULL_PLAYGROUND_E2E_LABEL: run-full-vite-e2e
+  RWSDK_E2E_ARTIFACT_DIR: ${{ github.workspace }}/.tmp/rwsdk-e2e-artifacts
 
 jobs:
   setup-matrix:
@@ -188,8 +189,8 @@ jobs:
         with:
           name: playground-e2e-dev-artifacts-${{ matrix.os }}-${{ matrix.package-manager }}
           path: |
-            /tmp/*-e2e-test-*
-            playground/**/node_modules/.cache/wrangler
+            .tmp/rwsdk-e2e-artifacts
+          include-hidden-files: true
           retention-days: 7
 
   playground-e2e-deploy:
@@ -288,8 +289,8 @@ jobs:
         with:
           name: playground-e2e-deploy-artifacts-${{ matrix.os }}-${{ matrix.package-manager }}
           path: |
-            /tmp/*-e2e-test-*
-            playground/**/node_modules/.cache/wrangler
+            .tmp/rwsdk-e2e-artifacts
+          include-hidden-files: true
           retention-days: 7
 
   playground-e2e-vite7:
@@ -392,6 +393,6 @@ jobs:
         with:
           name: playground-e2e-vite7-artifacts-ubuntu-latest-pnpm
           path: |
-            /tmp/*-e2e-test-*
-            playground/**/node_modules/.cache/wrangler
+            .tmp/rwsdk-e2e-artifacts
+          include-hidden-files: true
           retention-days: 7

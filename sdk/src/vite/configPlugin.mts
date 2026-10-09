@@ -2,8 +2,8 @@ import enhancedResolve from "enhanced-resolve";
 import path, { resolve } from "node:path";
 import { InlineConfig, Plugin, ViteBuilder } from "vite";
 
-import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import { buildApp } from "./buildApp.mjs";
+import type { BuildPaths } from "./buildPaths.mjs";
 import { externalModules } from "./constants.mjs";
 import { ConfigurableEsbuildOptions } from "./runDirectivesScan.mjs";
 
@@ -28,6 +28,7 @@ export const configPlugin = ({
   serverFiles,
   clientEntryPoints,
   esbuildOptions,
+  buildPaths,
 }: {
   silent: boolean;
   projectRootDir: string;
@@ -36,6 +37,7 @@ export const configPlugin = ({
   serverFiles: Set<string>;
   clientEntryPoints: Set<string>;
   esbuildOptions: ConfigurableEsbuildOptions;
+  buildPaths: BuildPaths;
 }): Plugin => ({
   name: "rwsdk:config",
   enforce: "pre",
@@ -201,16 +203,16 @@ export const configPlugin = ({
           build: {
             lib: {
               entry: {
-                [path.basename(INTERMEDIATE_SSR_BRIDGE_PATH, ".js")]:
+                [path.basename(buildPaths.ssrBridgePath, ".js")]:
                   enhancedResolve.sync(
                     projectRootDir,
                     "rwsdk/__ssr_bridge",
                   ) as string,
               },
               formats: ["es"],
-              fileName: () => path.basename(INTERMEDIATE_SSR_BRIDGE_PATH),
+              fileName: () => path.basename(buildPaths.ssrBridgePath),
             },
-            outDir: path.dirname(INTERMEDIATE_SSR_BRIDGE_PATH),
+            outDir: path.dirname(buildPaths.ssrBridgePath),
             rolldownOptions: {
               experimental: SSR_BRIDGE_ROLLDOWN_EXPERIMENTAL,
               output: {
@@ -248,6 +250,7 @@ export const configPlugin = ({
             serverFiles,
             workerEntryPathname,
             esbuildOptions,
+            buildPaths,
           });
         },
       },
