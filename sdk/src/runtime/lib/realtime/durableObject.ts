@@ -14,6 +14,7 @@ import { MESSAGE_TYPE } from "./shared";
 import { validateUpgradeRequest } from "./validateUpgradeRequest";
 
 interface ClientInfo {
+  origin: string;
   url: string;
   clientId: string;
   cookieHeaders: string;
@@ -41,18 +42,35 @@ export class RealtimeDurableObject extends DurableObject {
     }
 
     const url = new URL(request.url);
-    const clientInfo = this.createClientInfo(url, request);
+    let clientInfo: ClientInfo;
+    try {
+      clientInfo = this.createClientInfo(url, request);
+    } catch {
+      return new Response("Invalid client URL", { status: 403 });
+    }
     return this.handleWebSocket(request, clientInfo);
   }
 
   private createClientInfo(url: URL, request: Request): ClientInfo {
     return {
-      url: url.searchParams.get("url")!,
+      origin: url.origin,
+      url: this.parseClientUrl(
+        url.searchParams.get("url")!,
+        url.origin,
+      ).toString(),
       clientId: url.searchParams.get("clientId")!,
       cookieHeaders: request.headers.get("Cookie") || "",
       shouldForwardResponses:
         url.searchParams.get("shouldForwardResponses") === "true",
     };
+  }
+
+  private parseClientUrl(clientUrl: string, origin: string): URL {
+    const url = new URL(clientUrl);
+    if (url.origin !== origin) {
+      throw new Error("Invalid client URL");
+    }
+    return url;
   }
 
   private async storeClientInfo(clientInfo: ClientInfo): Promise<void> {
@@ -94,14 +112,15 @@ export class RealtimeDurableObject extends DurableObject {
 
     if (unpacked.type === MESSAGE_TYPE.ACTION_REQUEST) {
       const message = unpacked as ActionRequestMessage;
-      clientInfo = {
-        ...clientInfo,
-        url: message.clientUrl,
-      };
-
-      await this.storeClientInfo(clientInfo);
-
       try {
+        const url = this.parseClientUrl(message.clientUrl, clientInfo.origin);
+        clientInfo = {
+          ...clientInfo,
+          url: url.toString(),
+        };
+
+        await this.storeClientInfo(clientInfo);
+
         await this.handleAction(
           ws,
           message.id,
@@ -187,7 +206,7 @@ export class RealtimeDurableObject extends DurableObject {
     requestId: string,
     clientUrl: string,
   ): Promise<void> {
-    const url = new URL(clientUrl);
+    const url = this.parseClientUrl(clientUrl, clientInfo.origin);
     url.searchParams.set("__rsc", "");
 
     if (id != null) {
@@ -196,6 +215,7 @@ export class RealtimeDurableObject extends DurableObject {
 
     const response = await fetch(url.toString(), {
       method: "POST",
+      redirect: "manual",
       body: args,
       headers: {
         "Content-Type": "application/json",
@@ -266,10 +286,11 @@ export class RealtimeDurableObject extends DurableObject {
     await Promise.all(
       sockets.map(async ({ socket, clientInfo }) => {
         try {
-          const url = new URL(clientInfo.url);
+          const url = this.parseClientUrl(clientInfo.url, clientInfo.origin);
           url.searchParams.set("__rsc", "true");
 
           const response = await fetch(url.toString(), {
+            redirect: "manual",
             headers: {
               "Content-Type": "application/json",
               Cookie: clientInfo.cookieHeaders,
