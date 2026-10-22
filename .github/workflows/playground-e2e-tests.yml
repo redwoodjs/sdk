@@ -370,7 +370,20 @@ jobs:
 
       - name: Run Playground E2E Tests (Vite 7)
         id: tests
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ github.event_name != 'pull_request' && secrets.CLOUDFLARE_ACCOUNT_ID || '' }}
+          CLOUDFLARE_API_TOKEN: ${{ github.event_name != 'pull_request' && secrets.CLOUDFLARE_API_TOKEN || '' }}
         run: |
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            if [[ -n "${CLOUDFLARE_ACCOUNT_ID:-}" || -n "${CLOUDFLARE_API_TOKEN:-}" ]]; then
+              echo "ERROR: Cloudflare credentials must not be available to pull request previews."
+              exit 1
+            fi
+          elif [[ -z "${CLOUDFLARE_ACCOUNT_ID:-}" || -z "${CLOUDFLARE_API_TOKEN:-}" ]]; then
+            echo "ERROR: Cloudflare deployment credentials are unavailable."
+            exit 1
+          fi
+
           pnpm install
           if [[ "$RUN_FULL_PLAYGROUND_E2E" == "true" ]]; then
             echo "Running the full Vite 7 playground E2E suite because the '$FULL_PLAYGROUND_E2E_LABEL' label is present."
