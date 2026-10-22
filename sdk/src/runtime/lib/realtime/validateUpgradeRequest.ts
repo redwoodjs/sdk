@@ -20,12 +20,7 @@ export const validateUpgradeRequest = (
   const requestOriginUrl = new URL(requestOrigin);
   const url = new URL(request.url);
 
-  // context(justinvdm, 19 Mar 2025): Origin header doesnt include port, yet
-  // the request url does for non-standard ports.
-  if (
-    requestOriginUrl.protocol === url.protocol &&
-    requestOriginUrl.hostname === url.hostname
-  ) {
+  if (requestOriginUrl.origin === url.origin) {
     return {
       valid: true,
     };

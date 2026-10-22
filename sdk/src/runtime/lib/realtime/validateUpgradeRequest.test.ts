@@ -13,6 +13,28 @@ describe("validateUpgradeRequest", () => {
     expect(result.valid).toBe(true);
   });
 
+  it.each(["https://app.example:8443", "http://app.example"])(
+    "rejects a different origin %s on the same hostname",
+    (origin) => {
+      const result = validateUpgradeRequest(
+        new Request("https://app.example/__realtime", {
+          headers: { Upgrade: "websocket", Origin: origin },
+        }),
+      );
+      expect(result.valid).toBe(false);
+      if (!result.valid) expect(result.response.status).toBe(403);
+    },
+  );
+
+  it("accepts an explicitly specified default port", () => {
+    const result = validateUpgradeRequest(
+      new Request("https://app.example/__realtime", {
+        headers: { Upgrade: "websocket", Origin: "https://app.example:443" },
+      }),
+    );
+    expect(result.valid).toBe(true);
+  });
+
   it("should return invalid if Upgrade header is not 'websocket'", async () => {
     const request = new Request("http://localhost:8787/ws", {
       headers: {
