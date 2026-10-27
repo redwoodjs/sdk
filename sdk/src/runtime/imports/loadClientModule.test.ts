@@ -42,25 +42,41 @@ describe("loadClientModule", () => {
     expect(await getPromiseState(result)).toBe("pending");
   });
 
-  it("suspends a failed dynamic import while recovery is configured", async () => {
-    const pending = new Promise<never>(() => {});
-    const suspend = vi.fn(() => pending);
+  it.each([
+    ["Chrome", "Failed to fetch dynamically imported module", true],
+    ["Firefox", "error loading dynamically imported module", true],
+    ["Safari", "Importing a module script failed.", true],
+    ["unrelated TypeError", "Application module failed", false],
+  ])(
+    "%s dynamic import failure: %s",
+    async (_browser, message, shouldRecover) => {
+      const error = new TypeError(message);
+      const pending = new Promise<never>(() => {});
+      const suspend = vi.fn(() => pending);
 
-    const result = loadClientModule({
-      id: "/src/app/pages/ChangedComponent.tsx",
-      moduleFn: async () => {
-        throw new TypeError("Failed to fetch dynamically imported module");
-      },
-      recoveryConfigured: () => true,
-      suspend,
-    });
+      const result = loadClientModule({
+        id: "/src/app/pages/ChangedComponent.tsx",
+        moduleFn: async () => {
+          throw error;
+        },
+        recoveryConfigured: () => true,
+        suspend,
+      });
+      const promiseState = getPromiseState(result);
 
-    await Promise.resolve();
-    expect(suspend).toHaveBeenCalledWith("module-not-found");
-    expect(await getPromiseState(result)).toBe("pending");
-  });
+      if (!shouldRecover) {
+        await expect(result).rejects.toBe(error);
+        expect(suspend).not.toHaveBeenCalled();
+        return;
+      }
 
-  it("rethrows other module errors", async () => {
+      await Promise.resolve();
+      expect(suspend).toHaveBeenCalledWith("module-not-found");
+      expect(await promiseState).toBe("pending");
+    },
+  );
+
+  it("rethrows non-TypeError module failures", async () => {
     const error = new Error("Application module failed");
 
     await expect(

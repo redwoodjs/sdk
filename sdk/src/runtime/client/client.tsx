@@ -249,6 +249,14 @@ export const fetchTransport: Transport = (transportContext) => {
  * @param onActionResponse - Optional hook invoked when an action returns a Response;
  *                           return true to signal that the response has been handled and
  *                           default behaviour (e.g. redirects) should be skipped
+ * @param onModuleNotFound - Opts into recovery when a client module is absent from the
+ *                           current tab's lookup or its dynamic import cannot load. Use
+ *                           `"reloadWhenReady"` for the built-in behavior, or a callback
+ *                           that runs once before the same polling loop. RedwoodSDK awaits
+ *                           the callback; returning continues polling, a pending callback
+ *                           pauses it, and a thrown error is logged before polling continues.
+ *                           Recovery keeps the current page visible and permits at most three
+ *                           automatic document navigations per tab in any 60-second window.
  *
  * @example
  * // Basic usage
@@ -284,6 +292,12 @@ export const fetchTransport: Transport = (transportContext) => {
  *       console.warn("Recoverable error:", error);
  *     },
  *   },
+ * });
+ *
+ * @example
+ * // Recover a stale tab after a deployment changes its client chunks
+ * initClient({
+ *   onModuleNotFound: "reloadWhenReady",
  * });
  */
 export const initClient = async ({

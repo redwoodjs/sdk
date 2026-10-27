@@ -1,8 +1,10 @@
 import fs from "fs-extra";
+import { setTimeout as delay } from "node:timers/promises";
 import path from "path";
 import {
   poll,
   setupPlaygroundEnvironment,
+  testDev,
   testDeploy,
   trackPageErrors,
   waitForHydration,
@@ -11,9 +13,84 @@ import { expect } from "vitest";
 
 setupPlaygroundEnvironment(import.meta.url);
 
+const RECOVERY_NAVIGATION_LIMIT = 3;
+const RELOAD_STABILITY_OBSERVATION_MS = 1_500;
+
+async function provePermanentChunkFailureStopsReloading({
+  page,
+  url,
+  chunkName,
+}: {
+  page: Parameters<typeof waitForHydration>[0];
+  url: string;
+  chunkName: string;
+}) {
+  await page.goto(url, {
+    waitUntil: "domcontentloaded",
+    timeout: 30000,
+  });
+  await waitForHydration(page);
+
+  const documentRequests: string[] = [];
+  const blockedChunkRequests: string[] = [];
+
+  await page.setRequestInterception(true);
+  page.on("request", (request) => {
+    if (
+      request.resourceType() === "script" &&
+      request.url().includes(chunkName)
+    ) {
+      blockedChunkRequests.push(request.url());
+      void request.respond({
+        status: 404,
+        contentType: "text/plain",
+        body: "Permanently missing client chunk",
+      });
+      return;
+    }
+
+    if (request.resourceType() === "document") {
+      documentRequests.push(request.url());
+    }
+    void request.continue();
+  });
+
+  await page.click("#link-to-widget");
+
+  await poll(async () => {
+    expect(documentRequests).toHaveLength(RECOVERY_NAVIGATION_LIMIT);
+    expect(blockedChunkRequests.length).toBeGreaterThanOrEqual(
+      RECOVERY_NAVIGATION_LIMIT,
+    );
+    return true;
+  });
+
+  // One startup-jitter window is enough for the old implementation to begin
+  // another reload. Keep this negative observation narrow so the test proves
+  // the count is stable without adding a broad arbitrary delay.
+  await delay(RELOAD_STABILITY_OBSERVATION_MS);
+
+  expect(documentRequests).toHaveLength(RECOVERY_NAVIGATION_LIMIT);
+  expect(page.url()).toContain("/widget");
+  expect(
+    await page.$eval("h1", (element) => element.textContent?.trim()),
+  ).toBe("Widget Page");
+}
+
+testDev(
+  "stops reloading when a client chunk remains missing",
+  async ({ page, url }) => {
+    await provePermanentChunkFailureStopsReloading({
+      page,
+      url,
+      chunkName: "Widget",
+    });
+  },
+);
+
 testDeploy(
   "recovers stale client modules after redeploy",
-  async ({ page, url, deployment, projectDir }) => {
+  async ({ browser, page, url, deployment, projectDir }) => {
     if (!deployment) {
       throw new Error("Expected a deployment test environment");
     }
@@ -151,5 +228,20 @@ export function Widget() {
       expect(text).toContain("New widget clicks: 1");
       return true;
     });
+
+    // The stale-deployment setup above is deployment-only because it replaces
+    // the running build. Use a fresh tab context to exercise the same permanent
+    // 404 limit without inheriting the earlier recovery timestamps.
+    const permanentFailureContext = await browser.createBrowserContext();
+    try {
+      const permanentFailurePage = await permanentFailureContext.newPage();
+      await provePermanentChunkFailureStopsReloading({
+        page: permanentFailurePage,
+        url,
+        chunkName: "NewWidget",
+      });
+    } finally {
+      await permanentFailureContext.close();
+    }
   },
 );
