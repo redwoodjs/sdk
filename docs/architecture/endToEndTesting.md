@@ -65,7 +65,20 @@ The owner also destroys the launched child's input/output pipes after Chrome exi
 
 ### Waiting for interactive controls
 
+`initClient` exposes `globalThis.__rw.hydrated` as `false` before React starts
+hydrating and changes it to `true` from the effect that runs after the initial
+RSC tree commits. The E2E `waitForHydration` helper waits for that value with
+the configured hydration timeout. It does not infer React readiness from the
+document load event or from a fixed sleep.
+
 Server-rendered HTML can contain buttons before React has attached their event handlers. The kitchen-sink error demo keeps its buttons disabled until its mount effect runs. Its click tests wait for an enabled button, then register the navigation waiter before clicking and assert the error page. Waiting only for `document.readyState` to become `complete` allowed a click before the handler existed; no error was thrown and no redirect followed.
+
+The navigation commit stress test first waits for hydration and confirms its
+starting controls at normal speed. It applies CPU throttling only to the client
+navigations that the test measures. Pull-request CI runs the complete stress
+case against the local production preview. The sequential Cloudflare deployment
+job excludes this long-running scheduler stress case and retains the ordinary
+client-navigation coverage.
 
 Development styles arrive when Vite's browser code imports the CSS and inserts a style element. Parsing the HTML does not guarantee that this code has run. The CSS edit-and-reload regression waits for the named stylesheet to contain rules, then checks both the visible colors and the class name in the original server response. The wait does not depend on the expected color or class, so a loaded stylesheet paired with stale server classes still fails. Production checks separately require stylesheet links in the initial HTML.
 

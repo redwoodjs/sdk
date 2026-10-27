@@ -11,6 +11,7 @@ declare global {
     method?: "GET" | "POST",
   ) => Promise<any>;
   var __rw: {
+    hydrated: boolean;
     callServer: (
       id: any,
       args: any,

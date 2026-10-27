@@ -81,11 +81,17 @@ async function runTrial(
   let navigations = 0;
   try {
     const page = await context.newPage();
-    const client = await page.createCDPSession();
-    await client.send("Emulation.setCPUThrottlingRate", { rate: CPU_RATE });
-
     await page.goto(`${url}/list?v=a`);
     await waitForHydration(page);
+
+    await poll(async () => {
+      expect(await getHeading(page)).toBe("a");
+      return true;
+    });
+    await page.waitForSelector('[data-testid="toggle"]');
+
+    const client = await page.createCDPSession();
+    await client.send("Emulation.setCPUThrottlingRate", { rate: CPU_RATE });
 
     if (SPIN_MS > 0) {
       await page.evaluate((spinMs: number) => {
@@ -99,12 +105,6 @@ async function runTrial(
         cycle();
       }, SPIN_MS);
     }
-
-    // Confirm the starting state before toggling.
-    await poll(async () => {
-      expect(await getHeading(page)).toBe("a");
-      return true;
-    });
 
     let current = "a";
     for (let toggle = 0; toggle < TOGGLES; toggle++) {

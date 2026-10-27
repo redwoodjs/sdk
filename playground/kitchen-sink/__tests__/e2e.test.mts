@@ -1,4 +1,9 @@
-import { poll, setupPlaygroundEnvironment, testDevAndDeploy } from "rwsdk/e2e";
+import {
+  poll,
+  setupPlaygroundEnvironment,
+  testDevAndDeploy,
+  waitForHydration,
+} from "rwsdk/e2e";
 import { expect } from "vitest";
 
 setupPlaygroundEnvironment(import.meta.url);
@@ -203,9 +208,7 @@ testDevAndDeploy(
   "client components work on initial load (inc. .client.tsx and inlined functions)",
   async ({ page, url }) => {
     await page.goto(url);
-
-    // Wait for the document to finish loading
-    await page.waitForFunction("document.readyState === 'complete'");
+    await waitForHydration(page);
 
     // 1. Verify Button.client.tsx works
     const getClientButton = () => page.$("#client-button");
