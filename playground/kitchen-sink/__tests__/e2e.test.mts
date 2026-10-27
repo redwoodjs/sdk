@@ -228,12 +228,25 @@ testDevAndDeploy(
 
     await clientButton.click();
 
-    await expect
-      .poll(() => page.$eval("#client-button", (el) => el.textContent), {
-        timeout: CLIENT_COMPONENT_TIMEOUT,
-        message: "Client button did not update after hydration",
-      })
-      .toContain("Client Count: 1");
+    let buttonTextAfter = buttonTextBefore;
+    try {
+      await poll(
+        async () => {
+          buttonTextAfter = await page.$eval(
+            "#client-button",
+            (el) => el.textContent,
+          );
+          return buttonTextAfter?.includes("Client Count: 1") ?? false;
+        },
+        { timeout: CLIENT_COMPONENT_TIMEOUT },
+      );
+    } catch (error) {
+      throw new Error(
+        `Client button did not update after hydration. Expected: "Client Count: 1". Received: ${JSON.stringify(buttonTextAfter)}.`,
+        { cause: error },
+      );
+    }
+    expect(buttonTextAfter).toContain("Client Count: 1");
 
     // 2. Verify Stars.client.tsx works (Issue #471 repro)
     await page.waitForSelector("#stars-container", {
