@@ -14,13 +14,59 @@ The `initClient` function is used to initialize the React Client. This hydrates 
 
 `initClient()` accepts an optional configuration object:
 
-| Parameter            | Type                                  | Description                                                                                                                                                 |
-| -------------------- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `transport`          | `Transport`                           | Custom transport for server communication (defaults to `fetchTransport`)                                                                                    |
-| `hydrateRootOptions` | `HydrationOptions`                    | Options passed directly to React's `hydrateRoot`. Supports all React 19 hydration options including error handling (see examples below).                    |
-| `handleResponse`     | `(response: Response) => boolean`     | Custom response handler for navigation errors (navigation GETs)                                                                                             |
-| `onHydrated`         | `(meta?: RscPayloadMeta) => void`     | Callback invoked after a new RSC payload has been committed on the client                                                                                   |
-| `onActionResponse`   | `(actionResponse) => boolean \| void` | Optional hook invoked when an action returns a Response; return `true` to signal that the response has been handled and default behaviour should be skipped |
+| Parameter            | Type                                                         | Description                                                                                                                                                 |
+| -------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `transport`          | `Transport`                                                  | Custom transport for server communication (defaults to `fetchTransport`)                                                                                    |
+| `hydrateRootOptions` | `HydrationOptions`                                           | Options passed directly to React's `hydrateRoot`. Supports all React 19 hydration options including error handling (see examples below).                    |
+| `handleResponse`     | `(response: Response) => boolean`                            | Custom response handler for navigation errors (navigation GETs)                                                                                             |
+| `onHydrated`         | `(meta?: RscPayloadMeta) => void`                            | Callback invoked after a new RSC payload has been committed on the client                                                                                   |
+| `onActionResponse`   | `(actionResponse) => boolean \| void`                        | Optional hook invoked when an action returns a Response; return `true` to signal that the response has been handled and default behaviour should be skipped |
+| `onModuleNotFound`   | `"reloadWhenReady" \| (controller) => void \| Promise<void>` | Opts into recovery when the current tab cannot load a client module                                                                                         |
+
+### Missing client module recovery
+
+Client module recovery is opt-in. The recommended setup uses the built-in preset:
+
+```ts
+initClient({
+  onModuleNotFound: "reloadWhenReady",
+});
+```
+
+Recovery starts in either of these situations:
+
+- A later deployment sends page data that names a client module missing from the stale tab's in-memory lookup.
+- The lookup knows the module, but the browser cannot load its dynamic `import()`, usually because the deployment no longer serves the old content-hashed JavaScript file.
+
+RedwoodSDK leaves the failed module promise pending, which keeps the current page visible instead of passing the missing-module error to React. It polls the current document route until that route returns valid application HTML, then replaces the whole document so the browser loads the current client files. RedwoodSDK does not render a recovery banner, spinner, or other interface.
+
+Recovery permits at most three automatic document navigations per tab in a rolling 60-second window. The budget is shared across routes and covers a ready-route reload, navigation to `/` through the fallback path, and a callback's call to `reload()`. When the limit is reached, or when `sessionStorage` cannot safely record the navigation, RedwoodSDK stops the active recovery loop, does not replace the document, and keeps the module promise pending so the existing page remains visible. Readiness checks and manual reloads do not consume the budget.
+
+For logging or application-owned recovery UI, pass a callback instead of the preset:
+
+```ts
+initClient({
+  onModuleNotFound: async (controller) => {
+    reportStaleClient({
+      state: controller.state,
+      attempts: controller.attempts,
+      elapsedMs: controller.elapsedMs,
+    });
+  },
+});
+```
+
+The callback runs once when recovery starts. RedwoodSDK awaits it before beginning the normal polling loop. Returning or resolving allows built-in polling to continue; a callback promise that never settles pauses polling. If the callback throws, RedwoodSDK logs the error and continues polling.
+
+The controller exposes:
+
+| Member      | Meaning                                                                                           |
+| ----------- | ------------------------------------------------------------------------------------------------- |
+| `state`     | The current recovery phase: `idle`, `waiting`, `checking`, or `reload`.                           |
+| `attempts`  | The number of readiness checks in the current document. It is not the number of document reloads. |
+| `elapsedMs` | The time since this document's recovery controller started.                                       |
+| `retry()`   | Wakes the current timed wait so the controller can check readiness sooner.                        |
+| `reload()`  | Requests an immediate full document reload, subject to the same per-tab reload budget.            |
 
 ### Error Handling
 

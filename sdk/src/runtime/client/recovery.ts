@@ -23,6 +23,59 @@ const MAX_BACKOFF_MS = 30000;
 const FALLBACK_TIMEOUT_MS = 30000;
 const FALLBACK_TIMEOUT_JITTER_MS = 10000;
 const STARTUP_JITTER_MS = 1000;
+export const RECOVERY_NAVIGATION_LIMIT = 3;
+export const RECOVERY_NAVIGATION_WINDOW_MS = 60_000;
+export const RECOVERY_NAVIGATION_STORAGE_KEY =
+  "rwsdk:recovery:navigation-timestamps";
+
+type RecoveryStorage = Pick<Storage, "getItem" | "setItem">;
+
+export function consumeRecoveryNavigationBudget({
+  storage,
+  now,
+}: {
+  storage: RecoveryStorage;
+  now: number;
+}): boolean {
+  try {
+    let storedValue: unknown = [];
+    const serializedValue = storage.getItem(RECOVERY_NAVIGATION_STORAGE_KEY);
+
+    if (serializedValue !== null) {
+      try {
+        storedValue = JSON.parse(serializedValue);
+      } catch {
+        storedValue = [];
+      }
+    }
+
+    const timestamps = (Array.isArray(storedValue) ? storedValue : [])
+      .filter(
+        (timestamp): timestamp is number =>
+          typeof timestamp === "number" &&
+          Number.isFinite(timestamp) &&
+          now - timestamp < RECOVERY_NAVIGATION_WINDOW_MS,
+      )
+      .sort((left, right) => left - right)
+      .slice(-RECOVERY_NAVIGATION_LIMIT);
+
+    if (timestamps.length >= RECOVERY_NAVIGATION_LIMIT) {
+      storage.setItem(
+        RECOVERY_NAVIGATION_STORAGE_KEY,
+        JSON.stringify(timestamps),
+      );
+      return false;
+    }
+
+    storage.setItem(
+      RECOVERY_NAVIGATION_STORAGE_KEY,
+      JSON.stringify([...timestamps, now]),
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 let configuredOptions: RecoveryOptions = {};
 let activeController: RecoveryController | null = null;
@@ -131,12 +184,15 @@ function createController(): RecoveryController & {
   _setState(state: RecoveryState): void;
   _incAttempts(): void;
   _wait(ms: number): Promise<void>;
+  _hasRequestedNavigation(): boolean;
+  _navigate(navigate: () => void): boolean;
 } {
   let state: RecoveryState = "idle";
   let attempts = 0;
   const startedAt = Date.now();
   let wakeResolver: (() => void) | null = null;
   let abortController = new AbortController();
+  let navigationRequested = false;
 
   const controller = {
     get state() {
@@ -158,12 +214,51 @@ function createController(): RecoveryController & {
       wakeResolver?.();
     },
     reload() {
+      controller._navigate(() => window.location.reload());
+    },
+    _hasRequestedNavigation() {
+      return navigationRequested;
+    },
+    _navigate(navigate: () => void) {
+      if (navigationRequested) {
+        debugLog("automatic navigation already requested");
+        return false;
+      }
+
+      navigationRequested = true;
       abortController.abort();
       state = "reload";
       wakeResolver?.();
-      if (typeof window !== "undefined") {
-        window.location.reload();
+
+      if (typeof window === "undefined") {
+        state = "idle";
+        return false;
       }
+
+      // context(chris, 27 Oct 2026): A controller's in-memory attempt count
+      // disappears when the browser replaces the document. Record each
+      // recovery navigation in per-tab storage first so a permanently missing
+      // chunk cannot make successive documents reload forever.
+      let navigationPermitted = false;
+      try {
+        navigationPermitted = consumeRecoveryNavigationBudget({
+          storage: window.sessionStorage,
+          now: Date.now(),
+        });
+      } catch {
+        navigationPermitted = false;
+      }
+
+      if (!navigationPermitted) {
+        state = "idle";
+        debugLog(
+          "automatic navigation declined because the reload budget is exhausted or sessionStorage is unavailable; keeping the current page visible",
+        );
+        return false;
+      }
+
+      navigate();
+      return true;
     },
     _wait(ms: number) {
       return new Promise<void>((resolve) => {
@@ -219,6 +314,10 @@ export function startRecovery(reason: "module-not-found"): void {
       }
     }
 
+    if (controller._hasRequestedNavigation()) {
+      return;
+    }
+
     const currentUrl = normalizeRecoveryUrl(window.location.href);
     const fallbackTimeoutMs = getJitteredFallbackTimeoutMs();
 
@@ -251,7 +350,9 @@ export function startRecovery(reason: "module-not-found"): void {
         const indexOk = await checkUrl(indexUrl, new AbortController().signal);
         if (indexOk) {
           debugLog("/ ready, navigating to /");
-          window.location.href = "/";
+          controller._navigate(() => {
+            window.location.href = "/";
+          });
           return;
         }
       }
@@ -276,9 +377,13 @@ export function suspendForRecovery(reason: "module-not-found"): Promise<never> {
 }
 
 export function isDynamicImportFailure(error: unknown): boolean {
+  if (!(error instanceof TypeError)) {
+    return false;
+  }
+
+  const message = error.message;
   return (
-    error instanceof TypeError &&
-    typeof (error as Error).message === "string" &&
-    (error as Error).message.includes("dynamically imported module")
+    message.includes("dynamically imported module") ||
+    message.includes("Importing a module script failed")
   );
 }

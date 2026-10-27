@@ -22,7 +22,7 @@ The recovery flow is exposed through `initClient()` as a single trigger:
 
 - `onModuleNotFound` fires when a `"use client"` module is absent from the stale client's lookup or its dynamic import fails with a missing-chunk error.
 
-It accepts either the built-in `"reloadWhenReady"` preset string or a callback that receives a `RecoveryController`. The SDK does not enable recovery by default, because an unexpected page reload can be worse than a stale tab, so the application opts in explicitly.
+It accepts either the built-in `"reloadWhenReady"` preset string or a callback that receives a `RecoveryController`. The SDK does not enable recovery by default, because an unexpected page reload can be worse than a stale tab, so the application opts in explicitly. A callback runs once when recovery starts and is awaited before the controller begins its normal polling loop. The callback can observe recovery, show application-owned UI, pause polling by remaining pending, or request a retry or reload; returning from it does not replace or disable the built-in loop.
 
 When the trigger fires and is configured, the SDK creates a `RecoveryController` and starts polling the current route with `cache: "no-store"` and `Accept: text/html`. To reduce the chance of a thundering herd after a mass failure event, the first poll is delayed by a random startup jitter of up to one second, and subsequent polls use exponential backoff with jitter, capped at thirty seconds.
 
@@ -37,7 +37,11 @@ The hydrate-root check protects against preview or health-check fallbacks that r
 
 The health-check URL is normalized before fetching: any trailing DNS-root dot on the hostname is removed, and query strings and hashes are stripped. This prevents Cloudflare Workers route mismatches that can occur when the browser preserves a trailing dot in `window.location.href`.
 
-Once the route passes these checks, the controller calls `window.location.reload()`. If the current route is not loadable within roughly thirty seconds, the controller falls back to the index route (`/`). The fallback timeout itself is jittered by up to ten seconds so tabs that reach the timeout do not all hit `/` at the same instant.
+Once the route passes these checks, the controller requests `window.location.reload()`. If the current route is not loadable within roughly thirty seconds, the controller checks the index route (`/`) and requests navigation there when it is ready. The fallback timeout itself is jittered by up to ten seconds so tabs that reach the timeout do not all hit `/` at the same instant.
+
+Every recovery-requested document replacement passes through one per-tab budget, including a callback's call to `reload()`. The controller stores navigation timestamps in `sessionStorage`, which survives a reload in the same tab and is shared by every route in that tab. It permits three automatic recovery navigations in a rolling 60-second window. Before each decision it removes timestamps at least 60 seconds old, and immediately before an allowed navigation it records the current timestamp. Readiness polls and manual reloads do not consume this budget.
+
+The budget exists because the health check can prove that a route serves application HTML, but it cannot prove that one particular JavaScript chunk exists. Without state that survives document replacement, a permanently missing or blocked chunk can make each replacement document start recovery and reload again. If the budget is exhausted, or if storage cannot be read and written reliably, the controller stops its loop and leaves the document in place. Declining navigation when storage is unavailable preserves the limit; navigating without a durable record would allow the same loop to continue.
 
 Only one recovery controller runs at a time. If a second failure occurs while recovery is already in progress, the second call is ignored.
 
@@ -53,7 +57,7 @@ Recovery begins in two situations. First, a stale tab can receive page data from
 
 In either case, the framework starts recovery and intentionally leaves the module load pending. This keeps the failure from reaching React while the framework waits to reload, without blocking the browser's main thread. When recovery reloads the page, the browser replaces the entire document and JavaScript environment, including the old React tree and the pending module load.
 
-While recovery is waiting, the previous page can remain visible even though the address bar contains the destination URL, and navigation indicators can remain pending. During initial hydration, server-rendered HTML can remain visible without becoming interactive. If a deployment is permanently broken, a fresh document can encounter the same failure and start recovery again; this flow does not persist a reload-loop counter across documents.
+While recovery is waiting, the previous page can remain visible even though the address bar contains the destination URL, and navigation indicators can remain pending. During initial hydration, server-rendered HTML can remain visible without becoming interactive. If a deployment is permanently broken, replacement documents can encounter the same failure, but the per-tab budget stops automatic document navigation after the third attempt in 60 seconds. The module promise remains pending, so the visible document stays in place rather than passing the missing-module error into React.
 
 ## Configuring recovery
 
@@ -67,7 +71,7 @@ initClient({
 });
 ```
 
-Applications that want to show their own UI, log to analytics, or override the behavior can pass a callback. The callback receives a `RecoveryController` with `state`, `attempts`, `elapsedMs`, `retry()`, and `reload()`.
+Applications that want to show their own UI or log to analytics can pass a callback. The callback receives a `RecoveryController` with `state`, `attempts`, `elapsedMs`, `retry()`, and `reload()`. The callback runs once and RedwoodSDK awaits it before polling. Returning continues the built-in polling flow, leaving the returned promise pending pauses that flow, and throwing logs the callback error before polling continues. `attempts` counts readiness checks in the current document rather than reloads. `retry()` wakes the current timed wait, while `reload()` requests immediate document replacement through the same per-tab budget.
 
 ```ts
 initClient({
@@ -83,7 +87,7 @@ The SDK does not render any overlay, banner, or spinner. Recovery UI is applicat
 
 The polling design assumes that failures are relatively uncorrelated in normal operation. After a mass failure event such as a redeploy or outage recovery, many tabs can enter recovery at the same time. The SDK mitigates this with three sources of jitter: a random startup delay before the first poll, jittered exponential backoff between polls, and a jittered fallback timeout. These spread recovery attempts over time and reduce the chance that all affected tabs hit the server simultaneously.
 
-The health check is a full HTML GET with `cache: "no-store"`. This is heavier than a HEAD request or a dedicated health endpoint, but it is the only signal that proves the user's actual route is renderable. Applications that need lighter probes, custom backoff schedules, or server-side coordination can opt out of the built-in preset and implement their own recovery logic in the callback.
+The health check is a full HTML GET with `cache: "no-store"`. This is heavier than a HEAD request or a dedicated health endpoint, but it is the only signal that proves the user's actual route is renderable. A callback can delay the start of polling or request an earlier retry or reload, but once it returns the controller uses the built-in readiness checks and backoff schedule.
 
 ## What is not covered
 
