@@ -12,6 +12,33 @@ describe("generateLookupMap", () => {
     "src/component.tsx",
   ]);
 
+  it.each(["client", "server"] as const)(
+    "should generate the same %s lookup without mutating insertion order",
+    (kind) => {
+      const forwardFiles = new Set(files);
+      const reverseFiles = new Set([...files].reverse());
+      const forwardOrder = [...forwardFiles];
+      const reverseOrder = [...reverseFiles];
+
+      const forwardResult = generateLookupMap({
+        files: forwardFiles,
+        isDev: true,
+        kind,
+        exportName: `${kind}Lookup`,
+      });
+      const reverseResult = generateLookupMap({
+        files: reverseFiles,
+        isDev: true,
+        kind,
+        exportName: `${kind}Lookup`,
+      });
+
+      expect(forwardResult.code).toBe(reverseResult.code);
+      expect([...forwardFiles]).toEqual(forwardOrder);
+      expect([...reverseFiles]).toEqual(reverseOrder);
+    },
+  );
+
   it("should generate correct map for client in dev", () => {
     const result = generateLookupMap({
       files,

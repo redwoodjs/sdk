@@ -32,6 +32,7 @@ export function generateLookupMap({
   const s = new MagicString(`
 export const ${exportName} = {
   ${Array.from(files)
+    .sort()
     .map((file: string) => {
       const excluded = isExcludedFromOptimization(
         file,
