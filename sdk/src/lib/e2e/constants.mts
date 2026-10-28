@@ -67,7 +67,7 @@ export const HYDRATION_TIMEOUT = process.env.RWSDK_HYDRATION_TIMEOUT
   ? parseInt(process.env.RWSDK_HYDRATION_TIMEOUT, 10)
   : IS_DEBUG_MODE
     ? 2000
-    : 5000;
+    : 10_000;
 
 export const DEV_SERVER_TIMEOUT = process.env.RWSDK_DEV_SERVER_TIMEOUT
   ? parseInt(process.env.RWSDK_DEV_SERVER_TIMEOUT, 10)
