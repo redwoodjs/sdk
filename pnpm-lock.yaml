@@ -2222,6 +2222,49 @@ importers:
         specifier: 4.118.0
         version: 4.118.0(@cloudflare/workers-types@5.20260801.1)
 
+  playground/ssr-jsless-form-action:
+    dependencies:
+      react:
+        specifier: 19.2.8
+        version: 19.2.8
+      react-dom:
+        specifier: 19.2.8
+        version: 19.2.8(react@19.2.8)
+      react-server-dom-webpack:
+        specifier: 19.2.8
+        version: 19.2.8(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(webpack@5.109.2(esbuild@0.28.1)(lightningcss@1.33.0)(postcss@8.5.25))
+      rwsdk:
+        specifier: workspace:*
+        version: link:../../sdk
+    devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: 1.50.0
+        version: 1.50.0(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(sugarss@5.0.1(postcss@8.5.25))(terser@5.49.0)(tsx@4.23.1)(yaml@2.8.3))(wrangler@4.118.0(@cloudflare/workers-types@5.20260801.1))
+      '@cloudflare/workers-types':
+        specifier: 5.20260801.1
+        version: 5.20260801.1
+      '@types/node':
+        specifier: ~26.1.2
+        version: 26.1.2
+      '@types/react':
+        specifier: 19.2.18
+        version: 19.2.18
+      '@types/react-dom':
+        specifier: 19.2.4
+        version: 19.2.4(@types/react@19.2.18)
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ~8.2.0
+        version: 8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(sugarss@5.0.1(postcss@8.5.25))(terser@5.49.0)(tsx@4.23.1)(yaml@2.8.3)
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@26.1.2)(msw@2.11.3(@types/node@26.1.2)(typescript@7.0.2))(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(sugarss@5.0.1(postcss@8.5.25))(terser@5.49.0)(tsx@4.23.1)(yaml@2.8.3))
+      wrangler:
+        specifier: 4.118.0
+        version: 4.118.0(@cloudflare/workers-types@5.20260801.1)
+
   playground/storybook:
     dependencies:
       react:

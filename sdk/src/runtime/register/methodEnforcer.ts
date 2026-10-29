@@ -10,10 +10,55 @@ type DecodeReply = (
   moduleMap: null,
 ) => Promise<unknown>;
 
+type DecodeAction = (
+  data: FormData,
+  serverManifest: unknown,
+) => Promise<(() => Promise<unknown>) | null>;
+
+export type NativeFormAction = {
+  formData: FormData;
+};
+
 export interface RscActionHandlerDeps {
   getServerModuleExport: GetServerModuleExport;
   decodeReply: DecodeReply;
+  decodeAction?: DecodeAction;
+  serverManifest?: unknown;
   allowedOrigins?: readonly string[];
+}
+
+export async function getNativeFormAction(
+  req: Request,
+): Promise<NativeFormAction | undefined> {
+  if (req.method !== "POST") {
+    return undefined;
+  }
+
+  const contentType = req.headers.get("content-type");
+  if (
+    !contentType?.startsWith("multipart/form-data") &&
+    !contentType?.startsWith("application/x-www-form-urlencoded")
+  ) {
+    return undefined;
+  }
+
+  try {
+    // context(justinvdm, 2026-10-28): React adds one of these fields when a
+    // server function is used as a form action. Read a clone so an ordinary
+    // route can still read the original request body when neither field exists.
+    const formData = await req.clone().formData();
+    for (const key of formData.keys()) {
+      if (key.startsWith("$ACTION_ID_") || key.startsWith("$ACTION_REF_")) {
+        return { formData };
+      }
+    }
+  } catch {
+    // context(justinvdm, 2026-10-28): Leave malformed ordinary form bodies to
+    // the matched route. Classification must not consume the request or replace
+    // the route's own error handling.
+  }
+
+  return undefined;
 }
 
 // context(justinvdm, 2026-04-20): Origin validation for non-GET action requests.
@@ -52,10 +97,48 @@ function validateSameOrigin(
   };
 }
 
+function enforceActionMethod(
+  action: Function,
+  requestMethod: string,
+): Response | undefined {
+  const actionMethod =
+    (action as Function & { method?: string }).method ?? "POST";
+
+  if (actionMethod !== requestMethod) {
+    return new Response(
+      `Method ${requestMethod} is not allowed for this action. Allowed: ${actionMethod}.`,
+      {
+        status: 405,
+        headers: { Allow: actionMethod },
+      },
+    );
+  }
+
+  return undefined;
+}
+
+function getDirectActionId(formData: FormData): string | undefined {
+  for (const key of formData.keys()) {
+    if (key.startsWith("$ACTION_ID_")) {
+      return key.slice("$ACTION_ID_".length);
+    }
+  }
+
+  return undefined;
+}
+
 export async function rscActionHandler(
   req: Request,
-  { getServerModuleExport, decodeReply, allowedOrigins }: RscActionHandlerDeps,
+  deps: RscActionHandlerDeps,
+  nativeFormAction?: NativeFormAction,
 ): Promise<unknown> {
+  const {
+    getServerModuleExport,
+    decodeReply,
+    decodeAction,
+    serverManifest,
+    allowedOrigins,
+  } = deps;
   const url = new URL(req.url);
   const contentType = req.headers.get("content-type");
 
@@ -67,6 +150,42 @@ export async function rscActionHandler(
     if (!originCheck.valid) {
       return originCheck.response;
     }
+  }
+
+  if (nativeFormAction) {
+    if (!decodeAction || !serverManifest) {
+      throw new Error(
+        "Native form actions require decodeAction and serverManifest",
+      );
+    }
+
+    const action = await decodeAction(
+      nativeFormAction.formData,
+      serverManifest,
+    );
+    if (!action) {
+      return undefined;
+    }
+
+    // context(justinvdm, 2026-10-28): React binds the submitted FormData to the
+    // decoded function. A bound function does not reliably retain RedwoodSDK's
+    // method property, so use the original export for direct action identifiers
+    // when one is available.
+    const directActionId = getDirectActionId(nativeFormAction.formData);
+    const methodSource = directActionId
+      ? await getServerModuleExport(directActionId)
+      : action;
+
+    if (typeof methodSource !== "function") {
+      throw new Error(`Action ${directActionId} is not a function`);
+    }
+
+    const methodError = enforceActionMethod(methodSource, req.method);
+    if (methodError) {
+      return methodError;
+    }
+
+    return action();
   }
 
   let args: unknown[] = [];
@@ -100,16 +219,9 @@ export async function rscActionHandler(
   // invocation. serverAction() attaches .method = "POST" at creation time via
   // createServerFunction(), serverQuery() attaches "GET". Functions without
   // .method default to POST to match serverAction() semantics.
-  const actionMethod = (action as Function & { method?: string }).method ?? "POST";
-
-  if (actionMethod !== req.method) {
-    return new Response(
-      `Method ${req.method} is not allowed for this action. Allowed: ${actionMethod}.`,
-      {
-        status: 405,
-        headers: { Allow: actionMethod },
-      },
-    );
+  const methodError = enforceActionMethod(action, req.method);
+  if (methodError) {
+    return methodError;
   }
 
   return action(...args);

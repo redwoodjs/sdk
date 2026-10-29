@@ -489,10 +489,14 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
       // --- Main flow ---
       let actionHandled = false;
       const handleAction = async () => {
-        // Handle RSC actions once per request, based on the incoming URL.
+        // context(justinvdm, 2026-10-28): Both client calls and native form
+        // submissions use this point so every applicable middleware finishes
+        // before the server function runs.
         if (!actionHandled) {
-          const url = new URL(request.url);
-          if (url.searchParams.has("__rsc_action_id")) {
+          const hasActionUrl = new URL(request.url).searchParams.has(
+            "__rsc_action_id",
+          );
+          if (requestInfo.isAction || hasActionUrl) {
             requestInfo.rw.actionResult = await rscActionHandler(request);
           }
           actionHandled = true;

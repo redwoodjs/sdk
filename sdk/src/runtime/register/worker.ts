@@ -2,11 +2,18 @@ import { isValidElementType } from "react-is";
 import {
   registerClientReference as baseRegisterClientReference,
   registerServerReference as baseRegisterServerReference,
+  decodeAction,
   decodeReply,
 } from "react-server-dom-webpack/server.edge";
-import { getServerModuleExport } from "../imports/worker.js";
+import {
+  getServerModuleExport,
+  serverReferenceManifest,
+} from "../imports/worker.js";
 import { requestInfo } from "../requestInfo/worker.js";
-import { rscActionHandler as rscActionHandlerImpl } from "./methodEnforcer.js";
+import {
+  type NativeFormAction,
+  rscActionHandler as rscActionHandlerImpl,
+} from "./methodEnforcer.js";
 
 export function registerServerReference(
   action: Function,
@@ -78,13 +85,19 @@ export async function __smokeTestActionHandler(
 
 export function createRscActionHandler(
   options: { allowedOrigins?: readonly string[] } = {},
-): (req: Request) => Promise<unknown> {
-  return (req) =>
-    rscActionHandlerImpl(req, {
-      getServerModuleExport,
-      decodeReply,
-      allowedOrigins: options.allowedOrigins,
-    });
+): (req: Request, nativeFormAction?: NativeFormAction) => Promise<unknown> {
+  return (req, nativeFormAction) =>
+    rscActionHandlerImpl(
+      req,
+      {
+        getServerModuleExport,
+        decodeReply,
+        decodeAction,
+        serverManifest: serverReferenceManifest,
+        allowedOrigins: options.allowedOrigins,
+      },
+      nativeFormAction,
+    );
 }
 
 export async function rscActionHandler(req: Request): Promise<unknown> {

@@ -5,6 +5,7 @@ import { renderToRscStream } from "./render/renderToRscStream";
 
 import { injectRSCPayload } from "rsc-html-stream/server";
 import { ErrorResponse } from "./error";
+import { getNativeFormAction } from "./register/methodEnforcer";
 import { createRscActionHandler } from "./register/worker";
 import { DefaultAppContext, RequestInfo } from "./requestInfo/types";
 import {
@@ -139,7 +140,10 @@ export const defineApp = <
         const isRSCRequest =
           url.searchParams.has("__rsc") ||
           request.headers.get("accept")?.includes("text/x-component");
-        const isAction = url.searchParams.has("__rsc_action_id");
+        const nativeFormAction = await getNativeFormAction(request);
+        const isAction =
+          url.searchParams.has("__rsc_action_id") ||
+          nativeFormAction !== undefined;
 
         const rw: RwContext = {
           Document: DefaultDocument,
@@ -308,7 +312,8 @@ export const defineApp = <
               getRequestInfo: getRequestInfo as () => T,
               runWithRequestInfoOverrides,
               onError: () => {},
-              rscActionHandler,
+              rscActionHandler: (actionRequest) =>
+                rscActionHandler(actionRequest, nativeFormAction),
             }),
         );
 
