@@ -489,7 +489,7 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
       // --- Main flow ---
       let actionHandled = false;
       const handleAction = async () => {
-        // context(justinvdm, 2026-10-28): Both client calls and native form
+        // context(chrsnym, 2026-10-28): Both client calls and native form
         // submissions use this point so every applicable middleware finishes
         // before the server function runs.
         if (!actionHandled) {

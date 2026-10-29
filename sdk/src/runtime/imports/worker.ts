@@ -30,7 +30,7 @@ type ServerReferenceManifestEntry = {
   async: true;
 };
 
-// context(justinvdm, 2026-10-28): React's decodeAction asks a manifest to
+// context(chrsnym, 2026-10-28): React's decodeAction asks a manifest to
 // resolve the identifier from its hidden form field. Limit that manifest to
 // modules already discovered by RedwoodSDK's "use server" scan.
 export const serverReferenceManifest: Record<
