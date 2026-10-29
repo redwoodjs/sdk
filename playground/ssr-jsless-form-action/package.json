@@ -1,0 +1,32 @@
+{
+  "name": "ssr-jsless-form-action",
+  "version": "1.0.0",
+  "description": "Reproduces a server-function form action without browser JavaScript",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite dev",
+    "dev:init": "rw-scripts dev-init",
+    "preview": "vite preview",
+    "generate": "rw-scripts ensure-env && wrangler types --include-runtime false",
+    "types": "tsc"
+  },
+  "dependencies": {
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-server-dom-webpack": "19.2.8",
+    "rwsdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.50.0",
+    "@cloudflare/workers-types": "5.20260801.1",
+    "@types/node": "~26.1.2",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "typescript": "7.0.2",
+    "vite": "~8.2.0",
+    "vitest": "^4.1.10",
+    "wrangler": "4.118.0"
+  }
+}

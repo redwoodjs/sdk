@@ -534,6 +534,47 @@ describe("defineRoutes - Request Handling Behavior", () => {
   });
 
   describe("RSC Action Handling", () => {
+    it("should handle a classified native form action after middleware", async () => {
+      const executionOrder: string[] = [];
+
+      const middleware = () => {
+        executionOrder.push("middleware");
+      };
+
+      const PageComponent = () => {
+        executionOrder.push("PageComponent");
+        return React.createElement("div", {}, "Page");
+      };
+
+      const router = defineRoutes([middleware, route("/test/", PageComponent)]);
+      const deps = createMockDependencies();
+      const request = new Request("http://localhost:3000/test/", {
+        method: "POST",
+      });
+      deps.mockRequestInfo.request = request;
+      deps.mockRequestInfo.isAction = true;
+      deps.mockRscActionHandler = async () => {
+        executionOrder.push("rscActionHandler");
+        return "saved";
+      };
+
+      await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(executionOrder).toEqual([
+        "middleware",
+        "rscActionHandler",
+        "PageComponent",
+      ]);
+      expect(deps.mockRequestInfo.rw.actionResult).toBe("saved");
+    });
+
     it("should handle RSC actions after global middleware but before page rendering", async () => {
       const executionOrder: string[] = [];
 

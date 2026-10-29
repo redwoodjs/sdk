@@ -149,7 +149,7 @@ declare module "react-server-dom-webpack/server.edge" {
   export function decodeAction(
     body: FormData,
     bundlerConfig: import("./react").BundlerConfig,
-  ): Promise<() => Promise<unknown>>;
+  ): Promise<(() => Promise<unknown>) | null>;
 
   export function decodeFormState(
     actionResult: unknown,

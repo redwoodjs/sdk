@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { rscActionHandler, type RscActionHandlerDeps } from "./methodEnforcer";
+import {
+  getNativeFormAction,
+  rscActionHandler,
+  type RscActionHandlerDeps,
+} from "./methodEnforcer";
 
 function createDeps(
   action: Function,
@@ -309,5 +313,114 @@ describe("rscActionHandler origin enforcement", () => {
     expect(deps.getServerModuleExport).not.toHaveBeenCalled();
     expect(deps.decodeReply).not.toHaveBeenCalled();
     expect(action).not.toHaveBeenCalled();
+  });
+});
+
+describe("native form actions", () => {
+  function makeNativeFormRequest(origin = SELF_ORIGIN): {
+    request: Request;
+    formData: FormData;
+  } {
+    const formData = new FormData();
+    formData.append("$ACTION_ID_/actions.tsx#doThing", "");
+    formData.append("answer", "hello");
+
+    return {
+      request: new Request("https://app.test/page", {
+        method: "POST",
+        headers: { Origin: origin },
+        body: formData,
+      }),
+      formData,
+    };
+  }
+
+  it("classifies React's action field without consuming the route request", async () => {
+    const { request } = makeNativeFormRequest();
+
+    const nativeFormAction = await getNativeFormAction(request);
+    const routeFormData = await request.formData();
+
+    expect(nativeFormAction?.formData.get("answer")).toBe("hello");
+    expect(routeFormData.get("answer")).toBe("hello");
+  });
+
+  it("leaves an ordinary multipart POST for its route", async () => {
+    const formData = new FormData();
+    formData.append("answer", "hello");
+    const request = new Request("https://app.test/page", {
+      method: "POST",
+      body: formData,
+    });
+
+    const nativeFormAction = await getNativeFormAction(request);
+    const routeFormData = await request.formData();
+
+    expect(nativeFormAction).toBeUndefined();
+    expect(routeFormData.get("answer")).toBe("hello");
+  });
+
+  it("decodes and invokes the React form action", async () => {
+    const { request } = makeNativeFormRequest();
+    const nativeFormAction = await getNativeFormAction(request);
+    const originalAction = Object.assign(vi.fn(), { method: "POST" });
+    const decodedAction = vi.fn().mockResolvedValue("saved");
+    const serverManifest = {};
+    const deps: RscActionHandlerDeps = {
+      getServerModuleExport: vi.fn().mockResolvedValue(originalAction),
+      decodeReply: vi.fn(),
+      decodeAction: vi.fn().mockResolvedValue(decodedAction),
+      serverManifest,
+    };
+
+    const result = await rscActionHandler(request, deps, nativeFormAction);
+
+    expect(deps.decodeAction).toHaveBeenCalledWith(
+      nativeFormAction?.formData,
+      serverManifest,
+    );
+    expect(deps.getServerModuleExport).toHaveBeenCalledWith(
+      "/actions.tsx#doThing",
+    );
+    expect(decodedAction).toHaveBeenCalledWith();
+    expect(result).toBe("saved");
+  });
+
+  it("checks origin before decoding a native form action", async () => {
+    const { request } = makeNativeFormRequest("https://evil.test");
+    const nativeFormAction = await getNativeFormAction(request);
+    const deps: RscActionHandlerDeps = {
+      getServerModuleExport: vi.fn(),
+      decodeReply: vi.fn(),
+      decodeAction: vi.fn(),
+      serverManifest: {},
+    };
+
+    const result = await rscActionHandler(request, deps, nativeFormAction);
+
+    expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(403);
+    expect(deps.decodeAction).not.toHaveBeenCalled();
+    expect(deps.getServerModuleExport).not.toHaveBeenCalled();
+  });
+
+  it("keeps the declared method check for direct native form actions", async () => {
+    const { request } = makeNativeFormRequest();
+    const nativeFormAction = await getNativeFormAction(request);
+    const originalAction = Object.assign(vi.fn(), { method: "GET" });
+    const decodedAction = vi.fn();
+    const deps: RscActionHandlerDeps = {
+      getServerModuleExport: vi.fn().mockResolvedValue(originalAction),
+      decodeReply: vi.fn(),
+      decodeAction: vi.fn().mockResolvedValue(decodedAction),
+      serverManifest: {},
+    };
+
+    const result = await rscActionHandler(request, deps, nativeFormAction);
+
+    expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(405);
+    expect((result as Response).headers.get("Allow")).toBe("GET");
+    expect(decodedAction).not.toHaveBeenCalled();
   });
 });
