@@ -56,19 +56,6 @@ testDevAndDeploy(
     await page.reload({ waitUntil: "domcontentloaded", timeout: 30000 });
     await waitForHydration(page);
 
-    // Wait for the WebSocket connection to establish and state to load
-    // by waiting for the counter to show the persisted value
-    await page.waitForFunction(
-      () => {
-        const displays = document.querySelectorAll(".counter-display");
-        if (displays.length < 2) return false;
-        const text = displays[1]?.textContent || "";
-        const match = text.match(/Count:\s*(\d+)/);
-        return match && parseInt(match[1], 10) === 1;
-      },
-      { timeout: 10000 },
-    );
-
     // Verify counter persisted - should still be 1
     await poll(async () => {
       const count = await getCount();
