@@ -1,7 +1,14 @@
-import { poll, setupPlaygroundEnvironment, testDevAndDeploy } from "rwsdk/e2e";
+import {
+  poll,
+  setupPlaygroundEnvironment,
+  testDevAndDeploy,
+  waitForHydration,
+} from "rwsdk/e2e";
 import { expect } from "vitest";
 
 setupPlaygroundEnvironment(import.meta.url);
+
+const CLIENT_COMPONENT_TIMEOUT = 10_000;
 
 testDevAndDeploy("renders Hello World", async ({ page, url }) => {
   await page.goto(url);
@@ -203,17 +210,15 @@ testDevAndDeploy(
   "client components work on initial load (inc. .client.tsx and inlined functions)",
   async ({ page, url }) => {
     await page.goto(url);
-
-    // Wait for the document to finish loading
-    await page.waitForFunction("document.readyState === 'complete'");
+    await waitForHydration(page);
 
     // 1. Verify Button.client.tsx works
-    const getClientButton = () => page.$("#client-button");
-    await poll(async () => {
-      const button = await getClientButton();
-      expect(button).not.toBeNull();
-      return true;
+    const clientButton = await page.waitForSelector("#client-button", {
+      timeout: CLIENT_COMPONENT_TIMEOUT,
     });
+    if (!clientButton) {
+      throw new Error("Client button was not found after hydration");
+    }
 
     const buttonTextBefore = await page.$eval(
       "#client-button",
@@ -221,20 +226,31 @@ testDevAndDeploy(
     );
     expect(buttonTextBefore).toContain("Client Count: 0");
 
-    await (await getClientButton())!.click();
+    await clientButton.click();
 
-    await poll(async () => {
-      const text = await page.$eval("#client-button", (el) => el.textContent);
-      expect(text).toContain("Client Count: 1");
-      return true;
-    });
+    let buttonTextAfter = buttonTextBefore;
+    try {
+      await poll(
+        async () => {
+          buttonTextAfter = await page.$eval(
+            "#client-button",
+            (el) => el.textContent,
+          );
+          return buttonTextAfter?.includes("Client Count: 1") ?? false;
+        },
+        { timeout: CLIENT_COMPONENT_TIMEOUT },
+      );
+    } catch (error) {
+      throw new Error(
+        `Client button did not update after hydration. Expected: "Client Count: 1". Received: ${JSON.stringify(buttonTextAfter)}.`,
+        { cause: error },
+      );
+    }
+    expect(buttonTextAfter).toContain("Client Count: 1");
 
     // 2. Verify Stars.client.tsx works (Issue #471 repro)
-    const getStarsContainer = () => page.$("#stars-container");
-    await poll(async () => {
-      const container = await getStarsContainer();
-      expect(container).not.toBeNull();
-      return true;
+    await page.waitForSelector("#stars-container", {
+      timeout: CLIENT_COMPONENT_TIMEOUT,
     });
 
     const starsCount = await page.$eval(

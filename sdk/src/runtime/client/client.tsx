@@ -344,6 +344,7 @@ export const initClient = async ({
   globalThis.__rsc_callServer = callServer;
 
   globalThis.__rw = {
+    hydrated: false,
     callServer,
     upgradeToRealtime,
   };
@@ -401,6 +402,7 @@ export const initClient = async ({
 
     React.useEffect(() => {
       if (!streamState) return;
+      globalThis.__rw.hydrated = true;
       transportContext.onHydrated?.(streamState.meta);
     }, [streamState]);
     return (
