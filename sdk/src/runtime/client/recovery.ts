@@ -161,7 +161,8 @@ async function checkUrl(url: string, signal: AbortSignal): Promise<boolean> {
 
     const currentRootId = getCurrentHydrateRootId();
     if (currentRootId) {
-      // Match the fetched hydrate root itself, regardless of its first child.
+      // context(chrsnymn, 3 Nov 2026): Match the fetched hydrate root itself,
+      // regardless of its first child.
       const rootMatches = hasMatchingHydrateRoot(text, currentRootId);
       debugLog(
         "checked",

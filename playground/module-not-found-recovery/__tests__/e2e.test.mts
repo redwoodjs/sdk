@@ -135,7 +135,7 @@ testDeploy(
     // Sanity check: the home page loads.
     expect(await page.content()).toContain("Home");
 
-    // context(chris, 30 Oct 2026): Keep a build-A tab open while a local
+    // context(chrsnymn, 30 Oct 2026): Keep a build-A tab open while a local
     // production redeploy changes the real NonDivWidget chunk hash. This
     // reproduces the deployment boundary without intercepting network traffic.
     const nonDivContext = await browser.createBrowserContext();
