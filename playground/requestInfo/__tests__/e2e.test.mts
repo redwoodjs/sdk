@@ -1,6 +1,7 @@
-import { readFile, writeFile } from "fs/promises";
+import { copyFile, readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import {
+  $,
   createDevServer,
   poll,
   setupPlaygroundEnvironment,
@@ -33,6 +34,19 @@ async function modifyFile(
 testSDK.dev(
   "requestInfo state is preserved across HMR and works in server actions",
   async ({ page, projectDir }) => {
+    for (const filePath of [
+      "src/components/ServerComponent.tsx",
+      "src/app/pages/Home.tsx",
+      "src/components/ClientComponent.tsx",
+      "src/app/actions.ts",
+    ]) {
+      await copyFile(
+        new URL(`../${filePath}`, import.meta.url),
+        join(projectDir, filePath),
+      );
+    }
+    await $("npm", ["run", "clean:vite"], { cwd: projectDir });
+
     // 1. Comment out all the dynamic parts of the app
     await modifyFile(projectDir, "src/components/ServerComponent.tsx", [
       ['import isEven from "is-even";', '//import isEven from "is-even";'],
@@ -68,16 +82,17 @@ testSDK.dev(
     // 2. Start the dev server
     const devServerControl = createDevServer();
     const { url } = await devServerControl.start();
-    await page.goto(url);
+    const response = await page.goto(url);
+    expect(response?.ok(), "The initial requestInfo page should load").toBe(
+      true,
+    );
     await waitForHydration(page);
 
     // 3. Initial page load assertion
-    await poll(async () => {
-      const textContent = await page.evaluate(() => document.body.innerText);
-      expect(textContent).not.toContain("Client Component");
-      expect(textContent).not.toContain("Server Component");
-      return true;
-    });
+    const initialText = await page.evaluate(() => document.body.innerText);
+    expect(initialText).toContain("Request Info");
+    expect(initialText).not.toContain("Client Component");
+    expect(initialText).not.toContain("Server Component");
 
     // 4. Uncomment ServerComponent and its dependency
     await modifyFile(projectDir, "src/components/ServerComponent.tsx", [
@@ -93,12 +108,22 @@ testSDK.dev(
     ]);
 
     // 5. Assert ServerComponent is rendered
-    await poll(async () => {
-      const textContent = await page.evaluate(() => document.body.innerText);
-      expect(textContent).toContain("Server Component");
-      expect(textContent).toContain("Is 2 even? Yes");
-      return true;
-    });
+    await page
+      .waitForFunction(() => {
+        const text = document.body.innerText;
+        return (
+          text.includes("Server Component") && text.includes("Is 2 even? Yes")
+        );
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.name === "TimeoutError") {
+          throw new Error(
+            "Server Component and 'Is 2 even? Yes' did not appear after adding the server component and its dependency.",
+            { cause: error },
+          );
+        }
+        throw error;
+      });
 
     // 6. Uncomment ClientComponent and its dependency
     await modifyFile(projectDir, "src/components/ClientComponent.tsx", [
@@ -117,16 +142,26 @@ testSDK.dev(
     ]);
 
     // 7. Assert ClientComponent is rendered
-    await poll(async () => {
-      const textContent = await page.evaluate(() => document.body.innerText);
-      expect(textContent).toContain("Client Component");
-      expect(textContent).toContain("Is 5 a number? Yes");
-      return true;
-    });
+    await page
+      .waitForFunction(() => {
+        const text = document.body.innerText;
+        return (
+          text.includes("Client Component") &&
+          text.includes("Is 5 a number? Yes")
+        );
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.name === "TimeoutError") {
+          throw new Error(
+            "Client Component and 'Is 5 a number? Yes' did not appear after adding the client component and its dependency.",
+            { cause: error },
+          );
+        }
+        throw error;
+      });
 
     // skipped(justinvdm, 21 Feb 2026): A regression appeared after #962 (a dependency upgrade), but only got surfaced as a result of #1094.
     // To not block #1094, we're skipping the following for now
-
 
     //// 8. Set up a listener to catch the server action response
     //let serverActionSuccess = false;

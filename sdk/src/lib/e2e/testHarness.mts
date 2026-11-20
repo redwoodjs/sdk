@@ -610,9 +610,6 @@ export function createDeployment() {
  * Executes a test function with a retry mechanism for specific error codes.
  * @param name - The name of the test, used for logging.
  * @param attemptFn - A function that executes one attempt of the test.
- *                     It should set up resources, run the test logic, and
- *                     return a cleanup function. The cleanup function will be
- *                     called automatically on failure.
  */
 export async function runTestWithRetries(
   name: string,
@@ -803,7 +800,6 @@ function createSDKTestRunner(): SDKRunnerWithHelpers {
       }) => Promise<void>,
     ) => {
       describe.concurrent(name, () => {
-        let page: Page;
         let browser: Browser;
 
         let connection: BrowserConnection | undefined;
@@ -816,48 +812,56 @@ function createSDKTestRunner(): SDKRunnerWithHelpers {
           await connection?.release();
         });
 
-        beforeEach(async () => {
-          if (!globalDevPlaygroundEnv && !globalDeployPlaygroundEnv) {
-            throw new Error(
-              "Test environment not initialized. Call setupPlaygroundEnvironment() in your test file.",
-            );
-          }
-
-          recordDiagnostic("page.create.start", { name });
-          page = await browser.newPage();
-          recordDiagnostic("page.create.end", { name });
-          page.setDefaultTimeout(PUPPETEER_TIMEOUT);
-        }, SETUP_WAIT_TIMEOUT);
-
-        afterEach(async () => {
-          if (page) {
-            try {
-              recordDiagnostic("page.close.start", { name });
-              await page.close();
-              recordDiagnostic("page.close.end", { name });
-            } catch (error) {
-              console.warn(
-                `Suppressing error during page.close() in test "${name}":`,
-                error,
-              );
-            }
-          }
-        });
-
         testFn(">", async () => {
           if (!browser) {
             throw new Error("Test environment not ready.");
           }
 
           await runTestWithRetries(name, async () => {
-            await testLogic({
-              browser: browser as Browser,
-              page: page as Page,
-              projectDir:
-                globalDevPlaygroundEnv?.projectDir ||
-                globalDeployPlaygroundEnv?.projectDir ||
-                "",
-            });
+            if (!globalDevPlaygroundEnv && !globalDeployPlaygroundEnv) {
+              throw new Error(
+                "Test environment not initialized. Call setupPlaygroundEnvironment() in your test file.",
+              );
+            }
+
+            // context(chrsnymn, 05 Nov 2026): A low-level test owns the page
+            // and development servers created during an attempt. Close them
+            // before retrying so attempts cannot interfere with each other.
+            const devInstanceStartIndex = devInstances.length;
+            const browserContext = await browser.createBrowserContext();
+            try {
+              recordDiagnostic("page.create.start", { name });
+              const page = await browserContext.newPage();
+              recordDiagnostic("page.create.end", { name });
+              page.setDefaultTimeout(PUPPETEER_TIMEOUT);
+
+              await testLogic({
+                browser,
+                page,
+                projectDir:
+                  globalDevPlaygroundEnv?.projectDir ||
+                  globalDeployPlaygroundEnv?.projectDir ||
+                  "",
+              });
+            } finally {
+              try {
+                recordDiagnostic("page.close.start", { name });
+                await browserContext.close();
+                recordDiagnostic("page.close.end", { name });
+              } catch (error) {
+                console.warn(
+                  `Suppressing error during page.close() in test "${name}":`,
+                  error,
+                );
+              }
+
+              const attemptDevInstances = devInstances.splice(
+                devInstanceStartIndex,
+              );
+              await Promise.allSettled(
+                attemptDevInstances.map((instance) => instance.stopDev()),
+              );
+            }
           });
         });
       });
