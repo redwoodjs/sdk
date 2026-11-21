@@ -7,6 +7,7 @@ import {
   setupPlaygroundEnvironment,
   testDeploy,
   testSDK,
+  trackPageErrors,
   waitForHydration,
 } from "rwsdk/e2e";
 import { expect } from "vitest";
@@ -203,8 +204,25 @@ testSDK.dev(
 testDeploy(
   "requestInfo state is preserved and works in server actions in deployment",
   async ({ page, url }) => {
-    await page.goto(url);
-    await waitForHydration(page);
+    const errors = trackPageErrors(page);
+    page.on("response", (response) => {
+      if (response.status() >= 400) {
+        console.error(
+          "requestInfo HTTP error:",
+          response.status(),
+          response.url(),
+        );
+      }
+    });
+    page.on("pageerror", (error) => {
+      console.error("requestInfo page error:", error);
+    });
+    const initialResponse = await page.goto(url);
+    expect(initialResponse?.ok(), "The requestInfo page should load").toBe(true);
+    await waitForHydration(page).catch((error: unknown) => {
+      console.error("requestInfo hydration browser errors:", errors.get());
+      throw error;
+    });
 
     // 1. Assert all components are rendered on initial load
     await poll(async () => {
@@ -216,27 +234,33 @@ testDeploy(
       return true;
     });
 
-    // 2. Set up a listener to catch the server action response
-    let serverActionSuccess = false;
-    page.on("response", (response) => {
-      if (response.headers()["x-server-action-success"] === "true") {
-        serverActionSuccess = true;
-      }
-    });
-
-    // 3. Click the button to call the server action
+    // 2. Click the button and check the server action's response.
     const button = await page.waitForSelector("button");
-    await button?.click();
-
-    // 4. Assert that the server action result is displayed
-    await poll(async () => {
-      const textContent = await page.evaluate(() => document.body.innerText);
-      const hasActionResult = textContent.includes(
-        "Server action result: Is 3 odd? Yes",
-      );
-      expect(hasActionResult).toBe(true);
-      expect(serverActionSuccess).toBe(true);
-      return true;
+    expect(button, "The server-action button should exist").not.toBeNull();
+    const [response] = await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          new URL(response.url()).searchParams.has("__rsc_action_id"),
+      ),
+      button!.click(),
+    ]).catch((error: unknown) => {
+      console.error("requestInfo server-action browser errors:", errors.get());
+      throw error;
     });
+    expect(response.status(), "The server-action HTTP status should be 200").toBe(
+      200,
+    );
+    expect(response.headers()["x-server-action-success"]).toBe("true");
+
+    // 3. The successful response must also update the visible result.
+    await page
+      .waitForFunction(() =>
+        document.body.innerText.includes("Server action result: Is 3 odd? Yes"),
+      )
+      .catch((error: unknown) => {
+        console.error("requestInfo result browser errors:", errors.get());
+        throw error;
+      });
   },
 );

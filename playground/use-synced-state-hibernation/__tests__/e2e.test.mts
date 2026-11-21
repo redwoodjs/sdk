@@ -1,4 +1,5 @@
 import {
+  PUPPETEER_TIMEOUT,
   poll,
   setupPlaygroundEnvironment,
   testDevAndDeploy,
@@ -10,7 +11,7 @@ setupPlaygroundEnvironment(import.meta.url);
 
 testDevAndDeploy(
   "counter persists across page reload",
-  async ({ page, url }) => {
+  async ({ page, url, browser }) => {
     // Navigate to the page
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
     await waitForHydration(page);
@@ -51,6 +52,23 @@ testDevAndDeploy(
       expect(count).toBe(1);
       return true;
     });
+
+    // context(chrsnymn, 21 Nov 2026): The local count changes before the
+    // server receives it. Confirm another browser received the update first.
+    const observerContext = await browser.createBrowserContext();
+    try {
+      const observer = await observerContext.newPage();
+      observer.setDefaultTimeout(PUPPETEER_TIMEOUT);
+      await observer.goto(url);
+      await waitForHydration(observer);
+      await observer.waitForFunction(
+        () =>
+          document.querySelectorAll(".counter-display")[1]?.textContent ===
+          "Count: 1",
+      );
+    } finally {
+      await observerContext.close();
+    }
 
     // Reload the page
     await page.reload({ waitUntil: "domcontentloaded", timeout: 30000 });
