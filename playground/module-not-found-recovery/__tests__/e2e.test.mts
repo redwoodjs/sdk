@@ -16,6 +16,35 @@ setupPlaygroundEnvironment(import.meta.url);
 const RECOVERY_NAVIGATION_LIMIT = 3;
 const RELOAD_STABILITY_OBSERVATION_MS = 1_500;
 
+testDev(
+  "hydrates a page whose first element is not a div",
+  async ({ page, url }) => {
+    await page.goto(new URL("/non-div-widget", url).href, {
+      waitUntil: "domcontentloaded",
+      timeout: 30000,
+    });
+    await waitForHydration(page);
+
+    expect(
+      await page.$eval(
+        "#hydrate-root > :first-child",
+        (element) => element.tagName,
+      ),
+    ).toBe("A");
+
+    await page.click("#non-div-widget-button");
+    await poll(async () => {
+      expect(
+        await page.$eval(
+          "#non-div-widget-button",
+          (element) => element.textContent,
+        ),
+      ).toContain("Clicks: 1");
+      return true;
+    });
+  },
+);
+
 async function provePermanentChunkFailureStopsReloading({
   page,
   url,
@@ -105,6 +134,89 @@ testDeploy(
 
     // Sanity check: the home page loads.
     expect(await page.content()).toContain("Home");
+
+    // context(chrsnymn, 30 Oct 2026): Keep a build-A tab open while a local
+    // production redeploy changes the real NonDivWidget chunk hash. This
+    // reproduces the deployment boundary without intercepting network traffic.
+    const nonDivContext = await browser.createBrowserContext();
+    try {
+      const nonDivPage = await nonDivContext.newPage();
+      const { get: getNonDivErrors } = trackPageErrors(nonDivPage);
+      const recoveryLogs: string[] = [];
+      const documentRequests: string[] = [];
+
+      nonDivPage.on("console", (message) => {
+        if (message.text().includes("[rwsdk:recovery]")) {
+          recoveryLogs.push(message.text());
+        }
+      });
+      nonDivPage.on("request", (request) => {
+        if (request.resourceType() === "document") {
+          documentRequests.push(request.url());
+        }
+      });
+
+      await nonDivPage.goto(url, {
+        waitUntil: "domcontentloaded",
+        timeout: 30000,
+      });
+      await waitForHydration(nonDivPage);
+      documentRequests.length = 0;
+      await nonDivPage.evaluate(() => {
+        (
+          window as Window & { __RWSDK_DEBUG_RECOVERY__?: boolean }
+        ).__RWSDK_DEBUG_RECOVERY__ = true;
+      });
+
+      const nonDivWidgetPath = path.join(
+        projectDir,
+        "src/app/pages/NonDivWidget.tsx",
+      );
+      const nonDivBuildA = await fs.readFile(nonDivWidgetPath, "utf-8");
+      const nonDivBuildB = nonDivBuildA.replace(
+        "Non-div Widget Page",
+        "Non-div Widget Page build B",
+      );
+      await fs.writeFile(nonDivWidgetPath, nonDivBuildB);
+      await deployment.redeploy();
+
+      await nonDivPage.click("#link-to-non-div-widget");
+
+      await poll(
+        async () => {
+          expect(
+            getNonDivErrors().failedRequests.some((request) =>
+              request.includes("NonDivWidget"),
+            ),
+          ).toBe(true);
+          expect(
+            recoveryLogs.some((message) =>
+              message.includes("rootId div rootMatches true ok true"),
+            ),
+          ).toBe(true);
+          expect(await nonDivPage.content()).toContain(
+            "Non-div Widget Page build B",
+          );
+          return true;
+        },
+        { timeout: 10_000 },
+      );
+
+      expect(documentRequests).toHaveLength(1);
+      expect(nonDivPage.url()).toContain("/non-div-widget");
+      await nonDivPage.click("#non-div-widget-button");
+      await poll(async () => {
+        expect(
+          await nonDivPage.$eval(
+            "#non-div-widget-button",
+            (element) => element.textContent,
+          ),
+        ).toContain("Clicks: 1");
+        return true;
+      });
+    } finally {
+      await nonDivContext.close();
+    }
 
     // First cover a stale lookup entry whose old client chunk disappeared.
     const widgetPath = path.join(projectDir, "src/app/pages/Widget.tsx");
