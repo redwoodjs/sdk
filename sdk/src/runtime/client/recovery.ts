@@ -121,6 +121,17 @@ function getCurrentHydrateRootId(): string | null {
   return root?.tagName.toLowerCase() ?? null;
 }
 
+export function hasMatchingHydrateRoot(
+  html: string,
+  currentRootId: string,
+): boolean {
+  const rootPattern = new RegExp(
+    `<${currentRootId}\\b[^>]*\\bid=["']hydrate-root["']`,
+    "i",
+  );
+  return rootPattern.test(html);
+}
+
 async function checkUrl(url: string, signal: AbortSignal): Promise<boolean> {
   try {
     const response = await fetch(url, {
@@ -150,13 +161,9 @@ async function checkUrl(url: string, signal: AbortSignal): Promise<boolean> {
 
     const currentRootId = getCurrentHydrateRootId();
     if (currentRootId) {
-      // Match the current hydrate root element. We look for id="hydrate-root"
-      // or id='hydrate-root' followed by the same tag name.
-      const rootPattern = new RegExp(
-        `id=["']hydrate-root["'][^>]*>\\s*<${currentRootId}\\b`,
-        "i",
-      );
-      const rootMatches = rootPattern.test(text);
+      // context(chrsnymn, 3 Nov 2026): Match the fetched hydrate root itself,
+      // regardless of its first child.
+      const rootMatches = hasMatchingHydrateRoot(text, currentRootId);
       debugLog(
         "checked",
         url,

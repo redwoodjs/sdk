@@ -4,9 +4,27 @@ import {
   RECOVERY_NAVIGATION_STORAGE_KEY,
   RECOVERY_NAVIGATION_WINDOW_MS,
   consumeRecoveryNavigationBudget,
+  hasMatchingHydrateRoot,
 } from "./recovery.js";
 
 type RecoveryStorage = Pick<Storage, "getItem" | "setItem">;
+
+describe("hasMatchingHydrateRoot", () => {
+  it.each([
+    '<div id="hydrate-root"><a href="#main">Skip</a><main id="main"></main></div>',
+    '<div class="app" data-build="ready" id="hydrate-root"><main></main></div>',
+    "<DIV ID='hydrate-root'><header></header></DIV>",
+  ])("accepts the outer hydrate root regardless of its first child", (html) => {
+    expect(hasMatchingHydrateRoot(html, "div")).toBe(true);
+  });
+
+  it.each([
+    '<div id="other-root"><div></div></div>',
+    '<main id="hydrate-root"><div></div></main>',
+  ])("rejects a missing or mismatched outer hydrate root", (html) => {
+    expect(hasMatchingHydrateRoot(html, "div")).toBe(false);
+  });
+});
 
 function createStorage(initialValue: string | null = null): {
   storage: RecoveryStorage;
