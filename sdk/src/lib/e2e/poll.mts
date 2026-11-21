@@ -24,6 +24,7 @@ export async function poll(
 
   const startTime = Date.now();
   let tries = 0;
+  let lastError: unknown;
 
   while (Date.now() - startTime < timeout || tries < minTries) {
     tries++;
@@ -32,6 +33,7 @@ export async function poll(
         return;
       }
     } catch (error) {
+      lastError = error;
       onRetry?.(error, tries);
       // Continue polling on errors
     }
@@ -39,9 +41,18 @@ export async function poll(
     await setTimeout(interval);
   }
 
-  throw new Error(
-    `Polling timed out after ${Date.now() - startTime}ms and ${tries} attempts`,
-  );
+  const timeoutMessage = `Polling timed out after ${Date.now() - startTime}ms and ${tries} attempts`;
+
+  // context(chrsnymn, 05 Nov 2026): The assertion explains which value never
+  // appeared. Preserve it so a timeout does not replace the useful failure
+  // with only an elapsed time and attempt count.
+  if (lastError instanceof Error) {
+    throw new Error(`${timeoutMessage}. Last error: ${lastError.message}`, {
+      cause: lastError,
+    });
+  }
+
+  throw new Error(timeoutMessage);
 }
 
 export async function pollValue<T>(
