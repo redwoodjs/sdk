@@ -119,11 +119,41 @@ testDev(
 
 testDeploy(
   "recovers stale client modules after redeploy",
-  async ({ browser, page, url, deployment, projectDir }) => {
+  async ({ browser, url, deployment, projectDir }) => {
     if (!deployment) {
       throw new Error("Expected a deployment test environment");
     }
 
+    // context(chrsnymn, 25 Nov 2026): Retries must open the original build,
+    // rather than reuse files changed by the previous attempt.
+    let restoreBuild = false;
+    for (const filePath of [
+      "src/app/pages/NonDivWidget.tsx",
+      "src/app/pages/Widget.tsx",
+    ]) {
+      const original = await fs.readFile(
+        new URL(`../${filePath}`, import.meta.url),
+        "utf-8",
+      );
+      const targetPath = path.join(projectDir, filePath);
+      if ((await fs.readFile(targetPath, "utf-8")) !== original) {
+        await fs.writeFile(targetPath, original);
+        restoreBuild = true;
+      }
+    }
+    const newWidgetPath = path.join(projectDir, "src/app/pages/NewWidget.tsx");
+    if (await fs.pathExists(newWidgetPath)) {
+      await fs.remove(newWidgetPath);
+      restoreBuild = true;
+    }
+    if (restoreBuild) {
+      await deployment.redeploy();
+    }
+
+    // context(chrsnymn, 25 Nov 2026): Each attempt needs its own reload budget.
+    // Puppeteer's async disposal closes this context even when an assertion fails.
+    await using attemptContext = await browser.createBrowserContext();
+    const page = await attemptContext.newPage();
     const { get } = trackPageErrors(page);
 
     await page.goto(url, {
@@ -188,15 +218,18 @@ testDeploy(
             getNonDivErrors().failedRequests.some((request) =>
               request.includes("NonDivWidget"),
             ),
+            "The old NonDivWidget module request should fail after redeploy",
           ).toBe(true);
           expect(
             recoveryLogs.some((message) =>
               message.includes("rootId div rootMatches true ok true"),
             ),
+            "Recovery should accept the replacement page's hydrate root",
           ).toBe(true);
-          expect(await nonDivPage.content()).toContain(
-            "Non-div Widget Page build B",
-          );
+          expect(
+            await nonDivPage.content(),
+            "The recovered page should show build B",
+          ).toContain("Non-div Widget Page build B");
           return true;
         },
         { timeout: 10_000 },
@@ -204,6 +237,7 @@ testDeploy(
 
       expect(documentRequests).toHaveLength(1);
       expect(nonDivPage.url()).toContain("/non-div-widget");
+      await waitForHydration(nonDivPage);
       await nonDivPage.click("#non-div-widget-button");
       await poll(async () => {
         expect(
@@ -270,7 +304,6 @@ testDeploy(
       }
     });
 
-    const newWidgetPath = path.join(projectDir, "src/app/pages/NewWidget.tsx");
     await fs.writeFile(
       newWidgetPath,
       `"use client";
