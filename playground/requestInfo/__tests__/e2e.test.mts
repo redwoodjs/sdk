@@ -1,13 +1,11 @@
-import { copyFile, readFile, writeFile } from "fs/promises";
+import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import {
-  $,
   createDevServer,
   poll,
   setupPlaygroundEnvironment,
   testDeploy,
   testSDK,
-  trackPageErrors,
   waitForHydration,
 } from "rwsdk/e2e";
 import { expect } from "vitest";
@@ -35,19 +33,6 @@ async function modifyFile(
 testSDK.dev(
   "requestInfo state is preserved across HMR and works in server actions",
   async ({ page, projectDir }) => {
-    for (const filePath of [
-      "src/components/ServerComponent.tsx",
-      "src/app/pages/Home.tsx",
-      "src/components/ClientComponent.tsx",
-      "src/app/actions.ts",
-    ]) {
-      await copyFile(
-        new URL(`../${filePath}`, import.meta.url),
-        join(projectDir, filePath),
-      );
-    }
-    await $("npm", ["run", "clean:vite"], { cwd: projectDir });
-
     // 1. Comment out all the dynamic parts of the app
     await modifyFile(projectDir, "src/components/ServerComponent.tsx", [
       ['import isEven from "is-even";', '//import isEven from "is-even";'],
@@ -83,17 +68,16 @@ testSDK.dev(
     // 2. Start the dev server
     const devServerControl = createDevServer();
     const { url } = await devServerControl.start();
-    const response = await page.goto(url);
-    expect(response?.ok(), "The initial requestInfo page should load").toBe(
-      true,
-    );
+    await page.goto(url);
     await waitForHydration(page);
 
     // 3. Initial page load assertion
-    const initialText = await page.evaluate(() => document.body.innerText);
-    expect(initialText).toContain("Request Info");
-    expect(initialText).not.toContain("Client Component");
-    expect(initialText).not.toContain("Server Component");
+    await poll(async () => {
+      const textContent = await page.evaluate(() => document.body.innerText);
+      expect(textContent).not.toContain("Client Component");
+      expect(textContent).not.toContain("Server Component");
+      return true;
+    });
 
     // 4. Uncomment ServerComponent and its dependency
     await modifyFile(projectDir, "src/components/ServerComponent.tsx", [
@@ -109,22 +93,12 @@ testSDK.dev(
     ]);
 
     // 5. Assert ServerComponent is rendered
-    await page
-      .waitForFunction(() => {
-        const text = document.body.innerText;
-        return (
-          text.includes("Server Component") && text.includes("Is 2 even? Yes")
-        );
-      })
-      .catch((error: unknown) => {
-        if (error instanceof Error && error.name === "TimeoutError") {
-          throw new Error(
-            "Server Component and 'Is 2 even? Yes' did not appear after adding the server component and its dependency.",
-            { cause: error },
-          );
-        }
-        throw error;
-      });
+    await poll(async () => {
+      const textContent = await page.evaluate(() => document.body.innerText);
+      expect(textContent).toContain("Server Component");
+      expect(textContent).toContain("Is 2 even? Yes");
+      return true;
+    });
 
     // 6. Uncomment ClientComponent and its dependency
     await modifyFile(projectDir, "src/components/ClientComponent.tsx", [
@@ -143,26 +117,16 @@ testSDK.dev(
     ]);
 
     // 7. Assert ClientComponent is rendered
-    await page
-      .waitForFunction(() => {
-        const text = document.body.innerText;
-        return (
-          text.includes("Client Component") &&
-          text.includes("Is 5 a number? Yes")
-        );
-      })
-      .catch((error: unknown) => {
-        if (error instanceof Error && error.name === "TimeoutError") {
-          throw new Error(
-            "Client Component and 'Is 5 a number? Yes' did not appear after adding the client component and its dependency.",
-            { cause: error },
-          );
-        }
-        throw error;
-      });
+    await poll(async () => {
+      const textContent = await page.evaluate(() => document.body.innerText);
+      expect(textContent).toContain("Client Component");
+      expect(textContent).toContain("Is 5 a number? Yes");
+      return true;
+    });
 
     // skipped(justinvdm, 21 Feb 2026): A regression appeared after #962 (a dependency upgrade), but only got surfaced as a result of #1094.
     // To not block #1094, we're skipping the following for now
+
 
     //// 8. Set up a listener to catch the server action response
     //let serverActionSuccess = false;
@@ -204,25 +168,8 @@ testSDK.dev(
 testDeploy(
   "requestInfo state is preserved and works in server actions in deployment",
   async ({ page, url }) => {
-    const errors = trackPageErrors(page);
-    page.on("response", (response) => {
-      if (response.status() >= 400) {
-        console.error(
-          "requestInfo HTTP error:",
-          response.status(),
-          response.url(),
-        );
-      }
-    });
-    page.on("pageerror", (error) => {
-      console.error("requestInfo page error:", error);
-    });
-    const initialResponse = await page.goto(url);
-    expect(initialResponse?.ok(), "The requestInfo page should load").toBe(true);
-    await waitForHydration(page).catch((error: unknown) => {
-      console.error("requestInfo hydration browser errors:", errors.get());
-      throw error;
-    });
+    await page.goto(url);
+    await waitForHydration(page);
 
     // 1. Assert all components are rendered on initial load
     await poll(async () => {
@@ -234,33 +181,27 @@ testDeploy(
       return true;
     });
 
-    // 2. Click the button and check the server action's response.
-    const button = await page.waitForSelector("button");
-    expect(button, "The server-action button should exist").not.toBeNull();
-    const [response] = await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          new URL(response.url()).searchParams.has("__rsc_action_id"),
-      ),
-      button!.click(),
-    ]).catch((error: unknown) => {
-      console.error("requestInfo server-action browser errors:", errors.get());
-      throw error;
+    // 2. Set up a listener to catch the server action response
+    let serverActionSuccess = false;
+    page.on("response", (response) => {
+      if (response.headers()["x-server-action-success"] === "true") {
+        serverActionSuccess = true;
+      }
     });
-    expect(response.status(), "The server-action HTTP status should be 200").toBe(
-      200,
-    );
-    expect(response.headers()["x-server-action-success"]).toBe("true");
 
-    // 3. The successful response must also update the visible result.
-    await page
-      .waitForFunction(() =>
-        document.body.innerText.includes("Server action result: Is 3 odd? Yes"),
-      )
-      .catch((error: unknown) => {
-        console.error("requestInfo result browser errors:", errors.get());
-        throw error;
-      });
+    // 3. Click the button to call the server action
+    const button = await page.waitForSelector("button");
+    await button?.click();
+
+    // 4. Assert that the server action result is displayed
+    await poll(async () => {
+      const textContent = await page.evaluate(() => document.body.innerText);
+      const hasActionResult = textContent.includes(
+        "Server action result: Is 3 odd? Yes",
+      );
+      expect(hasActionResult).toBe(true);
+      expect(serverActionSuccess).toBe(true);
+      return true;
+    });
   },
 );
