@@ -2,7 +2,9 @@ import fs from "fs-extra";
 import { setTimeout as delay } from "node:timers/promises";
 import path from "path";
 import {
+  type Page,
   poll,
+  recordDiagnostic,
   setupPlaygroundEnvironment,
   testDev,
   testDeploy,
@@ -117,6 +119,208 @@ testDev(
   },
 );
 
+type ClientManifest = Record<string, { file: string }>;
+
+// context(chrsnymn, 26 Nov 2026): Deployment completion does not prove that
+// the browser sees the expected build or that an old chunk has disappeared.
+// Prepare those conditions separately; never reload the stale tab to recover it.
+async function waitForDeployedBuild(
+  page: Page,
+  projectDir: string,
+  url: string,
+  missingAsset?: string,
+): Promise<ClientManifest> {
+  const manifest: ClientManifest = await fs.readJSON(
+    path.join(projectDir, "dist/client/.vite/manifest.json"),
+  );
+  const expectedClient = new URL(
+    manifest["src/client.tsx"].file,
+    new URL("/", url),
+  ).href;
+  const redirect: { configPath: string } = await fs.readJSON(
+    path.join(projectDir, ".wrangler/deploy/config.json"),
+  );
+  const configPath = path.resolve(
+    projectDir,
+    ".wrangler/deploy",
+    redirect.configPath,
+  );
+  const config: { main: string; assets: { directory: string } } =
+    await fs.readJSON(configPath);
+  const assetDirectory = path.resolve(
+    path.dirname(configPath),
+    config.assets.directory,
+  );
+  const emittedFiles = await fs.readdir(assetDirectory, { recursive: true });
+  const ignorePath = path.join(assetDirectory, ".assetsignore");
+  recordDiagnostic("recovery.build", {
+    url,
+    expectedClient,
+    configPath,
+    assetDirectory,
+    emittedFiles,
+    assetsIgnore: (await fs.pathExists(ignorePath))
+      ? await fs.readFile(ignorePath, "utf-8")
+      : null,
+    manifest,
+  });
+  expect(
+    await fs.pathExists(
+      path.join(assetDirectory, manifest["src/client.tsx"].file),
+    ),
+    "Build output must contain the startup file in Wrangler's asset directory",
+  ).toBe(true);
+  expect(
+    await fs.readFile(
+      path.resolve(path.dirname(configPath), config.main),
+      "utf-8",
+    ),
+    "Built Worker must reference the expected startup URL",
+  ).toContain(new URL(expectedClient).pathname);
+  const assetErrors: string[] = [];
+  const documents: Awaited<ReturnType<Page["goto"]>>[] = [];
+  const { get } = trackPageErrors(page);
+  let preloadUrls: string[] = [];
+  let missingAssetStatus: number | undefined;
+  const onResponse = (response: Awaited<ReturnType<Page["waitForResponse"]>>) => {
+    if (["script", "stylesheet"].includes(response.request().resourceType())) {
+      recordDiagnostic("recovery.asset.response", {
+        url: response.url(),
+        status: response.status(),
+        cfRay: response.headers()["cf-ray"],
+        expectedClient,
+      });
+    }
+    if (
+      ["script", "stylesheet"].includes(response.request().resourceType()) &&
+      response.status() >= 400
+    ) {
+      assetErrors.push(`${response.status()} ${response.url()}`);
+    }
+  };
+  const onRequestFailed = (
+    request: Awaited<ReturnType<Page["waitForRequest"]>>,
+  ) => {
+    if (["script", "stylesheet"].includes(request.resourceType())) {
+      assetErrors.push(`${request.url()} ${request.failure()?.errorText}`);
+      recordDiagnostic("recovery.asset.failed", {
+        url: request.url(),
+        error: request.failure()?.errorText,
+        expectedClient,
+      });
+    }
+  };
+  const onPageError = (error: unknown) => {
+    console.error("[recovery test] Browser JavaScript error:", error);
+  };
+  page.on("response", onResponse);
+  page.on("requestfailed", onRequestFailed);
+  page.on("pageerror", onPageError);
+  await page.setCacheEnabled(false);
+  try {
+    await poll(async () => {
+      assetErrors.length = 0;
+      const response = await page.goto(url, {
+        waitUntil: "networkidle0",
+        timeout: 30000,
+      });
+      documents.push(response);
+      recordDiagnostic("recovery.document", {
+        url: page.url(),
+        status: response?.status(),
+        cfRay: response?.headers()["cf-ray"],
+        expectedClient,
+        navigationAttempt: documents.length,
+      });
+      expect(response?.status(), "Deployment page should return HTTP 200").toBe(
+        200,
+      );
+      preloadUrls = await page.$$eval("link", (links) =>
+        links
+          .filter((link) => link.rel === "modulepreload")
+          .map((link) => link.href),
+      );
+      recordDiagnostic("recovery.preloads", { url: page.url(), preloadUrls });
+      expect(
+        preloadUrls,
+        "Deployment should serve the expected build's client entry",
+      ).toContain(expectedClient);
+      expect(
+        assetErrors,
+        "Deployment scripts and styles should load successfully",
+      ).toEqual([]);
+      if (missingAsset) {
+        const oldAssetResponse = await page.evaluate(
+          async ({ asset, timeout }) => {
+            const result = await fetch(asset, {
+              cache: "no-store",
+              signal: AbortSignal.timeout(timeout),
+            });
+            await result.body?.cancel();
+            return {
+              status: result.status,
+              cfRay: result.headers.get("cf-ray"),
+            };
+          },
+          { asset: missingAsset, timeout: page.getDefaultTimeout() },
+        );
+        missingAssetStatus = oldAssetResponse.status;
+        recordDiagnostic("recovery.old-asset.response", {
+          url: missingAsset,
+          ...oldAssetResponse,
+        });
+        expect(
+          missingAssetStatus,
+          `Old asset must be unavailable before recovery: ${missingAsset}`,
+        ).toBe(404);
+      }
+      return true;
+    });
+    // An initialization error with available assets is a real failure, not a
+    // reason to keep reloading until JavaScript happens to start successfully.
+    await waitForHydration(page);
+    console.log("[recovery test] Deployment conditions established:", {
+      url,
+      expectedClient,
+      navigationAttempts: documents.length,
+      missingAsset,
+      missingAssetStatus,
+    });
+    return manifest;
+  } catch (error) {
+    const response = documents.at(-1);
+    console.error("[recovery test] Deployment conditions were not established:", {
+      url: page.url(),
+      status: response?.status(),
+      contentType: response?.headers()["content-type"],
+      cfRay: response?.headers()["cf-ray"],
+      navigationAttempts: documents.length,
+      expectedClient,
+      preloadUrls,
+      missingAsset,
+      missingAssetStatus,
+      assetErrors,
+      ...get(),
+    });
+    try {
+      console.error(
+        "[recovery test] Page text:",
+        await page.evaluate(() => document.body?.innerText.slice(0, 2000)),
+      );
+    } catch (diagnosticError) {
+      console.error(
+        "[recovery test] Could not read page text:",
+        diagnosticError,
+      );
+    }
+    throw error;
+  } finally {
+    page.off("response", onResponse);
+    page.off("requestfailed", onRequestFailed);
+    page.off("pageerror", onPageError);
+  }
+}
+
 testDeploy(
   "recovers stale client modules after redeploy",
   async ({ browser, url, deployment, projectDir }) => {
@@ -154,53 +358,10 @@ testDeploy(
     // Puppeteer's async disposal closes this context even when an assertion fails.
     await using attemptContext = await browser.createBrowserContext();
     const page = await attemptContext.newPage();
+    const initialManifest = await waitForDeployedBuild(page, projectDir, url);
     const { get } = trackPageErrors(page);
-
-    page.on("pageerror", (error) => {
-      console.error("[recovery test] Browser JavaScript error:", error);
-    });
-    page.on("response", (response) => {
-      if (
-        response.request().resourceType() === "script" &&
-        response.status() >= 400
-      ) {
-        console.error("[recovery test] Script HTTP error:", {
-          url: response.url(),
-          status: response.status(),
-        });
-      }
-    });
-
-    let initialResponse: Awaited<ReturnType<typeof page.goto>> = null;
-    try {
-      initialResponse = await page.goto(url, {
-        waitUntil: "domcontentloaded",
-        timeout: 30000,
-      });
-      await waitForHydration(page);
-    } catch (error) {
-      // context(chrsnymn, 26 Nov 2026): Preserve what the browser received
-      // before teardown, while keeping the original startup failure.
-      console.error("[recovery test] Initial page did not become ready:", {
-        url: page.url(),
-        status: initialResponse?.status(),
-        contentType: initialResponse?.headers()["content-type"],
-        cfRay: initialResponse?.headers()["cf-ray"],
-        ...get(),
-      });
-      try {
-        console.error(
-          "[recovery test] Initial page text:",
-          await page.evaluate(() => document.body?.innerText.slice(0, 2000)),
-        );
-      } catch (diagnosticError) {
-        console.error(
-          "[recovery test] Could not read page text:",
-          diagnosticError,
-        );
-      }
-      throw error;
-    }
+    await using probeContext = await browser.createBrowserContext();
+    const probePage = await probeContext.newPage();
 
     // Sanity check: the home page loads.
     expect(await page.content()).toContain("Home");
@@ -211,7 +372,6 @@ testDeploy(
     const nonDivContext = await browser.createBrowserContext();
     try {
       const nonDivPage = await nonDivContext.newPage();
-      const { get: getNonDivErrors } = trackPageErrors(nonDivPage);
       const recoveryLogs: string[] = [];
       const documentRequests: string[] = [];
 
@@ -226,11 +386,8 @@ testDeploy(
         }
       });
 
-      await nonDivPage.goto(url, {
-        waitUntil: "domcontentloaded",
-        timeout: 30000,
-      });
-      await waitForHydration(nonDivPage);
+      await waitForDeployedBuild(nonDivPage, projectDir, url);
+      const { get: getNonDivErrors } = trackPageErrors(nonDivPage);
       documentRequests.length = 0;
       await nonDivPage.evaluate(() => {
         (
@@ -249,6 +406,12 @@ testDeploy(
       );
       await fs.writeFile(nonDivWidgetPath, nonDivBuildB);
       await deployment.redeploy();
+      await waitForDeployedBuild(
+        probePage,
+        projectDir,
+        new URL("/non-div-widget", url).href,
+        new URL(initialManifest["src/app/pages/NonDivWidget.tsx"].file, url).href,
+      );
 
       await nonDivPage.click("#link-to-non-div-widget");
 
@@ -299,6 +462,12 @@ testDeploy(
     await fs.writeFile(widgetPath, buildB);
 
     await deployment.redeploy();
+    await waitForDeployedBuild(
+      probePage,
+      projectDir,
+      new URL("/widget", url).href,
+      new URL(initialManifest["src/app/pages/Widget.tsx"].file, url).href,
+    );
 
     // The tab is still running build A. Its lookup points to the old Widget
     // chunk, which is no longer available after build B is deployed.
@@ -317,11 +486,10 @@ testDeploy(
 
     // Load build B normally, then keep that document open while build C adds
     // a client module that build B's in-memory lookup has never seen.
-    await page.goto(url, {
-      waitUntil: "domcontentloaded",
-      timeout: 30000,
-    });
-    await waitForHydration(page);
+    const intermediateManifest = await waitForDeployedBuild(page, projectDir, url);
+    expect(Object.keys(intermediateManifest)).not.toContain(
+      "src/app/pages/NewWidget.tsx",
+    );
     await page.evaluate(() => {
       (window as any).__RWSDK_STALE_DOCUMENT__ = true;
     });
@@ -377,6 +545,12 @@ export function Widget() {
     );
 
     await deployment.redeploy();
+    await waitForDeployedBuild(
+      probePage,
+      projectDir,
+      new URL("/widget", url).href,
+      new URL(intermediateManifest["src/client.tsx"].file, url).href,
+    );
 
     // Build C's RSC response refers to NewWidget. The stale build B client
     // should suspend the lookup miss and recover with a full document reload.
