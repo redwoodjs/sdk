@@ -156,11 +156,51 @@ testDeploy(
     const page = await attemptContext.newPage();
     const { get } = trackPageErrors(page);
 
-    await page.goto(url, {
-      waitUntil: "domcontentloaded",
-      timeout: 30000,
+    page.on("pageerror", (error) => {
+      console.error("[recovery test] Browser JavaScript error:", error);
     });
-    await waitForHydration(page);
+    page.on("response", (response) => {
+      if (
+        response.request().resourceType() === "script" &&
+        response.status() >= 400
+      ) {
+        console.error("[recovery test] Script HTTP error:", {
+          url: response.url(),
+          status: response.status(),
+        });
+      }
+    });
+
+    let initialResponse: Awaited<ReturnType<typeof page.goto>> = null;
+    try {
+      initialResponse = await page.goto(url, {
+        waitUntil: "domcontentloaded",
+        timeout: 30000,
+      });
+      await waitForHydration(page);
+    } catch (error) {
+      // context(chrsnymn, 26 Nov 2026): Preserve what the browser received
+      // before teardown, while keeping the original startup failure.
+      console.error("[recovery test] Initial page did not become ready:", {
+        url: page.url(),
+        status: initialResponse?.status(),
+        contentType: initialResponse?.headers()["content-type"],
+        cfRay: initialResponse?.headers()["cf-ray"],
+        ...get(),
+      });
+      try {
+        console.error(
+          "[recovery test] Initial page text:",
+          await page.evaluate(() => document.body?.innerText.slice(0, 2000)),
+        );
+      } catch (diagnosticError) {
+        console.error(
+          "[recovery test] Could not read page text:",
+          diagnosticError,
+        );
+      }
+      throw error;
+    }
 
     // Sanity check: the home page loads.
     expect(await page.content()).toContain("Home");
