@@ -24,6 +24,10 @@ on:
       ref:
         description: "The branch, tag or SHA to checkout. e.g. `refs/pull/123/head`"
         required: false
+      test-file:
+        description: "Optional playground test file, e.g. module-not-found-recovery/__tests__/e2e.test.mts"
+        required: false
+        type: string
       os:
         description: "OS to run on (e.g., ubuntu-latest, macos-latest)"
         required: true
@@ -63,6 +67,7 @@ concurrency:
 env:
   FULL_PLAYGROUND_E2E_LABEL: run-full-vite-e2e
   RWSDK_E2E_ARTIFACT_DIR: ${{ github.workspace }}/.tmp/rwsdk-e2e-artifacts
+  RWSDK_E2E_TEST_FILE: ${{ github.event.inputs.test-file || '' }}
 
 jobs:
   setup-matrix:
@@ -180,7 +185,11 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           pnpm install
-          pnpm test:e2e
+          if [[ -n "$RWSDK_E2E_TEST_FILE" ]]; then
+            pnpm test:e2e "$RWSDK_E2E_TEST_FILE"
+          else
+            pnpm test:e2e
+          fi
 
       - name: Upload playground artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -279,7 +288,9 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           pnpm install
-          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+          if [[ -n "$RWSDK_E2E_TEST_FILE" ]]; then
+            pnpm test:e2e "$RWSDK_E2E_TEST_FILE"
+          elif [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
             pnpm test:e2e
           else
             pnpm test:e2e -- --exclude client-navigation/__tests__/nav-commit-lag.test.mts
@@ -386,7 +397,9 @@ jobs:
           fi
 
           pnpm install
-          if [[ "$RUN_FULL_PLAYGROUND_E2E" == "true" ]]; then
+          if [[ -n "$RWSDK_E2E_TEST_FILE" ]]; then
+            pnpm test:e2e "$RWSDK_E2E_TEST_FILE"
+          elif [[ "$RUN_FULL_PLAYGROUND_E2E" == "true" ]]; then
             echo "Running the full Vite 7 playground E2E suite because the '$FULL_PLAYGROUND_E2E_LABEL' label is present."
             pnpm test:e2e
           else

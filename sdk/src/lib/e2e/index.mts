@@ -1,6 +1,7 @@
 export * from "../$.mjs";
 export * from "./browser.mjs";
 export * from "./dev.mjs";
+export * from "./diagnostics.mjs";
 export * from "./environment.mjs";
 export * from "./poll.mjs";
 export * from "./release.mjs";

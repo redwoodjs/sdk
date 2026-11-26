@@ -534,6 +534,11 @@ export async function runRelease(
           },
         );
 
+        appendDiagnosticFile(
+          `release-${dirName}.log`,
+          `\n${JSON.stringify({ time: new Date().toISOString(), cwd, attempt: i + 1, code: result.code })}\n${result.stdout}\n${result.stderr}\n`,
+        );
+
         // Check exit code to ensure command succeeded
         if (result.code === 0) {
           log(`Release command succeeded on attempt ${i + 1}`);

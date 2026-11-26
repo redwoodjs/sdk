@@ -4,6 +4,7 @@ import path from "path";
 import {
   type Page,
   poll,
+  recordDiagnostic,
   setupPlaygroundEnvironment,
   testDev,
   testDeploy,
@@ -136,12 +137,60 @@ async function waitForDeployedBuild(
     manifest["src/client.tsx"].file,
     new URL("/", url),
   ).href;
+  const redirect: { configPath: string } = await fs.readJSON(
+    path.join(projectDir, ".wrangler/deploy/config.json"),
+  );
+  const configPath = path.resolve(
+    projectDir,
+    ".wrangler/deploy",
+    redirect.configPath,
+  );
+  const config: { main: string; assets: { directory: string } } =
+    await fs.readJSON(configPath);
+  const assetDirectory = path.resolve(
+    path.dirname(configPath),
+    config.assets.directory,
+  );
+  const emittedFiles = await fs.readdir(assetDirectory, { recursive: true });
+  const ignorePath = path.join(assetDirectory, ".assetsignore");
+  recordDiagnostic("recovery.build", {
+    url,
+    expectedClient,
+    configPath,
+    assetDirectory,
+    emittedFiles,
+    assetsIgnore: (await fs.pathExists(ignorePath))
+      ? await fs.readFile(ignorePath, "utf-8")
+      : null,
+    manifest,
+  });
+  expect(
+    await fs.pathExists(
+      path.join(assetDirectory, manifest["src/client.tsx"].file),
+    ),
+    "Build output must contain the startup file in Wrangler's asset directory",
+  ).toBe(true);
+  expect(
+    await fs.readFile(
+      path.resolve(path.dirname(configPath), config.main),
+      "utf-8",
+    ),
+    "Built Worker must reference the expected startup URL",
+  ).toContain(new URL(expectedClient).pathname);
   const assetErrors: string[] = [];
   const documents: Awaited<ReturnType<Page["goto"]>>[] = [];
   const { get } = trackPageErrors(page);
   let preloadUrls: string[] = [];
   let missingAssetStatus: number | undefined;
   const onResponse = (response: Awaited<ReturnType<Page["waitForResponse"]>>) => {
+    if (["script", "stylesheet"].includes(response.request().resourceType())) {
+      recordDiagnostic("recovery.asset.response", {
+        url: response.url(),
+        status: response.status(),
+        cfRay: response.headers()["cf-ray"],
+        expectedClient,
+      });
+    }
     if (
       ["script", "stylesheet"].includes(response.request().resourceType()) &&
       response.status() >= 400
@@ -154,6 +203,11 @@ async function waitForDeployedBuild(
   ) => {
     if (["script", "stylesheet"].includes(request.resourceType())) {
       assetErrors.push(`${request.url()} ${request.failure()?.errorText}`);
+      recordDiagnostic("recovery.asset.failed", {
+        url: request.url(),
+        error: request.failure()?.errorText,
+        expectedClient,
+      });
     }
   };
   const onPageError = (error: unknown) => {
@@ -171,6 +225,13 @@ async function waitForDeployedBuild(
         timeout: 30000,
       });
       documents.push(response);
+      recordDiagnostic("recovery.document", {
+        url: page.url(),
+        status: response?.status(),
+        cfRay: response?.headers()["cf-ray"],
+        expectedClient,
+        navigationAttempt: documents.length,
+      });
       expect(response?.status(), "Deployment page should return HTTP 200").toBe(
         200,
       );
@@ -179,6 +240,7 @@ async function waitForDeployedBuild(
           .filter((link) => link.rel === "modulepreload")
           .map((link) => link.href),
       );
+      recordDiagnostic("recovery.preloads", { url: page.url(), preloadUrls });
       expect(
         preloadUrls,
         "Deployment should serve the expected build's client entry",
@@ -188,17 +250,25 @@ async function waitForDeployedBuild(
         "Deployment scripts and styles should load successfully",
       ).toEqual([]);
       if (missingAsset) {
-        missingAssetStatus = await page.evaluate(
+        const oldAssetResponse = await page.evaluate(
           async ({ asset, timeout }) => {
             const result = await fetch(asset, {
               cache: "no-store",
               signal: AbortSignal.timeout(timeout),
             });
             await result.body?.cancel();
-            return result.status;
+            return {
+              status: result.status,
+              cfRay: result.headers.get("cf-ray"),
+            };
           },
           { asset: missingAsset, timeout: page.getDefaultTimeout() },
         );
+        missingAssetStatus = oldAssetResponse.status;
+        recordDiagnostic("recovery.old-asset.response", {
+          url: missingAsset,
+          ...oldAssetResponse,
+        });
         expect(
           missingAssetStatus,
           `Old asset must be unavailable before recovery: ${missingAsset}`,
